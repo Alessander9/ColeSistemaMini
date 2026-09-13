@@ -16,6 +16,7 @@ import {
   X,
 } from 'lucide-react';
 import { NotificationBell } from '@/components/notificaciones/NotificationBell';
+import { ProfileDropdown } from '@/components/layout/ProfileDropdown';
 
 interface NavbarProps {
   onOpenMobileMenu?: () => void;
@@ -89,42 +90,15 @@ export function Navbar({ onOpenMobileMenu }: NavbarProps) {
         <div className="flex-1" />
 
         {/* Right: Actions */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2">
           {/* Notification Bell */}
           <NotificationBell />
 
           {/* Divider */}
           <div className="w-px h-6 bg-slate-200 dark:bg-slate-700 hidden sm:block" />
 
-          {/* User Avatar + Info */}
-          <div className="flex items-center gap-2.5">
-            <div className="relative hidden sm:block">
-              <img
-                src={currentUser.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.nombres)}&background=6366f1&color=fff&size=80`}
-                alt={currentUser.nombres}
-                className="w-8 h-8 rounded-xl object-cover ring-2 ring-slate-200 dark:ring-slate-700"
-              />
-              <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 ${cfg.dot} rounded-full border-2 border-white dark:border-slate-950`} />
-            </div>
-            <div className="hidden md:block text-left min-w-0">
-              <p className="text-xs font-bold text-slate-800 dark:text-white leading-tight truncate max-w-[100px]">
-                {currentUser.nombres.split(' ')[0]}
-              </p>
-              <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-bold bg-gradient-to-r ${cfg.gradient} text-white`}>
-                {cfg.icon}
-                {cfg.label}
-              </div>
-            </div>
-          </div>
-
-          {/* Logout */}
-          <button
-            onClick={handleLogout}
-            className="p-2 rounded-xl text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-all duration-200"
-            title="Cerrar sesión"
-          >
-            <LogOut className="w-4 h-4" />
-          </button>
+          {/* User Profile Dropdown */}
+          <ProfileDropdown />
         </div>
       </div>
     </header>
