@@ -25,9 +25,10 @@ import {
   KeyRound,
   QrCode
 } from 'lucide-react';
+import { AvatarUploader } from '@/components/ui/AvatarUploader';
 
 export function ProfileDropdown() {
-  const { currentUser, students, enrollments, showToast, resetToDemoData, logout } = useApp();
+  const { currentUser, setCurrentUser, students, enrollments, showToast, resetToDemoData, logout } = useApp();
   const router = useRouter();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -258,17 +259,18 @@ export function ProfileDropdown() {
         maxWidth="md"
       >
         <div className="space-y-5">
-          {/* Header Card */}
-          <div className="flex items-center gap-4 p-4 rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800/60 dark:to-slate-900/60 border border-slate-200/80 dark:border-slate-700">
-            <div className="relative">
-              <img
-                src={currentUser.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.nombres)}&background=6366f1&color=fff&size=100`}
-                alt={currentUser.nombres}
-                className="w-16 h-16 rounded-2xl object-cover ring-4 ring-white dark:ring-slate-800 shadow-md"
-              />
-              <span className={`absolute -bottom-1 -right-1 w-4 h-4 ${cfg.dot} rounded-full border-2 border-white dark:border-slate-900`} />
-            </div>
-            <div>
+          {/* Header Card with Photo Uploader */}
+          <div className="flex flex-col sm:flex-row items-center gap-4 p-4 rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800/60 dark:to-slate-900/60 border border-slate-200/80 dark:border-slate-700">
+            <AvatarUploader
+              currentAvatarUrl={currentUser.avatar_url}
+              userName={currentUser.nombres}
+              onAvatarUpdated={(newUrl) => {
+                setCurrentUser({ ...currentUser, avatar_url: newUrl });
+                showToast('Fotografía de perfil actualizada con éxito', 'success', 'Foto Actualizada');
+              }}
+              className="bg-transparent border-0 p-0 shadow-none"
+            />
+            <div className="text-center sm:text-left min-w-0">
               <h4 className="text-base font-black text-slate-900 dark:text-white">
                 {currentUser.nombres} {currentUser.apellidos}
               </h4>
