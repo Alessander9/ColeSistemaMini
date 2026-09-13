@@ -1,0 +1,832 @@
+'use client';
+
+import React, { useState } from 'react';
+import { useApp } from '@/context/AppContext';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { StatCard } from '@/components/ui/StatCard';
+import { 
+  Users, 
+  UserPlus, 
+  GraduationCap, 
+  BookOpen, 
+  Calendar, 
+  Plus, 
+  Search, 
+  Filter, 
+  Trash2, 
+  CheckCircle2, 
+  Copy, 
+  Key, 
+  Mail, 
+  Phone, 
+  Sparkles, 
+  Building2, 
+  School,
+  Award,
+  Layers,
+  Clock,
+  ChevronRight,
+  UserCheck
+} from 'lucide-react';
+import Link from 'next/link';
+
+export default function AdminDocentesPage() {
+  const { 
+    teachers, 
+    addTeacher, 
+    courses, 
+    sections, 
+    gradeLevels, 
+    sectionCourses, 
+    assignCourseToSection, 
+    removeSectionCourse,
+    getTeacherSections 
+  } = useApp();
+
+  const [activeTab, setActiveTab] = useState<'profesores' | 'asignaciones' | 'registro'>('profesores');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterEspecialidad, setFilterEspecialidad] = useState('todas');
+  const [filterNivel, setFilterNivel] = useState<'todos' | 'primaria' | 'secundaria'>('todos');
+
+  // Modal Nuevo Docente
+  const [isNewTeacherModalOpen, setIsNewTeacherModalOpen] = useState(false);
+  const [newTeacherData, setNewTeacherData] = useState({
+    nombres: '',
+    apellidos: '',
+    dni: '',
+    telefono: '',
+    email: '',
+    especialidad: 'Matemática',
+  });
+
+  // Modal Credenciales Creadas
+  const [createdCredentials, setCreatedCredentials] = useState<{
+    teacherName: string;
+    username: string;
+    password: string;
+    email: string;
+  } | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  // Modal Asignar Materia a Salón
+  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+  const [selectedTeacherId, setSelectedTeacherId] = useState<string>('');
+  const [selectedSectionId, setSelectedSectionId] = useState<string>('');
+  const [selectedCourseId, setSelectedCourseId] = useState<string>('');
+  const [horasSemanales, setHorasSemanales] = useState<number>(4);
+  const [aulaDefecto, setAulaDefecto] = useState<string>('Aula 301');
+  const [assignSuccess, setAssignSuccess] = useState(false);
+
+  // Stats calculation
+  const totalDocentes = teachers.length;
+  const totalAsignaciones = sectionCourses.length;
+  const totalHoras = sectionCourses.reduce((acc, curr) => acc + (curr.horas_semanales || 0), 0);
+  const promedioHorasDocente = totalDocentes > 0 ? Math.round(totalHoras / totalDocentes) : 0;
+
+  // Filtered teachers
+  const filteredTeachers = teachers.filter((t) => {
+    const matchesSearch = 
+      `${t.nombres} ${t.apellidos}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      t.dni.includes(searchTerm) ||
+      t.email?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesEsp = filterEspecialidad === 'todas' || t.especialidad === filterEspecialidad;
+    return matchesSearch && matchesEsp;
+  });
+
+  // Filtered assignments
+  const filteredAssignments = sectionCourses.filter((sca) => {
+    const sec = sections.find(s => s.id === sca.seccion_id);
+    const crs = courses.find(c => c.id === sca.curso_id);
+    const doc = teachers.find(t => t.id === sca.docente_id);
+
+    const matchesNivel = filterNivel === 'todos' || sec?.grado?.nivel === filterNivel;
+    const matchesSearch = 
+      `${doc?.nombres} ${doc?.apellidos}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      crs?.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      sec?.grado?.nombre.toLowerCase().includes(searchTerm.toLowerCase());
+
+    return matchesNivel && matchesSearch;
+  });
+
+  const handleRegisterTeacher = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTeacherData.nombres || !newTeacherData.apellidos || !newTeacherData.dni) return;
+
+    const res = addTeacher({
+      nombres: newTeacherData.nombres,
+      apellidos: newTeacherData.apellidos,
+      dni: newTeacherData.dni,
+      telefono: newTeacherData.telefono,
+      email: newTeacherData.email,
+      especialidad: newTeacherData.especialidad,
+    });
+
+    setCreatedCredentials({
+      teacherName: `${res.teacher.nombres} ${res.teacher.apellidos}`,
+      username: res.credentials.username,
+      password: res.credentials.password,
+      email: res.credentials.email,
+    });
+
+    // Reset
+    setNewTeacherData({
+      nombres: '',
+      apellidos: '',
+      dni: '',
+      telefono: '',
+      email: '',
+      especialidad: 'Matemática',
+    });
+    setIsNewTeacherModalOpen(false);
+  };
+
+  const handleAssignCourse = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedTeacherId || !selectedSectionId || !selectedCourseId) return;
+
+    assignCourseToSection({
+      seccionId: selectedSectionId,
+      cursoId: selectedCourseId,
+      docenteId: selectedTeacherId,
+      horasSemanales: Number(horasSemanales),
+      aulaDefecto,
+    });
+
+    setAssignSuccess(true);
+    setTimeout(() => {
+      setAssignSuccess(false);
+      setIsAssignModalOpen(false);
+    }, 1200);
+  };
+
+  const openAssignForTeacher = (teacherId: string) => {
+    setSelectedTeacherId(teacherId);
+    if (sections.length > 0) setSelectedSectionId(sections[4]?.id || sections[0].id);
+    if (courses.length > 0) setSelectedCourseId(courses[0].id);
+    setIsAssignModalOpen(true);
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="space-y-6 animate-fade-in pb-12">
+      {/* Header */}
+      <PageHeader
+        title="Gestión de Docentes & Asignación Académica"
+        subtitle="Registro de profesores, emisión de credenciales y asignación de materias y salones para Primaria y Secundaria."
+        action={
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              onClick={() => {
+                if (teachers.length > 0) setSelectedTeacherId(teachers[0].id);
+                if (sections.length > 0) setSelectedSectionId(sections[4]?.id || sections[0].id);
+                if (courses.length > 0) setSelectedCourseId(courses[0].id);
+                setIsAssignModalOpen(true);
+              }}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs hover:bg-slate-200 dark:hover:bg-slate-700 transition-all"
+            >
+              <School className="w-4 h-4 text-indigo-600" />
+              Asignar Salón/Materia
+            </button>
+            <button
+              onClick={() => setIsNewTeacherModalOpen(true)}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold text-xs shadow-lg shadow-indigo-600/20 transition-all hover:scale-[1.02]"
+            >
+              <UserPlus className="w-4 h-4" />
+              + Registrar Nuevo Profesor
+            </button>
+          </div>
+        }
+      />
+
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard
+          title="Plana Docente Activa"
+          value={totalDocentes}
+          description="Profesores especialistas"
+          icon={Users}
+          trend={{ value: 100, isPositive: true, label: 'Activos' }}
+          color="indigo"
+        />
+        <StatCard
+          title="Asignaciones Curriculares"
+          value={totalAsignaciones}
+          description="Cursos dictados en salones"
+          icon={BookOpen}
+          color="emerald"
+        />
+        <StatCard
+          title="Carga Horaria Total"
+          value={`${totalHoras} hrs`}
+          description="Horas pedagógicas / semana"
+          icon={Clock}
+          color="purple"
+        />
+        <StatCard
+          title="Promedio por Profesor"
+          value={`${promedioHorasDocente} hrs`}
+          description="Dedicación semanal estándar"
+          icon={Award}
+          color="blue"
+        />
+      </div>
+
+      {/* Navigation Tabs */}
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-2">
+        <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl">
+          <button
+            onClick={() => setActiveTab('profesores')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              activeTab === 'profesores'
+                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <Users className="w-4 h-4" />
+            Plana Docente ({teachers.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('asignaciones')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              activeTab === 'asignaciones'
+                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <School className="w-4 h-4" />
+            Matriz de Salones & Cursos ({sectionCourses.length})
+          </button>
+        </div>
+
+        {/* Search Bar */}
+        <div className="relative min-w-[260px]">
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            placeholder="Buscar por nombre, DNI o curso..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-9 pr-4 py-2 text-xs rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
+          />
+        </div>
+      </div>
+
+      {/* TAB 1: PLANA DOCENTE CARDS */}
+      {activeTab === 'profesores' && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {filteredTeachers.map((docente) => {
+              const teacherAssignments = sectionCourses.filter(s => s.docente_id === docente.id);
+              const teacherHours = teacherAssignments.reduce((acc, c) => acc + (c.horas_semanales || 0), 0);
+              const uniqueSections = Array.from(new Set(teacherAssignments.map(s => s.seccion?.grado?.nombre + ' ' + s.seccion?.letra)));
+
+              return (
+                <div
+                  key={docente.id}
+                  className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
+                >
+                  <div>
+                    {/* Teacher Top Info */}
+                    <div className="flex items-start gap-3.5 mb-4">
+                      <img
+                        src={docente.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(docente.nombres)}`}
+                        alt={docente.nombres}
+                        className="w-14 h-14 rounded-2xl object-cover ring-2 ring-indigo-500/20 shrink-0"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <h4 className="font-extrabold text-sm text-slate-900 dark:text-white leading-tight truncate">
+                          {docente.nombres} {docente.apellidos}
+                        </h4>
+                        <p className="text-xs text-indigo-600 dark:text-indigo-400 font-bold mt-0.5">
+                          {docente.especialidad || 'Profesor Especialista'}
+                        </p>
+                        <div className="flex items-center gap-2 mt-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+                          <span className="font-semibold">DNI: {docente.dni}</span>
+                          <span>•</span>
+                          <span className="truncate">{docente.email}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Workload Stats */}
+                    <div className="grid grid-cols-2 gap-2 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 mb-4 text-center">
+                      <div>
+                        <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Carga Horaria</span>
+                        <p className="text-base font-black text-slate-800 dark:text-white">{teacherHours} hrs/sem</p>
+                      </div>
+                      <div>
+                        <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Salones a Cargo</span>
+                        <p className="text-base font-black text-indigo-600 dark:text-indigo-400">{uniqueSections.length} salones</p>
+                      </div>
+                    </div>
+
+                    {/* Courses / Salones List */}
+                    <div className="space-y-2 mb-4">
+                      <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+                        Materias y Salones Asignados:
+                      </span>
+                      {teacherAssignments.length > 0 ? (
+                        <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto">
+                          {teacherAssignments.map((asig) => (
+                            <span
+                              key={asig.id}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] font-bold bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/60"
+                            >
+                              <BookOpen className="w-3 h-3 text-indigo-500" />
+                              {asig.curso?.nombre} ({asig.seccion?.grado?.numero_grado}° {asig.seccion?.grado?.nivel === 'primaria' ? 'Pri' : 'Sec'} &quot;{asig.seccion?.letra}&quot;)
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-slate-400 italic">Sin materias asignadas aún.</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
+                    <button
+                      onClick={() => openAssignForTeacher(docente.id)}
+                      className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition-colors shadow-sm"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      Asignar Salón
+                    </button>
+                    <Link
+                      href={`/admin/horarios`}
+                      className="px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs transition-colors flex items-center gap-1"
+                    >
+                      <Calendar className="w-3.5 h-3.5" />
+                      Horario
+                    </Link>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* TAB 2: MATRIZ DE ASIGNACIONES TABLE */}
+      {activeTab === 'asignaciones' && (
+        <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 overflow-hidden shadow-sm">
+          {/* Level Filter Bar */}
+          <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 bg-slate-50/50 dark:bg-slate-800/30">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-slate-500">Filtrar por nivel:</span>
+              <button
+                onClick={() => setFilterNivel('todos')}
+                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${
+                  filterNivel === 'todos' ? 'bg-indigo-600 text-white' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+                }`}
+              >
+                Todos
+              </button>
+              <button
+                onClick={() => setFilterNivel('primaria')}
+                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${
+                  filterNivel === 'primaria' ? 'bg-indigo-600 text-white' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+                }`}
+              >
+                Primaria (1° a 6°)
+              </button>
+              <button
+                onClick={() => setFilterNivel('secundaria')}
+                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${
+                  filterNivel === 'secundaria' ? 'bg-indigo-600 text-white' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+                }`}
+              >
+                Secundaria (1° a 5°)
+              </button>
+            </div>
+            <span className="text-xs font-bold text-slate-400">
+              {filteredAssignments.length} asignaciones activas
+            </span>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-slate-200/60 dark:border-slate-800 text-[11px] font-extrabold uppercase tracking-wider text-slate-400 bg-slate-50/70 dark:bg-slate-800/50">
+                  <th className="py-3.5 px-4">Salón / Grado</th>
+                  <th className="py-3.5 px-4">Materia / Curso</th>
+                  <th className="py-3.5 px-4">Docente Responsable</th>
+                  <th className="py-3.5 px-4 text-center">Horas/Sem</th>
+                  <th className="py-3.5 px-4">Aula Asignada</th>
+                  <th className="py-3.5 px-4 text-right">Acciones</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 text-xs">
+                {filteredAssignments.map((asig) => {
+                  const doc = teachers.find(t => t.id === asig.docente_id);
+                  const sec = sections.find(s => s.id === asig.seccion_id);
+                  const crs = courses.find(c => c.id === asig.curso_id);
+
+                  return (
+                    <tr key={asig.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                      <td className="py-3 px-4 font-bold text-slate-900 dark:text-white">
+                        <span className="inline-flex items-center gap-1.5">
+                          <span className={`w-2 h-2 rounded-full ${sec?.grado?.nivel === 'primaria' ? 'bg-blue-500' : 'bg-purple-500'}`} />
+                          {sec?.grado?.nombre} — Sección &quot;{sec?.letra}&quot;
+                        </span>
+                      </td>
+                      <td className="py-3 px-4">
+                        <span
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold"
+                          style={{
+                            backgroundColor: `${crs?.color_hex || '#3b82f6'}15`,
+                            color: crs?.color_hex || '#3b82f6',
+                          }}
+                        >
+                          {crs?.nombre}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-2">
+                          <img
+                            src={doc?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(doc?.nombres || 'Docente')}`}
+                            alt={doc?.nombres}
+                            className="w-7 h-7 rounded-xl object-cover ring-1 ring-slate-200 dark:ring-slate-700"
+                          />
+                          <div>
+                            <p className="font-bold text-slate-800 dark:text-slate-200">
+                              {doc?.nombres} {doc?.apellidos}
+                            </p>
+                            <p className="text-[10px] text-slate-400">{doc?.especialidad}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 text-center font-black text-slate-800 dark:text-slate-200">
+                        {asig.horas_semanales} hrs
+                      </td>
+                      <td className="py-3 px-4 text-slate-600 dark:text-slate-400 font-medium">
+                        {asig.aula_defecto || 'Aula regular'}
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <button
+                          onClick={() => removeSectionCourse(asig.id)}
+                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors"
+                          title="Eliminar asignación"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 1: REGISTRAR NUEVO DOCENTE */}
+      {isNewTeacherModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-scale-up">
+            <div className="p-6 border-b border-slate-100 dark:border-slate-800 bg-gradient-to-r from-indigo-600/10 to-purple-600/10 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-2xl bg-indigo-600 text-white flex items-center justify-center">
+                  <UserPlus className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-black text-base text-slate-900 dark:text-white">
+                    Registrar Nuevo Profesor
+                  </h3>
+                  <p className="text-xs text-slate-500">Se generará automáticamente su usuario institucional y contraseña</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsNewTeacherModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleRegisterTeacher} className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Nombres *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ej. Juan Carlos"
+                    value={newTeacherData.nombres}
+                    onChange={(e) => setNewTeacherData({ ...newTeacherData, nombres: e.target.value })}
+                    className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-indigo-500 font-medium"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Apellidos *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ej. Quispe Flores"
+                    value={newTeacherData.apellidos}
+                    onChange={(e) => setNewTeacherData({ ...newTeacherData, apellidos: e.target.value })}
+                    className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-indigo-500 font-medium"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    DNI (8 dígitos) *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    maxLength={8}
+                    placeholder="Ej. 45678912"
+                    value={newTeacherData.dni}
+                    onChange={(e) => setNewTeacherData({ ...newTeacherData, dni: e.target.value })}
+                    className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-indigo-500 font-medium"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Teléfono Celular
+                  </label>
+                  <input
+                    type="tel"
+                    placeholder="Ej. 987654321"
+                    value={newTeacherData.telefono}
+                    onChange={(e) => setNewTeacherData({ ...newTeacherData, telefono: e.target.value })}
+                    className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-indigo-500 font-medium"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Especialidad / Área Principal *
+                </label>
+                <select
+                  value={newTeacherData.especialidad}
+                  onChange={(e) => setNewTeacherData({ ...newTeacherData, especialidad: e.target.value })}
+                  className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-indigo-500 font-medium"
+                >
+                  <option value="Matemática">Matemática (Aritmética, Álgebra, Geometría)</option>
+                  <option value="Comunicación">Comunicación y Literatura</option>
+                  <option value="Ciencia y Tecnología">Ciencia y Tecnología / Laboratorio</option>
+                  <option value="Inglés">Inglés como Lengua Extranjera</option>
+                  <option value="Personal Social">Personal Social / Ciencias Sociales</option>
+                  <option value="Educación Física">Educación Física y Deportes</option>
+                  <option value="Arte y Cultura">Arte y Cultura</option>
+                  <option value="Computación y Robótica">Computación y Robótica Educativa</option>
+                  <option value="Educación Religiosa">Educación Religiosa</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Correo Electrónico (Opcional - se autogenera si se deja vacío)
+                </label>
+                <input
+                  type="email"
+                  placeholder="nombre.apellido@colegio.edu.pe"
+                  value={newTeacherData.email}
+                  onChange={(e) => setNewTeacherData({ ...newTeacherData, email: e.target.value })}
+                  className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-indigo-500 font-medium"
+                />
+              </div>
+
+              <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsNewTeacherModalOpen(false)}
+                  className="px-4 py-2 text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-md transition-all"
+                >
+                  Guardar y Emitir Credenciales
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 2: ASIGNAR CURSO Y SALÓN A DOCENTE */}
+      {isAssignModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-scale-up">
+            <div className="p-6 border-b border-slate-100 dark:border-slate-800 bg-gradient-to-r from-purple-600/10 to-indigo-600/10 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-2xl bg-purple-600 text-white flex items-center justify-center">
+                  <School className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-black text-base text-slate-900 dark:text-white">
+                    Asignar Materia y Salón a Profesor
+                  </h3>
+                  <p className="text-xs text-slate-500">Vincula al docente con la sección y define sus horas pedagógicas</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsAssignModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleAssignCourse} className="p-6 space-y-4">
+              {/* Docente */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Profesor Responsable *
+                </label>
+                <select
+                  required
+                  value={selectedTeacherId}
+                  onChange={(e) => setSelectedTeacherId(e.target.value)}
+                  className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-purple-500 font-bold text-slate-800 dark:text-white"
+                >
+                  {teachers.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.nombres} {t.apellidos} — ({t.especialidad})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Salón / Sección */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Salón / Grado y Sección *
+                </label>
+                <select
+                  required
+                  value={selectedSectionId}
+                  onChange={(e) => setSelectedSectionId(e.target.value)}
+                  className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-purple-500 font-medium"
+                >
+                  <optgroup label="Primaria (6 Grados)">
+                    {sections.filter(s => s.grado?.nivel === 'primaria').map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.grado?.nombre} — Sección &quot;{s.letra}&quot; (Cap. {s.capacidad_maxima})
+                      </option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="Secundaria (5 Grados)">
+                    {sections.filter(s => s.grado?.nivel === 'secundaria').map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.grado?.nombre} — Sección &quot;{s.letra}&quot; (Cap. {s.capacidad_maxima})
+                      </option>
+                    ))}
+                  </optgroup>
+                </select>
+              </div>
+
+              {/* Curso / Materia */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Área Curricular / Materia *
+                </label>
+                <select
+                  required
+                  value={selectedCourseId}
+                  onChange={(e) => setSelectedCourseId(e.target.value)}
+                  className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-purple-500 font-medium"
+                >
+                  {courses.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.nombre} ({c.codigo})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Horas Semanales *
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={12}
+                    required
+                    value={horasSemanales}
+                    onChange={(e) => setHorasSemanales(Number(e.target.value))}
+                    className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-purple-500 font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Aula por Defecto
+                  </label>
+                  <input
+                    type="text"
+                    value={aulaDefecto}
+                    onChange={(e) => setAulaDefecto(e.target.value)}
+                    placeholder="Ej. Aula 301 / Lab 1"
+                    className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-purple-500 font-medium"
+                  />
+                </div>
+              </div>
+
+              {assignSuccess && (
+                <div className="p-3 rounded-xl bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 text-xs font-bold flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4" />
+                  ¡Materia asignada correctamente al salón!
+                </div>
+              )}
+
+              <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsAssignModalOpen(false)}
+                  className="px-4 py-2 text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 text-xs font-bold text-white bg-purple-600 hover:bg-purple-700 rounded-xl shadow-md transition-all"
+                >
+                  Guardar Asignación
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 3: CREDENCIALES GENERADAS */}
+      {createdCredentials && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-scale-up">
+            <div className="p-6 text-center space-y-4">
+              <div className="w-14 h-14 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-600 flex items-center justify-center mx-auto shadow-inner">
+                <CheckCircle2 className="w-8 h-8" />
+              </div>
+              <div>
+                <h3 className="text-lg font-black text-slate-900 dark:text-white">
+                  ¡Profesor Registrado con Éxito!
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Entrega estas credenciales institucionales al profesor:
+                </p>
+              </div>
+
+              {/* Credential Box */}
+              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700 text-left space-y-2.5">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-400 font-bold">Docente:</span>
+                  <span className="font-extrabold text-slate-900 dark:text-white">{createdCredentials.teacherName}</span>
+                </div>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-400 font-bold">Correo Institucional:</span>
+                  <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400">{createdCredentials.email}</span>
+                </div>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-400 font-bold">Usuario:</span>
+                  <span className="font-mono font-bold text-slate-900 dark:text-white">{createdCredentials.username}</span>
+                </div>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-400 font-bold">Contraseña Temporal:</span>
+                  <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950 px-2 py-0.5 rounded">
+                    {createdCredentials.password}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => copyToClipboard(`Docente: ${createdCredentials.teacherName}\nCorreo: ${createdCredentials.email}\nUsuario: ${createdCredentials.username}\nContraseña: ${createdCredentials.password}`)}
+                  className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-white font-bold text-xs transition-colors"
+                >
+                  <Copy className="w-4 h-4 text-slate-500" />
+                  {copied ? '¡Copiado!' : 'Copiar Credenciales'}
+                </button>
+                <button
+                  onClick={() => setCreatedCredentials(null)}
+                  className="flex-1 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition-colors shadow-md"
+                >
+                  Listo
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
