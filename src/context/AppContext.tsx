@@ -345,16 +345,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     const studentName = `${targetEnrollment.estudiante?.profile?.nombres} ${targetEnrollment.estudiante?.profile?.apellidos}`;
 
-    // Emit Notification
-    addNotification({
-      user_id: targetEnrollment.estudiante?.profile_id || '',
-      tipo: 'asistencia',
-      titulo: 'Asistencia Registrada',
-      mensaje: `Ingreso registrado a las ${currentTimeStr} (${status.toUpperCase()}) vía ${metodo.toUpperCase()}`,
-      url_redireccion: '/estudiante/asistencias'
-    });
-
     if (existingIndex >= 0) {
+      const existing = attendances[existingIndex];
+
+      // ── DUPLICATE BLOCK: via QR → reject, never register twice ───────────
+      if (metodo === 'qr') {
+        showToast(
+          `${studentName} ya tiene asistencia registrada hoy (${existing.estado.toUpperCase()}) a las ${existing.hora_registro}`,
+          'warning',
+          '⚠️ Ya registrado hoy'
+        );
+        return {
+          success: false,
+          message: `Ya se registró asistencia de ${studentName} hoy a las ${existing.hora_registro} (${existing.estado.toUpperCase()})`,
+          duplicate: true,
+          record: existing
+        };
+      }
+
+      // ── Manual override: allow updating status ────────────────────────────
       const updated = [...attendances];
       updated[existingIndex] = {
         ...updated[existingIndex],
@@ -365,18 +374,27 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       };
       setAttendances(updated);
 
+      addNotification({
+        user_id: targetEnrollment.estudiante?.profile_id || '',
+        tipo: 'asistencia',
+        titulo: 'Asistencia Actualizada',
+        mensaje: `Estado actualizado a ${status.toUpperCase()} a las ${currentTimeStr} vía MANUAL`,
+        url_redireccion: '/estudiante/asistencias'
+      });
+
       showToast(
-        `Asistencia actualizada: ${studentName} (${status.toUpperCase()}) vía ${metodo === 'qr' ? 'Lector QR' : 'Manual'}`,
+        `Asistencia actualizada: ${studentName} → ${status.toUpperCase()}`,
         status === 'falta' ? 'warning' : 'success',
         'Asistencia Actualizada'
       );
 
-      return { 
-        success: true, 
+      return {
+        success: true,
         message: `Asistencia actualizada para ${studentName} (${status.toUpperCase()})`,
         record: updated[existingIndex]
       };
     } else {
+      // ── New registration ─────────────────────────────────────────────────
       const newRecord: AttendanceRecord = {
         id: `att-${Date.now()}`,
         matricula_id: targetEnrollment.id,
@@ -391,14 +409,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       setAttendances(prev => [newRecord, ...prev]);
 
+      // Notify student
+      addNotification({
+        user_id: targetEnrollment.estudiante?.profile_id || '',
+        tipo: 'asistencia',
+        titulo: '✅ Asistencia Confirmada',
+        mensaje: `Ingreso registrado a las ${currentTimeStr} (${status.toUpperCase()}) vía ${metodo === 'qr' ? 'Lector QR' : 'Manual'}`,
+        url_redireccion: '/estudiante/asistencias'
+      });
+
       showToast(
-        `Asistencia registrada: ${studentName} (${status.toUpperCase()}) vía ${metodo === 'qr' ? 'Lector QR' : 'Manual'}`,
+        `✅ ${studentName} — ${status.toUpperCase()} — ${currentTimeStr}`,
         status === 'falta' ? 'warning' : 'success',
-        'Asistencia Confirmada'
+        '¡Asistencia Registrada!'
       );
 
-      return { 
-        success: true, 
+      return {
+        success: true,
         message: `¡Asistencia registrada con éxito para ${studentName}!`,
         record: newRecord
       };

@@ -43,7 +43,7 @@ export function QrScanner({
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [lastScanned, setLastScanned] = useState<{
-    status: 'success' | 'error';
+    status: 'success' | 'error' | 'duplicate';
     message: string;
     studentName?: string;
     time?: string;
@@ -62,39 +62,65 @@ export function QrScanner({
 
   useEffect(() => { statusModeRef.current = statusMode; }, [statusMode]);
 
-  // ── Beep ──────────────────────────────────────────────────────────────────
-  const triggerBeep = useCallback(() => {
+  // ── Tones ─────────────────────────────────────────────────────────────────
+  const playTone = useCallback((type: 'success' | 'error' | 'duplicate') => {
     if (!soundEnabled) return;
     try {
       const AudioCtx = window.AudioContext ||
         (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       const ctx = new AudioCtx();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(880, ctx.currentTime);
-      gain.gain.setValueAtTime(0.18, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start(); osc.stop(ctx.currentTime + 0.15);
-    } catch { /* ignore */ }
+
+      if (type === 'success') {
+        // Two ascending beeps
+        [880, 1100].forEach((freq, i) => {
+          const o = ctx.createOscillator();
+          const g = ctx.createGain();
+          o.type = 'sine';
+          o.frequency.setValueAtTime(freq, ctx.currentTime + i * 0.12);
+          g.gain.setValueAtTime(0.22, ctx.currentTime + i * 0.12);
+          g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.12 + 0.1);
+          o.connect(g); g.connect(ctx.destination);
+          o.start(ctx.currentTime + i * 0.12);
+          o.stop(ctx.currentTime + i * 0.12 + 0.1);
+        });
+      } else if (type === 'duplicate') {
+        // Single mid tone — "already done"
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.type = 'triangle';
+        o.frequency.setValueAtTime(520, ctx.currentTime);
+        g.gain.setValueAtTime(0.15, ctx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
+        o.connect(g); g.connect(ctx.destination);
+        o.start(); o.stop(ctx.currentTime + 0.25);
+      } else {
+        // Low double buzz — error
+        [220, 200].forEach((freq, i) => {
+          const o = ctx.createOscillator();
+          const g = ctx.createGain();
+          o.type = 'square';
+          o.frequency.setValueAtTime(freq, ctx.currentTime + i * 0.1);
+          g.gain.setValueAtTime(0.12, ctx.currentTime + i * 0.1);
+          g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.1 + 0.08);
+          o.connect(g); g.connect(ctx.destination);
+          o.start(ctx.currentTime + i * 0.1);
+          o.stop(ctx.currentTime + i * 0.1 + 0.08);
+        });
+      }
+    } catch { /* AudioContext locked */ }
   }, [soundEnabled]);
 
-  const triggerHaptic = () => {
-    try { navigator.vibrate?.([60, 30, 60]); } catch { /* ignore */ }
+  const triggerHaptic = (pattern: number[] = [60, 30, 60]) => {
+    try { navigator.vibrate?.(pattern); } catch { /* ignore */ }
   };
 
   // ── Process decoded QR text ───────────────────────────────────────────────
   const handleDecoded = useCallback((decodedText: string) => {
-    // Debounce: ignore same code within 3 seconds
+    // Cooldown: ignore same QR within 5 seconds to prevent double scans
     if (decodeCooldownRef.current && lastDecodeRef.current === decodedText) return;
     lastDecodeRef.current = decodedText;
     decodeCooldownRef.current = true;
-    setTimeout(() => { decodeCooldownRef.current = false; }, 3000);
-
-    triggerBeep();
-    triggerHaptic();
+    setTimeout(() => { decodeCooldownRef.current = false; }, 5000);
 
     const time = new Date().toLocaleTimeString('es-PE', {
       hour: '2-digit', minute: '2-digit', second: '2-digit',
@@ -114,14 +140,26 @@ export function QrScanner({
     const studentName = found?.profile
       ? `${found.profile.nombres} ${found.profile.apellidos}` : undefined;
 
+    // Duplicate: already registered today via QR
+    if ((res as { duplicate?: boolean }).duplicate) {
+      playTone('duplicate');
+      triggerHaptic([100, 50, 100]);
+      setLastScanned({ status: 'duplicate', message: res.message, studentName, time });
+      return;
+    }
+
     if (res.success) {
-      confetti({ particleCount: 30, spread: 55, origin: { y: 0.6 } });
+      playTone('success');
+      triggerHaptic([60, 30, 60]);
+      confetti({ particleCount: 40, spread: 60, origin: { y: 0.6 } });
       setLastScanned({ status: 'success', message: res.message, studentName, time });
     } else {
-      setLastScanned({ status: 'error', message: res.message, studentName: 'No reconocido', time });
+      playTone('error');
+      triggerHaptic([200]);
+      setLastScanned({ status: 'error', message: res.message, studentName: studentName ?? 'No reconocido', time });
     }
     if (onScanSuccess) onScanSuccess(decodedText);
-  }, [registerAttendance, students, triggerBeep, onScanSuccess]);
+  }, [registerAttendance, students, playTone, onScanSuccess]);
 
   // ── Scan loop using BarcodeDetector (native) or ZXing canvas fallback ────
   const startScanLoop = useCallback(async () => {
@@ -487,32 +525,49 @@ export function QrScanner({
 
       {/* Last scan result */}
       {lastScanned && (
-        <div className={`mb-4 p-4 rounded-2xl border flex items-start gap-3 animate-in zoom-in-95 ${
+        <div className={`mb-4 p-4 rounded-2xl border-2 flex items-start gap-3 animate-in zoom-in-95 duration-200 ${
           lastScanned.status === 'success'
-            ? 'bg-emerald-50 border-emerald-200 dark:bg-emerald-950/50 dark:border-emerald-800'
-            : 'bg-rose-50 border-rose-200 dark:bg-rose-950/50 dark:border-rose-800'
+            ? 'bg-emerald-50 border-emerald-400 dark:bg-emerald-950/60 dark:border-emerald-600'
+            : lastScanned.status === 'duplicate'
+            ? 'bg-amber-50 border-amber-400 dark:bg-amber-950/60 dark:border-amber-600'
+            : 'bg-rose-50 border-rose-400 dark:bg-rose-950/60 dark:border-rose-600'
         }`}>
-          {lastScanned.status === 'success'
-            ? <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
-            : <AlertCircle className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" />}
+          {lastScanned.status === 'success' && (
+            <CheckCircle2 className="w-6 h-6 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+          )}
+          {lastScanned.status === 'duplicate' && (
+            <AlertCircle className="w-6 h-6 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+          )}
+          {lastScanned.status === 'error' && (
+            <AlertCircle className="w-6 h-6 text-rose-500 dark:text-rose-400 shrink-0 mt-0.5" />
+          )}
           <div className="flex-1 text-xs">
-            <div className="flex items-center justify-between mb-0.5">
-              <p className="font-extrabold text-sm text-slate-900 dark:text-white">
-                {lastScanned.status === 'success' ? '✅ ¡Registrado!' : '❌ Error'}
+            <div className="flex items-center justify-between mb-1">
+              <p className={`font-extrabold text-sm ${
+                lastScanned.status === 'success' ? 'text-emerald-800 dark:text-emerald-200'
+                : lastScanned.status === 'duplicate' ? 'text-amber-800 dark:text-amber-200'
+                : 'text-rose-800 dark:text-rose-200'
+              }`}>
+                {lastScanned.status === 'success' && '✅ ¡Asistencia Registrada!'}
+                {lastScanned.status === 'duplicate' && '⚠️ Ya estaba registrado hoy'}
+                {lastScanned.status === 'error' && '❌ No reconocido'}
               </p>
               {lastScanned.time && (
-                <span className="text-[10px] font-mono text-slate-500">{lastScanned.time}</span>
+                <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400 bg-white/60 dark:bg-black/30 px-1.5 py-0.5 rounded-md">
+                  {lastScanned.time}
+                </span>
               )}
             </div>
             {lastScanned.studentName && (
-              <p className="font-bold text-[13px] text-slate-800 dark:text-slate-200">
+              <p className="font-bold text-[13px] text-slate-800 dark:text-slate-100 mb-0.5">
                 👤 {lastScanned.studentName}
               </p>
             )}
-            <p className="mt-0.5 text-slate-600 dark:text-slate-300">{lastScanned.message}</p>
+            <p className="text-slate-600 dark:text-slate-300 leading-relaxed">{lastScanned.message}</p>
           </div>
         </div>
       )}
+
 
       {/* Alternative methods */}
       <div className="pt-3.5 border-t border-slate-100 dark:border-slate-800 space-y-3">
