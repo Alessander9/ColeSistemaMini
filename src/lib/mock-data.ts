@@ -1757,3 +1757,8 @@ export const MOCK_CLASS_SESSIONS: ClassSessionLog[] = [
     created_at: '2026-05-12T09:30:00Z',
   },
 ];
+
+// Aliases for compatibility
+export const MOCK_GRADE_LEVELS: GradeLevel[] = MOCK_GRADES;
+export const MOCK_TEACHERS: UserProfile[] = MOCK_USERS.filter(u => u.rol === 'docente');
+

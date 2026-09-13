@@ -111,12 +111,12 @@ export default function AdminHorariosPage() {
   // Section Assigned Courses
   const currentSectionCourses = useMemo(() => {
     return getSectionCourses(selectedSectionId);
-  }, [getSectionCourses, selectedSectionId, sectionCourses]);
+  }, [getSectionCourses, selectedSectionId]);
 
   // Section Schedule Slots
   const currentSectionSchedule = useMemo(() => {
     return getSectionSchedule(selectedSectionId);
-  }, [getSectionSchedule, selectedSectionId, scheduleSlots]);
+  }, [getSectionSchedule, selectedSectionId]);
 
   // Total weekly hours in schedule
   const scheduledHoursCount = currentSectionSchedule.length;
@@ -125,7 +125,7 @@ export default function AdminHorariosPage() {
   // Audit result
   const auditResult = useMemo(() => {
     return auditScheduleIntegrity();
-  }, [auditScheduleIntegrity, scheduleSlots]);
+  }, [auditScheduleIntegrity]);
 
   // Check real-time conflict for the slot modal
   const modalConflictCheck = useMemo(() => {

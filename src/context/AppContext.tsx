@@ -45,6 +45,12 @@ import {
   MOCK_SCHEDULE_SLOTS,
   MOCK_CLASS_SESSIONS
 } from '@/lib/mock-data';
+import * as academicService from '@/lib/services/academicService';
+import * as attendanceService from '@/lib/services/attendanceService';
+import * as scheduleService from '@/lib/services/scheduleService';
+import * as tasksService from '@/lib/services/tasksService';
+import * as notificationsService from '@/lib/services/notificationsService';
+import { logoutUser } from '@/lib/services/authService';
 import { gradeToNumber } from '@/lib/grades/calculations';
 import { generateStudentPassword, generateStudentEmail, generateStudentUsername } from '@/lib/auth/generateCredentials';
 
@@ -52,6 +58,9 @@ interface AppContextType {
   currentUser: UserProfile;
   setCurrentUser: (user: UserProfile) => void;
   switchRole: (role: UserRole) => void;
+  isLoading: boolean;
+  refreshData: () => Promise<void>;
+  logout: () => Promise<void>;
   
   toasts: ToastMessage[];
   showToast: (mensaje: string, tipo?: 'success' | 'error' | 'info' | 'warning', titulo?: string, duracionMs?: number) => void;
@@ -196,41 +205,166 @@ interface AppContextType {
   notifications: AppNotification[];
   markNotificationRead: (id: string) => void;
   unreadCount: number;
+
+  resetToDemoData: () => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-export function AppProvider({ children }: { children: React.ReactNode }) {
-  const [users, setUsers] = useState<UserProfile[]>(MOCK_USERS);
-  const [currentUser, setCurrentUser] = useState<UserProfile>(MOCK_USERS[0]); // Default to Admin
-  const [students, setStudents] = useState<Student[]>(MOCK_STUDENTS);
-  const [enrollments, setEnrollments] = useState<Enrollment[]>(MOCK_ENROLLMENTS);
-  const [attendances, setAttendances] = useState<AttendanceRecord[]>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = localStorage.getItem('colegio_attendances');
-        if (saved) return JSON.parse(saved);
-      } catch { /* ignore */ }
+function getInitialData<T>(key: string, fallback: T): T {
+  if (typeof window === 'undefined') return fallback;
+  try {
+    const saved = localStorage.getItem(key);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(fallback) && Array.isArray(parsed)) return parsed as T;
+      if (typeof fallback === 'object' && parsed !== null && !Array.isArray(fallback) && !Array.isArray(parsed)) return parsed as T;
     }
-    return MOCK_ATTENDANCES;
-  });
+  } catch (err) {
+    console.warn(`[Storage] Fallo al parsear ${key}`, err);
+  }
+  return fallback;
+}
+
+export function AppProvider({ children }: { children: React.ReactNode }) {
+  const [users, setUsers] = useState<UserProfile[]>(() => getInitialData('colegio_users', MOCK_USERS));
+  const [currentUser, setCurrentUser] = useState<UserProfile>(() => getInitialData('colegio_current_user', MOCK_USERS[0]));
+  const [students, setStudents] = useState<Student[]>(() => getInitialData('colegio_students', MOCK_STUDENTS));
+  const [enrollments, setEnrollments] = useState<Enrollment[]>(() => getInitialData('colegio_enrollments', MOCK_ENROLLMENTS));
+  const [attendances, setAttendances] = useState<AttendanceRecord[]>(() => getInitialData('colegio_attendances', MOCK_ATTENDANCES));
+  const [grades, setGrades] = useState<GradeRecord[]>(() => getInitialData('colegio_grades', MOCK_GRADE_RECORDS));
+  const [tasks, setTasks] = useState<TaskAssignment[]>(() => getInitialData('colegio_tasks', MOCK_TASKS));
+  const [submissions, setSubmissions] = useState<TaskSubmission[]>(() => getInitialData('colegio_submissions', MOCK_SUBMISSIONS));
+  const [exams, setExams] = useState<EvaluationExam[]>(() => getInitialData('colegio_exams', MOCK_EXAMS));
+  const [notifications, setNotifications] = useState<AppNotification[]>(() => getInitialData('colegio_notifications', MOCK_NOTIFICATIONS));
+  const [sectionCourses, setSectionCourses] = useState<SectionCourseAssignment[]>(() => getInitialData('colegio_section_courses', MOCK_SECTION_COURSES));
+  const [scheduleSlots, setScheduleSlots] = useState<ScheduleSlot[]>(() => getInitialData('colegio_schedule_slots', MOCK_SCHEDULE_SLOTS));
+  const [classSessions, setClassSessions] = useState<ClassSessionLog[]>(() => getInitialData('colegio_class_sessions', MOCK_CLASS_SESSIONS));
+  const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const refreshData = async () => {
+    setIsLoading(true);
+    try {
+      const [
+        loadedStudents,
+        loadedEnrollments,
+        loadedAttendances,
+        loadedGrades,
+        loadedTasks,
+        loadedSubmissions,
+        loadedExams,
+        loadedSectionCourses,
+        loadedSlots,
+        loadedSessions,
+      ] = await Promise.all([
+        academicService.fetchStudents(),
+        academicService.fetchEnrollments(),
+        attendanceService.fetchAttendances(),
+        academicService.fetchGradeRecords(),
+        tasksService.fetchTasks(),
+        tasksService.fetchSubmissions(),
+        tasksService.fetchExams(),
+        scheduleService.fetchSectionCourses(),
+        scheduleService.fetchScheduleSlots(),
+        scheduleService.fetchClassSessions(),
+      ]);
+
+      if (loadedStudents && loadedStudents.length > 0) setStudents(loadedStudents);
+      if (loadedEnrollments && loadedEnrollments.length > 0) setEnrollments(loadedEnrollments);
+      if (loadedAttendances && loadedAttendances.length > 0) setAttendances(loadedAttendances);
+      if (loadedGrades && loadedGrades.length > 0) setGrades(loadedGrades);
+      if (loadedTasks && loadedTasks.length > 0) setTasks(loadedTasks);
+      if (loadedSubmissions && loadedSubmissions.length > 0) setSubmissions(loadedSubmissions);
+      if (loadedExams && loadedExams.length > 0) setExams(loadedExams);
+      if (loadedSectionCourses && loadedSectionCourses.length > 0) setSectionCourses(loadedSectionCourses);
+      if (loadedSlots && loadedSlots.length > 0) setScheduleSlots(loadedSlots);
+      if (loadedSessions && loadedSessions.length > 0) setClassSessions(loadedSessions);
+    } catch (err) {
+      console.warn('[Supabase] Error al sincronizar datos remotos:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem('colegio_attendances', JSON.stringify(attendances));
-      } catch { /* ignore */ }
+    refreshData();
+  }, []);
+
+  const logout = async () => {
+    await logoutUser();
+  };
+
+  // Sincronización automática a localStorage cuando cambian los datos
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem('colegio_users', JSON.stringify(users));
+      localStorage.setItem('colegio_current_user', JSON.stringify(currentUser));
+      localStorage.setItem('colegio_students', JSON.stringify(students));
+      localStorage.setItem('colegio_enrollments', JSON.stringify(enrollments));
+      localStorage.setItem('colegio_attendances', JSON.stringify(attendances));
+      localStorage.setItem('colegio_grades', JSON.stringify(grades));
+      localStorage.setItem('colegio_tasks', JSON.stringify(tasks));
+      localStorage.setItem('colegio_submissions', JSON.stringify(submissions));
+      localStorage.setItem('colegio_exams', JSON.stringify(exams));
+      localStorage.setItem('colegio_notifications', JSON.stringify(notifications));
+      localStorage.setItem('colegio_section_courses', JSON.stringify(sectionCourses));
+      localStorage.setItem('colegio_schedule_slots', JSON.stringify(scheduleSlots));
+      localStorage.setItem('colegio_class_sessions', JSON.stringify(classSessions));
+    } catch (err) {
+      console.warn('[Storage] Error al guardar estados en localStorage', err);
     }
-  }, [attendances]);
-  const [grades, setGrades] = useState<GradeRecord[]>(MOCK_GRADE_RECORDS);
-  const [tasks, setTasks] = useState<TaskAssignment[]>(MOCK_TASKS);
-  const [submissions, setSubmissions] = useState<TaskSubmission[]>(MOCK_SUBMISSIONS);
-  const [exams, setExams] = useState<EvaluationExam[]>(MOCK_EXAMS);
-  const [notifications, setNotifications] = useState<AppNotification[]>(MOCK_NOTIFICATIONS);
-  const [sectionCourses, setSectionCourses] = useState<SectionCourseAssignment[]>(MOCK_SECTION_COURSES);
-  const [scheduleSlots, setScheduleSlots] = useState<ScheduleSlot[]>(MOCK_SCHEDULE_SLOTS);
-  const [classSessions, setClassSessions] = useState<ClassSessionLog[]>(MOCK_CLASS_SESSIONS);
-  const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  }, [
+    users,
+    currentUser,
+    students,
+    enrollments,
+    attendances,
+    grades,
+    tasks,
+    submissions,
+    exams,
+    notifications,
+    sectionCourses,
+    scheduleSlots,
+    classSessions,
+  ]);
+
+  const resetToDemoData = () => {
+    if (typeof window !== 'undefined') {
+      const storageKeys = [
+        'colegio_users',
+        'colegio_current_user',
+        'colegio_students',
+        'colegio_enrollments',
+        'colegio_attendances',
+        'colegio_grades',
+        'colegio_tasks',
+        'colegio_submissions',
+        'colegio_exams',
+        'colegio_notifications',
+        'colegio_section_courses',
+        'colegio_schedule_slots',
+        'colegio_class_sessions',
+      ];
+      storageKeys.forEach((key) => localStorage.removeItem(key));
+    }
+    setUsers(MOCK_USERS);
+    setCurrentUser(MOCK_USERS[0]);
+    setStudents(MOCK_STUDENTS);
+    setEnrollments(MOCK_ENROLLMENTS);
+    setAttendances(MOCK_ATTENDANCES);
+    setGrades(MOCK_GRADE_RECORDS);
+    setTasks(MOCK_TASKS);
+    setSubmissions(MOCK_SUBMISSIONS);
+    setExams(MOCK_EXAMS);
+    setNotifications(MOCK_NOTIFICATIONS);
+    setSectionCourses(MOCK_SECTION_COURSES);
+    setScheduleSlots(MOCK_SCHEDULE_SLOTS);
+    setClassSessions(MOCK_CLASS_SESSIONS);
+    showToast('Datos del sistema restaurados al estado original', 'info', 'Datos Reiniciados');
+  };
 
   const removeToast = (id: string) => {
     setToasts(prev => prev.filter(t => t.id !== id));
@@ -1207,6 +1341,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         notifications,
         markNotificationRead,
         unreadCount,
+        isLoading,
+        refreshData,
+        logout,
+        resetToDemoData,
       }}
     >
       {children}

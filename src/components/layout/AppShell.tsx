@@ -171,14 +171,14 @@ function InnerShell({ children }: { children: React.ReactNode }) {
 // ─────────────────────────────────────────────────────────────────────────────
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isLoginPage = pathname === '/login';
+  const isStandalonePage = pathname === '/login' || pathname === '/despedida' || pathname === '/bienvenida' || pathname === '/asistencia';
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     setIsMobileMenuOpen(false);
   }, [pathname]);
 
-  if (isLoginPage) {
+  if (isStandalonePage) {
     return (
       <AppProvider>
         <InnerShell>

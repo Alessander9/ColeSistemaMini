@@ -27,7 +27,7 @@ import {
 } from 'lucide-react';
 
 export function ProfileDropdown() {
-  const { currentUser, students, enrollments, showToast } = useApp();
+  const { currentUser, students, enrollments, showToast, resetToDemoData } = useApp();
   const router = useRouter();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -434,6 +434,29 @@ export function ProfileDropdown() {
                 className="w-full px-3 py-2 text-xs rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-500"
               />
             </div>
+          </div>
+
+          {/* Section: Zona de Demostración */}
+          <div className="space-y-2 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20">
+            <h5 className="text-xs font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-2">
+              <Sparkles className="w-4 h-4" />
+              Datos de Prueba & Demo
+            </h5>
+            <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
+              Si realizaste cambios o pruebas en matrículas, notas o asistencias y deseas restaurar el estado original del sistema escolar.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                if (window.confirm('¿Deseas restaurar todos los datos a los valores iniciales de prueba?')) {
+                  resetToDemoData();
+                  setIsSettingsModalOpen(false);
+                }
+              }}
+              className="mt-1 px-3.5 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs transition-colors shadow-sm cursor-pointer"
+            >
+              Restablecer Datos Iniciales
+            </button>
           </div>
 
           {/* Form Actions */}

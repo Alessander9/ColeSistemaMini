@@ -7,6 +7,7 @@ import { QrScanner } from '@/components/qr/QrScanner';
 import { 
   QrCode, 
   LogOut, 
+  Home,
   Users, 
   CheckCircle2,
   Clock,
@@ -56,13 +57,22 @@ export default function AsistenciaMobilePage() {
           </div>
         </div>
 
-        <Link
-          href="/despedida"
-          className="p-2 rounded-xl bg-rose-950/40 border border-rose-800/50 text-rose-400 hover:bg-rose-900/40 transition-colors"
-          title="Cerrar Sesión"
-        >
-          <LogOut className="w-4 h-4" />
-        </Link>
+        <div className="flex items-center gap-1.5">
+          <Link
+            href="/"
+            className="p-2 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 hover:text-white transition-colors"
+            title="Volver a la Página Principal"
+          >
+            <Home className="w-4 h-4" />
+          </Link>
+          <Link
+            href="/despedida"
+            className="p-2 rounded-xl bg-rose-950/40 border border-rose-800/50 text-rose-400 hover:bg-rose-900/40 transition-colors"
+            title="Cerrar Sesión"
+          >
+            <LogOut className="w-4 h-4" />
+          </Link>
+        </div>
       </header>
 
       {/* KPI Counters Banner */}

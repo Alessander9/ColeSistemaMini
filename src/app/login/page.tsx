@@ -28,6 +28,8 @@ import {
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
+import { loginWithCredentials } from '@/lib/services/authService';
+
 export default function LoginPage() {
   const router = useRouter();
   const { setCurrentUser } = useApp();
@@ -93,26 +95,33 @@ export default function LoginPage() {
     setErrorMessage('');
   };
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setErrorMessage('');
 
-    const foundUser = MOCK_USERS.find(
-      (u) => u.email?.toLowerCase() === email.trim().toLowerCase()
-    ) || selectedUser;
+    const { user, error } = await loginWithCredentials(email.trim(), password);
 
-    setTimeout(() => {
-      setCurrentUser(foundUser);
-      confetti({
-        particleCount: 70,
-        spread: 90,
-        origin: { y: 0.6 },
-        colors: ['#7c3aed', '#3b82f6', '#10b981', '#f59e0b'],
-      });
+    if (error || !user) {
       setIsLoading(false);
-      router.push('/bienvenida');
-    }, 600);
+      setErrorMessage(error || 'Credenciales inválidas. Por favor verifica tus datos.');
+      return;
+    }
+
+    setCurrentUser(user);
+    if (typeof document !== 'undefined') {
+      document.cookie = `cole_user_role=${user.rol}; path=/; max-age=604800; SameSite=Lax`;
+    }
+
+    confetti({
+      particleCount: 70,
+      spread: 90,
+      origin: { y: 0.6 },
+      colors: ['#7c3aed', '#3b82f6', '#10b981', '#f59e0b'],
+    });
+
+    setIsLoading(false);
+    router.push('/bienvenida');
   };
 
   const features = [

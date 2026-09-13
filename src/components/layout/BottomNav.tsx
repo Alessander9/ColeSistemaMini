@@ -53,6 +53,11 @@ export function BottomNav() {
     { href: '/estudiante/carnet-qr', label: 'Carnet QR', icon: QrCode },
   ];
 
+  const asistenciaItems: BottomNavItem[] = [
+    { href: '/asistencia', label: 'Terminal QR', icon: QrCode, badge: 'Live' },
+    { href: '/admin/estudiantes', label: 'Padrón', icon: Users },
+  ];
+
   let items = adminItems;
   let activeColor = 'text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/40';
   let activeIconColor = 'text-purple-600 dark:text-purple-400';
@@ -65,6 +70,10 @@ export function BottomNav() {
     items = estudianteItems;
     activeColor = 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40';
     activeIconColor = 'text-emerald-600 dark:text-emerald-400';
+  } else if (currentUser.rol === 'asistencia') {
+    items = asistenciaItems;
+    activeColor = 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40';
+    activeIconColor = 'text-amber-600 dark:text-amber-400';
   }
 
   return (
