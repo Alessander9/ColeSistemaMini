@@ -18,14 +18,26 @@ import {
   Smartphone
 } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 export default function AsistenciaMobilePage() {
+  const router = useRouter();
   const { 
     currentUser, 
     attendances, 
     students, 
-    enrollments 
+    enrollments,
+    logout
   } = useApp();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch {
+      /* ignore */
+    }
+    router.replace('/despedida');
+  };
 
   const [scanStatusMode, setScanStatusMode] = useState<AttendanceStatus>('presente');
 
@@ -45,8 +57,8 @@ export default function AsistenciaMobilePage() {
             <QrCode className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h1 className="font-black text-sm text-white tracking-tight flex items-center gap-1.5">
-              Control Asistencia
+            <h1 className="text-xs font-black tracking-tight text-white flex items-center gap-1">
+              Terminal Asistencia QR
               <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
                 MÓVIL
               </span>
@@ -58,20 +70,14 @@ export default function AsistenciaMobilePage() {
         </div>
 
         <div className="flex items-center gap-1.5">
-          <Link
-            href="/"
-            className="p-2 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 hover:text-white transition-colors"
-            title="Volver a la Página Principal"
-          >
-            <Home className="w-4 h-4" />
-          </Link>
-          <Link
-            href="/despedida"
-            className="p-2 rounded-xl bg-rose-950/40 border border-rose-800/50 text-rose-400 hover:bg-rose-900/40 transition-colors"
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="p-2 rounded-xl bg-rose-950/40 border border-rose-800/50 text-rose-400 hover:bg-rose-900/40 transition-colors cursor-pointer"
             title="Cerrar Sesión"
           >
             <LogOut className="w-4 h-4" />
-          </Link>
+          </button>
         </div>
       </header>
 

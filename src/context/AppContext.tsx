@@ -293,6 +293,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     await logoutUser();
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem('colegio_current_user');
+      } catch {
+        /* ignore */
+      }
+    }
   };
 
   // Sincronización automática a localStorage cuando cambian los datos

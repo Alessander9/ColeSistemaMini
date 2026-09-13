@@ -27,7 +27,7 @@ import {
 } from 'lucide-react';
 
 export function ProfileDropdown() {
-  const { currentUser, students, enrollments, showToast, resetToDemoData } = useApp();
+  const { currentUser, students, enrollments, showToast, resetToDemoData, logout } = useApp();
   const router = useRouter();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -57,10 +57,14 @@ export function ProfileDropdown() {
     };
   }, [isOpen]);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     setIsOpen(false);
-    showToast('Sesión cerrada correctamente. ¡Hasta la próxima!', 'info', 'Sesión Finalizada');
-    router.push('/despedida');
+    try {
+      await logout();
+    } catch {
+      /* ignore */
+    }
+    router.replace('/despedida');
   };
 
   const handleOpenProfile = () => {

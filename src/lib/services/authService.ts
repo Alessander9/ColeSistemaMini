@@ -86,7 +86,25 @@ export async function logoutUser(): Promise<void> {
   }
 
   if (typeof document !== 'undefined') {
-    document.cookie = 'cole_user_role=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+    const cookiesToClear = [
+      'cole_user_role',
+      'cole_access_token',
+      'cole_session_token',
+      'sb-access-token',
+      'sb-refresh-token',
+    ];
+    cookiesToClear.forEach((name) => {
+      document.cookie = `${name}=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`;
+    });
+  }
+
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.removeItem('colegio_current_user');
+      sessionStorage.clear();
+    } catch {
+      /* ignore */
+    }
   }
 }
 

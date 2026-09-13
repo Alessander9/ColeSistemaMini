@@ -113,8 +113,8 @@ export default function BienvenidaPage() {
     ],
     asistencia: [
       { title: 'Terminal QR Móvil', desc: 'Escanear con cámara de celular', href: '/asistencia', icon: QrCode },
-      { title: 'Padrón de Alumnos', desc: 'Consulta de DNI y carnet', href: '/admin/estudiantes', icon: Users },
-      { title: 'Reportes de Entrada', desc: 'Resumen de asistencia', href: '/asistencia', icon: Clock },
+      { title: 'Asistencia en Vivo', desc: 'Control de ingresos en puerta', href: '/asistencia', icon: Clock },
+      { title: 'Reportes de Entrada', desc: 'Resumen de asistencia', href: '/asistencia', icon: CheckCircle2 },
     ],
   };
 
