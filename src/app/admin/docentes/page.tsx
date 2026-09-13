@@ -177,60 +177,59 @@ export default function AdminDocentesPage() {
       {/* Header */}
       <PageHeader
         title="Gestión de Docentes & Asignación Académica"
-        subtitle="Registro de profesores, emisión de credenciales y asignación de materias y salones para Primaria y Secundaria."
-        action={
-          <div className="flex flex-wrap items-center gap-3">
-            <button
-              onClick={() => {
-                if (teachers.length > 0) setSelectedTeacherId(teachers[0].id);
-                if (sections.length > 0) setSelectedSectionId(sections[4]?.id || sections[0].id);
-                if (courses.length > 0) setSelectedCourseId(courses[0].id);
-                setIsAssignModalOpen(true);
-              }}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs hover:bg-slate-200 dark:hover:bg-slate-700 transition-all"
-            >
-              <School className="w-4 h-4 text-indigo-600" />
-              Asignar Salón/Materia
-            </button>
-            <button
-              onClick={() => setIsNewTeacherModalOpen(true)}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold text-xs shadow-lg shadow-indigo-600/20 transition-all hover:scale-[1.02]"
-            >
-              <UserPlus className="w-4 h-4" />
-              + Registrar Nuevo Profesor
-            </button>
-          </div>
-        }
-      />
+        description="Registro de profesores, emisión de credenciales y asignación de materias y salones para Primaria y Secundaria."
+      >
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            onClick={() => {
+              if (teachers.length > 0) setSelectedTeacherId(teachers[0].id);
+              if (sections.length > 0) setSelectedSectionId(sections[4]?.id || sections[0].id);
+              if (courses.length > 0) setSelectedCourseId(courses[0].id);
+              setIsAssignModalOpen(true);
+            }}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs hover:bg-slate-200 dark:hover:bg-slate-700 transition-all"
+          >
+            <School className="w-4 h-4 text-indigo-600" />
+            Asignar Salón/Materia
+          </button>
+          <button
+            onClick={() => setIsNewTeacherModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold text-xs shadow-lg shadow-indigo-600/20 transition-all hover:scale-[1.02]"
+          >
+            <UserPlus className="w-4 h-4" />
+            + Registrar Nuevo Profesor
+          </button>
+        </div>
+      </PageHeader>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <StatCard
           title="Plana Docente Activa"
           value={totalDocentes}
-          description="Profesores especialistas"
+          subtitle="Profesores especialistas"
           icon={Users}
-          trend={{ value: 100, isPositive: true, label: 'Activos' }}
+          trend={{ value: "100%", positive: true }}
           color="indigo"
         />
         <StatCard
           title="Asignaciones Curriculares"
           value={totalAsignaciones}
-          description="Cursos dictados en salones"
+          subtitle="Cursos dictados en salones"
           icon={BookOpen}
           color="emerald"
         />
         <StatCard
           title="Carga Horaria Total"
           value={`${totalHoras} hrs`}
-          description="Horas pedagógicas / semana"
+          subtitle="Horas pedagógicas / semana"
           icon={Clock}
           color="purple"
         />
         <StatCard
           title="Promedio por Profesor"
           value={`${promedioHorasDocente} hrs`}
-          description="Dedicación semanal estándar"
+          subtitle="Dedicación semanal estándar"
           icon={Award}
           color="blue"
         />
