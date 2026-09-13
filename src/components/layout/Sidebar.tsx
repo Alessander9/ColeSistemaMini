@@ -36,13 +36,24 @@ interface NavSection {
   items: NavItem[];
 }
 
-export function Sidebar() {
+interface SidebarProps {
+  isMobileDrawer?: boolean;
+  onClose?: () => void;
+}
+
+export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
   const pathname = usePathname();
   const { currentUser, gradeLevels, sections } = useApp();
 
   const [isPrimariaOpen, setIsPrimariaOpen] = useState(true);
   const [isSecundariaOpen, setIsSecundariaOpen] = useState(false);
   const [openGradeId, setOpenGradeId] = useState<string | null>('grade-3pri');
+
+  const handleLinkClick = () => {
+    if (isMobileDrawer && onClose) {
+      onClose();
+    }
+  };
 
   const adminNav: NavSection[] = [
     {
@@ -137,10 +148,26 @@ export function Sidebar() {
   const secundariaGrades = gradeLevels.filter(g => g.nivel.toLowerCase() === 'secundaria');
 
   return (
-    <aside className="w-64 border-r border-slate-200/60 dark:border-slate-800/60 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl flex flex-col justify-between shrink-0 hidden md:flex overflow-y-auto max-h-screen scrollbar-thin">
+    <aside className={
+      isMobileDrawer
+        ? "w-full h-full flex flex-col justify-between overflow-y-auto scrollbar-thin bg-white dark:bg-slate-950"
+        : "w-64 border-r border-slate-200/60 dark:border-slate-800/60 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl flex flex-col justify-between shrink-0 hidden md:flex overflow-y-auto max-h-screen scrollbar-thin"
+    }>
       
       {/* User Profile Card */}
       <div className="p-4 space-y-1">
+        {isMobileDrawer && (
+          <div className="flex items-center justify-between pb-3 mb-2 border-b border-slate-100 dark:border-slate-800">
+            <span className="text-xs font-black uppercase tracking-wider text-slate-400">Menú Principal</span>
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            >
+              <span className="text-lg leading-none font-bold">✕</span>
+            </button>
+          </div>
+        )}
+
         <div className="relative overflow-hidden rounded-2xl p-4 mb-4">
           <div className={`absolute inset-0 bg-gradient-to-br ${roleConfig.color} opacity-10 dark:opacity-20 rounded-2xl`} />
           <div className="relative z-10 flex items-center gap-3">
@@ -178,7 +205,8 @@ export function Sidebar() {
                     <Link
                       key={item.href}
                       href={item.href}
-                      className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all duration-200 group ${
+                      onClick={handleLinkClick}
+                      className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 group ${
                         isActive
                           ? 'sidebar-active'
                           : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/80 hover:text-slate-900 dark:hover:text-white'
@@ -218,6 +246,7 @@ export function Sidebar() {
                 </span>
                 <Link 
                   href="/admin/academico" 
+                  onClick={handleLinkClick}
                   className="text-[9px] font-bold text-purple-600 dark:text-purple-400 hover:underline"
                 >
                   Ver todo
@@ -262,6 +291,7 @@ export function Sidebar() {
                                   <Link
                                     key={sec.id}
                                     href={`/admin/secciones/${sec.id}`}
+                                    onClick={handleLinkClick}
                                     className={`px-2.5 py-0.5 rounded-md text-[10px] font-black transition-all ${
                                       isSecActive
                                         ? 'bg-purple-600 text-white shadow-sm'
@@ -319,6 +349,7 @@ export function Sidebar() {
                                   <Link
                                     key={sec.id}
                                     href={`/admin/secciones/${sec.id}`}
+                                    onClick={handleLinkClick}
                                     className={`px-2.5 py-0.5 rounded-md text-[10px] font-black transition-all ${
                                       isSecActive
                                         ? 'bg-emerald-600 text-white shadow-sm'

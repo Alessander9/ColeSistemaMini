@@ -71,35 +71,35 @@ export default function AdminDashboardPage() {
     <div className="space-y-6 max-w-6xl mx-auto">
       
       {/* Hero Banner */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 p-6 sm:p-8 border border-slate-800/60 shadow-2xl">
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 p-5 sm:p-8 border border-slate-800/60 shadow-2xl">
         {/* Decorative blobs */}
         <div className="absolute top-0 right-0 w-72 h-72 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute bottom-0 left-0 w-48 h-48 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
         
-        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-6">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/20 border border-purple-500/30 text-purple-300 text-[11px] font-bold mb-3">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/20 border border-purple-500/30 text-purple-300 text-[11px] font-bold mb-2 sm:mb-3">
               <ShieldCheck className="w-3.5 h-3.5" />
               Panel de Administrador
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight mb-2">
+            <h1 className="text-xl sm:text-3xl font-black text-white tracking-tight mb-1 sm:mb-2">
               Dashboard General
             </h1>
-            <p className="text-slate-400 text-sm max-w-md">
+            <p className="text-slate-400 text-xs sm:text-sm max-w-md">
               Métricas de la institución en tiempo real — asistencia, calificaciones y gestión escolar centralizada.
             </p>
           </div>
-          <div className="flex gap-3 shrink-0">
+          <div className="flex gap-2 sm:gap-3 shrink-0 flex-wrap">
             <Link
               href="/admin/estudiantes"
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 text-white text-xs font-bold transition-all"
+              className="inline-flex items-center gap-2 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 text-white text-xs font-bold transition-all"
             >
               <Users className="w-3.5 h-3.5" />
               Nuevo Alumno
             </Link>
             <Link
               href="/admin/estudiantes"
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold shadow-lg shadow-purple-500/25 transition-all"
+              className="inline-flex items-center gap-2 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold shadow-lg shadow-purple-500/25 transition-all"
             >
               <QrCode className="w-3.5 h-3.5" />
               Generar Carnets
@@ -109,17 +109,17 @@ export default function AdminDashboardPage() {
         </div>
 
         {/* Mini KPI strip inside hero */}
-        <div className="relative z-10 mt-6 grid grid-cols-3 gap-3">
+        <div className="relative z-10 mt-4 sm:mt-6 grid grid-cols-3 gap-2 sm:gap-3">
           {[
             { label: 'Presentes', value: presentStudents, icon: CheckCircle2, color: 'text-emerald-400' },
             { label: 'Tardanzas', value: lateStudents, icon: Clock, color: 'text-amber-400' },
             { label: 'Ausentes', value: absentStudents > 0 ? absentStudents : 0, icon: XCircle, color: 'text-rose-400' },
           ].map(({ label, value, icon: Icon, color }) => (
-            <div key={label} className="flex items-center gap-2.5 p-3 rounded-2xl bg-white/5 border border-white/10">
-              <Icon className={`w-5 h-5 ${color} shrink-0`} />
+            <div key={label} className="flex items-center gap-2 sm:gap-2.5 p-2 sm:p-3 rounded-2xl bg-white/5 border border-white/10">
+              <Icon className={`w-4 h-4 sm:w-5 sm:h-5 ${color} shrink-0`} />
               <div>
-                <div className="text-xl font-black text-white">{value}</div>
-                <div className="text-[10px] text-slate-400 font-medium">{label} hoy</div>
+                <div className="text-base sm:text-xl font-black text-white">{value}</div>
+                <div className="text-[9px] sm:text-[10px] text-slate-400 font-medium">{label} hoy</div>
               </div>
             </div>
           ))}
@@ -127,7 +127,7 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <StatCard
           title="Total Estudiantes"
           value={totalStudents}

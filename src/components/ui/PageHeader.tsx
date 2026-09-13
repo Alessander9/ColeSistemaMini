@@ -21,27 +21,27 @@ export function PageHeader({ title, description, badge, badgeColor = 'default', 
   const badgeClass = badgeColorMap[badgeColor] || badgeColorMap.default;
 
   return (
-    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6 animate-slide-up">
-      <div className="space-y-2">
-        <div className="flex items-center gap-3 flex-wrap">
-          {badge && (
-            <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full ${badgeClass}`}>
+    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 sm:gap-4 mb-4 sm:mb-6 animate-slide-up">
+      <div className="space-y-1 sm:space-y-2">
+        {badge && (
+          <div className="flex items-center gap-2 flex-wrap mb-1">
+            <span className={`text-[9px] sm:text-[10px] font-black uppercase tracking-widest px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full ${badgeClass}`}>
               {badge}
             </span>
-          )}
-        </div>
-        <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
+          </div>
+        )}
+        <h1 className="text-xl sm:text-2xl lg:text-3xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
           {title}
         </h1>
         {description && (
-          <p className="text-sm text-slate-500 dark:text-slate-400 max-w-2xl leading-relaxed">
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-2xl leading-relaxed">
             {description}
           </p>
         )}
       </div>
 
       {children && (
-        <div className="flex items-center gap-2.5 shrink-0 mt-1">
+        <div className="flex items-center gap-2 sm:gap-2.5 shrink-0 flex-wrap sm:flex-nowrap mt-1">
           {children}
         </div>
       )}

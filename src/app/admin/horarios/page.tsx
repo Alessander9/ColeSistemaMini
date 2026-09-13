@@ -76,6 +76,7 @@ export default function AdminHorariosPage() {
   const [selectedSectionId, setSelectedSectionId] = useState<string>('sec-3pri-a');
   const [activeTab, setActiveTab] = useState<'horario' | 'asignacion' | 'profesores'>('horario');
   const [selectedTeacherId, setSelectedTeacherId] = useState<string>('user-docente-1');
+  const [selectedMobileDay, setSelectedMobileDay] = useState<DayOfWeek>('lunes');
 
   // Modals
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
@@ -437,8 +438,112 @@ export default function AdminHorariosPage() {
               </button>
             </div>
 
-            {/* Timetable Table Container */}
-            <div className="overflow-x-auto rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 shadow-lg shadow-slate-200/40 dark:shadow-none backdrop-blur-xl">
+            {/* Mobile Day Selector Bar (Visible on mobile screens < md) */}
+            <div className="md:hidden space-y-3">
+              <div className="flex items-center justify-between p-1 bg-slate-100 dark:bg-slate-800 rounded-2xl">
+                {DAYS.map(d => (
+                  <button
+                    key={d.key}
+                    onClick={() => setSelectedMobileDay(d.key)}
+                    className={`flex-1 py-2 px-1 text-center rounded-xl text-xs font-black transition-all ${
+                      selectedMobileDay === d.key
+                        ? 'bg-purple-600 text-white shadow-md shadow-purple-600/25'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                    }`}
+                  >
+                    <span>{d.short}</span>
+                  </button>
+                ))}
+              </div>
+
+              {/* Day's Timeline Cards */}
+              <div className="space-y-2">
+                {TIME_BLOCKS.map((block, timeIdx) => {
+                  if (block.isBreak) {
+                    return (
+                      <div key={block.id} className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-900/40 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-base">☕</span>
+                          <span className="text-xs font-black text-amber-800 dark:text-amber-300 uppercase tracking-wider">Recreo Escolar</span>
+                        </div>
+                        <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400">{block.inicio} - {block.fin}</span>
+                      </div>
+                    );
+                  }
+
+                  const slot = currentSectionSchedule.find(
+                    s => s.dia === selectedMobileDay && s.hora_inicio === block.inicio
+                  );
+
+                  if (slot) {
+                    const courseColor = slot.curso?.color_hex || '#8b5cf6';
+                    return (
+                      <div
+                        key={block.id}
+                        className="p-3.5 rounded-2xl border flex items-center justify-between gap-3 shadow-sm"
+                        style={{
+                          backgroundColor: `${courseColor}12`,
+                          borderColor: `${courseColor}45`,
+                        }}
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div
+                            className="w-9 h-9 rounded-xl flex items-center justify-center font-black text-xs text-white shrink-0 shadow-sm"
+                            style={{ backgroundColor: courseColor }}
+                          >
+                            <BookOpen className="w-4 h-4" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs font-black text-slate-900 dark:text-white truncate">
+                                {slot.curso?.nombre}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-slate-600 dark:text-slate-400 font-medium truncate">
+                              Prof. {slot.docente?.nombres.split(' ')[0]} {slot.docente?.apellidos.split(' ')[0]} • {slot.aula || 'Aula 301'}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="px-2 py-1 rounded-lg bg-white/80 dark:bg-slate-800 text-[10px] font-black text-slate-700 dark:text-slate-300 shadow-xs">
+                            {block.inicio} - {block.fin}
+                          </span>
+                          <button
+                            onClick={() => removeScheduleSlot(slot.id)}
+                            title="Eliminar bloque"
+                            className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  // Empty Slot in Mobile
+                  return (
+                    <div
+                      key={block.id}
+                      onClick={() => handleOpenSlotModal(selectedMobileDay, timeIdx)}
+                      className="p-3 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30 flex items-center justify-between cursor-pointer hover:border-purple-400 transition-colors group"
+                    >
+                      <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
+                        <Plus className="w-4 h-4 text-purple-600 group-hover:scale-110 transition-transform" />
+                        <span className="text-xs font-bold">{block.label}</span>
+                        <span className="text-[10px] text-slate-400">({block.inicio} - {block.fin})</span>
+                      </div>
+                      <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400">
+                        + Asignar
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Timetable Table Container (Desktop md+) */}
+            <div className="hidden md:block overflow-x-auto rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 shadow-lg shadow-slate-200/40 dark:shadow-none backdrop-blur-xl">
               <table className="w-full border-collapse text-left min-w-[720px]">
                 <thead>
                   <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-950/70">

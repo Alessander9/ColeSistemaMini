@@ -81,40 +81,40 @@ export function StatCard({
 
   return (
     <div
-      className={`relative overflow-hidden bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800/80 shadow-sm hover:shadow-xl ${style.glow} ${style.border} transition-all duration-300 card-lift animate-slide-up ${delayClass} group`}
+      className={`relative overflow-hidden bg-white dark:bg-slate-900 rounded-2xl p-3.5 sm:p-5 border border-slate-200/80 dark:border-slate-800/80 shadow-sm hover:shadow-xl ${style.glow} ${style.border} transition-all duration-300 card-lift animate-slide-up ${delayClass} group`}
     >
       {/* Subtle gradient accent background */}
       <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl ${style.accent} rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl pointer-events-none`} />
 
       <div className="relative z-10">
-        <div className="flex items-start justify-between mb-4">
-          <div className={`w-11 h-11 rounded-xl ${style.iconBg} ${style.iconText} flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300`}>
-            <Icon className="w-5 h-5" />
+        <div className="flex items-start justify-between mb-2.5 sm:mb-4">
+          <div className={`w-9 h-9 sm:w-11 sm:h-11 rounded-xl ${style.iconBg} ${style.iconText} flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300 shrink-0`}>
+            <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
           {trend && (
-            <div className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold ${
+            <div className={`flex items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-lg text-[9px] sm:text-[10px] font-bold ${
               trend.positive
                 ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400'
                 : 'bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400'
             }`}>
               {trend.positive
-                ? <TrendingUp className="w-3 h-3" />
-                : <TrendingDown className="w-3 h-3" />
+                ? <TrendingUp className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                : <TrendingDown className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
               }
-              {trend.value}
+              <span>{trend.value}</span>
             </div>
           )}
         </div>
 
-        <div className="space-y-1">
-          <h3 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight tabular-nums">
+        <div className="space-y-0.5 sm:space-y-1">
+          <h3 className="text-xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight tabular-nums truncate">
             {value}
           </h3>
-          <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+          <p className="text-[10px] sm:text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider line-clamp-1">
             {title}
           </p>
           {subtitle && (
-            <p className="text-xs text-slate-400 dark:text-slate-500 font-medium pt-0.5">
+            <p className="text-[10px] sm:text-xs text-slate-400 dark:text-slate-500 font-medium pt-0.5 truncate">
               {subtitle}
             </p>
           )}

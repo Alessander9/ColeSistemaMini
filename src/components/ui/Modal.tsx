@@ -43,7 +43,7 @@ export function Modal({
   }[maxWidth];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 animate-in fade-in duration-200">
       {/* Backdrop */}
       <div
         onClick={onClose}
@@ -52,10 +52,10 @@ export function Modal({
 
       {/* Dialog Box */}
       <div
-        className={`relative w-full ${maxWidthClass} bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden z-10 animate-in zoom-in-95 duration-200`}
+        className={`relative w-full ${maxWidthClass} bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden z-10 animate-in zoom-in-95 duration-200`}
       >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
-          <h3 className="font-extrabold text-base text-slate-900 dark:text-white">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-100 dark:border-slate-800">
+          <h3 className="font-extrabold text-sm sm:text-base text-slate-900 dark:text-white truncate max-w-[80%]">
             {title}
           </h3>
           <button
@@ -66,7 +66,7 @@ export function Modal({
           </button>
         </div>
 
-        <div className="p-6 max-h-[85vh] overflow-y-auto">
+        <div className="p-4 sm:p-6 max-h-[82vh] overflow-y-auto scrollbar-thin">
           {children}
         </div>
       </div>

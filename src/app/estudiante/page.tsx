@@ -206,14 +206,14 @@ export default function EstudianteDashboardPage() {
       </div>
 
       {/* ── 2. Interactive Navigation Hub (Direct View Switcher) ── */}
-      <div className="bg-white dark:bg-slate-900 rounded-3xl p-2 border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl p-1.5 sm:p-2 border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center gap-1 sm:gap-1.5 overflow-x-auto no-scrollbar scrollbar-none">
         {[
-          { id: 'resumen', label: 'Panel General', icon: Sparkles },
-          { id: 'horario', label: 'Mi Horario Semanal', icon: Calendar },
-          { id: 'notas', label: 'Mis Calificaciones (AD-A-B-C)', icon: Award },
-          { id: 'profesores', label: 'Mis Profesores', icon: Users },
-          { id: 'examenes', label: 'Exámenes & Prácticas', icon: FileText },
-          { id: 'tareas', label: 'Tareas & Entregas', icon: CheckCircle },
+          { id: 'resumen', label: 'Resumen', fullLabel: 'Panel General', icon: Sparkles },
+          { id: 'horario', label: 'Horario', fullLabel: 'Mi Horario Semanal', icon: Calendar },
+          { id: 'notas', label: 'Notas CNEB', fullLabel: 'Mis Calificaciones (AD-A-B-C)', icon: Award },
+          { id: 'profesores', label: 'Profesores', fullLabel: 'Mis Profesores', icon: Users },
+          { id: 'examenes', label: 'Exámenes', fullLabel: 'Exámenes & Prácticas', icon: FileText },
+          { id: 'tareas', label: 'Tareas', fullLabel: 'Tareas & Entregas', icon: CheckCircle },
         ].map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -221,14 +221,15 @@ export default function EstudianteDashboardPage() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as typeof activeTab)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-black whitespace-nowrap transition-all ${
+              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl text-xs font-black whitespace-nowrap transition-all ${
                 isActive
                   ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20 scale-[1.02]'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
               }`}
             >
-              <Icon className="w-4 h-4" />
-              {tab.label}
+              <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <span className="inline sm:hidden">{tab.label}</span>
+              <span className="hidden sm:inline">{tab.fullLabel}</span>
             </button>
           );
         })}
@@ -440,7 +441,101 @@ export default function EstudianteDashboardPage() {
             </button>
           </div>
 
-          <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800">
+          {/* Mobile Day Selector & Timeline Cards (Visible on mobile < md) */}
+          <div className="md:hidden space-y-3">
+            <div className="flex items-center justify-between p-1 bg-slate-100 dark:bg-slate-800 rounded-2xl">
+              {(['lunes', 'martes', 'miercoles', 'jueves', 'viernes'] as DayOfWeek[]).map(d => (
+                <button
+                  key={d}
+                  onClick={() => setSelectedDay(d)}
+                  className={`flex-1 py-2 px-1 text-center rounded-xl text-xs font-black transition-all ${
+                    selectedDay === d
+                      ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/25'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                  }`}
+                >
+                  <span>{d.slice(0, 3).toUpperCase()}</span>
+                </button>
+              ))}
+            </div>
+
+            <div className="space-y-2">
+              {[
+                { label: '08:00 - 08:45', start: '08:00', title: '1° Hora' },
+                { label: '08:45 - 09:30', start: '08:45', title: '2° Hora' },
+                { label: '09:30 - 10:15', start: '09:30', title: '3° Hora' },
+                { label: '10:15 - 10:45', isBreak: true },
+                { label: '10:45 - 11:30', start: '10:45', title: '4° Hora' },
+                { label: '11:30 - 12:15', start: '11:30', title: '5° Hora' },
+                { label: '12:15 - 13:00', start: '12:15', title: '6° Hora' },
+                { label: '13:00 - 13:45', start: '13:00', title: '7° Hora' },
+              ].map((b, idx) => {
+                if (b.isBreak) {
+                  return (
+                    <div key={idx} className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-900/40 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-base">☕</span>
+                        <span className="text-xs font-black text-amber-800 dark:text-amber-300 uppercase tracking-wider">Recreo Escolar</span>
+                      </div>
+                      <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400">{b.label}</span>
+                    </div>
+                  );
+                }
+
+                const slot = mySchedule.find(s => s.dia === selectedDay && s.hora_inicio === b.start);
+                if (slot) {
+                  const color = slot.curso?.color_hex || '#10b981';
+                  return (
+                    <div
+                      key={idx}
+                      className="p-3.5 rounded-2xl border flex items-center justify-between gap-3 shadow-sm"
+                      style={{
+                        backgroundColor: `${color}12`,
+                        borderColor: `${color}45`,
+                      }}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div
+                          className="w-9 h-9 rounded-xl flex items-center justify-center font-black text-xs text-white shrink-0 shadow-sm"
+                          style={{ backgroundColor: color }}
+                        >
+                          <BookOpen className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <span className="text-xs font-black text-slate-900 dark:text-white truncate block">
+                            {slot.curso?.nombre}
+                          </span>
+                          <p className="text-[11px] text-emerald-700 dark:text-emerald-300 font-bold truncate">
+                            Prof. {slot.docente?.nombres.split(' ')[0]} {slot.docente?.apellidos.split(' ')[0]} • {slot.aula || 'Aula Principal'}
+                          </p>
+                        </div>
+                      </div>
+
+                      <span className="px-2 py-1 rounded-lg bg-white/80 dark:bg-slate-800 text-[10px] font-black text-slate-700 dark:text-slate-300 shadow-xs shrink-0">
+                        {b.label}
+                      </span>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div
+                    key={idx}
+                    className="p-3 rounded-2xl border border-slate-100 dark:border-slate-800/80 bg-slate-50/40 dark:bg-slate-900/30 flex items-center justify-between opacity-60"
+                  >
+                    <div className="flex items-center gap-2 text-slate-400">
+                      <Clock className="w-3.5 h-3.5" />
+                      <span className="text-xs font-medium">{b.title}</span>
+                    </div>
+                    <span className="text-[10px] text-slate-400 font-medium">Libre ({b.label})</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Timetable Table (Desktop md+) */}
+          <div className="hidden md:block overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800">
             <table className="w-full border-collapse text-left min-w-[700px]">
               <thead>
                 <tr className="bg-slate-50 dark:bg-slate-800/80 text-xs font-black uppercase text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-slate-700">

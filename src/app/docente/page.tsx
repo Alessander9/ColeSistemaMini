@@ -230,11 +230,11 @@ export default function DocenteDashboardPage() {
       )}
 
       {/* KPI Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
         <StatCard
           title="Cursos Asignados"
           value={courses.length}
-          subtitle="Matemática, Comunicación, Ciencia…"
+          subtitle="Matemática, Comunicación…"
           icon={BookOpen}
           color="blue"
           delay={100}
@@ -247,15 +247,17 @@ export default function DocenteDashboardPage() {
           color="purple"
           delay={200}
         />
-        <StatCard
-          title="Asistencia Hoy"
-          value={`${attendancePct}%`}
-          subtitle={`${presentCount} puntuales · ${lateCount} tardanzas`}
-          icon={CheckCircle2}
-          color="emerald"
-          trend={{ value: "+5%", positive: true }}
-          delay={300}
-        />
+        <div className="col-span-2 sm:col-span-1">
+          <StatCard
+            title="Asistencia Hoy"
+            value={`${attendancePct}%`}
+            subtitle={`${presentCount} puntuales · ${lateCount} tardanzas`}
+            icon={CheckCircle2}
+            color="emerald"
+            trend={{ value: "+5%", positive: true }}
+            delay={300}
+          />
+        </div>
       </div>
 
       {/* Module Cards Grid */}
