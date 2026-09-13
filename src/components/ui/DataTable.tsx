@@ -12,6 +12,8 @@ import {
   Filter
 } from 'lucide-react';
 
+import { SkeletonTable } from '@/components/ui/Skeleton';
+
 export interface Column<T> {
   header: string;
   accessorKey?: keyof T;
@@ -39,6 +41,7 @@ interface DataTableProps<T> {
   onFilterChange?: (filterId: string) => void;
   title?: string;
   actions?: React.ReactNode;
+  isLoading?: boolean;
 }
 
 export function DataTable<T extends { id: string | number }>({
@@ -54,6 +57,7 @@ export function DataTable<T extends { id: string | number }>({
   onFilterChange,
   title,
   actions,
+  isLoading = false,
 }: DataTableProps<T>) {
   const [search, setSearch] = useState('');
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
@@ -98,6 +102,10 @@ export function DataTable<T extends { id: string | number }>({
     }
     return pages;
   }, [totalPages, validCurrentPage]);
+
+  if (isLoading) {
+    return <SkeletonTable rows={itemsPerPage > 6 ? 6 : itemsPerPage} cols={columns.length} />;
+  }
 
   return (
     <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800/80 shadow-sm overflow-hidden flex flex-col transition-all duration-300">
