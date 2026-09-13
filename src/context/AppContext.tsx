@@ -22,8 +22,10 @@ import {
   ScheduleSlot,
   DayOfWeek,
   ClassSessionLog,
-  ScheduleConflict
+  ScheduleConflict,
+  ToastMessage
 } from '@/types';
+import { ToastContainer } from '@/components/ui/ToastContainer';
 import { 
   MOCK_USERS, 
   MOCK_STUDENTS, 
@@ -51,6 +53,10 @@ interface AppContextType {
   setCurrentUser: (user: UserProfile) => void;
   switchRole: (role: UserRole) => void;
   
+  toasts: ToastMessage[];
+  showToast: (mensaje: string, tipo?: 'success' | 'error' | 'info' | 'warning', titulo?: string, duracionMs?: number) => void;
+  removeToast: (id: string) => void;
+
   students: Student[];
   enrollments: Enrollment[];
   courses: Course[];
@@ -208,6 +214,26 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [sectionCourses, setSectionCourses] = useState<SectionCourseAssignment[]>(MOCK_SECTION_COURSES);
   const [scheduleSlots, setScheduleSlots] = useState<ScheduleSlot[]>(MOCK_SCHEDULE_SLOTS);
   const [classSessions, setClassSessions] = useState<ClassSessionLog[]>(MOCK_CLASS_SESSIONS);
+  const [toasts, setToasts] = useState<ToastMessage[]>([]);
+
+  const removeToast = (id: string) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  };
+
+  const showToast = (
+    mensaje: string, 
+    tipo: 'success' | 'error' | 'info' | 'warning' = 'success', 
+    titulo?: string, 
+    duracionMs = 4000
+  ) => {
+    const id = `toast-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+    const newToast: ToastMessage = { id, tipo, titulo, mensaje, duracionMs };
+    setToasts(prev => [...prev.slice(-4), newToast]);
+
+    setTimeout(() => {
+      removeToast(id);
+    }, duracionMs);
+  };
 
   const teachers = users.filter(u => u.rol === 'docente');
 
@@ -239,6 +265,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
 
     setUsers(prev => [...prev, newTeacher]);
+
+    showToast(
+      `Docente ${data.nombres} ${data.apellidos} registrado exitosamente.`,
+      'success',
+      'Docente Registrado'
+    );
+
     return {
       teacher: newTeacher,
       credentials: {
@@ -331,6 +364,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         observacion: observacion || updated[existingIndex].observacion,
       };
       setAttendances(updated);
+
+      showToast(
+        `Asistencia actualizada: ${studentName} (${status.toUpperCase()}) vía ${metodo === 'qr' ? 'Lector QR' : 'Manual'}`,
+        status === 'falta' ? 'warning' : 'success',
+        'Asistencia Actualizada'
+      );
+
       return { 
         success: true, 
         message: `Asistencia actualizada para ${studentName} (${status.toUpperCase()})`,
@@ -350,6 +390,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       };
 
       setAttendances(prev => [newRecord, ...prev]);
+
+      showToast(
+        `Asistencia registrada: ${studentName} (${status.toUpperCase()}) vía ${metodo === 'qr' ? 'Lector QR' : 'Manual'}`,
+        status === 'falta' ? 'warning' : 'success',
+        'Asistencia Confirmada'
+      );
+
       return { 
         success: true, 
         message: `¡Asistencia registrada con éxito para ${studentName}!`,
@@ -381,6 +428,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         url_redireccion: '/estudiante/libreta-notas'
       });
     }
+
+    showToast(
+      `Nota ${notaLetra} guardada para ${targetEnr?.estudiante?.profile?.nombres || 'el alumno'}.`,
+      'success',
+      'Calificación Guardada (CNEB)'
+    );
 
     setGrades(prev => {
       const existingIdx = prev.findIndex(
@@ -481,6 +534,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setStudents(prev => [newStudent, ...prev]);
     setEnrollments(prev => [newEnrollment, ...prev]);
 
+    showToast(
+      `Estudiante ${data.nombres} ${data.apellidos} matriculado con éxito (${studentCode}).`,
+      'success',
+      'Matrícula Exitosa'
+    );
+
     return { student: newStudent, credentials: { username, password, email } };
   };
 
@@ -520,6 +579,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         });
       }
     });
+
+    showToast(
+      `Tarea "${data.titulo}" publicada correctamente.`,
+      'success',
+      'Tarea Asignada'
+    );
 
     return newTask;
   };
@@ -571,6 +636,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       });
     }
 
+    showToast(
+      `Entrega enviada para la tarea "${task?.titulo || ''}".`,
+      'success',
+      'Tarea Entregada'
+    );
+
     return resultSub;
   };
 
@@ -609,6 +680,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         url_redireccion: '/estudiante/tareas'
       });
     }
+
+    showToast(
+      `Tarea calificada con nota ${calificacionLetra}.`,
+      'success',
+      'Calificación Registrada'
+    );
   };
 
   const addExam = (data: {
@@ -651,6 +728,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         });
       }
     });
+
+    showToast(
+      `Evaluación "${data.titulo}" programada para el ${data.fechaProgramada}.`,
+      'success',
+      'Evaluación Creada'
+    );
 
     return newExam;
   };
@@ -695,6 +778,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             : slot
         )
       );
+
+      showToast(
+        `Carga docente actualizada para ${curso?.nombre || 'el curso'}.`,
+        'success',
+        'Asignación Actualizada'
+      );
     } else {
       const newAssignment: SectionCourseAssignment = {
         id: `sca-${Date.now()}`,
@@ -709,6 +798,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       };
       setSectionCourses(prev => [newAssignment, ...prev]);
       createdOrUpdated = newAssignment;
+
+      showToast(
+        `Materia ${curso?.nombre || ''} asignada a ${docente?.nombres.split(' ')[0] || 'docente'}.`,
+        'success',
+        'Curso Asignado'
+      );
     }
 
     if (docente) {
@@ -735,6 +830,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         slot => !(slot.seccion_id === target.seccion_id && slot.curso_id === target.curso_id)
       )
     );
+
+    showToast('Asignación de materia eliminada.', 'info', 'Asignación Removida');
   };
 
   const updateSectionCourseTeacher = (assignmentId: string, newDocenteId: string) => {
@@ -757,6 +854,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           ? { ...slot, docente_id: newDocenteId, docente: targetDocente }
           : slot
       )
+    );
+
+    showToast(
+      `Docente reasignado: ${targetDocente?.nombres || ''} ${targetDocente?.apellidos || ''}`,
+      'success',
+      'Docente Asignado'
     );
 
     if (targetDocente) {
@@ -799,11 +902,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
 
     setScheduleSlots(prev => [...prev, newSlot]);
+
+    showToast(
+      `Bloque asignado: ${curso?.nombre || 'Curso'} (${data.dia} ${data.horaInicio}-${data.horaFin})`,
+      'success',
+      'Horario Añadido'
+    );
+
     return newSlot;
   };
 
   const removeScheduleSlot = (slotId: string) => {
     setScheduleSlots(prev => prev.filter(s => s.id !== slotId));
+    showToast('Bloque de horario eliminado.', 'info', 'Horario Actualizado');
   };
 
   const getSectionCourses = (seccionId: string) => {
@@ -983,6 +1094,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
     });
 
+    showToast(
+      `Bitácora guardada: ${data.temaTratado} (${curso?.nombre || ''})`,
+      'success',
+      'Sesión Registrada'
+    );
+
     return newSession;
   };
 
@@ -992,6 +1109,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         currentUser,
         setCurrentUser,
         switchRole,
+        toasts,
+        showToast,
+        removeToast,
         students,
         enrollments,
         courses: MOCK_COURSES,
@@ -1034,6 +1154,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }}
     >
       {children}
+      <ToastContainer toasts={toasts} onDismiss={removeToast} />
     </AppContext.Provider>
   );
 }

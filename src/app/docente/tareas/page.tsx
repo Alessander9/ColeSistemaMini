@@ -134,6 +134,18 @@ export default function DocenteTareasPage() {
     },
   ];
 
+  const [activeCourseFilter, setActiveCourseFilter] = useState('todos');
+
+  const courseFilterChips = [
+    { id: 'todos', label: 'Todas las Materias', count: tasks.length },
+    ...courses.map(c => ({ id: c.id, label: c.nombre })),
+  ];
+
+  const filteredTasks = React.useMemo(() => {
+    if (activeCourseFilter === 'todos') return tasks;
+    return tasks.filter(t => t.curso_id === activeCourseFilter);
+  }, [tasks, activeCourseFilter]);
+
   return (
     <div className="space-y-6 max-w-6xl mx-auto animate-in fade-in-50">
       <PageHeader
@@ -152,10 +164,53 @@ export default function DocenteTareasPage() {
       </PageHeader>
 
       <DataTable
-        data={tasks}
+        data={filteredTasks}
         columns={columns}
-        searchPlaceholder="Buscar por título o curso..."
+        itemsPerPage={10}
+        searchPlaceholder="Buscar tarea por título o descripción..."
+        filterChips={courseFilterChips}
+        activeFilter={activeCourseFilter}
+        onFilterChange={setActiveCourseFilter}
         searchFilter={(t, q) => `${t.titulo} ${t.descripcion} ${t.curso?.nombre}`.toLowerCase().includes(q)}
+        gridItemRender={(task) => {
+          const taskSubs = submissions.filter(s => s.tarea_id === task.id);
+          return (
+            <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between h-full group">
+              <div>
+                <div className="flex items-start justify-between gap-3 mb-2.5">
+                  <span className="font-extrabold text-xs px-2.5 py-1 rounded-xl bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300">
+                    {task.curso?.nombre}
+                  </span>
+                  <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500">
+                    <Clock className="w-3.5 h-3.5 text-amber-500" />
+                    {new Date(task.fecha_limite).toLocaleDateString('es-PE', { day: '2-digit', month: 'short' })}
+                  </span>
+                </div>
+
+                <h4 className="font-bold text-slate-900 dark:text-white text-sm leading-snug mb-1.5 line-clamp-2">
+                  {task.titulo}
+                </h4>
+                <p className="text-xs text-slate-500 line-clamp-2 mb-4">
+                  {task.descripcion}
+                </p>
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
+                <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                  {taskSubs.length} entregas
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedTaskForGrading(task)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300 hover:bg-blue-100 transition-all border border-blue-200/80 dark:border-blue-800"
+                >
+                  <Award className="w-3.5 h-3.5" />
+                  Revisar
+                </button>
+              </div>
+            </div>
+          );
+        }}
       />
 
       {/* Modal: New Task Form */}

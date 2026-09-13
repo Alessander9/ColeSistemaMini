@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { StatCard } from '@/components/ui/StatCard';
+import { DataTable } from '@/components/ui/DataTable';
 import { 
   Users, 
   UserPlus, 
@@ -275,213 +276,301 @@ export default function AdminDocentesPage() {
         </div>
       </div>
 
-      {/* TAB 1: PLANA DOCENTE CARDS */}
+      {/* TAB 1: PLANA DOCENTE LIST & GRID */}
       {activeTab === 'profesores' && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {filteredTeachers.map((docente) => {
-              const teacherAssignments = sectionCourses.filter(s => s.docente_id === docente.id);
-              const teacherHours = teacherAssignments.reduce((acc, c) => acc + (c.horas_semanales || 0), 0);
-              const uniqueSections = Array.from(new Set(teacherAssignments.map(s => s.seccion?.grado?.nombre + ' ' + s.seccion?.letra)));
-
-              return (
-                <div
-                  key={docente.id}
-                  className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
-                >
+        <DataTable
+          data={filteredTeachers}
+          itemsPerPage={10}
+          searchPlaceholder="Buscar docente por nombre, apellidos, DNI o email..."
+          filterChips={[
+            { id: 'todas', label: 'Todas las Especialidades', count: teachers.length },
+            { id: 'Matemática', label: 'Matemática' },
+            { id: 'Comunicación', label: 'Comunicación' },
+            { id: 'Ciencia y Tecnología', label: 'Ciencias' },
+            { id: 'Inglés', label: 'Inglés' },
+            { id: 'Personal Social', label: 'Personal Social' },
+            { id: 'Educación Física', label: 'Educ. Física' },
+          ]}
+          activeFilter={filterEspecialidad}
+          onFilterChange={setFilterEspecialidad}
+          searchFilter={(t, q) =>
+            `${t.nombres} ${t.apellidos} ${t.dni} ${t.email} ${t.especialidad}`
+              .toLowerCase()
+              .includes(q)
+          }
+          columns={[
+            {
+              header: 'Docente',
+              cell: (docente) => (
+                <div className="flex items-center gap-3">
+                  <img
+                    src={docente.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(docente.nombres)}`}
+                    alt={docente.nombres}
+                    className="w-10 h-10 rounded-2xl object-cover ring-2 ring-indigo-500/20 shrink-0"
+                  />
                   <div>
-                    {/* Teacher Top Info */}
-                    <div className="flex items-start gap-3.5 mb-4">
-                      <img
-                        src={docente.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(docente.nombres)}`}
-                        alt={docente.nombres}
-                        className="w-14 h-14 rounded-2xl object-cover ring-2 ring-indigo-500/20 shrink-0"
-                      />
-                      <div className="min-w-0 flex-1">
-                        <h4 className="font-extrabold text-sm text-slate-900 dark:text-white leading-tight truncate">
-                          {docente.nombres} {docente.apellidos}
-                        </h4>
-                        <p className="text-xs text-indigo-600 dark:text-indigo-400 font-bold mt-0.5">
-                          {docente.especialidad || 'Profesor Especialista'}
-                        </p>
-                        <div className="flex items-center gap-2 mt-1.5 text-[11px] text-slate-500 dark:text-slate-400">
-                          <span className="font-semibold">DNI: {docente.dni}</span>
-                          <span>•</span>
-                          <span className="truncate">{docente.email}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Workload Stats */}
-                    <div className="grid grid-cols-2 gap-2 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 mb-4 text-center">
-                      <div>
-                        <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Carga Horaria</span>
-                        <p className="text-base font-black text-slate-800 dark:text-white">{teacherHours} hrs/sem</p>
-                      </div>
-                      <div>
-                        <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Salones a Cargo</span>
-                        <p className="text-base font-black text-indigo-600 dark:text-indigo-400">{uniqueSections.length} salones</p>
-                      </div>
-                    </div>
-
-                    {/* Courses / Salones List */}
-                    <div className="space-y-2 mb-4">
-                      <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
-                        Materias y Salones Asignados:
-                      </span>
-                      {teacherAssignments.length > 0 ? (
-                        <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto">
-                          {teacherAssignments.map((asig) => (
-                            <span
-                              key={asig.id}
-                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] font-bold bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/60"
-                            >
-                              <BookOpen className="w-3 h-3 text-indigo-500" />
-                              {asig.curso?.nombre} ({asig.seccion?.grado?.numero_grado}° {asig.seccion?.grado?.nivel === 'primaria' ? 'Pri' : 'Sec'} &quot;{asig.seccion?.letra}&quot;)
-                            </span>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-xs text-slate-400 italic">Sin materias asignadas aún.</p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
-                    <button
-                      onClick={() => openAssignForTeacher(docente.id)}
-                      className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition-colors shadow-sm"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      Asignar Salón
-                    </button>
-                    <Link
-                      href={`/admin/horarios`}
-                      className="px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs transition-colors flex items-center gap-1"
-                    >
-                      <Calendar className="w-3.5 h-3.5" />
-                      Horario
-                    </Link>
+                    <p className="font-extrabold text-slate-800 dark:text-white text-xs leading-tight">
+                      {docente.apellidos}, {docente.nombres}
+                    </p>
+                    <p className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold">
+                      {docente.especialidad}
+                    </p>
                   </div>
                 </div>
-              );
-            })}
-          </div>
-        </div>
+              ),
+            },
+            {
+              header: 'DNI / Contacto',
+              cell: (docente) => (
+                <div className="text-xs">
+                  <p className="font-mono font-bold text-slate-700 dark:text-slate-300">{docente.dni}</p>
+                  <p className="text-[10px] text-slate-400 truncate max-w-[150px]">{docente.email}</p>
+                </div>
+              ),
+            },
+            {
+              header: 'Carga Semanal',
+              cell: (docente) => {
+                const asigs = sectionCourses.filter(s => s.docente_id === docente.id);
+                const hrs = asigs.reduce((acc, c) => acc + (c.horas_semanales || 0), 0);
+                return (
+                  <span className="font-extrabold text-xs px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300">
+                    {hrs} hrs/sem
+                  </span>
+                );
+              },
+            },
+            {
+              header: 'Salones Asignados',
+              cell: (docente) => {
+                const asigs = sectionCourses.filter(s => s.docente_id === docente.id);
+                const uniqueSecs = Array.from(new Set(asigs.map(s => `${s.seccion?.grado?.nombre} "${s.seccion?.letra}"`)));
+                return (
+                  <div className="flex flex-wrap gap-1 max-w-xs">
+                    {uniqueSecs.length > 0 ? (
+                      uniqueSecs.slice(0, 2).map((sec, idx) => (
+                        <span key={idx} className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                          {sec}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-[10px] text-slate-400 italic">Sin salones</span>
+                    )}
+                    {uniqueSecs.length > 2 && (
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-indigo-100 text-indigo-700 dark:bg-indigo-900/60 dark:text-indigo-300">
+                        +{uniqueSecs.length - 2}
+                      </span>
+                    )}
+                  </div>
+                );
+              },
+            },
+            {
+              header: 'Acciones',
+              cell: (docente) => (
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => openAssignForTeacher(docente.id)}
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition-colors shadow-sm"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Asignar
+                  </button>
+                  <Link
+                    href="/admin/horarios"
+                    className="p-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors"
+                    title="Ver Horarios"
+                  >
+                    <Calendar className="w-3.5 h-3.5" />
+                  </Link>
+                </div>
+              ),
+            },
+          ]}
+          gridItemRender={(docente) => {
+            const teacherAssignments = sectionCourses.filter(s => s.docente_id === docente.id);
+            const teacherHours = teacherAssignments.reduce((acc, c) => acc + (c.horas_semanales || 0), 0);
+            const uniqueSections = Array.from(new Set(teacherAssignments.map(s => s.seccion?.grado?.nombre + ' ' + s.seccion?.letra)));
+
+            return (
+              <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between h-full group">
+                <div>
+                  <div className="flex items-start gap-3.5 mb-4">
+                    <img
+                      src={docente.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(docente.nombres)}`}
+                      alt={docente.nombres}
+                      className="w-13 h-13 rounded-2xl object-cover ring-2 ring-indigo-500/20 shrink-0 group-hover:scale-105 transition-transform"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <h4 className="font-extrabold text-sm text-slate-900 dark:text-white leading-tight truncate">
+                        {docente.nombres} {docente.apellidos}
+                      </h4>
+                      <p className="text-xs text-indigo-600 dark:text-indigo-400 font-bold mt-0.5">
+                        {docente.especialidad || 'Profesor Especialista'}
+                      </p>
+                      <div className="flex items-center gap-1.5 mt-1.5 text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                        <span className="font-mono font-bold">DNI: {docente.dni}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 mb-3.5 text-center">
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Carga Horaria</span>
+                      <p className="text-sm font-black text-slate-800 dark:text-white">{teacherHours} hrs/sem</p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Salones</span>
+                      <p className="text-sm font-black text-indigo-600 dark:text-indigo-400">{uniqueSections.length} salones</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5 mb-4">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                      Materias Asignadas:
+                    </span>
+                    {teacherAssignments.length > 0 ? (
+                      <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto">
+                        {teacherAssignments.map((asig) => (
+                          <span
+                            key={asig.id}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/60"
+                          >
+                            <BookOpen className="w-2.5 h-2.5 text-indigo-500" />
+                            {asig.curso?.nombre} ({asig.seccion?.grado?.numero_grado}° &quot;{asig.seccion?.letra}&quot;)
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-slate-400 italic">Sin materias asignadas aún.</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
+                  <button
+                    onClick={() => openAssignForTeacher(docente.id)}
+                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition-colors shadow-sm"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Asignar Salón
+                  </button>
+                  <Link
+                    href="/admin/horarios"
+                    className="px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs transition-colors flex items-center gap-1"
+                  >
+                    <Calendar className="w-3.5 h-3.5" />
+                    Horario
+                  </Link>
+                </div>
+              </div>
+            );
+          }}
+        />
       )}
 
       {/* TAB 2: MATRIZ DE ASIGNACIONES TABLE */}
       {activeTab === 'asignaciones' && (
-        <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 overflow-hidden shadow-sm">
-          {/* Level Filter Bar */}
-          <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 bg-slate-50/50 dark:bg-slate-800/30">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-slate-500">Filtrar por nivel:</span>
-              <button
-                onClick={() => setFilterNivel('todos')}
-                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${
-                  filterNivel === 'todos' ? 'bg-indigo-600 text-white' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300'
-                }`}
-              >
-                Todos
-              </button>
-              <button
-                onClick={() => setFilterNivel('primaria')}
-                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${
-                  filterNivel === 'primaria' ? 'bg-indigo-600 text-white' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300'
-                }`}
-              >
-                Primaria (1° a 6°)
-              </button>
-              <button
-                onClick={() => setFilterNivel('secundaria')}
-                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${
-                  filterNivel === 'secundaria' ? 'bg-indigo-600 text-white' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300'
-                }`}
-              >
-                Secundaria (1° a 5°)
-              </button>
-            </div>
-            <span className="text-xs font-bold text-slate-400">
-              {filteredAssignments.length} asignaciones activas
-            </span>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-slate-200/60 dark:border-slate-800 text-[11px] font-extrabold uppercase tracking-wider text-slate-400 bg-slate-50/70 dark:bg-slate-800/50">
-                  <th className="py-3.5 px-4">Salón / Grado</th>
-                  <th className="py-3.5 px-4">Materia / Curso</th>
-                  <th className="py-3.5 px-4">Docente Responsable</th>
-                  <th className="py-3.5 px-4 text-center">Horas/Sem</th>
-                  <th className="py-3.5 px-4">Aula Asignada</th>
-                  <th className="py-3.5 px-4 text-right">Acciones</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 text-xs">
-                {filteredAssignments.map((asig) => {
-                  const doc = teachers.find(t => t.id === asig.docente_id);
-                  const sec = sections.find(s => s.id === asig.seccion_id);
-                  const crs = courses.find(c => c.id === asig.curso_id);
-
-                  return (
-                    <tr key={asig.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
-                      <td className="py-3 px-4 font-bold text-slate-900 dark:text-white">
-                        <span className="inline-flex items-center gap-1.5">
-                          <span className={`w-2 h-2 rounded-full ${sec?.grado?.nivel === 'primaria' ? 'bg-blue-500' : 'bg-purple-500'}`} />
-                          {sec?.grado?.nombre} — Sección &quot;{sec?.letra}&quot;
-                        </span>
-                      </td>
-                      <td className="py-3 px-4">
-                        <span
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold"
-                          style={{
-                            backgroundColor: `${crs?.color_hex || '#3b82f6'}15`,
-                            color: crs?.color_hex || '#3b82f6',
-                          }}
-                        >
-                          {crs?.nombre}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-2">
-                          <img
-                            src={doc?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(doc?.nombres || 'Docente')}`}
-                            alt={doc?.nombres}
-                            className="w-7 h-7 rounded-xl object-cover ring-1 ring-slate-200 dark:ring-slate-700"
-                          />
-                          <div>
-                            <p className="font-bold text-slate-800 dark:text-slate-200">
-                              {doc?.nombres} {doc?.apellidos}
-                            </p>
-                            <p className="text-[10px] text-slate-400">{doc?.especialidad}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-3 px-4 text-center font-black text-slate-800 dark:text-slate-200">
-                        {asig.horas_semanales} hrs
-                      </td>
-                      <td className="py-3 px-4 text-slate-600 dark:text-slate-400 font-medium">
-                        {asig.aula_defecto || 'Aula regular'}
-                      </td>
-                      <td className="py-3 px-4 text-right">
-                        <button
-                          onClick={() => removeSectionCourse(asig.id)}
-                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors"
-                          title="Eliminar asignación"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <DataTable
+          data={filteredAssignments}
+          itemsPerPage={10}
+          searchPlaceholder="Buscar asignación por docente, curso o salón..."
+          filterChips={[
+            { id: 'todos', label: 'Todos los Niveles', count: sectionCourses.length },
+            { id: 'primaria', label: 'Primaria (1° a 6°)' },
+            { id: 'secundaria', label: 'Secundaria (1° a 5°)' },
+          ]}
+          activeFilter={filterNivel}
+          onFilterChange={(id) => setFilterNivel(id as 'todos' | 'primaria' | 'secundaria')}
+          searchFilter={(asig, q) => {
+            const doc = teachers.find(t => t.id === asig.docente_id);
+            const crs = courses.find(c => c.id === asig.curso_id);
+            const sec = sections.find(s => s.id === asig.seccion_id);
+            return `${doc?.nombres} ${doc?.apellidos} ${crs?.nombre} ${sec?.grado?.nombre} ${sec?.letra}`
+              .toLowerCase()
+              .includes(q);
+          }}
+          columns={[
+            {
+              header: 'Salón / Grado',
+              cell: (asig) => {
+                const sec = sections.find(s => s.id === asig.seccion_id);
+                return (
+                  <span className="inline-flex items-center gap-1.5 font-bold text-slate-900 dark:text-white">
+                    <span className={`w-2 h-2 rounded-full ${sec?.grado?.nivel === 'primaria' ? 'bg-blue-500' : 'bg-purple-500'}`} />
+                    {sec?.grado?.nombre} — Sección &quot;{sec?.letra}&quot;
+                  </span>
+                );
+              },
+            },
+            {
+              header: 'Materia / Curso',
+              cell: (asig) => {
+                const crs = courses.find(c => c.id === asig.curso_id);
+                return (
+                  <span
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold"
+                    style={{
+                      backgroundColor: `${crs?.color_hex || '#3b82f6'}15`,
+                      color: crs?.color_hex || '#3b82f6',
+                    }}
+                  >
+                    {crs?.nombre}
+                  </span>
+                );
+              },
+            },
+            {
+              header: 'Docente Responsable',
+              cell: (asig) => {
+                const doc = teachers.find(t => t.id === asig.docente_id);
+                return (
+                  <div className="flex items-center gap-2">
+                    <img
+                      src={doc?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(doc?.nombres || 'Docente')}`}
+                      alt={doc?.nombres}
+                      className="w-7 h-7 rounded-xl object-cover ring-1 ring-slate-200 dark:ring-slate-700"
+                    />
+                    <div>
+                      <p className="font-bold text-slate-800 dark:text-slate-200">
+                        {doc?.nombres} {doc?.apellidos}
+                      </p>
+                      <p className="text-[10px] text-slate-400">{doc?.especialidad}</p>
+                    </div>
+                  </div>
+                );
+              },
+            },
+            {
+              header: 'Horas/Sem',
+              cell: (asig) => (
+                <span className="font-black text-slate-800 dark:text-slate-200">
+                  {asig.horas_semanales} hrs
+                </span>
+              ),
+            },
+            {
+              header: 'Aula Asignada',
+              cell: (asig) => (
+                <span className="text-slate-600 dark:text-slate-400 font-medium">
+                  {asig.aula_defecto || 'Aula regular'}
+                </span>
+              ),
+            },
+            {
+              header: 'Acciones',
+              cell: (asig) => (
+                <button
+                  onClick={() => removeSectionCourse(asig.id)}
+                  className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors"
+                  title="Eliminar asignación"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              ),
+            },
+          ]}
+        />
       )}
 
       {/* MODAL 1: REGISTRAR NUEVO DOCENTE */}

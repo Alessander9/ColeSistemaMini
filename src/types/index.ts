@@ -239,4 +239,12 @@ export interface ScheduleConflict {
   message?: string;
 }
 
+export interface ToastMessage {
+  id: string;
+  tipo: 'success' | 'error' | 'info' | 'warning';
+  titulo?: string;
+  mensaje: string;
+  duracionMs?: number;
+}
+
 

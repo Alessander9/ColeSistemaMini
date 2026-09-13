@@ -43,6 +43,26 @@ export default function AdminEstudiantesPage() {
     });
   };
 
+  const [activeFilter, setActiveFilter] = useState('todos');
+
+  const filteredStudents = React.useMemo(() => {
+    if (activeFilter === 'todos') return students;
+    return students.filter(s => {
+      const enr = enrollments.find(e => e.estudiante_id === s.id);
+      if (activeFilter === '3pri') return enr?.seccion?.grado?.numero_grado === 3;
+      if (activeFilter === '5pri') return enr?.seccion?.grado?.numero_grado === 5;
+      if (activeFilter === 'secundaria') return enr?.seccion?.grado?.nivel === 'secundaria';
+      return true;
+    });
+  }, [students, enrollments, activeFilter]);
+
+  const filterChips = [
+    { id: 'todos', label: 'Todos los Alumnos', count: students.length },
+    { id: '3pri', label: '3° Primaria' },
+    { id: '5pri', label: '5° Primaria' },
+    { id: 'secundaria', label: 'Secundaria' },
+  ];
+
   const columns: Column<Student>[] = [
     {
       header: 'Estudiante',
@@ -126,14 +146,72 @@ export default function AdminEstudiantesPage() {
       </PageHeader>
 
       <DataTable
-        data={students}
+        data={filteredStudents}
         columns={columns}
         searchPlaceholder="Buscar por nombre, apellidos o DNI..."
+        filterChips={filterChips}
+        activeFilter={activeFilter}
+        onFilterChange={setActiveFilter}
+        itemsPerPage={10}
         searchFilter={(s, q) =>
           `${s.profile?.nombres} ${s.profile?.apellidos} ${s.profile?.dni} ${s.codigo_estudiante}`
             .toLowerCase()
             .includes(q)
         }
+        gridItemRender={(student) => {
+          const fullName = `${student.profile?.apellidos}, ${student.profile?.nombres}`;
+          const enr = enrollments.find(e => e.estudiante_id === student.id);
+          return (
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4.5 flex flex-col justify-between h-full shadow-sm hover:shadow-md transition-all group">
+              <div>
+                <div className="flex items-start justify-between gap-3 mb-3">
+                  <div className="flex items-center gap-3">
+                    <img
+                      src={student.profile?.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150'}
+                      alt={fullName}
+                      className="w-12 h-12 rounded-2xl object-cover border border-slate-200 dark:border-slate-700 group-hover:scale-105 transition-transform"
+                    />
+                    <div>
+                      <h4 className="font-extrabold text-slate-800 dark:text-white text-sm leading-tight">
+                        {fullName}
+                      </h4>
+                      <span className="text-[11px] font-mono font-bold text-slate-400">
+                        {student.codigo_estudiante}
+                      </span>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-md font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 shrink-0">
+                    DNI {student.profile?.dni}
+                  </span>
+                </div>
+
+                <div className="space-y-1.5 text-xs text-slate-600 dark:text-slate-400 mb-4 bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[11px] text-slate-400">Salón:</span>
+                    <span className="font-bold text-slate-700 dark:text-slate-200">
+                      {enr?.seccion?.grado?.nombre || '3° Primaria'} &quot;{enr?.seccion?.letra || 'A'}&quot;
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-[11px] text-slate-400">Apoderado:</span>
+                    <span className="font-medium text-slate-700 dark:text-slate-200 truncate max-w-[140px]">
+                      {student.nombre_apoderado || 'No registrado'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setSelectedStudentForQr(student)}
+                className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-bold bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200/80 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/60 transition-all active:scale-95"
+              >
+                <QrCode className="w-4 h-4" />
+                Ver Carnet QR
+              </button>
+            </div>
+          );
+        }}
       />
 
       {/* View QR ID Modal */}

@@ -3,6 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '@/context/AppContext';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { DataTable } from '@/components/ui/DataTable';
 import { GradeLevel, Section, Enrollment, Student } from '@/types';
 import {
   UserPlus,
@@ -196,108 +197,143 @@ export default function AdminMatriculasPage() {
         ))}
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap gap-3 items-center">
-        <div className="relative flex-1 min-w-[200px] max-w-xs">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Buscar alumno o código..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 text-sm rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-purple-500 outline-none"
-          />
-        </div>
-        <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
-          {(['todos', 'primaria', 'secundaria'] as const).map(n => (
-            <button
-              key={n}
-              onClick={() => setFilterLevel(n)}
-              className={`px-3 py-1.5 text-xs font-bold rounded-lg capitalize transition-all ${
-                filterLevel === n
-                  ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
-                  : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
-              }`}
-            >
-              {n === 'todos' ? 'Todos' : n}
-            </button>
-          ))}
-        </div>
-      </div>
+      {/* Enrollments DataTable with Pagination, Grid View and Filters */}
+      <DataTable
+        data={enrollments}
+        itemsPerPage={10}
+        searchPlaceholder="Buscar por alumno, código o DNI..."
+        filterChips={[
+          { id: 'todos', label: 'Todas las Matrículas', count: enrollments.length },
+          { id: 'primaria', label: 'Nivel Primaria' },
+          { id: 'secundaria', label: 'Nivel Secundaria' },
+        ]}
+        activeFilter={filterLevel}
+        onFilterChange={(id) => setFilterLevel(id as 'todos' | 'primaria' | 'secundaria')}
+        searchFilter={(e, q) => {
+          const matchSearch = `${e.estudiante?.profile?.nombres} ${e.estudiante?.profile?.apellidos} ${e.estudiante?.codigo_estudiante} ${e.estudiante?.profile?.dni} ${e.seccion?.grado?.nombre}`
+            .toLowerCase();
+          const matchLevel = filterLevel === 'todos' || e.seccion?.grado?.nivel === filterLevel;
+          return matchSearch.includes(q) && matchLevel;
+        }}
+        columns={[
+          {
+            header: 'Estudiante',
+            cell: (enr) => (
+              <div className="flex items-center gap-3">
+                <img
+                  src={enr.estudiante?.profile?.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150'}
+                  alt=""
+                  className="w-9 h-9 rounded-xl object-cover shrink-0"
+                />
+                <div>
+                  <p className="font-bold text-slate-900 dark:text-white text-xs">
+                    {enr.estudiante?.profile?.apellidos}, {enr.estudiante?.profile?.nombres}
+                  </p>
+                  <p className="text-[10px] text-slate-400 font-mono">
+                    {enr.estudiante?.codigo_estudiante} · DNI {enr.estudiante?.profile?.dni}
+                  </p>
+                </div>
+              </div>
+            ),
+          },
+          {
+            header: 'Grado & Sección',
+            cell: (enr) => (
+              <div className="space-y-0.5">
+                <p className="font-semibold text-xs text-slate-700 dark:text-slate-300">
+                  {enr.seccion?.grado?.nombre}
+                </p>
+                <div className="flex items-center gap-1.5">
+                  <span className={`text-[10px] font-bold px-2 py-0.2 rounded-full border capitalize ${nivelColors[enr.seccion?.grado?.nivel as keyof typeof nivelColors] || ''}`}>
+                    {enr.seccion?.grado?.nivel}
+                  </span>
+                  <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                    Sección {enr.seccion?.letra}
+                  </span>
+                </div>
+              </div>
+            ),
+          },
+          {
+            header: 'Email Institucional',
+            cell: (enr) => (
+              <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
+                {enr.estudiante?.profile?.email || '—'}
+              </span>
+            ),
+          },
+          {
+            header: 'Fecha Matrícula',
+            cell: (enr) => (
+              <span className="text-xs text-slate-600 dark:text-slate-400 font-medium">
+                {enr.fecha_matricula}
+              </span>
+            ),
+          },
+          {
+            header: 'Estado',
+            cell: (enr) => (
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                <BadgeCheck className="w-3 h-3" />
+                {enr.estado.toUpperCase()}
+              </span>
+            ),
+          },
+        ]}
+        gridItemRender={(enr) => (
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between h-full group">
+            <div>
+              <div className="flex items-start justify-between gap-3 mb-3.5">
+                <div className="flex items-center gap-3">
+                  <img
+                    src={enr.estudiante?.profile?.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150'}
+                    alt=""
+                    className="w-12 h-12 rounded-2xl object-cover ring-2 ring-purple-500/20 group-hover:scale-105 transition-transform"
+                  />
+                  <div>
+                    <h4 className="font-extrabold text-sm text-slate-900 dark:text-white leading-tight">
+                      {enr.estudiante?.profile?.apellidos}, {enr.estudiante?.profile?.nombres}
+                    </h4>
+                    <p className="text-[11px] text-slate-400 font-mono mt-0.5">
+                      {enr.estudiante?.codigo_estudiante}
+                    </p>
+                  </div>
+                </div>
+                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400">
+                  <BadgeCheck className="w-3 h-3" />
+                  {enr.estado.toUpperCase()}
+                </span>
+              </div>
 
-      {/* Enrollments table */}
-      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/70 dark:border-slate-800/70 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-100 dark:border-slate-800">
-                <th className="text-left px-5 py-3.5 text-[10px] font-black text-slate-500 uppercase tracking-wider">Estudiante</th>
-                <th className="text-left px-4 py-3.5 text-[10px] font-black text-slate-500 uppercase tracking-wider">Grado & Sección</th>
-                <th className="text-left px-4 py-3.5 text-[10px] font-black text-slate-500 uppercase tracking-wider">Email institucional</th>
-                <th className="text-left px-4 py-3.5 text-[10px] font-black text-slate-500 uppercase tracking-wider">Fecha matrícula</th>
-                <th className="text-center px-4 py-3.5 text-[10px] font-black text-slate-500 uppercase tracking-wider">Estado</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {filtered.map((enr) => (
-                <tr key={enr.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
-                  <td className="px-5 py-3.5">
-                    <div className="flex items-center gap-3">
-                      <img
-                        src={enr.estudiante?.profile?.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150'}
-                        alt=""
-                        className="w-9 h-9 rounded-xl object-cover shrink-0"
-                      />
-                      <div>
-                        <p className="font-bold text-slate-900 dark:text-white text-sm">
-                          {enr.estudiante?.profile?.apellidos}, {enr.estudiante?.profile?.nombres}
-                        </p>
-                        <p className="text-[10px] text-slate-400 font-mono">{enr.estudiante?.codigo_estudiante} · DNI {enr.estudiante?.profile?.dni}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3.5">
-                    <div className="space-y-1">
-                      <p className="font-semibold text-xs text-slate-700 dark:text-slate-300">
-                        {enr.seccion?.grado?.nombre}
-                      </p>
-                      <div className="flex items-center gap-1.5">
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border capitalize ${nivelColors[enr.seccion?.grado?.nivel as keyof typeof nivelColors] || ''}`}>
-                          {enr.seccion?.grado?.nivel}
-                        </span>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
-                          Sección {enr.seccion?.letra}
-                        </span>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3.5">
-                    <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
-                      {enr.estudiante?.profile?.email || '—'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3.5 text-xs text-slate-600 dark:text-slate-400 font-medium">
-                    {enr.fecha_matricula}
-                  </td>
-                  <td className="px-4 py-3.5 text-center">
-                    <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
-                      <BadgeCheck className="w-3 h-3" />
-                      {enr.estado.toUpperCase()}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-              {filtered.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="text-center py-12 text-slate-400 text-sm">
-                    No se encontraron matrículas
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+              <div className="space-y-2 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 text-xs">
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-400 text-[11px]">Grado y Salón:</span>
+                  <span className="font-bold text-slate-800 dark:text-slate-200">
+                    {enr.seccion?.grado?.nombre} &quot;{enr.seccion?.letra}&quot;
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-400 text-[11px]">DNI:</span>
+                  <span className="font-mono font-bold text-slate-700 dark:text-slate-300">
+                    {enr.estudiante?.profile?.dni}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-400 text-[11px]">Email:</span>
+                  <span className="font-mono text-[10px] text-slate-500 truncate max-w-[150px]">
+                    {enr.estudiante?.profile?.email}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-400 mt-3">
+              <span>Matriculado el:</span>
+              <span className="font-bold text-slate-700 dark:text-slate-300">{enr.fecha_matricula}</span>
+            </div>
+          </div>
+        )}
+      />
 
       {/* ════════════════ ENROLLMENT FORM MODAL ════════════════════════════════ */}
       {formOpen && (

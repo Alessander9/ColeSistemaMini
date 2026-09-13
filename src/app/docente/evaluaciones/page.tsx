@@ -102,6 +102,20 @@ export default function DocenteEvaluacionesPage() {
     },
   ];
 
+  const [activeTypeFilter, setActiveTypeFilter] = useState('todos');
+
+  const typeFilterChips = [
+    { id: 'todos', label: 'Todas las Evaluaciones', count: exams.length },
+    { id: 'examen', label: 'Exámenes Mensuales' },
+    { id: 'practica', label: 'Prácticas Calificadas' },
+    { id: 'proyecto', label: 'Proyectos & Rúbricas' },
+  ];
+
+  const filteredExams = React.useMemo(() => {
+    if (activeTypeFilter === 'todos') return exams;
+    return exams.filter(e => e.tipo === activeTypeFilter);
+  }, [exams, activeTypeFilter]);
+
   return (
     <div className="space-y-6 max-w-6xl mx-auto animate-in fade-in-50">
       <PageHeader
@@ -120,10 +134,62 @@ export default function DocenteEvaluacionesPage() {
       </PageHeader>
 
       <DataTable
-        data={exams}
+        data={filteredExams}
         columns={columns}
+        itemsPerPage={10}
         searchPlaceholder="Buscar por título o curso..."
-        searchFilter={(ex, q) => `${ex.titulo} ${ex.curso?.nombre}`.toLowerCase().includes(q)}
+        filterChips={typeFilterChips}
+        activeFilter={activeTypeFilter}
+        onFilterChange={setActiveTypeFilter}
+        searchFilter={(ex, q) => `${ex.titulo} ${ex.curso?.nombre} ${ex.tipo}`.toLowerCase().includes(q)}
+        gridItemRender={(exam) => (
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between h-full group">
+            <div>
+              <div className="flex items-start justify-between gap-3 mb-2.5">
+                <span className="font-extrabold text-xs px-2.5 py-1 rounded-xl bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300">
+                  {exam.curso?.nombre}
+                </span>
+                <span className="text-[10px] uppercase font-bold text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
+                  {exam.tipo.toUpperCase()}
+                </span>
+              </div>
+
+              <h4 className="font-bold text-slate-900 dark:text-white text-sm leading-snug mb-3">
+                {exam.titulo}
+              </h4>
+
+              <div className="space-y-2 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-400">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] text-slate-400">Fecha:</span>
+                  <span className="font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1">
+                    <Calendar className="w-3 h-3 text-blue-500" />
+                    {exam.fecha_programada}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] text-slate-400">Hora de Inicio:</span>
+                  <span className="font-semibold text-slate-700 dark:text-slate-200">
+                    {exam.hora_inicio || '08:00 AM'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] text-slate-400">Duración:</span>
+                  <span className="font-semibold text-slate-700 dark:text-slate-200">
+                    {exam.duracion_minutos} minutos
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between mt-3">
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                <Clock className="w-3 h-3" />
+                Programado
+              </span>
+              <span className="text-[11px] font-bold text-slate-400">Ponderación 100%</span>
+            </div>
+          </div>
+        )}
       />
 
       {/* Modal: New Exam Form */}
