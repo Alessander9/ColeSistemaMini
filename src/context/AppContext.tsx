@@ -1181,7 +1181,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }}
     >
       {children}
-      <ToastContainer toasts={toasts} onDismiss={removeToast} />
     </AppContext.Provider>
   );
 }

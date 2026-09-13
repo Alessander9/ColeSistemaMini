@@ -1,21 +1,46 @@
 {
   "name": "ColeSistema Mini",
   "short_name": "ColeSistema",
-  "description": "Sistema de gestión escolar, asistencia QR y calificaciones AD-A-B-C",
+  "description": "Sistema de gestión escolar con asistencia QR y calificaciones AD-A-B-C",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#2563eb",
+  "orientation": "portrait-primary",
+  "background_color": "#0f172a",
+  "theme_color": "#10b981",
+  "lang": "es",
+  "categories": ["education", "productivity"],
   "icons": [
     {
       "src": "/icon-192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
       "src": "/icon-512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
-  ]
+  ],
+  "shortcuts": [
+    {
+      "name": "Lector QR",
+      "short_name": "QR",
+      "description": "Abrir escáner QR de asistencia",
+      "url": "/asistencia",
+      "icons": [{ "src": "/icon-192.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Dashboard",
+      "short_name": "Inicio",
+      "description": "Ir al panel principal",
+      "url": "/",
+      "icons": [{ "src": "/icon-192.png", "sizes": "96x96" }]
+    }
+  ],
+  "screenshots": [],
+  "related_applications": [],
+  "prefer_related_applications": false
 }
