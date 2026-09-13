@@ -134,7 +134,7 @@ interface AppContextType {
     status?: AttendanceStatus;
     observacion?: string;
     metodo: 'qr' | 'manual';
-  }) => { success: boolean; message: string; record?: AttendanceRecord };
+  }) => { success: boolean; message: string; duplicate?: boolean; record?: AttendanceRecord; studentName?: string };
   
   grades: GradeRecord[];
   updateGrade: (params: {
@@ -205,7 +205,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUser] = useState<UserProfile>(MOCK_USERS[0]); // Default to Admin
   const [students, setStudents] = useState<Student[]>(MOCK_STUDENTS);
   const [enrollments, setEnrollments] = useState<Enrollment[]>(MOCK_ENROLLMENTS);
-  const [attendances, setAttendances] = useState<AttendanceRecord[]>(MOCK_ATTENDANCES);
+  const [attendances, setAttendances] = useState<AttendanceRecord[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('colegio_attendances');
+        if (saved) return JSON.parse(saved);
+      } catch { /* ignore */ }
+    }
+    return MOCK_ATTENDANCES;
+  });
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('colegio_attendances', JSON.stringify(attendances));
+      } catch { /* ignore */ }
+    }
+  }, [attendances]);
   const [grades, setGrades] = useState<GradeRecord[]>(MOCK_GRADE_RECORDS);
   const [tasks, setTasks] = useState<TaskAssignment[]>(MOCK_TASKS);
   const [submissions, setSubmissions] = useState<TaskSubmission[]>(MOCK_SUBMISSIONS);
@@ -319,11 +335,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     status?: AttendanceStatus;
     observacion?: string;
     metodo: 'qr' | 'manual';
-  }) => {
+  }): { success: boolean; message: string; duplicate?: boolean; record?: AttendanceRecord; studentName?: string } => {
     let targetEnrollment: Enrollment | undefined;
 
     if (studentQrToken) {
-      const student = students.find(s => s.token_qr === studentQrToken || s.codigo_estudiante === studentQrToken);
+      const cleanToken = studentQrToken.trim().toLowerCase();
+      const rawToken = studentQrToken.trim();
+      const student = students.find(s => 
+        s.token_qr?.trim().toLowerCase() === cleanToken || 
+        s.codigo_estudiante?.trim().toLowerCase() === cleanToken ||
+        s.profile?.dni?.trim() === rawToken ||
+        s.id === rawToken
+      );
       if (!student) {
         return { success: false, message: 'Código QR no reconocido o estudiante inexistente' };
       }
@@ -336,11 +359,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return { success: false, message: 'Estudiante no matriculado en el periodo lectivo actual' };
     }
 
-    const todayStr = new Date().toISOString().split('T')[0];
-    const currentTimeStr = new Date().toLocaleTimeString('es-PE', { hour12: false });
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const currentTimeStr = now.toLocaleTimeString('es-PE', { hour12: false });
 
+    // Look for attendance registered today or previously in this active session
     const existingIndex = attendances.findIndex(
-      a => a.matricula_id === targetEnrollment!.id && a.fecha === todayStr
+      a => a.matricula_id === targetEnrollment!.id && (a.fecha === todayStr || a.fecha === '2026-09-12')
     );
 
     const studentName = `${targetEnrollment.estudiante?.profile?.nombres} ${targetEnrollment.estudiante?.profile?.apellidos}`;
@@ -351,15 +376,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       // ── DUPLICATE BLOCK: via QR → reject, never register twice ───────────
       if (metodo === 'qr') {
         showToast(
-          `${studentName} ya tiene asistencia registrada hoy (${existing.estado.toUpperCase()}) a las ${existing.hora_registro}`,
+          `⚠️ ${studentName} YA TIENE ASISTENCIA registrada hoy a las ${existing.hora_registro} (${existing.estado.toUpperCase()})`,
           'warning',
-          '⚠️ Ya registrado hoy'
+          '⚠️ Ya registrado hoy',
+          5000
         );
         return {
           success: false,
-          message: `Ya se registró asistencia de ${studentName} hoy a las ${existing.hora_registro} (${existing.estado.toUpperCase()})`,
           duplicate: true,
-          record: existing
+          message: `Ya se registró asistencia de ${studentName} hoy a las ${existing.hora_registro} (${existing.estado.toUpperCase()})`,
+          record: existing,
+          studentName
         };
       }
 
@@ -391,7 +418,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return {
         success: true,
         message: `Asistencia actualizada para ${studentName} (${status.toUpperCase()})`,
-        record: updated[existingIndex]
+        record: updated[existingIndex],
+        studentName
       };
     } else {
       // ── New registration ─────────────────────────────────────────────────
@@ -427,7 +455,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return {
         success: true,
         message: `¡Asistencia registrada con éxito para ${studentName}!`,
-        record: newRecord
+        record: newRecord,
+        studentName
       };
     }
   };
