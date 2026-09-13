@@ -1,4 +1,4 @@
-export type UserRole = 'admin' | 'docente' | 'estudiante';
+export type UserRole = 'admin' | 'docente' | 'estudiante' | 'asistencia';
 
 export type EducationalLevel = 'primaria' | 'secundaria';
 

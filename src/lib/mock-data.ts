@@ -127,6 +127,20 @@ export const MOCK_USERS: UserProfile[] = [
     activo: true,
   },
 
+  // ── Operador de Control de Asistencia / Portería Móvil ──
+  {
+    id: 'user-asistencia-1',
+    rol: 'asistencia',
+    nombres: 'Héctor Raúl',
+    apellidos: 'Salazar Portero',
+    dni: '48991122',
+    email: 'asistencia@colegio.edu.pe',
+    telefono: '976543210',
+    cargo: 'Operador de Portería & Control QR',
+    avatar_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+    activo: true,
+  },
+
   // ── Alumnos / Estudiantes Matriculados ──
   {
     id: 'user-alumno-1',

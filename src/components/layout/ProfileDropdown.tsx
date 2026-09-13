@@ -22,11 +22,12 @@ import {
   Bell,
   Moon,
   Sun,
-  KeyRound
+  KeyRound,
+  QrCode
 } from 'lucide-react';
 
 export function ProfileDropdown() {
-  const { currentUser, students, enrollments } = useApp();
+  const { currentUser, students, enrollments, showToast } = useApp();
   const router = useRouter();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -58,7 +59,8 @@ export function ProfileDropdown() {
 
   const handleLogout = () => {
     setIsOpen(false);
-    router.push('/login');
+    showToast('Sesión cerrada correctamente. ¡Hasta la próxima!', 'info', 'Sesión Finalizada');
+    router.push('/despedida');
   };
 
   const handleOpenProfile = () => {
@@ -102,9 +104,16 @@ export function ProfileDropdown() {
       dot: 'bg-emerald-500',
       bgBadge: 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
     },
+    asistencia: {
+      label: 'Control de Asistencia',
+      icon: <QrCode className="w-3 h-3" />,
+      gradient: 'from-amber-500 to-emerald-600',
+      dot: 'bg-amber-500',
+      bgBadge: 'bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800',
+    },
   };
 
-  const cfg = roleConfig[currentUser.rol];
+  const cfg = roleConfig[currentUser.rol] || roleConfig.admin;
 
   // Specific student info if applicable
   const currentStudent = students.find(s => s.profile_id === currentUser.id);

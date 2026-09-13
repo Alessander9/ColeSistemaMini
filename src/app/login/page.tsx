@@ -62,6 +62,15 @@ export default function LoginPage() {
       color: 'text-emerald-600 dark:text-emerald-400',
       activeBg: 'bg-emerald-600',
     },
+    {
+      user: MOCK_USERS.find(u => u.rol === 'asistencia') || MOCK_USERS[1],
+      roleLabel: 'Portería / Asistencia',
+      defaultPass: 'porteria123',
+      destRoute: '/asistencia',
+      icon: QrCode,
+      color: 'text-amber-600 dark:text-amber-400',
+      activeBg: 'bg-amber-600',
+    },
   ];
 
   const handleSelectAccount = (acc: typeof demoAccounts[0]) => {
@@ -89,9 +98,7 @@ export default function LoginPage() {
         colors: ['#7c3aed', '#3b82f6', '#10b981', '#f59e0b'],
       });
       setIsLoading(false);
-      if (foundUser.rol === 'admin') router.push('/admin');
-      else if (foundUser.rol === 'docente') router.push('/docente');
-      else router.push('/estudiante');
+      router.push('/bienvenida');
     }, 600);
   };
 

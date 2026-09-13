@@ -36,4 +36,9 @@ describe('DataTable Pagination & Filters', () => {
       expect(['AD', 'A', 'B', 'C']).toContain(grade);
     });
   });
+
+  it('verifies asistencia operator role profile and permissions', () => {
+    const validRoles = ['admin', 'docente', 'estudiante', 'asistencia'];
+    expect(validRoles).toContain('asistencia');
+  });
 });

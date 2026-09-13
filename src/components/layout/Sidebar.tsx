@@ -115,6 +115,16 @@ export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
     }
   ];
 
+  const asistenciaNav: NavSection[] = [
+    {
+      section: 'Control de Asistencia',
+      items: [
+        { href: '/asistencia', label: 'Terminal QR Móvil', icon: QrCode, badge: '● Live', badgeColor: 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400' },
+        { href: '/admin/estudiantes', label: 'Padrón de Alumnos', icon: Users },
+      ]
+    }
+  ];
+
   let currentNav = adminNav;
   let roleConfig = {
     label: 'Administrador',
@@ -141,6 +151,15 @@ export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
       lightBg: 'bg-emerald-50 dark:bg-emerald-950/30',
       lightText: 'text-emerald-700 dark:text-emerald-300',
       dot: 'bg-emerald-500',
+    };
+  } else if (currentUser.rol === 'asistencia') {
+    currentNav = asistenciaNav;
+    roleConfig = {
+      label: 'Control QR',
+      color: 'from-amber-500 via-orange-500 to-emerald-600',
+      lightBg: 'bg-amber-50 dark:bg-amber-950/30',
+      lightText: 'text-amber-700 dark:text-amber-300',
+      dot: 'bg-amber-500',
     };
   }
 
