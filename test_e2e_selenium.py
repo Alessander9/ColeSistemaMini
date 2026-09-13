@@ -326,13 +326,14 @@ def run_mega_e2e_suite():
         print("6. VERIFICACION DE PÁGINAS STANDALONE (LOGIN, DESPEDIDA, BIENVENIDA)")
         print("="*75)
 
-        # 6.1 Despedida
+        # 6.1 Despedida (Pantalla de carga / transición de logout)
         driver.get(f"{BASE_URL}/despedida")
-        time.sleep(1.5)
-        if "Hasta pronto" in driver.page_source or "Cerrada" in driver.page_source:
-            report.log_success("Standalone: Pagina de Despedida", "Renderizado limpio a pantalla completa")
+        time.sleep(0.5)
+        src = driver.page_source
+        if "Cerrando sesión" in src or "limpiando" in src or "/login" in driver.current_url:
+            report.log_success("Standalone: Pagina de Despedida", "Pantalla de carga de logout y transición segura")
         else:
-            report.log_failure("Standalone: Despedida", "No cargo la pagina de despedida")
+            report.log_failure("Standalone: Despedida", "No cargo la pantalla de despedida")
 
         # 6.2 Bienvenida
         driver.get(f"{BASE_URL}/bienvenida")
