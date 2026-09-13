@@ -12,25 +12,33 @@ import {
   User, 
   ArrowRight, 
   Sparkles,
-  TrendingUp,
   Zap,
+  TrendingUp,
   CheckCircle2,
   BarChart3,
   Lock,
 } from 'lucide-react';
 import { UserRole } from '@/types';
+import { useRouter } from 'next/navigation';
 
 export default function HomePage() {
-  const { switchRole, students, attendances } = useApp();
+  const { currentUser, students, attendances } = useApp();
+  const router = useRouter();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-  }, []);
-
-  const handleRoleSelect = (role: UserRole) => {
-    switchRole(role);
-  };
+    if (currentUser?.rol) {
+      const roleHomeUrl: Record<UserRole, string> = {
+        admin: '/admin',
+        docente: '/docente',
+        estudiante: '/estudiante',
+        asistencia: '/asistencia',
+      };
+      const target = roleHomeUrl[currentUser.rol] || '/login';
+      router.replace(target);
+    }
+  }, [currentUser, router]);
 
   const todayStr = new Date().toISOString().split('T')[0];
   const todayAttendances = attendances.filter(a => a.fecha === todayStr || a.fecha === '2026-09-12');
@@ -123,12 +131,11 @@ export default function HomePage() {
               <ArrowRight className="w-4 h-4" />
             </Link>
             <Link
-              href="/docente/asistencia"
-              onClick={() => handleRoleSelect('docente')}
+              href="/asistencia"
               className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm shadow-lg shadow-emerald-500/30 transition-all active:scale-95"
             >
               <QrCode className="w-4 h-4" />
-              Probar Escáner QR
+              Terminal Asistencia QR
             </Link>
           </div>
 
@@ -154,7 +161,7 @@ export default function HomePage() {
           <div>
             <h2 className="text-xl font-black text-slate-900 dark:text-white">Acceso por Portal</h2>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-              Selecciona tu rol para acceder al panel personalizado
+              Ingresa con tus credenciales asignadas según tu rol
             </p>
           </div>
           <Link href="/login" className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1">
@@ -167,8 +174,7 @@ export default function HomePage() {
           {portals.map(({ role, href, title, desc, gradient, glow, icon: Icon, badge, badgeBg, features, stat, statIcon: StatIcon }) => (
             <Link
               key={role}
-              href={href}
-              onClick={() => handleRoleSelect(role)}
+              href="/login"
               className={`group relative overflow-hidden bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200/70 dark:border-slate-800/70 shadow-sm hover:shadow-2xl ${glow} transition-all duration-300 card-lift`}
             >
               {/* Top gradient strip */}

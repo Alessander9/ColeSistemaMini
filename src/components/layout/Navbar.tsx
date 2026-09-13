@@ -44,22 +44,34 @@ export function Navbar({ onOpenMobileMenu }: NavbarProps) {
               <Menu className="w-5 h-5" />
             </button>
 
-            {/* Logo */}
-            <Link href="/" className="flex items-center gap-2.5 group shrink-0">
-              <div className="relative w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-600 via-blue-600 to-emerald-500 flex items-center justify-center shadow-lg shadow-blue-500/25 group-hover:shadow-blue-500/40 transition-shadow">
-                <GraduationCap className="w-5 h-5 text-white" />
-                <div className="absolute inset-0 rounded-xl ring-2 ring-white/20" />
-              </div>
-              <div>
-                <div className="text-sm font-black tracking-tight text-slate-900 dark:text-white">
-                  Cole<span className="text-emerald-500">Sistema</span>
-                  <span className="text-slate-400 font-semibold text-xs ml-1 hidden xs:inline">Mini</span>
-                </div>
-                <div className="text-[10px] text-slate-400 font-medium -mt-0.5 hidden sm:block">
-                  Gestión Escolar & Asistencia QR
-                </div>
-              </div>
-            </Link>
+            {/* Logo - Strictly links to the active role's dashboard */}
+            {(() => {
+              const roleHomeUrl: Record<UserRole, string> = {
+                admin: '/admin',
+                docente: '/docente',
+                estudiante: '/estudiante',
+                asistencia: '/asistencia',
+              };
+              const homeHref = currentUser?.rol ? (roleHomeUrl[currentUser.rol] || '/login') : '/login';
+
+              return (
+                <Link href={homeHref} className="flex items-center gap-2.5 group shrink-0" title="Ir a mi Dashboard">
+                  <div className="relative w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-600 via-blue-600 to-emerald-500 flex items-center justify-center shadow-lg shadow-blue-500/25 group-hover:shadow-blue-500/40 transition-shadow">
+                    <GraduationCap className="w-5 h-5 text-white" />
+                    <div className="absolute inset-0 rounded-xl ring-2 ring-white/20" />
+                  </div>
+                  <div>
+                    <div className="text-sm font-black tracking-tight text-slate-900 dark:text-white">
+                      Cole<span className="text-emerald-500">Sistema</span>
+                      <span className="text-slate-400 font-semibold text-xs ml-1 hidden xs:inline">Mini</span>
+                    </div>
+                    <div className="text-[10px] text-slate-400 font-medium -mt-0.5 hidden sm:block">
+                      Gestión Escolar & Asistencia QR
+                    </div>
+                  </div>
+                </Link>
+              );
+            })()}
           </div>
 
           {/* Center: Quick QR Reader Button for High Visibility */}

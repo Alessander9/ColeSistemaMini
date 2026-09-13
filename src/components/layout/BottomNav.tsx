@@ -55,7 +55,6 @@ export function BottomNav() {
 
   const asistenciaItems: BottomNavItem[] = [
     { href: '/asistencia', label: 'Terminal QR', icon: QrCode, badge: 'Live' },
-    { href: '/admin/estudiantes', label: 'Padrón', icon: Users },
   ];
 
   let items = adminItems;

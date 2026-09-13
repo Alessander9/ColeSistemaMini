@@ -432,11 +432,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
   };
 
-  const switchRole = (role: UserRole) => {
-    const user = users.find(u => u.rol === role);
-    if (user) {
-      setCurrentUser(user);
-    }
+  const switchRole = (_targetRole: UserRole) => {
+    // Bloqueo de seguridad: No se permite cambiar de rol arbitrariamente desde los dashboards.
+    // Para ingresar con otro rol, se debe cerrar sesión e iniciar con las credenciales correspondientes.
+    console.warn('[Security RBAC] El cambio directo de rol está bloqueado. Debe autenticarse formalmente.');
   };
 
   const addNotification = (notif: Omit<AppNotification, 'id' | 'created_at' | 'leido'>) => {

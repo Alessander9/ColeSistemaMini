@@ -56,28 +56,34 @@ export async function middleware(request: NextRequest) {
   }
 
   const role = userRole || 'admin';
+  const roleDashboardMap: Record<string, string> = {
+    admin: '/admin',
+    docente: '/docente',
+    estudiante: '/estudiante',
+    asistencia: '/asistencia',
+  };
 
-  // 4. Control de Acceso Basado en Roles (RBAC)
+  // 4. Redirección de la raíz '/' al dashboard del rol activo
+  if (pathname === '/') {
+    const targetDashboard = roleDashboardMap[role] || '/login';
+    return NextResponse.redirect(new URL(targetDashboard, request.url));
+  }
+
+  // 5. Control de Acceso Estricto Basado en Roles (RBAC) - Bloqueo de Intercambio
   if (pathname.startsWith('/admin') && role !== 'admin') {
-    // Redirigir al portal que le corresponde al usuario
-    const redirectMap: Record<string, string> = {
-      docente: '/docente',
-      estudiante: '/estudiante',
-      asistencia: '/asistencia',
-    };
-    return NextResponse.redirect(new URL(redirectMap[role] || '/login', request.url));
+    return NextResponse.redirect(new URL(roleDashboardMap[role] || '/login', request.url));
   }
 
-  if (pathname.startsWith('/docente') && role !== 'docente' && role !== 'admin') {
-    return NextResponse.redirect(new URL(role === 'estudiante' ? '/estudiante' : '/asistencia', request.url));
+  if (pathname.startsWith('/docente') && role !== 'docente') {
+    return NextResponse.redirect(new URL(roleDashboardMap[role] || '/login', request.url));
   }
 
-  if (pathname.startsWith('/estudiante') && role !== 'estudiante' && role !== 'admin') {
-    return NextResponse.redirect(new URL(role === 'docente' ? '/docente' : '/admin', request.url));
+  if (pathname.startsWith('/estudiante') && role !== 'estudiante') {
+    return NextResponse.redirect(new URL(roleDashboardMap[role] || '/login', request.url));
   }
 
-  if (pathname.startsWith('/asistencia') && role !== 'asistencia' && role !== 'admin') {
-    return NextResponse.redirect(new URL(role === 'docente' ? '/docente' : '/estudiante', request.url));
+  if (pathname.startsWith('/asistencia') && role !== 'asistencia') {
+    return NextResponse.redirect(new URL(roleDashboardMap[role] || '/login', request.url));
   }
 
   return response;

@@ -120,7 +120,6 @@ export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
       section: 'Control de Asistencia',
       items: [
         { href: '/asistencia', label: 'Terminal QR Móvil', icon: QrCode, badge: '● Live', badgeColor: 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400' },
-        { href: '/admin/estudiantes', label: 'Padrón de Alumnos', icon: Users },
       ]
     }
   ];
