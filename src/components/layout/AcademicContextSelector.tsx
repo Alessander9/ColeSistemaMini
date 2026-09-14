@@ -40,10 +40,9 @@ export function AcademicContextSelector() {
 
   const levels: { id: EducationalLevel | 'todos'; label: string; tag: string; color: string }[] = [
     { id: 'todos', label: 'Toda la Institución', tag: 'Global', color: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300' },
-    { id: 'inicial', label: 'Nivel Inicial', tag: '3–5 Años', color: 'bg-pink-500/10 text-pink-700 dark:text-pink-300 border-pink-500/20' },
-    { id: 'primaria', label: 'Nivel Primaria', tag: '1°–6° Grado', color: 'bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/20' },
-    { id: 'secundaria', label: 'Nivel Secundaria', tag: '1°–5° Año', color: 'bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-500/20' },
-    { id: 'preuniversitario', label: 'Preuniversitario', tag: 'Ciclos UNI / UNMSM', color: 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20' },
+    { id: 'inicial', label: '🧸 Nivel Inicial', tag: '3–5 Años', color: 'bg-pink-500/10 text-pink-700 dark:text-pink-300 border-pink-500/20' },
+    { id: 'primaria', label: '📚 Nivel Primaria', tag: '1°–6° Grado', color: 'bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/20' },
+    { id: 'secundaria', label: '🎓 Nivel Secundaria', tag: '1°–5° Año', color: 'bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-500/20' },
   ];
 
   const currentLevelConfig = levels.find(l => l.id === academicContext.nivel) || levels[0];
@@ -124,7 +123,7 @@ export function AcademicContextSelector() {
             )}
           </div>
 
-          {/* 1. Selector de Nivel Educativo (Inicial, Primaria, Secundaria, Preuni) */}
+          {/* 1. Selector de Nivel Educativo (Inicial, Primaria, Secundaria) */}
           <div className="mb-4">
             <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 block">
               1. Seleccionar Nivel Educativo

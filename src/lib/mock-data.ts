@@ -18,9 +18,11 @@ import {
   ScheduleSlot,
   DayOfWeek,
   ClassSessionLog,
-  PreuniExamSimulation,
-  PreuniRankingEntry,
-  ChildProfile
+  ChildProfile,
+  ParentProfile,
+  LMSModule,
+  SystemAlert,
+  AuditLogEntry
 } from '@/types';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -144,6 +146,32 @@ export const MOCK_USERS: UserProfile[] = [
     activo: true,
   },
 
+  // ── Apoderados / Padres de Familia ──
+  {
+    id: 'user-apoderado-1',
+    rol: 'apoderado',
+    nombres: 'Roberto Carlos',
+    apellidos: 'Pérez Ramos',
+    dni: '33445566',
+    email: 'rperez@gmail.com',
+    telefono: '988112233',
+    cargo: 'Padre de Familia / Apoderado',
+    avatar_url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
+    activo: true,
+  },
+  {
+    id: 'user-apoderado-2',
+    rol: 'apoderado',
+    nombres: 'Claudia Elena',
+    apellidos: 'Mendoza Benítez',
+    dni: '33556677',
+    email: 'cmendoza.b@gmail.com',
+    telefono: '977223344',
+    cargo: 'Madre de Familia / Apoderada',
+    avatar_url: 'https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=150&auto=format&fit=crop&q=80',
+    activo: true,
+  },
+
   // ── Alumnos / Estudiantes Matriculados ──
   {
     id: 'user-alumno-1',
@@ -255,7 +283,7 @@ export const MOCK_EVALUATION_PERIODS: EvaluationPeriod[] = [
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
-// GRADOS & CICLOS EDUCATIVOS (INICIAL + PRIMARIA + SECUNDARIA + PREUNIVERSITARIO)
+// GRADOS & CICLOS EDUCATIVOS (INICIAL + PRIMARIA + SECUNDARIA)
 // ─────────────────────────────────────────────────────────────────────────────
 export const MOCK_GRADES: GradeLevel[] = [
   // Inicial
@@ -275,10 +303,6 @@ export const MOCK_GRADES: GradeLevel[] = [
   { id: 'grade-sec-3', nivel: 'secundaria', nombre: '3° de Secundaria', numero_grado: 3 },
   { id: 'grade-sec-4', nivel: 'secundaria', nombre: '4° de Secundaria', numero_grado: 4 },
   { id: 'grade-sec-5', nivel: 'secundaria', nombre: '5° de Secundaria', numero_grado: 5 },
-  // Preuniversitario
-  { id: 'grade-pre-anual', nivel: 'preuniversitario', nombre: 'Ciclo Anual Regular', numero_grado: 1 },
-  { id: 'grade-pre-semestral', nivel: 'preuniversitario', nombre: 'Ciclo Semestral UNI / UNMSM', numero_grado: 2 },
-  { id: 'grade-pre-intensivo', nivel: 'preuniversitario', nombre: 'Ciclo Intensivo / Verano', numero_grado: 3 },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -316,13 +340,6 @@ export const MOCK_SECTIONS: Section[] = [
   { id: 'sec-4sec-b', grado_id: 'grade-sec-4', letra: 'B', capacidad_maxima: 35, grado: MOCK_GRADES[12] },
   { id: 'sec-5sec-a', grado_id: 'grade-sec-5', letra: 'A', capacidad_maxima: 35, grado: MOCK_GRADES[13] },
   { id: 'sec-5sec-b', grado_id: 'grade-sec-5', letra: 'B', capacidad_maxima: 35, grado: MOCK_GRADES[13] },
-  // Preuniversitario
-  { id: 'sec-pre-anual-a', grado_id: 'grade-pre-anual', letra: 'A', capacidad_maxima: 45, grado: MOCK_GRADES[14] },
-  { id: 'sec-pre-anual-b', grado_id: 'grade-pre-anual', letra: 'B', capacidad_maxima: 45, grado: MOCK_GRADES[14] },
-  { id: 'sec-pre-sem-a', grado_id: 'grade-pre-semestral', letra: 'A', capacidad_maxima: 50, grado: MOCK_GRADES[15] },
-  { id: 'sec-pre-sem-b', grado_id: 'grade-pre-semestral', letra: 'B', capacidad_maxima: 50, grado: MOCK_GRADES[15] },
-  { id: 'sec-pre-int-a', grado_id: 'grade-pre-intensivo', letra: 'A', capacidad_maxima: 40, grado: MOCK_GRADES[16] },
-  { id: 'sec-pre-int-b', grado_id: 'grade-pre-intensivo', letra: 'B', capacidad_maxima: 40, grado: MOCK_GRADES[16] },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1852,77 +1869,6 @@ export const MOCK_GRADE_LEVELS: GradeLevel[] = MOCK_GRADES;
 export const MOCK_TEACHERS: UserProfile[] = MOCK_USERS.filter(u => u.rol === 'docente');
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PREUNIVERSITARIO: SIMULACROS DE ADMISIÓN
-// ─────────────────────────────────────────────────────────────────────────────
-export const MOCK_SIMULACROS: PreuniExamSimulation[] = [
-  {
-    id: 'sim-1',
-    titulo: 'Simulacro General Tipo UNI - Fase 1 (Ciencias & Aptitud)',
-    universidad: 'UNI',
-    fecha: '2026-09-12',
-    preguntas_totales: 100,
-    puntaje_maximo: 500,
-    puntaje_obtenido: 412.5,
-    puesto_ranking: 4,
-    total_participantes: 185,
-    percentil: 97.8,
-    carrera_objetivo: 'Ingeniería de Sistemas',
-    areas: [
-      { nombre: 'Matemática (Aritmética/Álgebra/Geometría/Trigonometría)', aciertos: 34, errores: 4, blancos: 2, puntaje: 162.0 },
-      { nombre: 'Física y Química', aciertos: 26, errores: 3, blancos: 1, puntaje: 125.5 },
-      { nombre: 'Aptitud Académica & Humanidades', aciertos: 28, errores: 2, blancos: 0, puntaje: 125.0 },
-    ],
-  },
-  {
-    id: 'sim-2',
-    titulo: 'Simulacro Especial UNMSM Decana de América (Área A: Ciencias de la Salud)',
-    universidad: 'San Marcos (UNMSM)',
-    fecha: '2026-08-28',
-    preguntas_totales: 100,
-    puntaje_maximo: 2000,
-    puntaje_obtenido: 1684.25,
-    puesto_ranking: 8,
-    total_participantes: 240,
-    percentil: 96.6,
-    carrera_objetivo: 'Medicina Humana',
-    areas: [
-      { nombre: 'Habilidad Verbal & Razonamiento Matemático', aciertos: 28, errores: 2, blancos: 0, puntaje: 540.0 },
-      { nombre: 'Biología, Anatomía & Química', aciertos: 32, errores: 3, blancos: 1, puntaje: 615.5 },
-      { nombre: 'Matemática, Física & Humanidades', aciertos: 27, errores: 4, blancos: 3, puntaje: 528.75 },
-    ],
-  },
-  {
-    id: 'sim-3',
-    titulo: 'Simulacro PUCP Talento - Primera Opción',
-    universidad: 'Católica (PUCP)',
-    fecha: '2026-07-20',
-    preguntas_totales: 120,
-    puntaje_maximo: 1000,
-    puntaje_obtenido: 845.0,
-    puesto_ranking: 3,
-    total_participantes: 150,
-    percentil: 98.0,
-    carrera_objetivo: 'Ingeniería Industrial',
-    areas: [
-      { nombre: 'Lectura Crítica & Redacción', aciertos: 44, errores: 4, blancos: 2, puntaje: 380.0 },
-      { nombre: 'Matemática & Ciencias', aciertos: 58, errores: 6, blancos: 6, puntaje: 465.0 },
-    ],
-  },
-];
-
-// ─────────────────────────────────────────────────────────────────────────────
-// PREUNIVERSITARIO: CUADRO DE MÉRITO & RANKING INSTITUCIONAL
-// ─────────────────────────────────────────────────────────────────────────────
-export const MOCK_PREUNI_RANKINGS: PreuniRankingEntry[] = [
-  { puesto: 1, estudiante_id: 'student-pre-1', nombre: 'Franco David Huamán Ramos', codigo: 'PRE-2026-012', carrera_objetivo: 'Ing. Mecatrónica (UNI)', puntaje_total: 445.8, puntaje_maximo: 500, tendencia: 'up', aula: 'Aula UNI A' },
-  { puesto: 2, estudiante_id: 'student-pre-2', nombre: 'Valeria Nicole Quispe Soto', codigo: 'PRE-2026-004', carrera_objetivo: 'Medicina Humana (UNMSM)', puntaje_total: 438.2, puntaje_maximo: 500, tendencia: 'up', aula: 'Aula San Marcos B' },
-  { puesto: 3, estudiante_id: 'student-pre-3', nombre: 'Rodrigo Gonzalo Mendoza Lara', codigo: 'PRE-2026-021', carrera_objetivo: 'Ing. Industrial (PUCP)', puntaje_total: 425.0, puntaje_maximo: 500, tendencia: 'equal', aula: 'Aula UNI A' },
-  { puesto: 4, estudiante_id: 'student-8', nombre: 'Gabriel Alonso Medina Cruz', codigo: 'EST-2026-008', carrera_objetivo: 'Ing. de Sistemas (UNI)', puntaje_total: 412.5, puntaje_maximo: 500, tendencia: 'up', aula: 'Aula UNI A' },
-  { puesto: 5, estudiante_id: 'student-pre-5', nombre: 'Andrea Camila Benavides Prado', codigo: 'PRE-2026-033', carrera_objetivo: 'Derecho (UNMSM)', puntaje_total: 405.0, puntaje_maximo: 500, tendencia: 'down', aula: 'Aula San Marcos B' },
-  { puesto: 6, estudiante_id: 'student-pre-6', nombre: 'Diego Alejandro Vargas Ponce', codigo: 'PRE-2026-015', carrera_objetivo: 'Economía (PUCP)', puntaje_total: 398.4, puntaje_maximo: 500, tendencia: 'up', aula: 'Aula Católica C' },
-];
-
-// ─────────────────────────────────────────────────────────────────────────────
 // APODERADOS: HIJOS MATRICULADOS
 // ─────────────────────────────────────────────────────────────────────────────
 export const MOCK_CHILDREN: ChildProfile[] = [
@@ -1930,15 +1876,16 @@ export const MOCK_CHILDREN: ChildProfile[] = [
     id: 'child-1',
     estudiante_id: 'student-1',
     nombre: 'Mateo Alejandro',
-    apellidos: 'Silva Mendoza',
+    apellidos: 'Silva Quispe',
     nivel: 'primaria',
     grado_nombre: '3° de Primaria',
     seccion_letra: 'A',
     avatar_url: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150&auto=format&fit=crop&q=80',
     promedio_letra: 'AD',
-    promedio_score: 3.8,
+    promedio_score: 18.5,
     asistencia_porcentaje: 98,
     tareas_pendientes: 1,
+    proximas_evaluaciones: 2,
   },
   {
     id: 'child-2',
@@ -1950,23 +1897,213 @@ export const MOCK_CHILDREN: ChildProfile[] = [
     seccion_letra: 'A',
     avatar_url: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80',
     promedio_letra: 'A',
-    promedio_score: 3.2,
+    promedio_score: 16.0,
     asistencia_porcentaje: 95,
     tareas_pendientes: 0,
+    proximas_evaluaciones: 1,
   },
   {
     id: 'child-3',
     estudiante_id: 'student-8',
     nombre: 'Gabriel Alonso',
     apellidos: 'Medina Cruz',
-    nivel: 'preuniversitario',
-    grado_nombre: 'Ciclo Anual Regular',
+    nivel: 'secundaria',
+    grado_nombre: '5° de Secundaria',
     seccion_letra: 'A',
     avatar_url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
     promedio_letra: 'AD',
-    promedio_score: 4.0,
+    promedio_score: 19.0,
     asistencia_porcentaje: 100,
     tareas_pendientes: 2,
+    proximas_evaluaciones: 3,
+  },
+];
+
+export const MOCK_PARENTS: ParentProfile[] = [
+  {
+    id: 'parent-1',
+    user_id: 'user-apoderado-1',
+    nombres: 'Roberto Carlos',
+    apellidos: 'Pérez Ramos',
+    dni: '33445566',
+    email: 'rperez@gmail.com',
+    telefono: '988112233',
+    direccion: 'Av. Las Palmeras 450, Lima',
+    ocupacion: 'Ingeniero de Software',
+    hijos_ids: ['student-1', 'student-8'],
+  },
+  {
+    id: 'parent-2',
+    user_id: 'user-apoderado-2',
+    nombres: 'Claudia Elena',
+    apellidos: 'Mendoza Benítez',
+    dni: '33556677',
+    email: 'cmendoza.b@gmail.com',
+    telefono: '977223344',
+    direccion: 'Jr. Los Cedros 120, Lima',
+    ocupacion: 'Contadora Pública',
+    hijos_ids: ['student-2'],
+  },
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LMS: MÓDULOS DE APRENDIZAJE Y AULA VIRTUAL
+// ─────────────────────────────────────────────────────────────────────────────
+export const MOCK_LMS_MODULES: LMSModule[] = [
+  {
+    id: 'mod-mat-1',
+    curso_id: 'course-mat',
+    seccion_id: 'sec-3pri-a',
+    titulo: 'Módulo 1: Sistemas de Numeración y Operaciones Básicas',
+    descripcion: 'Fundamentos de cálculo mental, adición, sustracción y resolución de problemas cotidianos.',
+    orden: 1,
+    contenidos: [
+      { id: 'cnt-mat-1', modulo_id: 'mod-mat-1', titulo: 'Introducción al Valor Posicional (Video Explicativo)', tipo: 'video', duracion_estimada: '15 min', orden: 1 },
+      { id: 'cnt-mat-2', modulo_id: 'mod-mat-1', titulo: 'Guía Práctica de Fracciones y Decimales (PDF)', tipo: 'documento', duracion_estimada: '25 min', orden: 2 },
+      { id: 'cnt-mat-3', modulo_id: 'mod-mat-1', titulo: 'Taller Interactivo de Resolución de Problemas', tipo: 'actividad' as any, duracion_estimada: '40 min', orden: 3 },
+      { id: 'cnt-mat-4', modulo_id: 'mod-mat-1', titulo: 'Cuestionario Rápido de Comprobación I', tipo: 'cuestionario', duracion_estimada: '20 min', orden: 4 },
+    ],
+  },
+  {
+    id: 'mod-mat-2',
+    curso_id: 'course-mat',
+    seccion_id: 'sec-3pri-a',
+    titulo: 'Módulo 2: Geometría Plana y Medición Espacial',
+    descripcion: 'Reconocimiento de figuras geométricas, cálculo de perímetros y áreas en el plano.',
+    orden: 2,
+    contenidos: [
+      { id: 'cnt-mat-5', modulo_id: 'mod-mat-2', titulo: 'Polígonos y Clasificación de Triángulos', tipo: 'video', duracion_estimada: '20 min', orden: 1 },
+      { id: 'cnt-mat-6', modulo_id: 'mod-mat-2', titulo: 'Ficha de Ejercicios: Perímetros y Áreas', tipo: 'documento', duracion_estimada: '30 min', orden: 2 },
+      { id: 'cnt-mat-7', modulo_id: 'mod-mat-2', titulo: 'Actividad Evaluada de Geometría Creativa', tipo: 'tarea', duracion_estimada: '45 min', orden: 3 },
+    ],
+  },
+  {
+    id: 'mod-cta-1',
+    curso_id: 'course-cta',
+    seccion_id: 'sec-3pri-a',
+    titulo: 'Módulo 1: Ecosistemas y Biodiversidad Peruana',
+    descripcion: 'Exploración de la flora, fauna y cadenas tróficas en las regiones naturales del Perú.',
+    orden: 1,
+    contenidos: [
+      { id: 'cnt-cta-1', modulo_id: 'mod-cta-1', titulo: 'Documental: Los Ecosistemas de la Costa, Sierra y Selva', tipo: 'video', duracion_estimada: '25 min', orden: 1 },
+      { id: 'cnt-cta-2', modulo_id: 'mod-cta-1', titulo: 'Lectura Guiada: Adaptación de Especies', tipo: 'lectura', duracion_estimada: '20 min', orden: 2 },
+      { id: 'cnt-cta-3', modulo_id: 'mod-cta-1', titulo: 'Laboratorio Virtual de Cadenas Alimentarias', tipo: 'actividad' as any, duracion_estimada: '35 min', orden: 3 },
+    ],
+  },
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CENTRO DE ALERTAS PRIORITARIAS DEL SISTEMA
+// ─────────────────────────────────────────────────────────────────────────────
+export const MOCK_SYSTEM_ALERTS: SystemAlert[] = [
+  {
+    id: 'alert-1',
+    prioridad: 'critica',
+    categoria: 'academico',
+    titulo: 'Riesgo Académico: 3 estudiantes con notas bajas en Matemática',
+    descripcion: 'Se identificó que 3 estudiantes de 3° de Secundaria A tienen promedio inferior a 11 en el II Bimestre.',
+    nivel: 'secundaria',
+    grado_id: 'grade-sec-3',
+    seccion_id: 'sec-3sec-a',
+    estado: 'nueva',
+    accion_label: 'Revisar Notas del Salón',
+    accion_url: '/admin/notas-salon',
+    created_at: '2026-09-14T08:15:00Z',
+  },
+  {
+    id: 'alert-2',
+    prioridad: 'alta',
+    categoria: 'asistencia',
+    titulo: 'Baja Asistencia detectada en 2° de Primaria B',
+    descripcion: 'La sección presenta 3 inasistencias consecutivas sin justificar en los últimos 4 días.',
+    nivel: 'primaria',
+    grado_id: 'grade-pri-2',
+    seccion_id: 'sec-2pri-b',
+    estado: 'en_revision',
+    accion_label: 'Ver Registro de Asistencia',
+    accion_url: '/admin/reportes',
+    created_at: '2026-09-13T10:30:00Z',
+  },
+  {
+    id: 'alert-3',
+    prioridad: 'media',
+    categoria: 'tareas',
+    titulo: '74 Tareas pendientes de entrega en Nivel Secundaria',
+    descripcion: 'La fecha límite de la Tarea 2 de Ciencia y Tecnología vence en 24 horas.',
+    nivel: 'secundaria',
+    estado: 'nueva',
+    accion_label: 'Ver Tareas',
+    accion_url: '/docente/tareas',
+    created_at: '2026-09-12T14:00:00Z',
+  },
+  {
+    id: 'alert-4',
+    prioridad: 'baja',
+    categoria: 'notas',
+    titulo: 'Cierre del II Bimestre Programado en 7 días',
+    descripcion: 'Se recuerda a los docentes completar el registro de competencias pendientes.',
+    estado: 'nueva',
+    accion_label: 'Monitorear Calificaciones',
+    accion_url: '/admin/academico',
+    created_at: '2026-09-11T09:00:00Z',
+  },
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// REGISTRO DE AUDITORÍA Y TRAZABILIDAD (AUDIT LOGS)
+// ─────────────────────────────────────────────────────────────────────────────
+export const MOCK_AUDIT_LOGS: AuditLogEntry[] = [
+  {
+    id: 'log-1',
+    usuario_id: 'user-admin-1',
+    usuario_nombre: 'María Elena Vargas (Directora)',
+    rol: 'admin',
+    accion: 'CREACIÓN_MATRÍCULA',
+    modulo: 'Matrículas',
+    detalle: 'Matriculó al estudiante Mateo Alejandro Silva Quispe en 3° de Primaria A (Año 2026)',
+    valor_anterior: 'No registrado',
+    valor_nuevo: 'Matrícula Activa #MAT-2026-001',
+    timestamp: '2026-09-14 08:30:12',
+    ip: '192.168.1.45',
+  },
+  {
+    id: 'log-2',
+    usuario_id: 'user-docente-1',
+    usuario_nombre: 'Prof. Carlos Mendoza Rojas',
+    rol: 'docente',
+    accion: 'ACTUALIZACIÓN_NOTAS',
+    modulo: 'Calificaciones',
+    detalle: 'Actualizó calificaciones de la Competencia C1 en Matemática - 3° Primaria A',
+    valor_anterior: 'Nota: A (15)',
+    valor_nuevo: 'Nota: AD (19)',
+    timestamp: '2026-09-14 07:45:20',
+    ip: '192.168.1.102',
+  },
+  {
+    id: 'log-3',
+    usuario_id: 'user-asistencia-1',
+    usuario_nombre: 'Héctor Salazar (Portería)',
+    rol: 'asistencia',
+    accion: 'MARCACIÓN_QR',
+    modulo: 'Control de Asistencia',
+    detalle: 'Lectura de carnet QR de Sofía Lucía Romero Benítez. Estado: A TIEMPO',
+    valor_anterior: 'Sin registro',
+    valor_nuevo: 'Presente - 07:42 AM',
+    timestamp: '2026-09-14 07:42:05',
+    ip: '192.168.1.80',
+  },
+  {
+    id: 'log-4',
+    usuario_id: 'user-admin-1',
+    usuario_nombre: 'María Elena Vargas (Directora)',
+    rol: 'admin',
+    accion: 'CIERRE_PERIODO',
+    modulo: 'Académico',
+    detalle: 'Cierre oficial del I Bimestre 2026 y bloqueo de edición de notas ordinarias',
+    valor_anterior: 'Abierto',
+    valor_nuevo: 'Cerrado',
+    timestamp: '2026-05-15 18:00:00',
+    ip: '192.168.1.45',
   },
 ];
 

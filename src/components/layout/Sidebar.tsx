@@ -10,7 +10,6 @@ import {
   UserPlus, 
   BookOpen, 
   QrCode, 
-  ClipboardCheck, 
   Award, 
   FileText, 
   Calendar, 
@@ -20,7 +19,15 @@ import {
   ChevronDown,
   BarChart3, 
   School,
-  LucideIcon 
+  Layers,
+  Bell,
+  Settings,
+  ShieldCheck,
+  CheckSquare,
+  Clock,
+  HelpCircle,
+  LucideIcon,
+  HeartHandshake
 } from 'lucide-react';
 
 interface NavItem {
@@ -48,7 +55,6 @@ export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
   const [isInicialOpen, setIsInicialOpen] = useState(false);
   const [isPrimariaOpen, setIsPrimariaOpen] = useState(true);
   const [isSecundariaOpen, setIsSecundariaOpen] = useState(false);
-  const [isPreuniOpen, setIsPreuniOpen] = useState(false);
   const [openGradeId, setOpenGradeId] = useState<string | null>('grade-pri-3');
 
   const handleLinkClick = () => {
@@ -57,489 +63,348 @@ export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
     }
   };
 
+  // 10 Secciones Estructuradas para Administrador
   const adminNav: NavSection[] = [
     {
-      section: 'Principal',
+      section: 'INICIO',
       items: [
-        { href: '/admin', label: 'Dashboard Institucional', icon: LayoutDashboard },
-        { href: '/admin/academico', label: 'Explorador Escolar', icon: School, badge: '4 Niveles', badgeColor: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400' },
+        { href: '/admin', label: 'Dashboard General', icon: LayoutDashboard },
       ]
     },
     {
-      section: 'Gestión Académica',
+      section: 'ACADÉMICO',
       items: [
-        { href: '/admin/horarios', label: 'Horarios & Asignación', icon: Calendar, badge: 'Anti-cruce' },
-        { href: '/admin/notas-salon', label: 'Notas & Competencias', icon: BarChart3, badge: 'CNEB' },
-        { href: '/admin/reportes', label: 'Reportes & Actas', icon: FileText },
+        { href: '/admin/academico', label: 'Estructura & Niveles', icon: School, badge: '3 Niveles' },
+        { href: '/admin/horarios', label: 'Malla de Horarios', icon: Calendar, badge: 'Anti-cruce' },
       ]
     },
     {
-      section: 'Comunidad Escolar',
+      section: 'ESTUDIANTES',
       items: [
-        { href: '/admin/estudiantes', label: 'Estudiantes & QR', icon: Users, badge: 'Padrón' },
-        { href: '/admin/docentes', label: 'Plana Docente', icon: GraduationCap },
-        { href: '/admin/matriculas', label: 'Matrículas 2026', icon: UserPlus },
+        { href: '/admin/estudiantes', label: 'Directorio Estudiantil', icon: Users },
+        { href: '/admin/matriculas', label: 'Matrículas (Wizard)', icon: UserPlus, badge: '2026' },
+      ]
+    },
+    {
+      section: 'DOCENTES',
+      items: [
+        { href: '/admin/docentes', label: 'Plana Docente & Tutorías', icon: GraduationCap },
+      ]
+    },
+    {
+      section: 'EVALUACIÓN',
+      items: [
+        { href: '/admin/notas-salon', label: 'Consolidado de Calificaciones', icon: Award, badge: 'CNEB' },
+      ]
+    },
+    {
+      section: 'ASISTENCIA & QR',
+      items: [
+        { href: '/asistencia', label: 'Terminal Kiosco QR', icon: QrCode, badge: '● Live', badgeColor: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
+      ]
+    },
+    {
+      section: 'LMS & AULA VIRTUAL',
+      items: [
+        { href: '/docente/tareas', label: 'Tareas & Actividades', icon: FileText },
+        { href: '/docente/evaluaciones', label: 'Evaluaciones Programadas', icon: CheckSquare },
+      ]
+    },
+    {
+      section: 'REPORTES & ANALÍTICA',
+      items: [
+        { href: '/admin/reportes', label: 'Reportes & Actas Oficiales', icon: BarChart3 },
+      ]
+    },
+    {
+      section: 'AUDITORÍA & ALERTAS',
+      items: [
+        { href: '/admin', label: 'Centro de Alertas & Logs', icon: Bell, badge: 'KPIs' },
       ]
     }
   ];
 
   const docenteNav: NavSection[] = [
     {
-      section: 'Principal',
+      section: 'INICIO',
       items: [
         { href: '/docente', label: 'Mi Panel Diario', icon: LayoutDashboard },
-        { href: '/docente/asistencia', label: 'Asistencia QR / Aula', icon: QrCode, badge: '● Live', badgeColor: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
+        { href: '/docente/asistencia', label: 'Pase de Asistencia Rápido', icon: QrCode, badge: '● Live', badgeColor: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
       ]
     },
     {
-      section: 'Gestión Pedagógica',
+      section: 'GESTIÓN PEDAGÓGICA',
       items: [
-        { href: '/docente/horario', label: 'Mi Malla Horaria', icon: Calendar, badge: 'Semanal' },
-        { href: '/docente/notas', label: 'Calificaciones AD–A–B–C', icon: Award },
+        { href: '/docente/horario', label: 'Mi Horario Semanal', icon: Calendar },
+        { href: '/docente/notas', label: 'Registro de Notas (Spreadsheet)', icon: Award, badge: '4 Bim' },
+      ]
+    },
+    {
+      section: 'LMS & TAREAS',
+      items: [
         { href: '/docente/tareas', label: 'Tareas & Entregas', icon: FileText },
-        { href: '/docente/evaluaciones', label: 'Evaluaciones & Exámenes', icon: Calendar },
+        { href: '/docente/evaluaciones', label: 'Exámenes & Prácticas', icon: CheckSquare },
       ]
     }
   ];
 
   const estudianteNav: NavSection[] = [
     {
-      section: 'Mi Portal Escolar',
+      section: 'INICIO',
       items: [
-        { href: '/estudiante', label: 'Mi Dashboard', icon: LayoutDashboard },
-        { href: '/estudiante/carnet-qr', label: 'Carnet Digital QR', icon: QrCode, badge: 'Oficial' },
+        { href: '/estudiante', label: 'Mi Panel de Aprendizaje', icon: LayoutDashboard },
       ]
     },
     {
-      section: 'Avance Académico',
+      section: 'RENDIMIENTO ACADÉMICO',
       items: [
-        { href: '/estudiante/horario', label: 'Horario de Clases', icon: Calendar },
-        { href: '/estudiante/libreta-notas', label: 'Libreta de Calificaciones', icon: Award },
-        { href: '/estudiante/asistencias', label: 'Registro de Asistencias', icon: ClipboardCheck },
-        { href: '/estudiante/tareas', label: 'Mis Tareas', icon: FileText },
-        { href: '/estudiante/evaluaciones', label: 'Exámenes & Simulacros', icon: Calendar },
+        { href: '/estudiante/libreta-notas', label: 'Libreta Oficial de Notas', icon: Award, badge: 'PDF' },
+        { href: '/estudiante/asistencias', label: 'Historial de Asistencia', icon: Clock },
+        { href: '/estudiante/horario', label: 'Mi Horario Escolar', icon: Calendar },
+      ]
+    },
+    {
+      section: 'LMS & DEBERES',
+      items: [
+        { href: '/estudiante/tareas', label: 'Mis Tareas & Entregas', icon: FileText },
+        { href: '/estudiante/evaluaciones', label: 'Calendario de Exámenes', icon: CheckSquare },
+      ]
+    },
+    {
+      section: 'CREDENCIAL DIGITAL',
+      items: [
+        { href: '/estudiante/carnet-qr', label: 'Mi Carnet con Código QR', icon: QrCode },
+      ]
+    }
+  ];
+
+  const apoderadoNav: NavSection[] = [
+    {
+      section: 'PANEL DE FAMILIA',
+      items: [
+        { href: '/apoderado', label: 'Seguimiento de Hijos', icon: HeartHandshake, badge: 'Multi-Hijo' },
+      ]
+    },
+    {
+      section: 'REPORTES & CONSULTAS',
+      items: [
+        { href: '/estudiante/libreta-notas', label: 'Libreta de Notas del Hijo', icon: Award },
+        { href: '/estudiante/asistencias', label: 'Asistencia y Puntualidad', icon: Clock },
+        { href: '/estudiante/tareas', label: 'Tareas y Deberes', icon: FileText },
       ]
     }
   ];
 
   const asistenciaNav: NavSection[] = [
     {
-      section: 'Control de Acceso',
+      section: 'CONTROL DE INGRESO',
       items: [
-        { href: '/asistencia', label: 'Terminal QR Portería', icon: QrCode, badge: '● Live', badgeColor: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
+        { href: '/asistencia', label: 'Terminal Kiosco QR', icon: QrCode, badge: 'Portería' },
+        { href: '/admin/reportes', label: 'Reporte de Asistencias', icon: FileText },
       ]
     }
   ];
 
-  let currentNav = adminNav;
-  let roleConfig = {
-    label: 'Dirección & Administración',
-    color: 'from-indigo-600 to-purple-600',
-    lightBg: 'bg-indigo-50 dark:bg-indigo-950/30',
-    lightText: 'text-indigo-700 dark:text-indigo-300',
-    dot: 'bg-indigo-500',
-  };
-
-  if (currentUser.rol === 'docente') {
-    currentNav = docenteNav;
-    roleConfig = {
-      label: 'Docente Especialista',
-      color: 'from-blue-600 to-indigo-600',
-      lightBg: 'bg-blue-50 dark:bg-blue-950/30',
-      lightText: 'text-blue-700 dark:text-blue-300',
-      dot: 'bg-blue-500',
-    };
-  } else if (currentUser.rol === 'estudiante') {
-    currentNav = estudianteNav;
-    roleConfig = {
-      label: 'Estudiante',
-      color: 'from-emerald-600 to-teal-600',
-      lightBg: 'bg-emerald-50 dark:bg-emerald-950/30',
-      lightText: 'text-emerald-700 dark:text-emerald-300',
-      dot: 'bg-emerald-500',
-    };
-  } else if (currentUser.rol === 'asistencia') {
-    currentNav = asistenciaNav;
-    roleConfig = {
-      label: 'Control de Puerta / QR',
-      color: 'from-amber-500 to-orange-600',
-      lightBg: 'bg-amber-50 dark:bg-amber-950/30',
-      lightText: 'text-amber-700 dark:text-amber-300',
-      dot: 'bg-amber-500',
-    };
-  }
+  const currentNav = 
+    currentUser?.rol === 'admin' ? adminNav :
+    currentUser?.rol === 'docente' ? docenteNav :
+    currentUser?.rol === 'apoderado' ? apoderadoNav :
+    currentUser?.rol === 'asistencia' ? asistenciaNav :
+    estudianteNav;
 
   const inicialGrades = gradeLevels.filter(g => g.nivel === 'inicial');
   const primariaGrades = gradeLevels.filter(g => g.nivel === 'primaria');
   const secundariaGrades = gradeLevels.filter(g => g.nivel === 'secundaria');
-  const preuniGrades = gradeLevels.filter(g => g.nivel === 'preuniversitario');
 
   return (
-    <aside className={
-      isMobileDrawer
-        ? "w-full h-full flex flex-col justify-between overflow-y-auto scrollbar-thin bg-white dark:bg-slate-950"
-        : "w-64 border-r border-slate-200/60 dark:border-slate-800/60 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl flex flex-col justify-between shrink-0 hidden md:flex overflow-y-auto max-h-screen scrollbar-thin"
-    }>
-      
-      {/* User Profile Card */}
-      <div className="p-4 space-y-1">
-        {isMobileDrawer && (
-          <div className="flex items-center justify-between pb-3 mb-2 border-b border-slate-100 dark:border-slate-800">
-            <span className="text-xs font-black uppercase tracking-wider text-slate-400">Menú Principal</span>
-            <button
-              onClick={onClose}
-              className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-            >
-              <span className="text-lg leading-none font-bold">✕</span>
-            </button>
-          </div>
-        )}
-
-        <div className="relative overflow-hidden rounded-2xl p-4 mb-4">
-          <div className={`absolute inset-0 bg-gradient-to-br ${roleConfig.color} opacity-10 dark:opacity-20 rounded-2xl`} />
-          <div className="relative z-10 flex items-center gap-3">
-            <div className="relative">
-              <img
-                src={currentUser.avatar_url || `https://ui-avatars.com/api/?name=${currentUser.nombres}&background=6366f1&color=fff&size=80`}
-                alt={currentUser.nombres}
-                className="w-10 h-10 rounded-xl object-cover ring-2 ring-white dark:ring-slate-800 shadow-md"
-              />
-              <span className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 ${roleConfig.dot} rounded-full border-2 border-white dark:border-slate-950`} />
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs font-extrabold text-slate-900 dark:text-white truncate">
-                {currentUser.nombres.split(' ')[0]} {currentUser.apellidos.split(' ')[0]}
-              </p>
-              <span className={`text-[10px] font-bold ${roleConfig.lightText}`}>
-                {roleConfig.label}
-              </span>
-            </div>
-          </div>
+    <aside className={`flex flex-col h-full bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 ${isMobileDrawer ? 'w-full' : 'w-72'} select-none`}>
+      {/* Header Institucional */}
+      <div className="flex items-center gap-3 px-5 py-5 border-b border-slate-100 dark:border-slate-800/80 shrink-0">
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-600 to-indigo-800 flex items-center justify-center text-white shadow-md shadow-indigo-500/20 font-black text-lg shrink-0">
+          CS
         </div>
-
-        {/* Standard Navigation */}
-        <nav className="space-y-4">
-          {currentNav.map((section) => (
-            <div key={section.section}>
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-600 px-3 mb-1">
-                {section.section}
-              </p>
-              <div className="space-y-0.5">
-                {section.items.map((item) => {
-                  const Icon = item.icon;
-                  const isActive = pathname === item.href;
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      onClick={handleLinkClick}
-                      className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 group ${
-                        isActive
-                          ? 'sidebar-active'
-                          : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/80 hover:text-slate-900 dark:hover:text-white'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300'} transition-colors`} />
-                        <span className="truncate">{item.label}</span>
-                      </div>
-                      {item.badge && (
-                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md shrink-0 ${
-                          item.badgeColor
-                            ? item.badgeColor
-                            : isActive
-                            ? 'bg-white/20 text-white'
-                            : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
-                        }`}>
-                          {item.badge}
-                        </span>
-                      )}
-                      {isActive && (
-                        <ChevronRight className="w-3 h-3 text-white/70 shrink-0" />
-                      )}
-                    </Link>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-
-          {/* ── Collapsible Academic Tree (Admin only) ── */}
-          {currentUser.rol === 'admin' && (
-            <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 space-y-2">
-              <div className="flex items-center justify-between px-3">
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
-                  Salones 2026
-                </span>
-                <Link 
-                  href="/admin/academico" 
-                  onClick={handleLinkClick}
-                  className="text-[9px] font-bold text-purple-600 dark:text-purple-400 hover:underline"
-                >
-                  Ver todo
-                </Link>
-              </div>
-
-              {/* Inicial Accordion */}
-              <div className="space-y-0.5">
-                <button
-                  type="button"
-                  onClick={() => setIsInicialOpen(!isInicialOpen)}
-                  className="w-full flex items-center justify-between px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors"
-                >
-                  <span className="flex items-center gap-1.5 text-pink-600 dark:text-pink-400">
-                    <span>🎨</span> Inicial (3–5 Años)
-                  </span>
-                  <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform ${isInicialOpen ? 'rotate-180' : ''}`} />
-                </button>
-
-                {isInicialOpen && (
-                  <div className="pl-3 space-y-0.5 border-l border-pink-200/60 dark:border-pink-900/40 ml-3">
-                    {inicialGrades.map(grade => {
-                      const gradeSections = sections.filter(s => s.grado_id === grade.id);
-                      const isGradeOpen = openGradeId === grade.id;
-
-                      return (
-                        <div key={grade.id}>
-                          <button
-                            type="button"
-                            onClick={() => setOpenGradeId(isGradeOpen ? null : grade.id)}
-                            className="w-full flex items-center justify-between px-2 py-1 text-[11px] font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-lg transition-colors"
-                          >
-                            <span>{grade.nombre}</span>
-                            <span className="text-[10px] text-slate-400">{isGradeOpen ? '▴' : '▾'}</span>
-                          </button>
-
-                          {isGradeOpen && (
-                            <div className="pl-3 py-1 flex items-center gap-1.5">
-                              {gradeSections.map(sec => {
-                                const isSecActive = pathname === `/admin/secciones/${sec.id}`;
-                                return (
-                                  <Link
-                                    key={sec.id}
-                                    href={`/admin/secciones/${sec.id}`}
-                                    onClick={handleLinkClick}
-                                    className={`px-2 py-0.5 rounded-md text-[10px] font-black transition-all ${
-                                      isSecActive
-                                        ? 'bg-pink-600 text-white shadow-sm'
-                                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-pink-100 hover:text-pink-700'
-                                    }`}
-                                  >
-                                    Aula &quot;{sec.letra}&quot;
-                                  </Link>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-
-              {/* Primaria Accordion */}
-              <div className="space-y-0.5">
-                <button
-                  type="button"
-                  onClick={() => setIsPrimariaOpen(!isPrimariaOpen)}
-                  className="w-full flex items-center justify-between px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors"
-                >
-                  <span className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400">
-                    <span>👦</span> Primaria (6 Grados)
-                  </span>
-                  <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform ${isPrimariaOpen ? 'rotate-180' : ''}`} />
-                </button>
-
-                {isPrimariaOpen && (
-                  <div className="pl-3 space-y-0.5 border-l border-blue-200/60 dark:border-blue-900/40 ml-3">
-                    {primariaGrades.map(grade => {
-                      const gradeSections = sections.filter(s => s.grado_id === grade.id);
-                      const isGradeOpen = openGradeId === grade.id;
-
-                      return (
-                        <div key={grade.id}>
-                          <button
-                            type="button"
-                            onClick={() => setOpenGradeId(isGradeOpen ? null : grade.id)}
-                            className="w-full flex items-center justify-between px-2 py-1 text-[11px] font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-lg transition-colors"
-                          >
-                            <span>{grade.nombre}</span>
-                            <span className="text-[10px] text-slate-400">{isGradeOpen ? '▴' : '▾'}</span>
-                          </button>
-
-                          {isGradeOpen && (
-                            <div className="pl-3 py-1 flex items-center gap-1.5">
-                              {gradeSections.map(sec => {
-                                const isSecActive = pathname === `/admin/secciones/${sec.id}`;
-                                return (
-                                  <Link
-                                    key={sec.id}
-                                    href={`/admin/secciones/${sec.id}`}
-                                    onClick={handleLinkClick}
-                                    className={`px-2.5 py-0.5 rounded-md text-[10px] font-black transition-all ${
-                                      isSecActive
-                                        ? 'bg-indigo-600 text-white shadow-sm'
-                                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-indigo-100 hover:text-indigo-700'
-                                    }`}
-                                  >
-                                    Sec &quot;{sec.letra}&quot;
-                                  </Link>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-
-              {/* Secundaria Accordion */}
-              <div className="space-y-0.5">
-                <button
-                  type="button"
-                  onClick={() => setIsSecundariaOpen(!isSecundariaOpen)}
-                  className="w-full flex items-center justify-between px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors"
-                >
-                  <span className="flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400">
-                    <span>🎓</span> Secundaria (5 Grados)
-                  </span>
-                  <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform ${isSecundariaOpen ? 'rotate-180' : ''}`} />
-                </button>
-
-                {isSecundariaOpen && (
-                  <div className="pl-3 space-y-0.5 border-l border-indigo-200/60 dark:border-indigo-900/40 ml-3">
-                    {secundariaGrades.map(grade => {
-                      const gradeSections = sections.filter(s => s.grado_id === grade.id);
-                      const isGradeOpen = openGradeId === grade.id;
-
-                      return (
-                        <div key={grade.id}>
-                          <button
-                            type="button"
-                            onClick={() => setOpenGradeId(isGradeOpen ? null : grade.id)}
-                            className="w-full flex items-center justify-between px-2 py-1 text-[11px] font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-lg transition-colors"
-                          >
-                            <span>{grade.nombre}</span>
-                            <span className="text-[10px] text-slate-400">{isGradeOpen ? '▴' : '▾'}</span>
-                          </button>
-
-                          {isGradeOpen && (
-                            <div className="pl-3 py-1 flex items-center gap-1.5">
-                              {gradeSections.map(sec => {
-                                const isSecActive = pathname === `/admin/secciones/${sec.id}`;
-                                return (
-                                  <Link
-                                    key={sec.id}
-                                    href={`/admin/secciones/${sec.id}`}
-                                    onClick={handleLinkClick}
-                                    className={`px-2.5 py-0.5 rounded-md text-[10px] font-black transition-all ${
-                                      isSecActive
-                                        ? 'bg-indigo-600 text-white shadow-sm'
-                                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-indigo-100 hover:text-indigo-700'
-                                    }`}
-                                  >
-                                    Sec &quot;{sec.letra}&quot;
-                                  </Link>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-
-              {/* Preuniversitario Accordion */}
-              <div className="space-y-0.5">
-                <button
-                  type="button"
-                  onClick={() => setIsPreuniOpen(!isPreuniOpen)}
-                  className="w-full flex items-center justify-between px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors"
-                >
-                  <span className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400">
-                    <span>🏛️</span> Preuniversitario
-                  </span>
-                  <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform ${isPreuniOpen ? 'rotate-180' : ''}`} />
-                </button>
-
-                {isPreuniOpen && (
-                  <div className="pl-3 space-y-0.5 border-l border-amber-200/60 dark:border-amber-900/40 ml-3">
-                    {preuniGrades.map(grade => {
-                      const gradeSections = sections.filter(s => s.grado_id === grade.id);
-                      const isGradeOpen = openGradeId === grade.id;
-
-                      return (
-                        <div key={grade.id}>
-                          <button
-                            type="button"
-                            onClick={() => setOpenGradeId(isGradeOpen ? null : grade.id)}
-                            className="w-full flex items-center justify-between px-2 py-1 text-[11px] font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-lg transition-colors"
-                          >
-                            <span>{grade.nombre}</span>
-                            <span className="text-[10px] text-slate-400">{isGradeOpen ? '▴' : '▾'}</span>
-                          </button>
-
-                          {isGradeOpen && (
-                            <div className="pl-3 py-1 flex items-center gap-1.5">
-                              {gradeSections.map(sec => {
-                                const isSecActive = pathname === `/admin/secciones/${sec.id}`;
-                                return (
-                                  <Link
-                                    key={sec.id}
-                                    href={`/admin/secciones/${sec.id}`}
-                                    onClick={handleLinkClick}
-                                    className={`px-2 py-0.5 rounded-md text-[10px] font-black transition-all ${
-                                      isSecActive
-                                        ? 'bg-amber-600 text-white shadow-sm'
-                                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-amber-100 hover:text-amber-700'
-                                    }`}
-                                  >
-                                    Aula &quot;{sec.letra}&quot;
-                                  </Link>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </nav>
+        <div className="min-w-0">
+          <h2 className="text-sm font-bold text-slate-900 dark:text-white leading-tight truncate">
+            ColeSistemaMini
+          </h2>
+          <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 truncate">
+            SaaS EdTech Multi-Nivel
+          </p>
+        </div>
       </div>
 
-      {/* Bottom: Grade Scale Info */}
-      <div className="p-4 pt-2">
-        <div className="p-3 rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 dark:from-slate-800 dark:to-slate-900 text-white border border-slate-700/50 shadow-xl">
-          <div className="flex items-center gap-2 mb-1.5">
-            <div className="w-5 h-5 rounded-lg bg-gradient-to-br from-emerald-400 to-blue-500 flex items-center justify-center shrink-0">
-              <Sparkles className="w-3 h-3 text-white" />
+      {/* Navigation Scroll Area */}
+      <div className="flex-1 overflow-y-auto px-3.5 py-4 space-y-6 custom-scrollbar">
+        {currentNav.map((sec, idx) => (
+          <div key={idx} className="space-y-1">
+            <h3 className="px-3 text-[10px] font-bold tracking-wider uppercase text-slate-400 dark:text-slate-500 mb-1.5">
+              {sec.section}
+            </h3>
+            <div className="space-y-0.5">
+              {sec.items.map((item) => {
+                const Icon = item.icon;
+                const isActive = pathname === item.href;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={handleLinkClick}
+                    className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all ${
+                      isActive
+                        ? 'bg-indigo-600 text-white font-semibold shadow-sm shadow-indigo-600/20'
+                        : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-slate-600'}`} />
+                      <span className="truncate">{item.label}</span>
+                    </div>
+                    {item.badge && (
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
+                        isActive
+                          ? 'bg-white/20 text-white'
+                          : item.badgeColor || 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
+                      }`}>
+                        {item.badge}
+                      </span>
+                    )}
+                  </Link>
+                );
+              })}
             </div>
-            <span className="text-[10px] font-bold text-white">Escala MINEDU CNEB</span>
           </div>
-          <div className="grid grid-cols-4 gap-1">
-            {[
-              { g: 'AD', c: 'bg-emerald-500' },
-              { g: 'A', c: 'bg-blue-500' },
-              { g: 'B', c: 'bg-amber-500' },
-              { g: 'C', c: 'bg-rose-500' },
-            ].map(({ g, c }) => (
-              <div key={g} className="text-center">
-                <div className={`${c} rounded-md py-0.5 text-[9px] font-black text-white`}>{g}</div>
-              </div>
-            ))}
+        ))}
+
+        {/* Explorador de Aulas por Nivel (Solo Admin) */}
+        {currentUser?.rol === 'admin' && (
+          <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 space-y-2">
+            <h3 className="px-3 text-[10px] font-bold tracking-wider uppercase text-slate-400 dark:text-slate-500">
+              SECCIONES POR NIVEL
+            </h3>
+
+            {/* Inicial Accordion */}
+            <div className="rounded-xl border border-slate-100 dark:border-slate-800 overflow-hidden bg-slate-50/50 dark:bg-slate-800/20">
+              <button
+                onClick={() => setIsInicialOpen(!isInicialOpen)}
+                className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/60"
+              >
+                <div className="flex items-center gap-2">
+                  <span>🧸</span> Inicial (3-5 Años)
+                </div>
+                <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${isInicialOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {isInicialOpen && (
+                <div className="p-2 space-y-1 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800">
+                  {inicialGrades.map(grade => {
+                    const gradeSections = sections.filter(s => s.grado_id === grade.id);
+                    return (
+                      <div key={grade.id} className="text-xs">
+                        <span className="text-[11px] font-medium text-slate-500 px-2 block py-0.5">{grade.nombre}:</span>
+                        <div className="flex flex-wrap gap-1 px-2 pb-1">
+                          {gradeSections.map(sec => (
+                            <Link
+                              key={sec.id}
+                              href={`/admin/secciones/${sec.id}`}
+                              onClick={handleLinkClick}
+                              className="px-2 py-0.5 text-[10px] font-bold rounded bg-slate-100 dark:bg-slate-800 hover:bg-indigo-100 dark:hover:bg-indigo-950/60 text-slate-700 dark:text-slate-300 hover:text-indigo-600 transition-colors"
+                            >
+                              Aula {sec.letra}
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Primaria Accordion */}
+            <div className="rounded-xl border border-slate-100 dark:border-slate-800 overflow-hidden bg-slate-50/50 dark:bg-slate-800/20">
+              <button
+                onClick={() => setIsPrimariaOpen(!isPrimariaOpen)}
+                className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/60"
+              >
+                <div className="flex items-center gap-2">
+                  <span>📚</span> Primaria (1°-6° Grado)
+                </div>
+                <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${isPrimariaOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {isPrimariaOpen && (
+                <div className="p-2 space-y-1 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800">
+                  {primariaGrades.map(grade => {
+                    const gradeSections = sections.filter(s => s.grado_id === grade.id);
+                    return (
+                      <div key={grade.id} className="text-xs">
+                        <span className="text-[11px] font-medium text-slate-500 px-2 block py-0.5">{grade.nombre}:</span>
+                        <div className="flex flex-wrap gap-1 px-2 pb-1">
+                          {gradeSections.map(sec => (
+                            <Link
+                              key={sec.id}
+                              href={`/admin/secciones/${sec.id}`}
+                              onClick={handleLinkClick}
+                              className="px-2 py-0.5 text-[10px] font-bold rounded bg-slate-100 dark:bg-slate-800 hover:bg-indigo-100 dark:hover:bg-indigo-950/60 text-slate-700 dark:text-slate-300 hover:text-indigo-600 transition-colors"
+                            >
+                              Aula {sec.letra}
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Secundaria Accordion */}
+            <div className="rounded-xl border border-slate-100 dark:border-slate-800 overflow-hidden bg-slate-50/50 dark:bg-slate-800/20">
+              <button
+                onClick={() => setIsSecundariaOpen(!isSecundariaOpen)}
+                className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/60"
+              >
+                <div className="flex items-center gap-2">
+                  <span>🎓</span> Secundaria (1°-5° Año)
+                </div>
+                <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${isSecundariaOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {isSecundariaOpen && (
+                <div className="p-2 space-y-1 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800">
+                  {secundariaGrades.map(grade => {
+                    const gradeSections = sections.filter(s => s.grado_id === grade.id);
+                    return (
+                      <div key={grade.id} className="text-xs">
+                        <span className="text-[11px] font-medium text-slate-500 px-2 block py-0.5">{grade.nombre}:</span>
+                        <div className="flex flex-wrap gap-1 px-2 pb-1">
+                          {gradeSections.map(sec => (
+                            <Link
+                              key={sec.id}
+                              href={`/admin/secciones/${sec.id}`}
+                              onClick={handleLinkClick}
+                              className="px-2 py-0.5 text-[10px] font-bold rounded bg-slate-100 dark:bg-slate-800 hover:bg-indigo-100 dark:hover:bg-indigo-950/60 text-slate-700 dark:text-slate-300 hover:text-indigo-600 transition-colors"
+                            >
+                              Aula {sec.letra}
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
+        )}
+      </div>
+
+      {/* Footer Info */}
+      <div className="p-3.5 border-t border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-800/40 shrink-0">
+        <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+          <span className="font-semibold">Año Escolar 2026</span>
+          <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+            II Bimestre
+          </span>
         </div>
       </div>
     </aside>
   );
 }
-

@@ -1,199 +1,159 @@
 # Manual Integral del Sistema ColeSistemaMini
-## Sistema de Gestión Escolar, Académica y LMS Multi-Nivel
+## SaaS Educativo Premium — School Management & LMS Multi-Nivel
 
 ---
 
 ## 1. Visión General y Propósito
 
-**ColeSistemaMini** es una plataforma integral de gestión educativa y LMS (Learning Management System) diseñada para modernizar y centralizar toda la operación académica y administrativa de instituciones educativas de cualquier escala.
+**ColeSistemaMini** es una plataforma SaaS integral de gestión escolar y LMS (Learning Management System) diseñada para modernizar, automatizar y centralizar toda la operación académica, formativa y administrativa de colegios e instituciones educativas de educación básica regular.
 
-El sistema soporta de manera nativa los cuatro niveles educativos:
-* **Inicial** (3, 4 y 5 años)
-* **Primaria** (1.° a 6.° grado)
-* **Secundaria** (1.° a 5.° año)
-* **Preuniversitario** (Ciclos intensivos, semestrales y anuales de preparación superior)
+El sistema soporta de manera exclusiva y rigurosa los **tres niveles educativos oficiales**:
+* 🧸 **Inicial** (3, 4 y 5 años — Ciclo II)
+* 📚 **Primaria** (1.° a 6.° grado — Ciclos III, IV y V)
+* 🎓 **Secundaria** (1.° a 5.° año — Ciclos VI y VII)
 
-### Objetivo Principal
-Eliminar la fragmentación operativa integrando en una sola plataforma:
-1. **Control de Admisiones y Matrículas**.
-2. **Gestión de Carga Académica, Secciones y Horarios**.
-3. **Control de Asistencia Digital en Tiempo Real** (con lectura de Carnet QR).
-4. **Registro y Ponderación de Calificaciones** bajo estándares curriculares (CNEB 4 Bimestres, escala vigesimal 0-20 y cualitativa AD, A, B, C).
-5. **Generación Automatizada de la Libreta Oficial de Notas Anual**.
-6. **Aula Virtual y Entorno LMS** (publicación de tareas, entregas, evaluaciones en línea y materiales de clase).
+*(Nota: La plataforma no incluye ni soporta programas preuniversitarios, garantizando un enfoque 100% escolarizado y pedagógico).*
 
----
-
-## 2. Arquitectura y Tecnologías
-
-* **Frontend & Framework**: Next.js 14 (App Router) con React 18 y TypeScript.
-* **Estilos y UI/UX**: Vanilla CSS puro con variables semánticas, Tailwind-free, paleta de colores institucional corporativa (Azul Índigo, Azul Marino, Verde Esmeralda, Ámbar, Rojo Coral).
-* **Gestión de Estado**: Context API (`AppContext`) con persistencia local (`localStorage`) reactiva y resiliente ante recargas.
-* **Iconografía**: `lucide-react`.
-* **Pruebas y QA**: Jest, React Testing Library y Suite End-to-End con Selenium WebDriver.
-* **Infraestructura**: Despliegue en la nube con Vercel (`https://cole-sistema-mini.vercel.app`) y contenedorización multi-etapa en Docker.
+### Objetivos y Capacidades Centrales
+1. **Contexto Académico Global Persistente**: Selector de nivel (`Inicial`, `Primaria`, `Secundaria` o `Todos`) con filtrado en tiempo real en toda la plataforma.
+2. **Búsqueda Global Instantánea (`CTRL + K`)**: Command Palette universal para estudiantes, docentes, cursos, secciones y accesos directos.
+3. **Control de Admisiones y Matrículas**: Asistente (Wizard) de 6 pasos para registro de postulante, apoderados, sección, documentación y generación de credenciales automáticas.
+4. **Perfil 360° del Estudiante**: Vista consolidada con 11 pestañas de análisis (Resumen, Académico, Asistencia, Finanzas, Documentos, Apoderados, LMS, Salud, Disciplina, Observaciones y Auditoría).
+5. **Control de Asistencia Bi-Modal**: Asistencia ultrarrápida para docentes en aula (todos presentes por defecto, 1 clic para excepciones) y Kiosco QR en pantalla completa para portería con audio sintetizado.
+6. **Evaluación Curricular CNEB & Escala Vigésimal**: Registro por competencias (AD, A, B, C) o cuantitativo (0–20), con ponderación automática para la Libreta Anual Oficial.
+7. **Portal Multi-Hijo para Apoderados**: Monitoreo en vivo de asistencia, tareas, libreta oficial y canal de comunicación con tutores.
+8. **Aula Virtual LMS**: Módulos por lecciones con tracking de progreso y subida de evidencias.
 
 ---
 
-## 3. Roles del Sistema y Matriz de Accesos
+## 2. Arquitectura de Navegación y Roles
 
-El sistema cuenta con **3 roles principales de usuario** más un **Módulo Kiosco de Asistencia**:
+El sistema cuenta con **4 roles de usuario** y un **Modo Kiosco**:
 
-| Rol | Propósito Principal | Panel de Acceso |
-| :--- | :--- | :--- |
-| 🛡️ **Administrador** | Control total institucional, altas/bajas, matrículas, asignación de cursos, gestión de docentes, reportes y supervisión global. | `/admin` |
-| 👨‍🏫 **Docente** | Gestión de sus clases asignadas, pase de lista, registro de notas por criterio, creación de tareas y publicación de exámenes. | `/docente` |
-| 🎓 **Estudiante** | Visualización de horario, consulta de libreta de notas oficial, descarga de carnet QR, envío de tareas y realización de evaluaciones. | `/estudiante` |
-| 📲 **Kiosco QR / Puerta** | Terminal de escaneo rápido para control de ingresos y salidas en portería con retroalimentación visual y auditiva. | `/asistencia` |
+| Rol | Icono | Portal | Propósito Principal |
+| :--- | :---: | :--- | :--- |
+| **Administrador** | 🛡️ | `/admin` | Dirección y gestión: matrículas, perfil 360, asignación docente, horarios, centro de alertas y auditoría. |
+| **Docente** | 👨‍🏫 | `/docente` | Gestión de aula: asistencia ultrarrápida, registro de notas CNEB, tareas, exámenes y feedback. |
+| **Estudiante** | 🎓 | `/estudiante` | Alumno: carnet digital QR, cursos LMS, horarios, libreta oficial y entrega de tareas. |
+| **Apoderado** | 👨‍👩‍👧 | `/apoderado` | Padres y tutores: selector multi-hijo, progreso académico, alertas de asistencia y tutores. |
+| **Kiosco QR** | 📲 | `/asistencia` | Pantalla completa para control de acceso en puerta con confirmación audiovisual. |
 
 ---
 
-## 4. Funcionamiento Detallado por Cada Rol
+## 3. Guía por Módulo y Funcionalidad
 
-### 🛡️ 1. Rol Administrador (Director / Coordinador Académico)
+### 🛡️ A. Portal Administrador
 
-El Administrador tiene una visión panorámica de la institución y herramientas de configuración estructural.
-
-#### Funciones y Capacidades:
 1. **Dashboard Principal (`/admin`)**:
-   * Indicadores clave de rendimiento (KPIs): Total de estudiantes matriculados, docentes activos, cursos dictados, asistencia global del día.
-   * Filtros dinámicos por nivel (Inicial, Primaria, Secundaria, Preuniversitario) y período lectivo.
-   * Gráficos interactivos de distribución de alumnos por grado y tasa de asistencia.
-   * Acceso rápido a auditoría de alertas académicas (estudiantes con bajo rendimiento o inasistencias reiteradas).
+   * 6 KPIs institucionales (Total Alumnos, % Asistencia Hoy, Plana Docente, Cursos Activos, Matrículas del Mes, Cobranza).
+   * Widget de Asistencia del Día por Nivel con barra de progreso.
+   * Widget de Rendimiento Académico por Grado.
+   * Centro de Alertas Prioritarias (resueltas con 1 clic).
+   * Timeline de Auditoría en tiempo real.
 
-2. **Gestión de Estudiantes y Matrículas (`/admin/estudiantes` y `/admin/matriculas`)**:
-   * Registro individual y masivo de estudiantes con datos completos (DNI, nombres, nivel, grado, sección, apoderado, contacto).
-   * Proceso de matrícula por año lectivo y asignación de sección (A, B, C, etc.).
-   * Generación y visualización del código QR identificador único de cada alumno.
-   * Filtros de búsqueda en tiempo real por nombre, DNI, nivel y grado.
+2. **Padrón de Estudiantes y Perfil 360° (`/admin/estudiantes` y `/admin/estudiantes/[id]`)**:
+   * Listado con búsqueda reactiva, filtros de nivel/sección y estados.
+   * Perfil integral con 11 pestañas especializadas.
+   * Emisión e impresión de Carnets QR en lote o individual.
 
-3. **Gestión de Docentes (`/admin/docentes`)**:
-   * Directorio de profesores con especialidades, datos de contacto y estado.
-   * Asignación de carga horaria y cursos por nivel educativo.
-   * Asignación de tutorías de aula.
+3. **Wizard de Matrícula (`/admin/matriculas`)**:
+   * Paso 1: Datos Personales del Estudiante.
+   * Paso 2: Información de Padres / Apoderados.
+   * Paso 3: Asignación de Nivel, Grado y Sección.
+   * Paso 4: Carga y Validación de Documentos.
+   * Paso 5: Registro de Concepto de Pago / Matrícula.
+   * Paso 6: Resumen y Generación de Credenciales de Acceso.
 
-4. **Gestión Académica y Secciones (`/admin/academico` y `/admin/secciones/[id]`)**:
-   * Creación de planes de estudio y malla curricular por nivel.
-   * Configuración de competencias y criterios de evaluación.
-   * Detalle por sección: lista de alumnos, docentes a cargo, avance curricular y estadísticas de notas.
+4. **Gestión de Horarios y Plana Docente (`/admin/horarios` y `/admin/docentes`)**:
+   * Matriz horaria semanal por aula con prevención de cruces de docentes y aulas.
+   * Directorio de profesores con especialidad y asignaciones de cursos.
 
-5. **Gestor de Horarios Institucionales (`/admin/horarios`)**:
-   * Matriz horaria semanal (Lunes a Viernes) por bloques y turnos (Mañana / Tarde).
-   * Validación automática contra cruces de horarios entre docentes y aulas.
-
-6. **Consolidados de Notas y Supervisión (`/admin/notas-salon` y `/admin/reportes`)**:
-   * Consulta del acta de notas consolidada por salón y por bimestre.
-   * Reportes estadísticos exportables a Excel/PDF.
-   * Detección temprana de estudiantes en riesgo académico.
+5. **Consolidado de Calificaciones (`/admin/notas-salon` y `/admin/reportes`)**:
+   * Sábana completa de calificaciones por sección y bimestre.
+   * Descarga de actas e informes en PDF.
 
 ---
 
-### 👨‍🏫 2. Rol Docente (Profesor / Tutor)
+### 👨‍🏫 B. Portal Docente
 
-El entorno del docente está enfocado en la agilidad del día a día en el aula física o virtual.
+1. **Dashboard del Profesor (`/docente`)**:
+   * Clases del día con horario y aula actual.
+   * Resumen de tareas pendientes de corrección y alertas del tutor.
 
-#### Funciones y Capacidades:
-1. **Dashboard del Docente (`/docente`)**:
-   * Resumen de sus clases del día con horario y aula.
-   * Accesos directos a "Pasar Asistencia", "Registrar Notas" y "Nueva Tarea".
-   * Notificaciones de tareas pendientes de revisión o mensajes institucionales.
+2. **Toma de Asistencia Ultrarrápida (`/docente/asistencia`)**:
+   * Todos los alumnos marcados como "Presente" de manera predeterminada.
+   * Cambio de estado con un solo clic (Tardanza, Falta, Justificado).
+   * Auto-guardado instantáneo con confirmación visual.
 
-2. **Control de Asistencia de Clase (`/docente/asistencia`)**:
-   * Lista interactiva de los alumnos de la sección con estados: **Presente**, **Tarde**, **Falta Justificada** y **Falta Injustificada**.
-   * Botón de marcación rápida ("Marcar todos presente").
-   * Registro con guardado instantáneo y cálculo de porcentaje de asistencia del aula.
+3. **Registro de Notas CNEB (`/docente/notas`)**:
+   * Matriz interactiva de calificaciones por competencia con escala AD / A / B / C o numérica.
+   * Cálculo en tiempo real del promedio de período y anual.
 
-3. **Registro y Ponderación de Calificaciones (`/docente/notas`)**:
-   * Selector por Bimestre (1.° Bimestre a 4.° Bimestre).
-   * Registro de notas en tiempo real por cada competencia o criterio evaluativo.
-   * Conversión y cálculo automático del promedio bimestral tanto en escala vigesimal (0 a 20) como en escala cualitativa oficial (AD = Logro Destacado, A = Logro Esperado, B = En Proceso, C = En Inicio).
-
-4. **Gestor de Tareas y Actividades (`/docente/tareas`)**:
-   * Publicación de tareas con título, descripción detallada, fecha límite y curso.
-   * Bandeja de recepción de entregas de los alumnos con estado (Entregado a tiempo, Entregado con retraso, No entregado).
-   * Calificación y retroalimentación directa a cada estudiante.
-
-5. **Creación de Evaluaciones (`/docente/evaluaciones`)**:
-   * Programación de exámenes, prácticas calificadas y simulacros (esencial para nivel Preuniversitario).
-   * Configuración de fecha, hora de inicio, duración y peso porcentual en el promedio.
-
-6. **Mi Horario Semanal (`/docente/horario`)**:
-   * Cronograma interactivo de clases semanales organizado por horas y secciones asignadas.
+4. **Gestor de Tareas y Evaluaciones (`/docente/tareas`, `/docente/evaluaciones`)**:
+   * Publicación de actividades con rúbrica, fecha límite y adjuntos.
+   * Revisión de entregas con calificación y retroalimentación personalizada.
 
 ---
 
-### 🎓 3. Rol Estudiante (Alumno / Apoderado)
+### 🎓 C. Portal Estudiante
 
-El portal del estudiante brinda total transparencia sobre el progreso académico, asistencia y deberes.
+1. **Dashboard Escolar (`/estudiante`)**:
+   * Horario del día y materias en curso.
+   * Pendientes de entrega y recordatorios de exámenes.
 
-#### Funciones y Capacidades:
-1. **Dashboard del Estudiante (`/estudiante`)**:
-   * Saludo personalizado con su nivel, grado y sección.
-   * Tarjetas de progreso general: Promedio ponderado acumulado, porcentaje de asistencia, tareas pendientes y próximas evaluaciones.
-   * Lista de cursos matriculados con acceso directo a su detalle.
+2. **Carnet Digital QR (`/estudiante/carnet-qr`)**:
+   * Identificación oficial con código QR dinámico de alta resolución para acceso en puerta.
 
-2. **Libreta Oficial de Notas Anual (`/estudiante/libreta-notas`)**:
-   * Visualización integral de los **4 Bimestres** curso por curso.
-   * **Cálculo de la Nota Final Anual**: Determinada por la suma y promedio de los 4 periodos bimestrales.
-   * Equivalencia cualitativa (AD, A, B, C) y estado de aprobación del año lectivo (**Promovido / Requiere Recuperación**).
-   * Botón para **Imprimir / Exportar Libreta Oficial en formato PDF limpio**.
+3. **Libreta de Notas Oficial (`/estudiante/libreta-notas`)**:
+   * Boleta de calificaciones por bimestres (I, II, III, IV) y promedio ponderado anual.
 
-3. **Bandeja de Tareas y Deberes (`/estudiante/tareas`)**:
-   * Listado organizado por: *Pendientes*, *Entregadas* y *Calificadas*.
-   * Formulario de entrega de tareas con opción para subir enlaces o archivos de solución.
-
-4. **Calendario de Evaluaciones (`/estudiante/evaluaciones`)**:
-   * Cronograma de exámenes parciales, bimestrales y simulacros tipo admisión.
-
-5. **Historial de Asistencias (`/estudiante/asistencias`)**:
-   * Registro diario de puntualidad con fechas, horas exactas de ingreso y porcentaje global.
-
-6. **Carnet Digital con Código QR (`/estudiante/carnet-qr`)**:
-   * Credencial estudiantil virtual con fotografía, datos personales, código de matrícula y Código QR de alta resolución.
-   * Listo para ser escaneado en el módulo de portería/kiosco para registro instantáneo de entrada y salida.
-
-7. **Horario de Clases (`/estudiante/horario`)**:
-   * Vista semanal de las asignaturas, horas y docentes correspondientes a su sección.
+4. **Aula Virtual LMS (`/estudiante/tareas`)**:
+   * Acceso a lecciones, material multimedia y formulario de entrega de tareas.
 
 ---
 
-### 📲 4. Módulo Kiosco de Asistencia QR (`/asistencia`)
+### 👨‍👩‍👧 D. Portal Apoderado (Familia)
 
-* Diseñado para operar en pantallas táctiles o dispositivos de portería/recepción con cámara o lector de código de barras/QR 2D.
-* **Flujo**: El estudiante acerca su carnet QR -> El sistema decodifica el código -> Registra la marca de tiempo (Timestamp) -> Muestra pantalla de confirmación con nombre, foto y estado (**"Ingreso Registrado - A Tiempo"** o **"Tardanza"**).
+1. **Selector Multi-Hijo (`/apoderado`)**:
+   * Pestañas para alternar entre hijos matriculados en la institución.
 
----
+2. **Métricas de Rendimiento y Asistencia**:
+   * Porcentaje de asistencia mensual, asistencias a tiempo y alertas de tardanzas.
+   * Promedio ponderado y estatus en cada curso.
 
-## 5. Motores Clave y Lógica del Negocio
-
-### 📐 A. Motor de Calificaciones Anuales (4 Bimestres)
-1. **Cálculo Bimestral**: El docente registra las evaluaciones de cada competencia en el bimestre; el sistema calcula el promedio bimestral ($PB_1, PB_2, PB_3, PB_4$).
-2. **Cálculo de la Nota Final Anual**:
-   $$\text{Promedio Final} = \frac{PB_1 + PB_2 + PB_3 + PB_4}{4}$$
-3. **Escala de Conversión CNEB**:
-   * **AD (18 - 20)**: Logro Destacado
-   * **A (14 - 17)**: Logro Esperado
-   * **B (11 - 13)**: En Proceso
-   * **C (00 - 10)**: En Inicio / Desaprobado
-4. **Condición Final de Año**:
-   * Si el promedio de cada curso es $\ge 11$ (o Logro A/AD): **PROMOVIDO DE GRADO**.
-   * Si tiene cursos con promedio $< 11$: **REQUIERE RECUPERACIÓN PEDAGÓGICA (Vacacional)**.
+3. **Canal de Tutoría y Avisos**:
+   * Información de contacto del tutor de salón y avisos de dirección.
 
 ---
 
-## 6. Credenciales de Acceso para Demostración
+### 📲 E. Kiosco de Control QR en Puerta (`/asistencia`)
 
-El sistema incluye usuarios preconfigurados para pruebas y auditorías en el portal `/login`:
+* Modo pantalla completa diseñado para tablets o monitores en recepción.
+* Mensaje gigante **"ACERCA TU CARNET ESCOLAR"**.
+* Lectura por cámara web o pistola lectora de código de barras / QR USB.
+* Respuesta audiovisual inmediata con mensaje de voz ("¡Bienvenido, [Nombre]!").
+* Retorno automático al estado de espera tras 4 segundos.
 
-| Rol | Usuario / DNI | Contraseña | Nivel / Perfil |
+---
+
+## 4. Búsqueda Rápida Command Palette (`CTRL + K`)
+
+En cualquier lugar de la aplicación, presionar `CTRL + K` (o `CMD + K` en macOS) para abrir el buscador universal:
+* Búsqueda de estudiantes por nombres, apellidos, DNI o código.
+* Búsqueda de docentes por nombre o especialidad.
+* Búsqueda de cursos y secciones del plan de estudios.
+* Accesos rápidos a acciones del sistema (Nueva Matrícula, Terminal QR, Consolidado).
+
+---
+
+## 5. Cuentas Demo para Pruebas Inmediatas
+
+En la pantalla de inicio de sesión (`/login`), se encuentran disponibles tarjetas de acceso con 1 clic:
+
+| Perfil | Rol | Correo Electrónico | Contraseña |
 | :--- | :--- | :--- | :--- |
-| 🛡️ **Administrador** | `admin` | `admin123` | Control Total del Sistema |
-| 👨‍🏫 **Docente** | `DOC001` | `123456` | Prof. Carlos Mendoza (Matemáticas) |
-| 🎓 **Estudiante** | `EST001` | `123456` | Alumno Juan Pérez (Secundaria) |
-
----
-
-## 7. Enlaces y Recursos
-
-* **🌐 Aplicación en Producción**: [https://cole-sistema-mini.vercel.app](https://cole-sistema-mini.vercel.app)
-* **🐳 Dockerfile**: Listo para despliegues independientes en servidores propios (`docker build -t colesistema-mini .`).
+| **Dirección General** | Administrador | `admin@colegio.edu.pe` | `admin123` |
+| **Prof. Carlos Mendoza** | Docente | `docente@colegio.edu.pe` | `profesor123` |
+| **Mateo Quispe** | Estudiante | `alumno@colegio.edu.pe` | `alumno123` |
+| **María Elena Rojas** | Apoderado | `apoderado@colegio.edu.pe` | `123456` |
+| **Control Puerta** | Portería / QR | `porteria@colegio.edu.pe` | `porteria123` |

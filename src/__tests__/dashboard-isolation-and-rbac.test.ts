@@ -6,6 +6,7 @@ describe('Dashboard Isolation & Anti-Cross-Role RBAC', () => {
     admin: '/admin',
     docente: '/docente',
     estudiante: '/estudiante',
+    apoderado: '/apoderado',
     asistencia: '/asistencia',
   };
 
@@ -13,6 +14,7 @@ describe('Dashboard Isolation & Anti-Cross-Role RBAC', () => {
     expect(roleHomeUrls.admin).toBe('/admin');
     expect(roleHomeUrls.docente).toBe('/docente');
     expect(roleHomeUrls.estudiante).toBe('/estudiante');
+    expect(roleHomeUrls.apoderado).toBe('/apoderado');
     expect(roleHomeUrls.asistencia).toBe('/asistencia');
   });
 
@@ -22,6 +24,7 @@ describe('Dashboard Isolation & Anti-Cross-Role RBAC', () => {
     expect(simulateRootAccess('admin')).toBe('/admin');
     expect(simulateRootAccess('docente')).toBe('/docente');
     expect(simulateRootAccess('estudiante')).toBe('/estudiante');
+    expect(simulateRootAccess('apoderado')).toBe('/apoderado');
     expect(simulateRootAccess('asistencia')).toBe('/asistencia');
   });
 
@@ -30,6 +33,7 @@ describe('Dashboard Isolation & Anti-Cross-Role RBAC', () => {
       if (targetDashboard.startsWith('/admin') && userRole !== 'admin') return false;
       if (targetDashboard.startsWith('/docente') && userRole !== 'docente') return false;
       if (targetDashboard.startsWith('/estudiante') && userRole !== 'estudiante') return false;
+      if (targetDashboard.startsWith('/apoderado') && userRole !== 'apoderado') return false;
       if (targetDashboard.startsWith('/asistencia') && userRole !== 'asistencia') return false;
       return true;
     };

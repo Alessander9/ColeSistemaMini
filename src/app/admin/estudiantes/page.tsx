@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { useApp } from '@/context/AppContext';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { DataTable, Column } from '@/components/ui/DataTable';
@@ -119,14 +120,22 @@ export default function AdminEstudiantesPage() {
     {
       header: 'Acciones',
       cell: (student) => (
-        <button
-          type="button"
-          onClick={() => setSelectedStudentForQr(student)}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 hover:bg-blue-100 transition-all cursor-pointer"
-        >
-          <QrCode className="w-3.5 h-3.5" />
-          Ver Carnet QR
-        </button>
+        <div className="flex items-center gap-2">
+          <Link
+            href={`/admin/estudiantes/${student.id}`}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 transition-all cursor-pointer"
+          >
+            Perfil 360°
+          </Link>
+          <button
+            type="button"
+            onClick={() => setSelectedStudentForQr(student)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-200 transition-all cursor-pointer"
+          >
+            <QrCode className="w-3.5 h-3.5" />
+            Carnet QR
+          </button>
+        </div>
       ),
     },
   ];

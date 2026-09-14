@@ -1,6 +1,6 @@
-export type UserRole = 'admin' | 'docente' | 'estudiante' | 'asistencia';
+export type UserRole = 'admin' | 'docente' | 'estudiante' | 'apoderado' | 'asistencia';
 
-export type EducationalLevel = 'inicial' | 'primaria' | 'secundaria' | 'preuniversitario';
+export type EducationalLevel = 'inicial' | 'primaria' | 'secundaria';
 
 export type GradeLetter = 'AD' | 'A' | 'B' | 'C';
 
@@ -17,39 +17,6 @@ export interface AcademicContextState {
   periodoId?: string;
 }
 
-export interface PreuniExamSimulation {
-  id: string;
-  titulo: string;
-  universidad: 'UNI' | 'San Marcos (UNMSM)' | 'Católica (PUCP)' | 'Nacional General';
-  fecha: string;
-  preguntas_totales: number;
-  puntaje_maximo: number;
-  puntaje_obtenido?: number;
-  puesto_ranking?: number;
-  total_participantes?: number;
-  percentil?: number;
-  carrera_objetivo?: string;
-  areas?: {
-    nombre: string;
-    aciertos: number;
-    errores: number;
-    blancos: number;
-    puntaje: number;
-  }[];
-}
-
-export interface PreuniRankingEntry {
-  puesto: number;
-  estudiante_id: string;
-  nombre: string;
-  codigo: string;
-  carrera_objetivo: string;
-  puntaje_total: number;
-  puntaje_maximo: number;
-  tendencia: 'up' | 'down' | 'equal';
-  aula: string;
-}
-
 export interface ChildProfile {
   id: string;
   estudiante_id: string;
@@ -63,6 +30,20 @@ export interface ChildProfile {
   promedio_score?: number;
   asistencia_porcentaje: number;
   tareas_pendientes: number;
+  proximas_evaluaciones?: number;
+}
+
+export interface ParentProfile {
+  id: string;
+  user_id: string;
+  nombres: string;
+  apellidos: string;
+  dni: string;
+  email: string;
+  telefono: string;
+  direccion?: string;
+  ocupacion?: string;
+  hijos_ids: string[]; // estudiante_id array
 }
 
 export interface UserProfile {
@@ -185,7 +166,7 @@ export interface GradeRecord {
 }
 
 // -------------------------------------------------------------
-// NUEVOS TIPOS: TAREAS, EVALUACIONES Y NOTIFICACIONES
+// TAREAS, EVALUACIONES Y NOTIFICACIONES
 // -------------------------------------------------------------
 
 export interface TaskAssignment {
@@ -198,6 +179,8 @@ export interface TaskAssignment {
   descripcion: string;
   fecha_limite: string;
   archivo_url?: string;
+  enlaces?: string[];
+  estado?: 'borrador' | 'publicada' | 'cerrada';
   created_at?: string;
   curso?: Course;
   competencia?: Competency;
@@ -209,9 +192,12 @@ export interface TaskSubmission {
   matricula_id: string;
   fecha_entrega: string;
   archivo_url?: string;
+  enlace_entrega?: string;
   comentario_estudiante?: string;
   calificacion_letra?: GradeLetter;
+  calificacion_numerica?: number;
   retroalimentacion_docente?: string;
+  estado?: 'entregado' | 'calificado' | 'retrasado' | 'pendiente';
   tarea?: TaskAssignment;
 }
 
@@ -220,13 +206,15 @@ export interface EvaluationExam {
   curso_id: string;
   seccion_id: string;
   periodo_evaluacion_id: string;
-  competencia_id: string;
+  competencia_id?: string;
   titulo: string;
-  tipo: 'examen' | 'practica' | 'proyecto';
+  tipo: 'examen' | 'practica' | 'bimestral' | 'actividad' | 'proyecto';
   fecha_programada: string;
   hora_inicio?: string;
   duracion_minutos: number;
   ponderacion: number;
+  instrucciones?: string;
+  estado?: 'borrador' | 'programada' | 'activa' | 'finalizada' | 'calificada';
   curso?: Course;
   competencia?: Competency;
 }
@@ -234,6 +222,7 @@ export interface EvaluationExam {
 export interface AppNotification {
   id: string;
   user_id: string;
+  categoria?: 'academico' | 'tarea' | 'evaluacion' | 'asistencia' | 'institucional';
   tipo: 'asistencia' | 'tarea' | 'nota' | 'comunicado';
   titulo: string;
   mensaje: string;
@@ -304,4 +293,75 @@ export interface ToastMessage {
   duracionMs?: number;
 }
 
+// -------------------------------------------------------------
+// LMS (AULA VIRTUAL Y MÓDULOS DE APRENDIZAJE)
+// -------------------------------------------------------------
 
+export interface LMSContentItem {
+  id: string;
+  modulo_id: string;
+  titulo: string;
+  tipo: 'video' | 'lectura' | 'documento' | 'tarea' | 'cuestionario';
+  duracion_estimada: string;
+  url?: string;
+  orden: number;
+}
+
+export interface LMSModule {
+  id: string;
+  curso_id: string;
+  seccion_id?: string;
+  titulo: string;
+  descripcion: string;
+  orden: number;
+  contenidos: LMSContentItem[];
+}
+
+export interface LMSStudentProgress {
+  matricula_id: string;
+  curso_id: string;
+  contenido_id: string;
+  completado: boolean;
+  fecha_completado?: string;
+}
+
+// -------------------------------------------------------------
+// CENTRO DE ALERTAS Y AUDITORÍA
+// -------------------------------------------------------------
+
+export interface SystemAlert {
+  id: string;
+  prioridad: 'critica' | 'alta' | 'media' | 'baja';
+  categoria: 'academico' | 'asistencia' | 'tareas' | 'notas' | 'sistema';
+  titulo: string;
+  descripcion: string;
+  nivel?: EducationalLevel;
+  grado_id?: string;
+  seccion_id?: string;
+  estudiante_id?: string;
+  estado: 'nueva' | 'en_revision' | 'resuelta';
+  accion_label: string;
+  accion_url: string;
+  created_at: string;
+}
+
+export interface AuditLogEntry {
+  id: string;
+  usuario_id: string;
+  usuario_nombre: string;
+  rol: UserRole;
+  accion: string;
+  modulo: string;
+  detalle: string;
+  valor_anterior?: string;
+  valor_nuevo?: string;
+  timestamp: string;
+  ip?: string;
+}
+
+export interface OnboardingStep {
+  id: number;
+  titulo: string;
+  descripcion: string;
+  completado: boolean;
+}

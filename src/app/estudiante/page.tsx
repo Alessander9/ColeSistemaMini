@@ -1,29 +1,26 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { useApp } from '@/context/AppContext';
 import { GradeBadge } from '@/components/notas/GradeBadge';
-import { QrCard } from '@/components/qr/QrCard';
 import { calculateAverage, calculateAnnualStatus } from '@/lib/grades/calculations';
 import { 
   QrCode, 
   Award, 
-  UserCheck, 
-  BookOpen, 
-  ArrowRight, 
-  CheckCircle2, 
   Clock, 
   FileText, 
   Calendar, 
   GraduationCap, 
-  Star, 
   ChevronRight, 
-  MapPin, 
-  Activity,
-  Target,
-  Sparkles,
+  ArrowRight,
+  BookOpen,
+  CheckCircle2,
+  AlertCircle,
+  Play,
   TrendingUp,
-  AlertCircle
+  Sparkles,
+  Flame,
+  Check
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -40,12 +37,9 @@ export default function EstudianteDashboardPage() {
     exams, 
     courses, 
     teachers,
-    simulacros,
-    rankings,
-    academicContext
+    lmsModules,
+    lmsProgress
   } = useApp();
-
-  const [viewMode, setViewMode] = useState<'escolar' | 'preuni'>('escolar');
 
   // Identify active student
   const activeStudent = useMemo(() => {
@@ -67,351 +61,339 @@ export default function EstudianteDashboardPage() {
   const { averageLetter, averageScore } = calculateAverage(studentGradeLetters);
   const { status } = calculateAnnualStatus(studentGradeLetters);
 
+  // Attendance
+  const myAttendances = useMemo(() => {
+    return attendances.filter(a => a.matricula_id === activeEnrollment?.id);
+  }, [attendances, activeEnrollment]);
+
+  const attendanceCount = myAttendances.length || 45;
+  const presentCount = myAttendances.filter(a => a.estado === 'presente').length || 43;
+  const attendanceRate = Math.round((presentCount / Math.max(1, attendanceCount)) * 100) || 98;
+
   // Tasks & submissions
   const myTasks = useMemo(() => {
     return tasks.filter(t => t.seccion_id === studentSectionId);
   }, [tasks, studentSectionId]);
 
-  const studentName = activeStudent?.profile?.nombres?.split(' ')[0] || currentUser.nombres.split(' ')[0];
-  const studentFullName = `${activeStudent?.profile?.nombres || currentUser.nombres} ${activeStudent?.profile?.apellidos || currentUser.apellidos}`;
+  const pendingTasks = useMemo(() => {
+    return myTasks.filter(t => !submissions.some(s => s.tarea_id === t.id && s.matricula_id === activeEnrollment?.id));
+  }, [myTasks, submissions, activeEnrollment]);
+
+  // Today's schedule
+  const todayDay = new Date().toLocaleDateString('es-PE', { weekday: 'long' }).toLowerCase() as any;
+  const mySchedule = useMemo(() => {
+    return scheduleSlots.filter(s => s.seccion_id === studentSectionId);
+  }, [scheduleSlots, studentSectionId]);
+
+  const todaySlots = useMemo(() => {
+    const valid = mySchedule.filter(s => s.dia === todayDay || s.dia === 'lunes');
+    return valid.sort((a, b) => a.hora_inicio.localeCompare(b.hora_inicio));
+  }, [mySchedule, todayDay]);
+
+  const studentName = activeStudent?.profile?.nombres?.split(' ')[0] || currentUser?.nombres?.split(' ')[0] || 'Estudiante';
   const gradeName = activeEnrollment?.seccion?.grado?.nombre || '3° de Primaria';
   const sectionLetter = activeEnrollment?.seccion?.letra || 'A';
 
+  // Dynamic greeting
+  const currentHour = new Date().getHours();
+  const greeting = currentHour < 12 ? '¡Buenos días' : currentHour < 18 ? '¡Buenas tardes' : '¡Buenas noches';
+
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-12">
+    <div className="space-y-8 max-w-7xl mx-auto pb-16">
       
-      {/* 1. Header de Bienvenida del Estudiante */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2 border-b border-slate-200/80 dark:border-slate-800/80">
-        <div>
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200/80 dark:border-emerald-800/80 text-emerald-700 dark:text-emerald-300 text-[11px] font-bold mb-1.5">
-            <GraduationCap className="w-3.5 h-3.5" />
-            <span>Portal del Estudiante · 2026</span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-white">
-            ¡Hola, {studentName}!
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-            {gradeName} — Sección &quot;{sectionLetter}&quot; · Código: <span className="font-mono font-bold text-slate-700 dark:text-slate-300">{activeStudent?.codigo_estudiante}</span>
-          </p>
-        </div>
+      {/* ── 1. HERO COCKPIT DEL ESTUDIANTE ── */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-900 via-slate-900 to-indigo-950 text-white p-6 sm:p-8 shadow-xl shadow-emerald-950/20 border border-emerald-700/30">
+        <div className="absolute top-0 right-0 -mt-8 -mr-8 w-96 h-96 bg-emerald-500/15 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-1/3 -mb-12 w-64 h-64 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none" />
 
-        {/* Mode Switcher (Escolar vs. Preuniversitario) */}
-        <div className="flex items-center gap-2">
-          <div className="flex items-center p-1 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700">
-            <button
-              onClick={() => setViewMode('escolar')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                viewMode === 'escolar'
-                  ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              📚 Cursos & Libreta
-            </button>
-            <button
-              onClick={() => setViewMode('preuni')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                viewMode === 'preuni'
-                  ? 'bg-white dark:bg-slate-900 text-amber-600 dark:text-amber-400 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              🚀 Preuniversitario (Simulacros)
-            </button>
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div className="space-y-2 max-w-2xl">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-emerald-200 text-xs font-semibold">
+              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+              <span>Portal del Estudiante • Año Escolar 2026</span>
+            </div>
+
+            <h1 className="text-2xl sm:text-4xl font-black tracking-tight text-white flex items-center gap-2.5">
+              {greeting}, {studentName}! <span className="inline-block animate-wave origin-bottom-right">🎒</span>
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-300 font-normal leading-relaxed">
+              {gradeName} — Sección &quot;{sectionLetter}&quot; • Código Oficial: <span className="font-mono font-bold text-emerald-300 bg-emerald-950/60 px-2 py-0.5 rounded-lg border border-emerald-500/30">{activeStudent?.codigo_estudiante || 'EST-2026-001'}</span>
+            </p>
+
+            <div className="pt-2 flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-white/10 text-xs font-bold text-emerald-300 border border-emerald-400/20">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                Condición: {status || 'Promovido Destacado'}
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-white/10 text-xs font-bold text-amber-300 border border-amber-400/20">
+                <Flame className="w-3.5 h-3.5 text-amber-400" />
+                Racha de Asistencia: 100%
+              </span>
+            </div>
           </div>
 
-          <Link
-            href="/estudiante/carnet-qr"
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-sm active:scale-95"
-          >
-            <QrCode className="w-4 h-4" />
-            Mi Carnet QR
-          </Link>
+          {/* Direct Student Actions */}
+          <div className="flex flex-col sm:flex-row lg:flex-col gap-2 shrink-0">
+            <Link
+              href="/estudiante/carnet-qr"
+              className="flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-white text-xs font-bold shadow-lg shadow-emerald-500/30 transition-all hover:scale-102 active:scale-98"
+            >
+              <QrCode className="w-4 h-4" />
+              <span>Ver Mi Carnet QR</span>
+            </Link>
+            <Link
+              href="/estudiante/libreta-notas"
+              className="flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-white/15 hover:bg-white/25 backdrop-blur-md border border-white/20 text-white text-xs font-bold transition-all hover:scale-102"
+            >
+              <Award className="w-4 h-4 text-amber-300" />
+              <span>Libreta Oficial de Notas</span>
+            </Link>
+          </div>
         </div>
       </div>
 
-      {/* 2. Vistas Condicionales (Escolar vs. Preuniversitario) */}
-      {viewMode === 'escolar' ? (
-        <>
-          {/* Métricas Escolares */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-            <div className="p-4 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm">
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
-                Promedio General
-              </span>
-              <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-black text-emerald-600 dark:text-emerald-400 font-mono">
-                  {averageLetter}
-                </span>
-                <span className="text-xs font-semibold text-slate-500">Logro Destacado</span>
-              </div>
-            </div>
-
-            <div className="p-4 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm">
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
-                Asistencia Acumulada
-              </span>
-              <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-black text-blue-600 dark:text-blue-400 font-mono">
-                  98%
-                </span>
-                <span className="text-xs font-semibold text-slate-500">0 Faltas</span>
-              </div>
-            </div>
-
-            <div className="p-4 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm">
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
-                Tareas Asignadas
-              </span>
-              <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-black text-indigo-600 dark:text-indigo-400 font-mono">
-                  {myTasks.length}
-                </span>
-                <span className="text-xs font-semibold text-slate-500">1 pendiente</span>
-              </div>
-            </div>
-
-            <div className="p-4 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm">
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
-                Condición Final
-              </span>
-              <div className="flex items-baseline gap-2">
-                <span className="text-xl font-black text-emerald-600 dark:text-emerald-400">
-                  {status}
-                </span>
-              </div>
+      {/* ── 2. 4 CARDS DE MÉTRICAS PRINCIPALES ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        
+        {/* Promedio Ponderado */}
+        <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-md transition-all">
+          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
+            <span className="text-xs font-bold uppercase tracking-wider">Promedio Actual</span>
+            <div className="w-9 h-9 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shadow-xs">
+              <Award className="w-4 h-4" />
             </div>
           </div>
+          <div className="mt-2 flex items-baseline gap-2.5">
+            <span className="text-3xl font-black text-slate-900 dark:text-white">
+              {averageScore > 0 ? averageScore.toFixed(1) : '18.5'}
+            </span>
+            <GradeBadge grade={averageLetter || 'AD'} size="md" />
+          </div>
+          <p className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 mt-2 flex items-center gap-1">
+            <TrendingUp className="w-3.5 h-3.5" /> Logro Destacado CNEB
+          </p>
+        </div>
 
-          {/* Cursos y Tareas */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-6">
-              
-              {/* Tarjeta de Cursos */}
-              <div className="p-5 sm:p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
-                    <BookOpen className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                    Mis Cursos del I Bimestre
-                  </h3>
-                  <Link href="/estudiante/libreta-notas" className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline">
-                    Ver libreta completa →
-                  </Link>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {courses.slice(0, 6).map((course) => {
-                    const courseComps = course.competencias || [];
-                    const cGrades = myGrades.filter(g => courseComps.some(c => c.id === g.competencia_id));
-                    const courseAvg = calculateAverage(cGrades.map(g => g.nota_letra));
-                    const hasGrades = cGrades.length > 0;
-
-                    return (
-                      <div
-                        key={course.id}
-                        className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700/80 flex items-center justify-between"
-                      >
-                        <div>
-                          <h4 className="font-extrabold text-xs text-slate-900 dark:text-white mb-0.5">
-                            {course.nombre}
-                          </h4>
-                          <p className="text-[10px] text-slate-400 font-mono">{course.codigo}</p>
-                        </div>
-                        {hasGrades ? (
-                          <GradeBadge grade={courseAvg.averageLetter} size="sm" />
-                        ) : (
-                          <span className="px-2 py-0.5 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-500 font-mono text-[10px]">
-                            -
-                          </span>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-
-              {/* Tareas Escolares */}
-              <div className="p-5 sm:p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-amber-500" />
-                    Tareas Escolares Pendientes
-                  </h3>
-                  <Link href="/estudiante/tareas" className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline">
-                    Ver todas ({myTasks.length})
-                  </Link>
-                </div>
-
-                <div className="space-y-2">
-                  {myTasks.slice(0, 2).map((t) => (
-                    <div
-                      key={t.id}
-                      className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 flex items-center justify-between gap-3"
-                    >
-                      <div>
-                        <p className="text-xs font-bold text-slate-900 dark:text-white">{t.titulo}</p>
-                        <p className="text-[11px] text-slate-400">Vence: {t.fecha_limite}</p>
-                      </div>
-                      <Link
-                        href="/estudiante/tareas"
-                        className="px-3 py-1 rounded-xl bg-indigo-600 text-white font-bold text-xs shadow-sm hover:bg-indigo-500 transition-all"
-                      >
-                        Entregar
-                      </Link>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Carnet QR Digital Preview */}
-            <div>
-              <QrCard student={activeStudent} section={activeEnrollment?.seccion} />
+        {/* Asistencia */}
+        <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-md transition-all">
+          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
+            <span className="text-xs font-bold uppercase tracking-wider">Puntualidad</span>
+            <div className="w-9 h-9 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shadow-xs">
+              <Clock className="w-4 h-4" />
             </div>
           </div>
-        </>
-      ) : (
-        /* Modo Preuniversitario */
-        <div className="space-y-6 animate-in fade-in duration-200">
-          
-          {/* Header Preuni */}
-          <div className="p-6 rounded-3xl bg-gradient-to-r from-amber-600 via-orange-600 to-indigo-700 text-white shadow-xl shadow-amber-950/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-3xl font-black text-emerald-600 dark:text-emerald-400">
+              {attendanceRate}%
+            </span>
+            <span className="text-xs text-slate-500">asistencia</span>
+          </div>
+          <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 mt-2">
+            0 inasistencias injustificadas
+          </p>
+        </div>
+
+        {/* Deberes Pendientes */}
+        <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-md transition-all">
+          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
+            <span className="text-xs font-bold uppercase tracking-wider">Deberes Pendientes</span>
+            <div className="w-9 h-9 rounded-2xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center shadow-xs">
+              <FileText className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-3xl font-black text-purple-600 dark:text-purple-400">
+              {pendingTasks.length}
+            </span>
+            <span className="text-xs text-slate-500">actividades</span>
+          </div>
+          <p className="text-[11px] font-medium text-purple-600 dark:text-purple-400 mt-2">
+            {pendingTasks.length === 0 ? '¡Felicitaciones! Estás al día' : 'Por entregar esta semana'}
+          </p>
+        </div>
+
+        {/* Próximo Examen */}
+        <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-md transition-all">
+          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
+            <span className="text-xs font-bold uppercase tracking-wider">Próximo Examen</span>
+            <div className="w-9 h-9 rounded-2xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center shadow-xs">
+              <Calendar className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-2 text-base font-black text-slate-900 dark:text-white truncate">
+            {exams[0]?.titulo || 'Práctica Calificada'}
+          </div>
+          <p className="text-[11px] font-medium text-amber-600 dark:text-amber-400 mt-2">
+            {exams[0]?.fecha_programada || 'Viernes 18 de Septiembre'}
+          </p>
+        </div>
+
+      </div>
+
+      {/* ── 3. GRID PRINCIPAL: MI HORARIO DE HOY & MIS PENDIENTES ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        {/* Mi Día (Horario de Clases) - Columna 7 */}
+        <div className="lg:col-span-7 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm space-y-5">
+          <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
             <div>
-              <span className="px-2.5 py-0.5 rounded-full bg-white/20 text-white text-[10px] font-black uppercase tracking-wider mb-2 inline-block">
-                Ciclo Anual Regular · UNI & San Marcos
-              </span>
-              <h2 className="text-xl font-black text-white">
-                Módulo de Rendimiento y Simulacros de Admisión
-              </h2>
-              <p className="text-xs text-amber-100 max-w-lg mt-0.5">
-                Seguimiento de puntajes, percentiles, evolución por áreas académicas y puesto en el ranking institucional.
+              <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                Mi Día • Horario de Clases
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Cursos y docentes programados para la jornada de hoy
               </p>
             </div>
-
-            <div className="p-3 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 text-center shrink-0">
-              <span className="text-[10px] font-semibold text-amber-200 block">Último Puntaje</span>
-              <span className="text-2xl font-black text-white font-mono">412.50</span>
-              <span className="text-[10px] text-emerald-300 font-bold block">Puesto #4 (Top 3%)</span>
-            </div>
+            <Link
+              href="/estudiante/horario"
+              className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
+            >
+              Ver Semana Completa
+            </Link>
           </div>
 
-          {/* Simulacros Realizados */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            
-            <div className="lg:col-span-2 space-y-6">
-              <div className="p-5 sm:p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm">
-                <h3 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2 mb-4">
-                  <Activity className="w-4 h-4 text-amber-500" />
-                  Historial de Simulacros Rendidos
-                </h3>
-
-                <div className="space-y-4">
-                  {simulacros.map((sim) => (
-                    <div
-                      key={sim.id}
-                      className="p-4 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 bg-slate-50/60 dark:bg-slate-800/40"
-                    >
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 text-[10px] font-bold">
-                              {sim.universidad}
-                            </span>
-                            <span className="font-mono text-xs text-slate-400">{sim.fecha}</span>
-                          </div>
-                          <h4 className="font-extrabold text-sm text-slate-900 dark:text-white mt-1">
-                            {sim.titulo}
-                          </h4>
-                        </div>
-                        <div className="text-right">
-                          <span className="font-mono text-lg font-black text-indigo-600 dark:text-indigo-400">
-                            {sim.puntaje_obtenido}
-                          </span>
-                          <span className="text-xs text-slate-400 font-mono"> / {sim.puntaje_maximo}</span>
-                          <span className="block text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
-                            Percentil {sim.percentil}%
-                          </span>
-                        </div>
+          <div className="space-y-3">
+            {todaySlots.length === 0 ? (
+              <p className="text-xs text-slate-400 py-8 text-center">No hay clases programadas para hoy.</p>
+            ) : (
+              todaySlots.map((slot) => {
+                const course = courses.find(c => c.id === slot.curso_id);
+                const teacher = teachers.find(t => t.id === slot.docente_id);
+                return (
+                  <div
+                    key={slot.id}
+                    className="p-4 rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3 hover:border-indigo-200 dark:hover:border-indigo-800 transition-colors"
+                  >
+                    <div className="flex items-center gap-3.5">
+                      <div className="w-12 h-12 rounded-2xl bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
+                        {slot.hora_inicio}
                       </div>
-
-                      {/* Desglose por áreas */}
-                      {sim.areas && (
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-3 border-t border-slate-200/60 dark:border-slate-700/60 text-xs">
-                          {sim.areas.map((area, aIdx) => (
-                            <div key={aIdx} className="p-2 rounded-xl bg-white dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800">
-                              <p className="font-bold text-[11px] text-slate-800 dark:text-slate-200 truncate mb-1">
-                                {area.nombre}
-                              </p>
-                              <div className="flex items-center justify-between font-mono text-[10px] text-slate-500">
-                                <span>✔ {area.aciertos}</span>
-                                <span>✖ {area.errores}</span>
-                                <span className="font-bold text-indigo-600 dark:text-indigo-400">{area.puntaje} pts</span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                      <div>
+                        <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                          {course?.nombre || 'Materia'}
+                        </h4>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                          Prof. {teacher?.nombres} {teacher?.apellidos} • {slot.aula || 'Aula Principal'}
+                        </p>
+                      </div>
                     </div>
-                  ))}
-                </div>
-              </div>
+                    <span className="text-xs font-mono font-semibold text-slate-400 shrink-0">
+                      {slot.hora_inicio} - {slot.hora_fin}
+                    </span>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        {/* Mis Pendientes (Tareas Próximas a Vencer) - Columna 5 */}
+        <div className="lg:col-span-5 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm space-y-5">
+          <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
+            <div>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <FileText className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                Mis Tareas & Entregas
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Actividades con entrega abierta
+              </p>
             </div>
-
-            {/* Ranking General */}
-            <div className="space-y-6">
-              <div className="p-5 sm:p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
-                    <Target className="w-4 h-4 text-amber-500" />
-                    Cuadro de Mérito
-                  </h3>
-                  <span className="text-[10px] font-bold text-slate-400">Top Institucional</span>
-                </div>
-
-                <div className="space-y-2.5">
-                  {rankings.map((r) => {
-                    const isMe = r.estudiante_id === 'student-8' || r.nombre.includes('Gabriel');
-                    return (
-                      <div
-                        key={r.puesto}
-                        className={`p-3 rounded-2xl border flex items-center justify-between gap-2 transition-all ${
-                          isMe
-                            ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700 ring-2 ring-amber-500/20'
-                            : 'bg-slate-50 dark:bg-slate-800/40 border-slate-200/80 dark:border-slate-700/80'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <span className={`w-6 h-6 rounded-full flex items-center justify-center font-black text-xs ${
-                            r.puesto === 1 ? 'bg-amber-400 text-amber-950' :
-                            r.puesto === 2 ? 'bg-slate-300 text-slate-800' :
-                            r.puesto === 3 ? 'bg-amber-700/20 text-amber-700 dark:text-amber-300' :
-                            'text-slate-400 font-mono'
-                          }`}>
-                            #{r.puesto}
-                          </span>
-                          <div>
-                            <p className="font-extrabold text-xs text-slate-900 dark:text-white leading-snug">
-                              {r.nombre} {isMe && <span className="text-amber-600 font-bold text-[10px]">(Tú)</span>}
-                            </p>
-                            <p className="text-[10px] text-slate-400">{r.carrera_objetivo}</p>
-                          </div>
-                        </div>
-
-                        <div className="text-right font-mono font-bold text-xs text-indigo-600 dark:text-indigo-400">
-                          {r.puntaje_total}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-
+            <Link
+              href="/estudiante/tareas"
+              className="text-xs font-bold text-purple-600 dark:text-purple-400 hover:underline"
+            >
+              Ver Todas ({myTasks.length})
+            </Link>
           </div>
 
+          <div className="space-y-3">
+            {myTasks.length === 0 ? (
+              <p className="text-xs text-slate-400 py-8 text-center">No tienes tareas asignadas por el momento.</p>
+            ) : (
+              myTasks.slice(0, 3).map((task) => {
+                const isSubmitted = submissions.some(s => s.tarea_id === task.id && s.matricula_id === activeEnrollment?.id);
+                return (
+                  <div
+                    key={task.id}
+                    className="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 flex items-center justify-between gap-3"
+                  >
+                    <div className="min-w-0">
+                      <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                        {task.titulo}
+                      </h4>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                        Fecha Límite: <strong>{task.fecha_limite}</strong>
+                      </p>
+                    </div>
+                    <span className={`text-[10px] font-bold px-2.5 py-1 rounded-xl shrink-0 ${
+                      isSubmitted
+                        ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                        : 'bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 border border-amber-500/20'
+                    }`}>
+                      {isSubmitted ? '✓ Entregada' : '● Pendiente'}
+                    </span>
+                  </div>
+                );
+              })
+            )}
+          </div>
         </div>
-      )}
+
+      </div>
+
+      {/* ── 4. CONTINUAR APRENDIENDO (AULA VIRTUAL LMS) ── */}
+      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm space-y-5">
+        <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
+          <div>
+            <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <BookOpen className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+              Continuar Aprendiendo • Aula Virtual LMS
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Módulos explicativos, videos y recursos interactivos de tus cursos
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {lmsModules.slice(0, 3).map((module) => {
+            const course = courses.find(c => c.id === module.curso_id);
+            return (
+              <div
+                key={module.id}
+                className="p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 hover:border-indigo-400 dark:hover:border-indigo-600 transition-all flex flex-col justify-between"
+              >
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-2.5 py-1 rounded-lg border border-indigo-200/60 dark:border-indigo-800/40">
+                    {course?.nombre || 'Curso'}
+                  </span>
+                  <h4 className="text-sm font-bold text-slate-900 dark:text-white mt-3 leading-snug">
+                    {module.titulo}
+                  </h4>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2 leading-relaxed">
+                    {module.descripcion}
+                  </p>
+                </div>
+
+                <div className="mt-5 pt-3.5 border-t border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between">
+                  <div className="text-xs font-semibold text-slate-400 flex items-center gap-1.5">
+                    <Play className="w-3.5 h-3.5 text-indigo-500" />
+                    <span>{module.contenidos.length} lecciones</span>
+                  </div>
+                  <Link
+                    href="/estudiante/tareas"
+                    className="inline-flex items-center gap-1 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
+                  >
+                    Abrir Módulo <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
 
     </div>
   );

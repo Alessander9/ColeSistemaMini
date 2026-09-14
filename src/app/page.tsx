@@ -33,6 +33,7 @@ export default function HomePage() {
         admin: '/admin',
         docente: '/docente',
         estudiante: '/estudiante',
+        apoderado: '/apoderado',
         asistencia: '/asistencia',
       };
       const target = roleHomeUrl[currentUser.rol] || '/login';
@@ -87,6 +88,20 @@ export default function HomePage() {
       features: ['Carnet QR Digital', 'Libreta de Notas', 'Historial Asistencias', 'Ver Tareas'],
       stat: 'I Bimestre 2026',
       statIcon: Award,
+    },
+    {
+      role: 'apoderado' as UserRole,
+      href: '/apoderado',
+      title: 'Portal Apoderado',
+      desc: 'Monitoreo integral de hijos: asistencia en tiempo real, libreta oficial de notas y comunicación directa con tutores.',
+      gradient: 'from-pink-600 via-rose-600 to-red-600',
+      glow: 'group-hover:shadow-pink-500/30',
+      icon: Users,
+      badge: 'Familia',
+      badgeBg: 'bg-pink-100 dark:bg-pink-950/60 text-pink-700 dark:text-pink-300',
+      features: ['Multi-hijo Unificado', 'Alertas de Asistencia', 'Boletín de Notas', 'Canal con Tutores'],
+      stat: 'Seguimiento 24/7',
+      statIcon: Sparkles,
     },
   ];
 

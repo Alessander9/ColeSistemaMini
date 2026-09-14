@@ -119,6 +119,8 @@ function PwaInstallBanner() {
   );
 }
 
+import { CommandPalette } from '@/components/layout/CommandPalette';
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Inner shell (needs AppProvider context for toasts)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -157,6 +159,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
   return (
     <>
       {children}
+      <CommandPalette />
       <ToastContainer
         toasts={toasts}
         onRemove={removeToast}

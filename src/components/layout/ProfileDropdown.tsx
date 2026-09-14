@@ -109,6 +109,13 @@ export function ProfileDropdown() {
       dot: 'bg-emerald-500',
       bgBadge: 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
     },
+    apoderado: {
+      label: 'Apoderado',
+      icon: <User className="w-3 h-3" />,
+      gradient: 'from-pink-500 to-rose-600',
+      dot: 'bg-pink-500',
+      bgBadge: 'bg-pink-50 dark:bg-pink-950/50 text-pink-700 dark:text-pink-300 border-pink-200 dark:border-pink-800',
+    },
     asistencia: {
       label: 'Control de Asistencia',
       icon: <QrCode className="w-3 h-3" />,

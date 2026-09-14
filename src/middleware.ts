@@ -33,6 +33,7 @@ export async function middleware(request: NextRequest) {
         admin: '/admin',
         docente: '/docente',
         estudiante: '/estudiante',
+        apoderado: '/apoderado',
         asistencia: '/asistencia',
       };
       const dest = redirectMap[sessionCookie] || '/admin';
@@ -60,6 +61,7 @@ export async function middleware(request: NextRequest) {
     admin: '/admin',
     docente: '/docente',
     estudiante: '/estudiante',
+    apoderado: '/apoderado',
     asistencia: '/asistencia',
   };
 
@@ -78,11 +80,15 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL(roleDashboardMap[role] || '/login', request.url));
   }
 
-  if (pathname.startsWith('/estudiante') && role !== 'estudiante') {
+  if (pathname.startsWith('/estudiante') && role !== 'estudiante' && role !== 'apoderado') {
     return NextResponse.redirect(new URL(roleDashboardMap[role] || '/login', request.url));
   }
 
-  if (pathname.startsWith('/asistencia') && role !== 'asistencia') {
+  if (pathname.startsWith('/apoderado') && role !== 'apoderado' && role !== 'admin') {
+    return NextResponse.redirect(new URL(roleDashboardMap[role] || '/login', request.url));
+  }
+
+  if (pathname.startsWith('/asistencia') && role !== 'asistencia' && role !== 'admin') {
     return NextResponse.redirect(new URL(roleDashboardMap[role] || '/login', request.url));
   }
 

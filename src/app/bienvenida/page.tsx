@@ -35,6 +35,8 @@ export default function BienvenidaPage() {
         return '/docente';
       case 'estudiante':
         return '/estudiante';
+      case 'apoderado':
+        return '/apoderado';
       case 'asistencia':
         return '/asistencia';
       default:
@@ -85,6 +87,12 @@ export default function BienvenidaPage() {
       gradient: 'from-emerald-600 via-teal-600 to-cyan-600',
       badgeBg: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30',
     },
+    apoderado: {
+      label: 'Padre / Tutor Legal',
+      icon: <Users className="w-5 h-5 text-pink-400" />,
+      gradient: 'from-pink-600 via-rose-600 to-red-600',
+      badgeBg: 'bg-pink-500/10 text-pink-300 border-pink-500/30',
+    },
     asistencia: {
       label: 'Operador de Control QR & Portería',
       icon: <QrCode className="w-5 h-5 text-amber-400" />,
@@ -95,7 +103,7 @@ export default function BienvenidaPage() {
 
   const currentRoleConfig = roleConfig[currentUser.rol] || roleConfig.admin;
 
-  const quickShortcuts = {
+  const quickShortcuts: Record<UserRole, Array<{ title: string; desc: string; href: string; icon: React.ComponentType<{ className?: string }> }>> = {
     admin: [
       { title: 'Gestión de Docentes', desc: 'Asignar materias y salones', href: '/admin/docentes', icon: Users },
       { title: 'Horarios Escolares', desc: 'Validación anti-cruce de clases', href: '/admin/horarios', icon: Calendar },
@@ -110,6 +118,11 @@ export default function BienvenidaPage() {
       { title: 'Mi Carnet Escolar QR', desc: 'Código QR para ingreso escolar', href: '/estudiante/carnet-qr', icon: QrCode },
       { title: 'Mi Libreta de Notas', desc: 'Boleta de competencias CNEB', href: '/estudiante/libreta-notas', icon: Award },
       { title: 'Mis Tareas Escolares', desc: 'Entregas y revisiones', href: '/estudiante/tareas', icon: BookOpen },
+    ],
+    apoderado: [
+      { title: 'Seguimiento de Hijos', desc: 'Ver estado multi-hijo y alertas', href: '/apoderado', icon: Users },
+      { title: 'Boletín de Calificaciones', desc: 'Libretas oficiales de notas', href: '/apoderado', icon: Award },
+      { title: 'Asistencia y Notificaciones', desc: 'Ingresos y avisos institucionales', href: '/apoderado', icon: CheckCircle2 },
     ],
     asistencia: [
       { title: 'Terminal QR Móvil', desc: 'Escanear con cámara de celular', href: '/asistencia', icon: QrCode },

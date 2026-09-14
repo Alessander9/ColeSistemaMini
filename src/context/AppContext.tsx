@@ -26,9 +26,12 @@ import {
   ToastMessage,
   EducationalLevel,
   AcademicContextState,
-  PreuniExamSimulation,
-  PreuniRankingEntry,
-  ChildProfile
+  ChildProfile,
+  ParentProfile,
+  LMSModule,
+  LMSStudentProgress,
+  SystemAlert,
+  AuditLogEntry
 } from '@/types';
 import { ToastContainer } from '@/components/ui/ToastContainer';
 import { 
@@ -49,9 +52,11 @@ import {
   MOCK_SECTION_COURSES,
   MOCK_SCHEDULE_SLOTS,
   MOCK_CLASS_SESSIONS,
-  MOCK_SIMULACROS,
-  MOCK_PREUNI_RANKINGS,
-  MOCK_CHILDREN
+  MOCK_CHILDREN,
+  MOCK_PARENTS,
+  MOCK_LMS_MODULES,
+  MOCK_SYSTEM_ALERTS,
+  MOCK_AUDIT_LOGS
 } from '@/lib/mock-data';
 import * as academicService from '@/lib/services/academicService';
 import * as attendanceService from '@/lib/services/attendanceService';
@@ -70,7 +75,7 @@ interface AppContextType {
   refreshData: () => Promise<void>;
   logout: () => Promise<void>;
 
-  // ── Contexto Académico Institucional (Inicial, Primaria, Secundaria, Preuni) ──
+  // ── Contexto Académico Institucional (Inicial, Primaria, Secundaria) ──
   academicContext: AcademicContextState;
   setAcademicContext: (ctx: Partial<AcademicContextState>) => void;
   setAcademicLevel: (level: EducationalLevel | 'todos') => void;
@@ -82,23 +87,46 @@ interface AppContextType {
   removeToast: (id: string) => void;
 
   students: Student[];
+  teachers: UserProfile[];
   enrollments: Enrollment[];
   courses: Course[];
   sections: Section[];
   gradeLevels: GradeLevel[];
   evaluationPeriods: EvaluationPeriod[];
-  teachers: UserProfile[];
-  
-  // ── Preuniversitario & Simulacros ──
-  simulacros: PreuniExamSimulation[];
-  addSimulacro: (sim: PreuniExamSimulation) => void;
-  rankings: PreuniRankingEntry[];
-
   // ── Portal de Apoderados ──
   childrenList: ChildProfile[];
   selectedChildId: string;
   setSelectedChildId: (id: string) => void;
   selectedChild: ChildProfile | undefined;
+  parentsList: ParentProfile[];
+
+  // ── LMS: Módulos & Progreso ──
+  lmsModules: LMSModule[];
+  lmsProgress: LMSStudentProgress[];
+  completeLMSContent: (matriculaId: string, cursoId: string, contenidoId: string) => void;
+
+  // ── Centro de Alertas ──
+  alerts: SystemAlert[];
+  resolveAlert: (alertId: string) => void;
+  addAlert: (alert: Omit<SystemAlert, 'id' | 'created_at' | 'estado'>) => void;
+
+  // ── Registro de Auditoría ──
+  auditLogs: AuditLogEntry[];
+  addAuditLog: (log: Omit<AuditLogEntry, 'id' | 'timestamp'>) => void;
+
+  // ── Command Palette & Onboarding ──
+  isCommandPaletteOpen: boolean;
+  setIsCommandPaletteOpen: (open: boolean) => void;
+  toggleCommandPalette: () => void;
+  onboardingCompleted: boolean;
+  setOnboardingCompleted: (completed: boolean) => void;
+
+  // ── Asistencia Rápida Docente ──
+  saveClassAttendanceQuickly: (
+    seccionId: string,
+    fecha: string,
+    exceptions: { matriculaId: string; estado: AttendanceStatus; observacion?: string }[]
+  ) => { success: boolean; totalMarked: number };
   addTeacher: (data: {
     nombres: string;
     apellidos: string;
@@ -269,14 +297,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [scheduleSlots, setScheduleSlots] = useState<ScheduleSlot[]>(() => getInitialData('colegio_schedule_slots', MOCK_SCHEDULE_SLOTS));
   const [classSessions, setClassSessions] = useState<ClassSessionLog[]>(() => getInitialData('colegio_class_sessions', MOCK_CLASS_SESSIONS));
   const [academicContext, setAcademicContextState] = useState<AcademicContextState>(() => getInitialData('colegio_academic_context', {
-    institucion: 'Colegio & Academia San José',
+    institucion: 'Institución Educativa San José',
     anio: 2026,
     nivel: 'todos',
   }));
-  const [simulacros, setSimulacros] = useState<PreuniExamSimulation[]>(() => getInitialData('colegio_simulacros', MOCK_SIMULACROS));
-  const [rankings, setRankings] = useState<PreuniRankingEntry[]>(() => getInitialData('colegio_preuni_rankings', MOCK_PREUNI_RANKINGS));
   const [childrenList, setChildrenList] = useState<ChildProfile[]>(() => getInitialData('colegio_children', MOCK_CHILDREN));
   const [selectedChildId, setSelectedChildId] = useState<string>(() => childrenList[0]?.id || 'child-1');
+  const [parentsList, setParentsList] = useState<ParentProfile[]>(() => getInitialData('colegio_parents', MOCK_PARENTS));
+  const [lmsModules, setLmsModules] = useState<LMSModule[]>(() => getInitialData('colegio_lms_modules', MOCK_LMS_MODULES));
+  const [lmsProgress, setLmsProgress] = useState<LMSStudentProgress[]>(() => getInitialData('colegio_lms_progress', []));
+  const [alerts, setAlerts] = useState<SystemAlert[]>(() => getInitialData('colegio_alerts', MOCK_SYSTEM_ALERTS));
+  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>(() => getInitialData('colegio_audit_logs', MOCK_AUDIT_LOGS));
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+  const [onboardingCompleted, setOnboardingCompleted] = useState<boolean>(() => getInitialData('colegio_onboarding', true));
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -1410,11 +1443,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setAcademicContext({ seccionId });
   }, [setAcademicContext]);
 
-  const addSimulacro = useCallback((sim: PreuniExamSimulation) => {
-    setSimulacros(prev => [sim, ...prev]);
-    showToast(`Simulacro "${sim.titulo}" registrado correctamente.`, 'success', 'Simulacro Registrado');
-  }, [showToast]);
-
   const selectedChild = useMemo(() => {
     return childrenList.find(c => c.id === selectedChildId) || childrenList[0];
   }, [childrenList, selectedChildId]);
@@ -1467,13 +1495,82 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     gradeTask,
     exams,
     addExam,
-    simulacros,
-    addSimulacro,
-    rankings,
     childrenList,
     selectedChildId,
     setSelectedChildId,
     selectedChild,
+    parentsList,
+    lmsModules,
+    lmsProgress,
+    completeLMSContent: (matriculaId: string, cursoId: string, contenidoId: string) => {
+      const newProgress: LMSStudentProgress = {
+        matricula_id: matriculaId,
+        curso_id: cursoId,
+        contenido_id: contenidoId,
+        completado: true,
+        fecha_completado: new Date().toISOString(),
+      };
+      setLmsProgress(prev => [...prev.filter(p => !(p.matricula_id === matriculaId && p.contenido_id === contenidoId)), newProgress]);
+      showToast('Progreso de contenido completado', 'success');
+    },
+    alerts,
+    resolveAlert: (alertId: string) => {
+      setAlerts(prev => prev.map(a => a.id === alertId ? { ...a, estado: 'resuelta' } : a));
+      showToast('Alerta marcada como resuelta', 'info');
+    },
+    addAlert: (alertData: Omit<SystemAlert, 'id' | 'created_at' | 'estado'>) => {
+      const newAlert: SystemAlert = {
+        id: `alert-${Date.now()}`,
+        ...alertData,
+        estado: 'nueva',
+        created_at: new Date().toISOString(),
+      };
+      setAlerts(prev => [newAlert, ...prev]);
+    },
+    auditLogs,
+    addAuditLog: (logData: Omit<AuditLogEntry, 'id' | 'timestamp'>) => {
+      const newLog: AuditLogEntry = {
+        id: `log-${Date.now()}`,
+        ...logData,
+        timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
+      };
+      setAuditLogs(prev => [newLog, ...prev]);
+    },
+    isCommandPaletteOpen,
+    setIsCommandPaletteOpen,
+    toggleCommandPalette: () => setIsCommandPaletteOpen(prev => !prev),
+    onboardingCompleted,
+    setOnboardingCompleted,
+    saveClassAttendanceQuickly: (
+      seccionId: string,
+      fecha: string,
+      exceptions: { matriculaId: string; estado: AttendanceStatus; observacion?: string }[]
+    ) => {
+      const sectionEnrollments = enrollments.filter(e => e.seccion_id === seccionId && e.estado === 'activo');
+      const exceptionMap = new Map(exceptions.map(e => [e.matriculaId, e]));
+      
+      const newRecords: AttendanceRecord[] = sectionEnrollments.map(enr => {
+        const exc = exceptionMap.get(enr.id);
+        return {
+          id: `att-quick-${enr.id}-${fecha}`,
+          matricula_id: enr.id,
+          fecha,
+          hora_registro: '08:00',
+          estado: exc ? exc.estado : 'presente',
+          metodo: 'manual',
+          observacion: exc?.observacion || (exc ? 'Excepción registrada por docente' : 'Presente automático'),
+          registrado_por: currentUser.nombres,
+        };
+      });
+
+      setAttendances(prev => [
+        ...prev.filter(a => !(a.fecha === fecha && sectionEnrollments.some(e => e.id === a.matricula_id))),
+        ...newRecords
+      ]);
+
+      showToast(`Asistencia guardada (${newRecords.length} alumnos registrados)`, 'success', '✓ Asistencia Cerrada');
+      return { success: true, totalMarked: newRecords.length };
+    },
     notifications,
     markNotificationRead,
     unreadCount,
@@ -1497,11 +1594,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     tasks,
     submissions,
     exams,
-    simulacros,
-    rankings,
     childrenList,
     selectedChildId,
     selectedChild,
+    parentsList,
+    lmsModules,
+    lmsProgress,
+    alerts,
+    auditLogs,
+    isCommandPaletteOpen,
+    onboardingCompleted,
     notifications,
     unreadCount,
     isLoading,

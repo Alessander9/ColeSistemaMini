@@ -15,6 +15,10 @@ describe('Role-Based Access Control & Middleware Rules', () => {
       allowed: ['/estudiante', '/estudiante/carnet-qr', '/estudiante/horario', '/estudiante/libreta-notas', '/estudiante/asistencias', '/estudiante/tareas', '/estudiante/evaluaciones'],
       forbidden: ['/admin', '/docente', '/asistencia'],
     },
+    apoderado: {
+      allowed: ['/apoderado'],
+      forbidden: ['/admin', '/docente', '/asistencia'],
+    },
     asistencia: {
       allowed: ['/asistencia'],
       forbidden: ['/admin', '/docente', '/estudiante/libreta-notas'],
