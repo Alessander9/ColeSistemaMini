@@ -291,45 +291,85 @@ function getInitialData<T>(key: string, fallback: T): T {
 }
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const [users, setUsers] = useState<UserProfile[]>(() => getInitialData('colegio_users', MOCK_USERS));
-  const [currentUser, setCurrentUser] = useState<UserProfile>(() => getInitialData('colegio_current_user', MOCK_USERS[0]));
-  const [students, setStudents] = useState<Student[]>(() => getInitialData('colegio_students', MOCK_STUDENTS));
-  const [enrollments, setEnrollments] = useState<Enrollment[]>(() => getInitialData('colegio_enrollments', MOCK_ENROLLMENTS));
-  const [attendances, setAttendances] = useState<AttendanceRecord[]>(() => getInitialData('colegio_attendances', MOCK_ATTENDANCES));
-  const [grades, setGrades] = useState<GradeRecord[]>(() => getInitialData('colegio_grades', MOCK_GRADE_RECORDS));
-  const [tasks, setTasks] = useState<TaskAssignment[]>(() => getInitialData('colegio_tasks', MOCK_TASKS));
-  const [submissions, setSubmissions] = useState<TaskSubmission[]>(() => getInitialData('colegio_submissions', MOCK_SUBMISSIONS));
-  const [exams, setExams] = useState<EvaluationExam[]>(() => getInitialData('colegio_exams', MOCK_EXAMS));
-  const [notifications, setNotifications] = useState<AppNotification[]>(() => getInitialData('colegio_notifications', MOCK_NOTIFICATIONS));
-  const [sectionCourses, setSectionCourses] = useState<SectionCourseAssignment[]>(() => getInitialData('colegio_section_courses', MOCK_SECTION_COURSES));
-  const [scheduleSlots, setScheduleSlots] = useState<ScheduleSlot[]>(() => getInitialData('colegio_schedule_slots', MOCK_SCHEDULE_SLOTS));
-  const [classSessions, setClassSessions] = useState<ClassSessionLog[]>(() => getInitialData('colegio_class_sessions', MOCK_CLASS_SESSIONS));
-  const [academicContext, setAcademicContextState] = useState<AcademicContextState>(() => getInitialData('colegio_academic_context', {
+  const [users, setUsers] = useState<UserProfile[]>(MOCK_USERS);
+  const [currentUser, setCurrentUser] = useState<UserProfile>(MOCK_USERS[0]);
+  const [students, setStudents] = useState<Student[]>(MOCK_STUDENTS);
+  const [enrollments, setEnrollments] = useState<Enrollment[]>(MOCK_ENROLLMENTS);
+  const [attendances, setAttendances] = useState<AttendanceRecord[]>(MOCK_ATTENDANCES);
+  const [grades, setGrades] = useState<GradeRecord[]>(MOCK_GRADE_RECORDS);
+  const [tasks, setTasks] = useState<TaskAssignment[]>(MOCK_TASKS);
+  const [submissions, setSubmissions] = useState<TaskSubmission[]>(MOCK_SUBMISSIONS);
+  const [exams, setExams] = useState<EvaluationExam[]>(MOCK_EXAMS);
+  const [notifications, setNotifications] = useState<AppNotification[]>(MOCK_NOTIFICATIONS);
+  const [sectionCourses, setSectionCourses] = useState<SectionCourseAssignment[]>(MOCK_SECTION_COURSES);
+  const [scheduleSlots, setScheduleSlots] = useState<ScheduleSlot[]>(MOCK_SCHEDULE_SLOTS);
+  const [classSessions, setClassSessions] = useState<ClassSessionLog[]>(MOCK_CLASS_SESSIONS);
+  const [academicContext, setAcademicContextState] = useState<AcademicContextState>({
     institucion: 'Institución Educativa San José',
     anio: 2026,
     nivel: 'todos',
-  }));
-  const [childrenList, setChildrenList] = useState<ChildProfile[]>(() => getInitialData('colegio_children', MOCK_CHILDREN));
-  const [selectedChildId, setSelectedChildId] = useState<string>(() => childrenList[0]?.id || 'child-1');
-  const [parentsList, setParentsList] = useState<ParentProfile[]>(() => getInitialData('colegio_parents', MOCK_PARENTS));
-  const [lmsModules, setLmsModules] = useState<LMSModule[]>(() => getInitialData('colegio_lms_modules', MOCK_LMS_MODULES));
-  const [lmsProgress, setLmsProgress] = useState<LMSStudentProgress[]>(() => getInitialData('colegio_lms_progress', []));
-  const [alerts, setAlerts] = useState<SystemAlert[]>(() => getInitialData('colegio_alerts', MOCK_SYSTEM_ALERTS));
-  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>(() => getInitialData('colegio_audit_logs', MOCK_AUDIT_LOGS));
+  });
+  const [childrenList, setChildrenList] = useState<ChildProfile[]>(MOCK_CHILDREN);
+  const [selectedChildId, setSelectedChildId] = useState<string>('child-1');
+  const [parentsList, setParentsList] = useState<ParentProfile[]>(MOCK_PARENTS);
+  const [lmsModules, setLmsModules] = useState<LMSModule[]>(MOCK_LMS_MODULES);
+  const [lmsProgress, setLmsProgress] = useState<LMSStudentProgress[]>([]);
+  const [alerts, setAlerts] = useState<SystemAlert[]>(MOCK_SYSTEM_ALERTS);
+  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>(MOCK_AUDIT_LOGS);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
-  const [onboardingCompleted, setOnboardingCompleted] = useState<boolean>(() => getInitialData('colegio_onboarding', true));
+  const [onboardingCompleted, setOnboardingCompleted] = useState<boolean>(true);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
 
+  // Hidratación segura post-montaje para evitar errores de mismatch SSR (React #418, #425)
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = localStorage.getItem('colegio_sidebar_collapsed');
-        if (saved !== null) {
-          setIsSidebarCollapsed(saved === 'true');
-        }
-      } catch {
-        /* ignore */
-      }
+    if (typeof window === 'undefined') return;
+    try {
+      const u = localStorage.getItem('colegio_users');
+      if (u) setUsers(JSON.parse(u));
+      const cu = localStorage.getItem('colegio_current_user');
+      if (cu) setCurrentUser(JSON.parse(cu));
+      const st = localStorage.getItem('colegio_students');
+      if (st) setStudents(JSON.parse(st));
+      const en = localStorage.getItem('colegio_enrollments');
+      if (en) setEnrollments(JSON.parse(en));
+      const att = localStorage.getItem('colegio_attendances');
+      if (att) setAttendances(JSON.parse(att));
+      const gr = localStorage.getItem('colegio_grades');
+      if (gr) setGrades(JSON.parse(gr));
+      const tk = localStorage.getItem('colegio_tasks');
+      if (tk) setTasks(JSON.parse(tk));
+      const sub = localStorage.getItem('colegio_submissions');
+      if (sub) setSubmissions(JSON.parse(sub));
+      const ex = localStorage.getItem('colegio_exams');
+      if (ex) setExams(JSON.parse(ex));
+      const notif = localStorage.getItem('colegio_notifications');
+      if (notif) setNotifications(JSON.parse(notif));
+      const sc = localStorage.getItem('colegio_section_courses');
+      if (sc) setSectionCourses(JSON.parse(sc));
+      const slots = localStorage.getItem('colegio_schedule_slots');
+      if (slots) setScheduleSlots(JSON.parse(slots));
+      const cs = localStorage.getItem('colegio_class_sessions');
+      if (cs) setClassSessions(JSON.parse(cs));
+      const ctx = localStorage.getItem('colegio_academic_context');
+      if (ctx) setAcademicContextState(JSON.parse(ctx));
+      const ch = localStorage.getItem('colegio_children');
+      if (ch) setChildrenList(JSON.parse(ch));
+      const pr = localStorage.getItem('colegio_parents');
+      if (pr) setParentsList(JSON.parse(pr));
+      const lmsM = localStorage.getItem('colegio_lms_modules');
+      if (lmsM) setLmsModules(JSON.parse(lmsM));
+      const lmsP = localStorage.getItem('colegio_lms_progress');
+      if (lmsP) setLmsProgress(JSON.parse(lmsP));
+      const al = localStorage.getItem('colegio_alerts');
+      if (al) setAlerts(JSON.parse(al));
+      const alog = localStorage.getItem('colegio_audit_logs');
+      if (alog) setAuditLogs(JSON.parse(alog));
+      const onb = localStorage.getItem('colegio_onboarding');
+      if (onb !== null) setOnboardingCompleted(JSON.parse(onb));
+      const scoll = localStorage.getItem('colegio_sidebar_collapsed');
+      if (scoll !== null) setIsSidebarCollapsed(scoll === 'true');
+    } catch (err) {
+      console.warn('[Storage] Error hidratando estado local:', err);
     }
   }, []);
 
