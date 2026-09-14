@@ -42,7 +42,7 @@ export default function DocenteDashboardPage() {
   const [sessionSuccess, setSessionSuccess] = useState(false);
 
   const todayStr = new Date().toISOString().split('T')[0];
-  const todayAttendances = attendances.filter(a => a.fecha === todayStr || a.fecha === '2026-09-12');
+  const todayAttendances = attendances.filter(a => a.fecha === todayStr);
   const presentCount = todayAttendances.filter(a => a.estado === 'presente').length;
   const lateCount = todayAttendances.filter(a => a.estado === 'tardanza').length;
   const attendancePct = students.length > 0 ? Math.round(((presentCount + lateCount) / students.length) * 100) : 0;

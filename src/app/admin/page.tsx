@@ -31,7 +31,7 @@ export default function AdminDashboardPage() {
 
   const totalStudents = students.length;
   const todayStr = new Date().toISOString().split('T')[0];
-  const todayAttendances = attendances.filter(a => a.fecha === todayStr || a.fecha === '2026-09-12');
+  const todayAttendances = attendances.filter(a => a.fecha === todayStr);
   const presentStudents = todayAttendances.filter(a => a.estado === 'presente').length;
   const lateStudents = todayAttendances.filter(a => a.estado === 'tardanza').length;
   const absentStudents = totalStudents - presentStudents - lateStudents;

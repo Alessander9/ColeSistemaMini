@@ -62,7 +62,7 @@ export default function DocenteAsistenciaPage() {
             {enrollments.map((enr) => {
               const fullName = `${enr.estudiante?.profile?.apellidos}, ${enr.estudiante?.profile?.nombres}`;
               const attRecord = attendances.find(
-                a => a.matricula_id === enr.id && (a.fecha === todayStr || a.fecha === '2026-09-12')
+                a => a.matricula_id === enr.id && a.fecha === todayStr
               );
 
               return (

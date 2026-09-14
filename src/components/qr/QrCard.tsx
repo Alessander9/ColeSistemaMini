@@ -104,20 +104,12 @@ export function QrCard({
         {/* QR Code Container */}
         <div className="bg-white rounded-2xl p-4 flex flex-col items-center justify-center shadow-inner border-2 border-slate-200 mb-3">
           <QRCodeCanvas
-            value={student.token_qr}
-            size={160}
-            level="H"
+            value={student.token_qr || student.codigo_estudiante}
+            size={170}
+            level="M"
             includeMargin={true}
-            imageSettings={{
-              src: '/logo-mini.png',
-              x: undefined,
-              y: undefined,
-              height: 24,
-              width: 24,
-              excavate: true,
-            }}
           />
-          <p className="text-[10px] font-mono text-slate-600 mt-2 font-bold tracking-widest uppercase">
+          <p className="text-[11px] font-mono text-slate-700 mt-2 font-black tracking-widest uppercase">
             {student.codigo_estudiante}
           </p>
         </div>

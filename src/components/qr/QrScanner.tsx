@@ -195,14 +195,25 @@ export function QrScanner({
       second: '2-digit',
     });
 
-    const cleanLower = rawClean.toLowerCase();
-    const foundStudent = students.find(
-      (s) =>
-        s.token_qr?.trim().toLowerCase() === cleanLower ||
-        s.codigo_estudiante?.trim().toLowerCase() === cleanLower ||
-        s.profile?.dni?.trim() === rawClean ||
-        s.id === rawClean
-    );
+    const normalize = (str?: string) =>
+      str ? str.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "";
+    const normClean = normalize(rawClean);
+
+    const foundStudent = students.find((s) => {
+      const sToken = normalize(s.token_qr);
+      const sCode = normalize(s.codigo_estudiante);
+      const sDni = normalize(s.profile?.dni);
+      return (
+        sToken === normClean ||
+        sCode === normClean ||
+        sDni === normClean ||
+        s.id === rawClean ||
+        s.profile_id === rawClean ||
+        (sCode && normClean.includes(sCode)) ||
+        (sToken && normClean.includes(sToken)) ||
+        (sDni && normClean.includes(sDni))
+      );
+    });
 
     const foundEnrollment = foundStudent
       ? enrollments.find((e) => e.estudiante_id === foundStudent.id)
@@ -495,6 +506,46 @@ export function QrScanner({
     stopCamera();
     if (alertTimeoutRef.current) clearTimeout(alertTimeoutRef.current);
   }, [stopCamera]);
+
+  // ── Soporte para pistolas y lectores ópticos USB de código QR / barras ────
+  useEffect(() => {
+    let barcodeBuffer = '';
+    let lastKeyTime = Date.now();
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement;
+      const isInputFocused =
+        activeEl &&
+        (activeEl.tagName === 'INPUT' ||
+          activeEl.tagName === 'TEXTAREA' ||
+          (activeEl as HTMLElement).isContentEditable);
+
+      if (isInputFocused && activeEl !== fileInputRef.current) {
+        if (e.key === 'Enter') return;
+      }
+
+      const currentTime = Date.now();
+      if (currentTime - lastKeyTime > 150) {
+        barcodeBuffer = '';
+      }
+      lastKeyTime = currentTime;
+
+      if (e.key === 'Enter') {
+        if (barcodeBuffer.trim().length >= 3) {
+          e.preventDefault();
+          handleDecoded(barcodeBuffer.trim());
+          barcodeBuffer = '';
+        }
+      } else if (e.key.length === 1) {
+        barcodeBuffer += e.key;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [handleDecoded]);
 
   // ── File scan ─────────────────────────────────────────────────────────────
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {

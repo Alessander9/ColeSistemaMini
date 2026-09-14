@@ -80,6 +80,7 @@ interface AppContextType {
     email?: string;
     telefono?: string;
     especialidad?: string;
+    avatar_url?: string;
   }) => { teacher: UserProfile; credentials: { username: string; password: string; email: string } };
 
   // ── Asignación de Materias y Docentes por Salón ──
@@ -163,6 +164,7 @@ interface AppContextType {
     nombreApoderado: string;
     telefonoApoderado: string;
     genero?: string;
+    avatar_url?: string;
   }) => { student: Student; credentials: { username: string; password: string; email: string } };
 
   tasks: TaskAssignment[];
@@ -270,9 +272,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         scheduleService.fetchClassSessions(),
       ]);
 
-      if (loadedStudents && loadedStudents.length > 0) setStudents(loadedStudents);
-      if (loadedEnrollments && loadedEnrollments.length > 0) setEnrollments(loadedEnrollments);
-      if (loadedAttendances && loadedAttendances.length > 0) setAttendances(loadedAttendances);
+      // Solo sobrescribir si el servidor devolvió MÁS datos que el estado local
+      // Esto evita perder estudiantes/matrículas recién creados que aún no están en Supabase
+      setStudents(prev => loadedStudents.length > prev.length ? loadedStudents : prev);
+      setEnrollments(prev => loadedEnrollments.length > prev.length ? loadedEnrollments : prev);
+      setAttendances(prev => loadedAttendances.length > prev.length ? loadedAttendances : prev);
       if (loadedGrades && loadedGrades.length > 0) setGrades(loadedGrades);
       if (loadedTasks && loadedTasks.length > 0) setTasks(loadedTasks);
       if (loadedSubmissions && loadedSubmissions.length > 0) setSubmissions(loadedSubmissions);
@@ -401,6 +405,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     email?: string;
     telefono?: string;
     especialidad?: string;
+    avatar_url?: string;
   }) => {
     const cleanFirst = data.nombres.trim().split(' ')[0].toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     const cleanLast = data.apellidos.trim().split(' ')[0].toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -417,7 +422,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       email: autoEmail,
       telefono: data.telefono,
       especialidad: data.especialidad || 'Educación General',
-      avatar_url: `https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80`,
+      avatar_url: data.avatar_url || `https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80`,
       activo: true,
     };
 
@@ -479,14 +484,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     let targetEnrollment: Enrollment | undefined;
 
     if (studentQrToken) {
-      const cleanToken = studentQrToken.trim().toLowerCase();
+      const normalize = (str?: string) =>
+        str ? str.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "";
+      const normToken = normalize(studentQrToken);
       const rawToken = studentQrToken.trim();
-      const student = students.find(s => 
-        s.token_qr?.trim().toLowerCase() === cleanToken || 
-        s.codigo_estudiante?.trim().toLowerCase() === cleanToken ||
-        s.profile?.dni?.trim() === rawToken ||
-        s.id === rawToken
-      );
+
+      const student = students.find(s => {
+        const sToken = normalize(s.token_qr);
+        const sCode = normalize(s.codigo_estudiante);
+        const sDni = normalize(s.profile?.dni);
+        const sId = s.id;
+        const pId = s.profile_id;
+        
+        return (
+          sToken === normToken ||
+          sCode === normToken ||
+          sDni === normToken ||
+          sId === rawToken ||
+          pId === rawToken ||
+          (sCode && normToken.includes(sCode)) ||
+          (sToken && normToken.includes(sToken)) ||
+          (sDni && normToken.includes(sDni))
+        );
+      });
       if (!student) {
         return { success: false, message: 'Código QR no reconocido o estudiante inexistente' };
       }
@@ -503,9 +523,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     const currentTimeStr = now.toLocaleTimeString('es-PE', { hour12: false });
 
-    // Look for attendance registered today or previously in this active session
+    // Look for attendance registered today only
     const existingIndex = attendances.findIndex(
-      a => a.matricula_id === targetEnrollment!.id && (a.fecha === todayStr || a.fecha === '2026-09-12')
+      a => a.matricula_id === targetEnrollment!.id && a.fecha === todayStr
     );
 
     const studentName = `${targetEnrollment.estudiante?.profile?.nombres} ${targetEnrollment.estudiante?.profile?.apellidos}`;
@@ -540,6 +560,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         observacion: observacion || updated[existingIndex].observacion,
       };
       setAttendances(updated);
+
+      // Manual override: persist to Supabase if available
+      attendanceService.recordAttendanceInDb({
+        matriculaId: targetEnrollment.id,
+        estado: status,
+        metodo,
+        observacion,
+        registradoPorId: currentUser.id,
+      }).catch(() => {});
 
       addNotification({
         user_id: targetEnrollment.estudiante?.profile_id || '',
@@ -576,6 +605,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       };
 
       setAttendances(prev => [newRecord, ...prev]);
+
+      // Persist to Supabase if available
+      attendanceService.recordAttendanceInDb({
+        matriculaId: targetEnrollment.id,
+        estado: status,
+        metodo,
+        observacion,
+        registradoPorId: currentUser.id,
+      }).catch(() => {});
 
       // Notify student
       addNotification({
@@ -678,10 +716,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     nombreApoderado: string;
     telefonoApoderado: string;
     genero?: string;
+    avatar_url?: string;
   }) => {
-    const studentCount = students.length + 1;
-    const studentCode = `EST-2026-${String(studentCount).padStart(3, '0')}`;
-    const tokenQr = `QR-${studentCode}-${data.nombres.split(' ')[0].toUpperCase()}-${data.apellidos.split(' ')[0].toUpperCase()}`;
+    // Generar un código único basado en timestamp para evitar colisiones
+    const uniqueSuffix = String(Date.now()).slice(-6);
+    const studentCode = `EST-2026-${uniqueSuffix}`;
+    const cleanFirst = data.nombres.trim().split(' ')[0].normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+    const cleanLast = data.apellidos.trim().split(' ')[0].normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+    const tokenQr = `QR-${studentCode}-${cleanFirst}-${cleanLast}`;
 
     // ── Auto-generate credentials ──────────────────────────────
     const password = generateStudentPassword(data.nombres, data.apellidos, data.fechaNacimiento);
@@ -697,7 +739,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       dni: data.dni,
       email,
       telefono: data.telefonoApoderado,
-      avatar_url: `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80`,
+      avatar_url: data.avatar_url || `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80`,
       activo: true,
     };
 
@@ -729,6 +771,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     setStudents(prev => [newStudent, ...prev]);
     setEnrollments(prev => [newEnrollment, ...prev]);
+
+    // Persistir en Supabase de manera asíncrona si está activo
+    academicService.createStudentInDb({
+      ...data,
+      studentCode,
+      tokenQr,
+      avatar_url: newProfile.avatar_url,
+    }).catch(err => {
+      console.warn('[Supabase] Error al crear estudiante en DB remota:', err);
+    });
 
     showToast(
       `Estudiante ${data.nombres} ${data.apellidos} matriculado con éxito (${studentCode}).`,

@@ -41,7 +41,7 @@ export default function HomePage() {
   }, [currentUser, router]);
 
   const todayStr = new Date().toISOString().split('T')[0];
-  const todayAttendances = attendances.filter(a => a.fecha === todayStr || a.fecha === '2026-09-12');
+  const todayAttendances = attendances.filter(a => a.fecha === todayStr);
   const presentCount = todayAttendances.filter(a => a.estado === 'presente' || a.estado === 'tardanza').length;
   const attendanceRate = students.length > 0 ? Math.round((presentCount / students.length) * 100) : 0;
 

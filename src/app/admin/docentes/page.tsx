@@ -5,6 +5,7 @@ import { useApp } from '@/context/AppContext';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { StatCard } from '@/components/ui/StatCard';
 import { DataTable } from '@/components/ui/DataTable';
+import { AvatarUploader } from '@/components/ui/AvatarUploader';
 import { 
   Users, 
   UserPlus, 
@@ -58,6 +59,7 @@ export default function AdminDocentesPage() {
     telefono: '',
     email: '',
     especialidad: 'Matemática',
+    avatar_url: '',
   });
 
   // Modal Credenciales Creadas
@@ -120,6 +122,7 @@ export default function AdminDocentesPage() {
       telefono: newTeacherData.telefono,
       email: newTeacherData.email,
       especialidad: newTeacherData.especialidad,
+      avatar_url: newTeacherData.avatar_url,
     });
 
     setCreatedCredentials({
@@ -137,6 +140,7 @@ export default function AdminDocentesPage() {
       telefono: '',
       email: '',
       especialidad: 'Matemática',
+      avatar_url: '',
     });
     setIsNewTeacherModalOpen(false);
   };
@@ -598,6 +602,15 @@ export default function AdminDocentesPage() {
             </div>
 
             <form onSubmit={handleRegisterTeacher} className="p-6 space-y-4">
+              {/* Foto de Perfil con Cloudinary */}
+              <div className="flex flex-col items-center justify-center p-3 rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/80">
+                <AvatarUploader
+                  currentAvatarUrl={newTeacherData.avatar_url}
+                  userName={`${newTeacherData.nombres || 'Docente'} ${newTeacherData.apellidos || ''}`.trim()}
+                  onAvatarUpdated={(url) => setNewTeacherData((prev) => ({ ...prev, avatar_url: url }))}
+                />
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">

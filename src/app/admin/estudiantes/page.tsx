@@ -6,6 +6,7 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { DataTable, Column } from '@/components/ui/DataTable';
 import { Modal } from '@/components/ui/Modal';
 import { QrCard } from '@/components/qr/QrCard';
+import { AvatarUploader } from '@/components/ui/AvatarUploader';
 import { Student } from '@/types';
 import { UserPlus, QrCode, Phone, UserCheck, ShieldCheck } from 'lucide-react';
 
@@ -23,6 +24,7 @@ export default function AdminEstudiantesPage() {
     seccionId: 'sec-3pri-a',
     nombreApoderado: '',
     telefonoApoderado: '',
+    avatar_url: '',
   });
 
   const handleCreateStudent = (e: React.FormEvent) => {
@@ -40,6 +42,7 @@ export default function AdminEstudiantesPage() {
       seccionId: 'sec-3pri-a',
       nombreApoderado: '',
       telefonoApoderado: '',
+      avatar_url: '',
     });
   };
 
@@ -234,6 +237,15 @@ export default function AdminEstudiantesPage() {
         maxWidth="lg"
       >
         <form onSubmit={handleCreateStudent} className="space-y-4 text-xs">
+          {/* Cloudinary Student Avatar */}
+          <div className="flex flex-col items-center justify-center p-3 rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/80">
+            <AvatarUploader
+              currentAvatarUrl={formData.avatar_url}
+              userName={`${formData.nombres || 'Alumno'} ${formData.apellidos || ''}`.trim()}
+              onAvatarUpdated={(url) => setFormData((prev) => ({ ...prev, avatar_url: url }))}
+            />
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Nombres *</label>

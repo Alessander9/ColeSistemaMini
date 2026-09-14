@@ -1,5 +1,5 @@
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
-import { Student, Enrollment, GradeLevel, Section, Course, Competency, EvaluationPeriod, GradeRecord, GradeLetter } from '@/types';
+import { Student, Enrollment, GradeLevel, Section, Course, Competency, EvaluationPeriod, GradeRecord, GradeLetter, UserProfile } from '@/types';
 import { generateStudentEmail, generateStudentPassword, generateStudentUsername } from '@/lib/auth/generateCredentials';
 import { 
   MOCK_GRADE_LEVELS, 
@@ -138,54 +138,83 @@ export async function createStudentInDb(data: {
   telefonoApoderado: string;
   genero?: string;
   periodoId?: string;
+  avatar_url?: string;
+  studentCode?: string;
+  tokenQr?: string;
 }): Promise<{ student: Student; credentials: { username: string; password: string; email: string } }> {
   const supabase = createClient();
 
   const generatedPassword = generateStudentPassword(data.nombres, data.apellidos, data.fechaNacimiento);
   const generatedEmail = generateStudentEmail(data.nombres, data.apellidos);
   const generatedUsername = generateStudentUsername(data.apellidos, data.dni);
-  const studentCode = `EST-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
-  const tokenQr = `token-qr-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
+  
+  const cleanFirst = data.nombres.trim().split(' ')[0].normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+  const cleanLast = data.apellidos.trim().split(' ')[0].normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+  const studentCode = data.studentCode || `EST-2026-${Math.floor(100 + Math.random() * 900)}`;
+  const tokenQr = data.tokenQr || `QR-${studentCode}-${cleanFirst}-${cleanLast}`;
 
   // 1. Crear Perfil de usuario en Supabase
-  const { data: newProfile, error: profileErr } = await supabase
-    .from('profiles')
-    .insert({
-      rol: 'estudiante',
-      nombres: data.nombres.trim(),
-      apellidos: data.apellidos.trim(),
-      dni: data.dni.trim(),
-      email: generatedEmail,
-      telefono: data.telefonoApoderado,
-      avatar_url: `https://images.unsplash.com/photo-1544717305-2782549b5136?w=150&auto=format&fit=crop&q=80`,
-      activo: true,
-    })
-    .select()
-    .single();
+  let profileId = `user-estudiante-${Date.now()}`;
+  let newProfile: UserProfile | null = null;
 
-  const profileId = newProfile?.id || `user-estudiante-${Date.now()}`;
+  if (isSupabaseConfigured()) {
+    try {
+      const { data: dbProfile, error: profileErr } = await supabase
+        .from('profiles')
+        .insert({
+          rol: 'estudiante',
+          nombres: data.nombres.trim(),
+          apellidos: data.apellidos.trim(),
+          dni: data.dni.trim(),
+          email: generatedEmail,
+          telefono: data.telefonoApoderado,
+          avatar_url: data.avatar_url || `https://images.unsplash.com/photo-1544717305-2782549b5136?w=150&auto=format&fit=crop&q=80`,
+          activo: true,
+        })
+        .select()
+        .single();
+
+      if (!profileErr && dbProfile) {
+        newProfile = dbProfile as UserProfile;
+        profileId = dbProfile.id;
+      }
+    } catch {
+      /* fallback a local */
+    }
+  }
 
   // 2. Crear registro de estudiante
-  const { data: newStudent, error: studentErr } = await supabase
-    .from('estudiantes')
-    .insert({
-      profile_id: profileId,
-      codigo_estudiante: studentCode,
-      fecha_nacimiento: data.fechaNacimiento,
-      genero: data.genero || 'No especificado',
-      nombre_apoderado: data.nombreApoderado,
-      telefono_apoderado: data.telefonoApoderado,
-      token_qr: tokenQr,
-    })
-    .select('*, profile:profiles(*)')
-    .single();
+  let newStudent: Student | null = null;
+  if (isSupabaseConfigured()) {
+    try {
+      const { data: dbStudent, error: studentErr } = await supabase
+        .from('estudiantes')
+        .insert({
+          profile_id: profileId,
+          codigo_estudiante: studentCode,
+          fecha_nacimiento: data.fechaNacimiento,
+          genero: data.genero || 'No especificado',
+          nombre_apoderado: data.nombreApoderado,
+          telefono_apoderado: data.telefonoApoderado,
+          token_qr: tokenQr,
+        })
+        .select('*, profile:profiles(*)')
+        .single();
+
+      if (!studentErr && dbStudent) {
+        newStudent = dbStudent as Student;
+      }
+    } catch {
+      /* fallback */
+    }
+  }
 
   const studentResult: Student = (newStudent as Student) || {
     id: `est-${Date.now()}`,
     profile_id: profileId,
     codigo_estudiante: studentCode,
     fecha_nacimiento: data.fechaNacimiento,
-    genero: data.genero,
+    genero: data.genero || 'No especificado',
     nombre_apoderado: data.nombreApoderado,
     telefono_apoderado: data.telefonoApoderado,
     token_qr: tokenQr,
@@ -196,18 +225,23 @@ export async function createStudentInDb(data: {
       apellidos: data.apellidos,
       dni: data.dni,
       email: generatedEmail,
+      avatar_url: data.avatar_url || `https://images.unsplash.com/photo-1544717305-2782549b5136?w=150&auto=format&fit=crop&q=80`,
       activo: true,
     },
   };
 
   // 3. Matricular en la sección indicada
   if (isSupabaseConfigured()) {
-    await supabase.from('matriculas').insert({
-      estudiante_id: studentResult.id,
-      periodo_id: data.periodoId || 'periodo-2026',
-      seccion_id: data.seccionId,
-      estado: 'activo',
-    });
+    try {
+      await supabase.from('matriculas').insert({
+        estudiante_id: studentResult.id,
+        periodo_id: data.periodoId || 'periodo-2026',
+        seccion_id: data.seccionId,
+        estado: 'activo',
+      });
+    } catch {
+      /* ignore */
+    }
   }
 
   // Guardar en el store local

@@ -42,7 +42,7 @@ export default function AsistenciaMobilePage() {
   const [scanStatusMode, setScanStatusMode] = useState<AttendanceStatus>('presente');
 
   const todayStr = new Date().toISOString().split('T')[0];
-  const todayAttendances = attendances.filter(a => a.fecha === todayStr || a.fecha === '2026-09-12');
+  const todayAttendances = attendances.filter(a => a.fecha === todayStr);
   const totalHoy = todayAttendances.length;
   const aTiempo = todayAttendances.filter(a => a.estado === 'presente').length;
   const tardanzas = todayAttendances.filter(a => a.estado === 'tardanza').length;

@@ -41,4 +41,51 @@ describe('DataTable Pagination & Filters', () => {
     const validRoles = ['admin', 'docente', 'estudiante', 'asistencia'];
     expect(validRoles).toContain('asistencia');
   });
+
+  it('generates normalized QR tokens handling accents like André without character corruption', () => {
+    const nombres = 'André';
+    const apellidos = 'centeno alva';
+    const studentCode = 'EST-2026-009';
+
+    const cleanFirst = nombres.trim().split(' ')[0].normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+    const cleanLast = apellidos.trim().split(' ')[0].normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+    const tokenQr = `QR-${studentCode}-${cleanFirst}-${cleanLast}`;
+
+    expect(tokenQr).toBe('QR-EST-2026-009-ANDRE-CENTENO');
+    expect(tokenQr).not.toContain('É');
+  });
+
+  it('matches QR scans with accents, lowercase, DNI, or student codes robustly', () => {
+    const student = {
+      id: 'student-99',
+      codigo_estudiante: 'EST-2026-009',
+      token_qr: 'QR-EST-2026-009-ANDRE-CENTENO',
+      profile: { dni: '12345678', nombres: 'André', apellidos: 'centeno alva' },
+    };
+
+    const normalize = (str?: string) =>
+      str ? str.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "";
+
+    const findMatch = (rawInput: string) => {
+      const normInput = normalize(rawInput);
+      return [student].find(s => {
+        const sToken = normalize(s.token_qr);
+        const sCode = normalize(s.codigo_estudiante);
+        const sDni = normalize(s.profile?.dni);
+        return (
+          sToken === normInput ||
+          sCode === normInput ||
+          sDni === normInput ||
+          (sCode && normInput.includes(sCode)) ||
+          (sToken && normInput.includes(sToken)) ||
+          (sDni && normInput.includes(sDni))
+        );
+      });
+    };
+
+    expect(findMatch('QR-EST-2026-009-ANDRE-CENTENO')).toBeDefined();
+    expect(findMatch('qr-est-2026-009-andré-centeno')).toBeDefined(); // Accented scan
+    expect(findMatch('EST-2026-009')).toBeDefined(); // Code scan
+    expect(findMatch('12345678')).toBeDefined(); // DNI scan
+  });
 });
