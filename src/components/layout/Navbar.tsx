@@ -23,6 +23,9 @@ export function Navbar({ onOpenMobileMenu }: NavbarProps) {
   const { currentUser, toggleCommandPalette } = useApp();
   const [isQrOpen, setIsQrOpen] = useState(false);
 
+  // Permiso para escanear asistencia QR: Solo Admin, Docente y Asistencia (Portero)
+  const canScanQr = currentUser?.rol === 'admin' || currentUser?.rol === 'docente' || currentUser?.rol === 'asistencia';
+
   const roleHomeUrl: Record<UserRole, string> = {
     admin: '/admin',
     docente: '/docente',
@@ -82,16 +85,19 @@ export function Navbar({ onOpenMobileMenu }: NavbarProps) {
               </kbd>
             </button>
 
-            <button
-              onClick={() => setIsQrOpen(true)}
-              className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200/80 dark:border-emerald-800/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 font-semibold text-xs shadow-sm hover:shadow transition-all duration-200 active:scale-95 shrink-0"
-              title="Abrir Lector de Asistencia QR"
-            >
-              <div className="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center">
-                <QrCode className="w-2.5 h-2.5" />
-              </div>
-              <span className="text-[11px]">Escanear QR</span>
-            </button>
+            {/* Solo Administrador, Docente y Portero (Asistencia) pueden abrir el escáner QR de toma de asistencia */}
+            {canScanQr && (
+              <button
+                onClick={() => setIsQrOpen(true)}
+                className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200/80 dark:border-emerald-800/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 font-semibold text-xs shadow-sm hover:shadow transition-all duration-200 active:scale-95 shrink-0"
+                title="Abrir Lector de Asistencia QR"
+              >
+                <div className="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center">
+                  <QrCode className="w-2.5 h-2.5" />
+                </div>
+                <span className="text-[11px]">Escanear QR</span>
+              </button>
+            )}
           </div>
 
           {/* Right: Actions */}
@@ -103,8 +109,10 @@ export function Navbar({ onOpenMobileMenu }: NavbarProps) {
         </div>
       </header>
 
-      {/* Quick QR Scanner Modal */}
-      <QuickQrModal isOpen={isQrOpen} onClose={() => setIsQrOpen(false)} />
+      {/* Quick QR Scanner Modal (Solo usuarios autorizados) */}
+      {canScanQr && (
+        <QuickQrModal isOpen={isQrOpen} onClose={() => setIsQrOpen(false)} />
+      )}
     </>
   );
 }
