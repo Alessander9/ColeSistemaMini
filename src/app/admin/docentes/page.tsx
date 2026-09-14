@@ -71,6 +71,9 @@ export default function AdminDocentesPage() {
   } | null>(null);
   const [copied, setCopied] = useState(false);
 
+  // Modal Ficha 360° del Docente (Pop-up)
+  const [selectedTeacherForDetail, setSelectedTeacherForDetail] = useState<any>(null);
+
   // Modal Asignar Materia a Salón
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [selectedTeacherId, setSelectedTeacherId] = useState<string>('');
@@ -306,14 +309,17 @@ export default function AdminDocentesPage() {
             {
               header: 'Docente',
               cell: (docente) => (
-                <div className="flex items-center gap-3">
+                <div
+                  onClick={() => setSelectedTeacherForDetail(docente)}
+                  className="flex items-center gap-3 cursor-pointer group"
+                >
                   <img
                     src={docente.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(docente.nombres)}`}
                     alt={docente.nombres}
-                    className="w-10 h-10 rounded-2xl object-cover ring-2 ring-indigo-500/20 shrink-0"
+                    className="w-10 h-10 rounded-2xl object-cover ring-2 ring-indigo-500/20 group-hover:scale-105 transition-transform shrink-0"
                   />
                   <div>
-                    <p className="font-extrabold text-slate-800 dark:text-white text-xs leading-tight">
+                    <p className="font-extrabold text-slate-800 dark:text-white text-xs leading-tight group-hover:text-indigo-600 transition-colors">
                       {docente.apellidos}, {docente.nombres}
                     </p>
                     <p className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold">
@@ -374,6 +380,12 @@ export default function AdminDocentesPage() {
               cell: (docente) => (
                 <div className="flex items-center gap-1.5">
                   <button
+                    onClick={() => setSelectedTeacherForDetail(docente)}
+                    className="px-2.5 py-1.5 rounded-xl bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 hover:bg-purple-100 font-bold text-xs transition-colors"
+                  >
+                    Ficha 360°
+                  </button>
+                  <button
                     onClick={() => openAssignForTeacher(docente.id)}
                     className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition-colors shadow-sm"
                   >
@@ -399,14 +411,17 @@ export default function AdminDocentesPage() {
             return (
               <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between h-full group">
                 <div>
-                  <div className="flex items-start gap-3.5 mb-4">
+                  <div
+                    onClick={() => setSelectedTeacherForDetail(docente)}
+                    className="flex items-start gap-3.5 mb-4 cursor-pointer"
+                  >
                     <img
                       src={docente.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(docente.nombres)}`}
                       alt={docente.nombres}
                       className="w-13 h-13 rounded-2xl object-cover ring-2 ring-indigo-500/20 shrink-0 group-hover:scale-105 transition-transform"
                     />
                     <div className="min-w-0 flex-1">
-                      <h4 className="font-extrabold text-sm text-slate-900 dark:text-white leading-tight truncate">
+                      <h4 className="font-extrabold text-sm text-slate-900 dark:text-white leading-tight truncate group-hover:text-indigo-600 transition-colors">
                         {docente.nombres} {docente.apellidos}
                       </h4>
                       <p className="text-xs text-indigo-600 dark:text-indigo-400 font-bold mt-0.5">
@@ -453,18 +468,24 @@ export default function AdminDocentesPage() {
 
                 <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
                   <button
+                    onClick={() => setSelectedTeacherForDetail(docente)}
+                    className="px-3 py-2 rounded-xl bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 hover:bg-purple-100 font-bold text-xs transition-colors"
+                  >
+                    Ficha 360°
+                  </button>
+                  <button
                     onClick={() => openAssignForTeacher(docente.id)}
                     className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition-colors shadow-sm"
                   >
                     <Plus className="w-3.5 h-3.5" />
-                    Asignar Salón
+                    Asignar
                   </button>
                   <Link
                     href="/admin/horarios"
-                    className="px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs transition-colors flex items-center gap-1"
+                    className="px-2.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs transition-colors flex items-center gap-1"
+                    title="Horario"
                   >
                     <Calendar className="w-3.5 h-3.5" />
-                    Horario
                   </Link>
                 </div>
               </div>
@@ -870,64 +891,163 @@ export default function AdminDocentesPage() {
         </div>
       )}
 
-      {/* MODAL 3: CREDENCIALES GENERADAS */}
-      {createdCredentials && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
-          <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-scale-up">
-            <div className="p-6 text-center space-y-4">
-              <div className="w-14 h-14 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-600 flex items-center justify-center mx-auto shadow-inner">
-                <CheckCircle2 className="w-8 h-8" />
-              </div>
-              <div>
-                <h3 className="text-lg font-black text-slate-900 dark:text-white">
-                  ¡Profesor Registrado con Éxito!
-                </h3>
-                <p className="text-xs text-slate-500">
-                  Entrega estas credenciales institucionales al profesor:
-                </p>
-              </div>
+      {/* MODAL 4: FICHA 360° DEL DOCENTE (POP-UP EXPEDIENTE) */}
+      {selectedTeacherForDetail && (() => {
+        const teacherAssignments = sectionCourses.filter(s => s.docente_id === selectedTeacherForDetail.id);
+        const teacherHours = teacherAssignments.reduce((acc, c) => acc + (c.horas_semanales || 0), 0);
+        const uniqueSections = Array.from(new Set(teacherAssignments.map(s => s.seccion?.grado?.nombre + ' ' + s.seccion?.letra)));
 
-              {/* Credential Box */}
-              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700 text-left space-y-2.5">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-400 font-bold">Docente:</span>
-                  <span className="font-extrabold text-slate-900 dark:text-white">{createdCredentials.teacherName}</span>
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
+            <div className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[90vh] animate-scale-up">
+              
+              {/* Header Modal */}
+              <div className="p-6 border-b border-slate-100 dark:border-slate-800 bg-gradient-to-r from-purple-600/10 via-indigo-600/10 to-blue-600/10 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-purple-600 text-white flex items-center justify-center font-bold">
+                    <UserCheck className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-black text-base text-slate-900 dark:text-white">
+                      Expediente Digital del Docente
+                    </h3>
+                    <p className="text-xs text-slate-500">Ficha curricular 360°, carga horaria y salones asignados</p>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-400 font-bold">Correo Institucional:</span>
-                  <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400">{createdCredentials.email}</span>
-                </div>
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-400 font-bold">Usuario:</span>
-                  <span className="font-mono font-bold text-slate-900 dark:text-white">{createdCredentials.username}</span>
-                </div>
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-400 font-bold">Contraseña Temporal:</span>
-                  <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950 px-2 py-0.5 rounded">
-                    {createdCredentials.password}
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex gap-2">
                 <button
-                  onClick={() => copyToClipboard(`Docente: ${createdCredentials.teacherName}\nCorreo: ${createdCredentials.email}\nUsuario: ${createdCredentials.username}\nContraseña: ${createdCredentials.password}`)}
-                  className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-white font-bold text-xs transition-colors"
+                  onClick={() => setSelectedTeacherForDetail(null)}
+                  className="text-slate-400 hover:text-slate-600 p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800"
                 >
-                  <Copy className="w-4 h-4 text-slate-500" />
-                  {copied ? '¡Copiado!' : 'Copiar Credenciales'}
-                </button>
-                <button
-                  onClick={() => setCreatedCredentials(null)}
-                  className="flex-1 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition-colors shadow-md"
-                >
-                  Listo
+                  ✕
                 </button>
               </div>
+
+              {/* Body */}
+              <div className="p-6 overflow-y-auto space-y-5 flex-1">
+                {/* Teacher Profile Card */}
+                <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/70">
+                  <img
+                    src={selectedTeacherForDetail.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedTeacherForDetail.nombres)}`}
+                    alt={selectedTeacherForDetail.nombres}
+                    className="w-20 h-20 rounded-2xl object-cover ring-4 ring-indigo-500/20 shadow-md"
+                  />
+                  <div className="flex-1 text-center sm:text-left space-y-1">
+                    <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                      <h4 className="text-base font-black text-slate-900 dark:text-white">
+                        {selectedTeacherForDetail.nombres} {selectedTeacherForDetail.apellidos}
+                      </h4>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200">
+                        Docente Activo
+                      </span>
+                    </div>
+                    <p className="text-xs font-bold text-indigo-600 dark:text-indigo-400">
+                      Especialidad: {selectedTeacherForDetail.especialidad || 'Educación General'}
+                    </p>
+                    <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 text-xs text-slate-500 dark:text-slate-400 pt-1 font-medium">
+                      <span className="font-mono"><strong>DNI:</strong> {selectedTeacherForDetail.dni}</span>
+                      <span><strong>Email:</strong> {selectedTeacherForDetail.email}</span>
+                      {selectedTeacherForDetail.telefono && (
+                        <span><strong>Tel:</strong> {selectedTeacherForDetail.telefono}</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* KPIs */}
+                <div className="grid grid-cols-3 gap-3 text-center">
+                  <div className="p-3 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900">
+                    <span className="text-[10px] font-bold uppercase text-indigo-600 dark:text-indigo-400 block">Carga Total</span>
+                    <span className="text-lg font-black text-indigo-900 dark:text-indigo-200">{teacherHours} hrs/sem</span>
+                  </div>
+                  <div className="p-3 rounded-2xl bg-purple-50/50 dark:bg-purple-950/40 border border-purple-100 dark:border-purple-900">
+                    <span className="text-[10px] font-bold uppercase text-purple-600 dark:text-purple-400 block">Salones</span>
+                    <span className="text-lg font-black text-purple-900 dark:text-purple-200">{uniqueSections.length} aulas</span>
+                  </div>
+                  <div className="p-3 rounded-2xl bg-emerald-50/50 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-900">
+                    <span className="text-[10px] font-bold uppercase text-emerald-600 dark:text-emerald-400 block">Asignaturas</span>
+                    <span className="text-lg font-black text-emerald-900 dark:text-emerald-200">{teacherAssignments.length} cursos</span>
+                  </div>
+                </div>
+
+                {/* Assigned Courses Detailed List */}
+                <div className="space-y-2.5">
+                  <h5 className="font-black text-xs text-slate-900 dark:text-white uppercase tracking-wider">
+                    Materias y Salones a su Cargo ({teacherAssignments.length})
+                  </h5>
+
+                  {teacherAssignments.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      {teacherAssignments.map((asig) => (
+                        <div
+                          key={asig.id}
+                          className="p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-2 shadow-sm"
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div
+                              className="w-8 h-8 rounded-xl flex items-center justify-center text-white font-bold text-xs shrink-0"
+                              style={{ backgroundColor: asig.curso?.color_hex || '#6366f1' }}
+                            >
+                              <BookOpen className="w-4 h-4" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-extrabold text-slate-900 dark:text-white text-xs truncate">
+                                {asig.curso?.nombre}
+                              </p>
+                              <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                                {asig.seccion?.grado?.nombre} &quot;{asig.seccion?.letra}&quot; ({asig.aula_defecto || 'Aula 301'})
+                              </p>
+                            </div>
+                          </div>
+                          <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 shrink-0">
+                            {asig.horas_semanales} hrs
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-dashed border-slate-200 dark:border-slate-700 text-center text-xs text-slate-400">
+                      Este profesor aún no tiene asignaturas ni salones asignados.
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Footer Modal */}
+              <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 flex items-center justify-between gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedTeacherForDetail(null)}
+                  className="px-4 py-2 font-bold text-xs text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl"
+                >
+                  Cerrar
+                </button>
+                <div className="flex items-center gap-2">
+                  <Link
+                    href="/admin/horarios"
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 font-bold text-xs transition-colors"
+                  >
+                    <Calendar className="w-3.5 h-3.5" />
+                    Ver Horario Completo
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const tId = selectedTeacherForDetail.id;
+                      setSelectedTeacherForDetail(null);
+                      openAssignForTeacher(tId);
+                    }}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md transition-all active:scale-95 cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Asignar Salón/Materia
+                  </button>
+                </div>
+              </div>
+
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }

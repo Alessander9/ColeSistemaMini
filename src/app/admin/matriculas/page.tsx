@@ -4,6 +4,8 @@ import React, { useState, useMemo } from 'react';
 import { useApp } from '@/context/AppContext';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Student } from '@/types';
+import { AvatarUploader } from '@/components/ui/AvatarUploader';
+import { QrCard } from '@/components/qr/QrCard';
 import {
   UserPlus,
   Search,
@@ -42,6 +44,7 @@ export default function AdminMatriculasPage() {
     dni: '',
     fechaNacimiento: '2016-05-15',
     genero: 'M',
+    avatar_url: '',
     // Step 2: Académico
     nivel: 'primaria' as 'inicial' | 'primaria' | 'secundaria',
     gradoId: 'grade-pri-3',
@@ -100,6 +103,7 @@ export default function AdminMatriculasPage() {
         nombreApoderado: wizardData.nombreApoderado,
         telefonoApoderado: wizardData.telefonoApoderado,
         genero: wizardData.genero,
+        avatar_url: wizardData.avatar_url,
       });
 
       setGeneratedResult({
@@ -127,6 +131,7 @@ export default function AdminMatriculasPage() {
       dni: '',
       fechaNacimiento: '2016-05-15',
       genero: 'M',
+      avatar_url: '',
       nivel: 'primaria',
       gradoId: 'grade-pri-3',
       seccionId: 'sec-3pri-a',
@@ -205,8 +210,17 @@ export default function AdminMatriculasPage() {
                 <div className="space-y-4 animate-in fade-in duration-200">
                   <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                     <User className="w-4 h-4 text-indigo-600" />
-                    Paso 1: Identificación del Estudiante
+                    Paso 1: Identificación y Foto del Estudiante
                   </h3>
+
+                  {/* Foto de Perfil del Estudiante */}
+                  <div className="flex flex-col items-center justify-center p-3 rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/80">
+                    <AvatarUploader
+                      currentAvatarUrl={wizardData.avatar_url}
+                      userName={`${wizardData.nombres || 'Alumno'} ${wizardData.apellidos || ''}`.trim()}
+                      onAvatarUpdated={(url) => setWizardData((prev) => ({ ...prev, avatar_url: url }))}
+                    />
+                  </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
@@ -454,27 +468,63 @@ export default function AdminMatriculasPage() {
 
               {/* PASO 6: ÉXITO */}
               {currentStep === 6 && (
-                <div className="text-center py-6 space-y-4 animate-in zoom-in-95 duration-200">
-                  <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto text-2xl">
+                <div className="text-center py-4 space-y-4 animate-in zoom-in-95 duration-200">
+                  <div className="w-14 h-14 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto text-2xl">
                     ✓
                   </div>
-                  <h3 className="text-lg font-black text-slate-900 dark:text-white">
-                    ¡Matrícula 2026 Registrada Exitosamente!
-                  </h3>
-                  <p className="text-xs text-slate-500">
-                    Se generaron las credenciales de acceso institucional y el código QR del carnet estudiantil.
-                  </p>
+                  <div>
+                    <h3 className="text-lg font-black text-slate-900 dark:text-white">
+                      ¡Matrícula 2026 Registrada Exitosamente!
+                    </h3>
+                    <p className="text-xs text-slate-500 max-w-md mx-auto mt-1">
+                      Se generaron las credenciales oficiales y el carnet escolar con código QR para el control de asistencia.
+                    </p>
+                  </div>
 
                   {generatedResult.credentials && (
                     <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 text-left border border-slate-200 dark:border-slate-700 text-xs space-y-2 max-w-md mx-auto font-mono">
                       <div className="flex justify-between items-center">
                         <span className="text-slate-400">Usuario:</span>
-                        <span className="font-bold text-indigo-600">{generatedResult.credentials.username}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-indigo-600">{generatedResult.credentials.username}</span>
+                          <button
+                            type="button"
+                            onClick={() => copyToClipboard(generatedResult.credentials!.username, 'user')}
+                            className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-400"
+                            title="Copiar usuario"
+                          >
+                            <Copy className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-slate-400">Contraseña:</span>
-                        <span className="font-bold text-slate-800 dark:text-slate-100">{generatedResult.credentials.password}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-slate-800 dark:text-slate-100">{generatedResult.credentials.password}</span>
+                          <button
+                            type="button"
+                            onClick={() => copyToClipboard(generatedResult.credentials!.password, 'pass')}
+                            className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-400"
+                            title="Copiar contraseña"
+                          >
+                            <Copy className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
+                    </div>
+                  )}
+
+                  {/* Carnet QR Card Render */}
+                  {generatedResult.student && (
+                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex flex-col items-center">
+                      <p className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-3">
+                        Carnet Estudiantil Oficial Emitido
+                      </p>
+                      <QrCard
+                        student={generatedResult.student}
+                        section={availableSections.find(s => s.id === wizardData.seccionId)}
+                        showActions={true}
+                      />
                     </div>
                   )}
                 </div>

@@ -236,6 +236,9 @@ interface AppContextType {
     tareaId: string;
     matriculaId: string;
     comentarioEstudiante?: string;
+    archivoUrl?: string;
+    archivoNombre?: string;
+    archivoTamano?: string;
   }) => TaskSubmission;
 
   gradeTask: (params: {
@@ -957,11 +960,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const submitTask = ({
     tareaId,
     matriculaId,
-    comentarioEstudiante
+    comentarioEstudiante,
+    archivoUrl,
+    archivoNombre,
+    archivoTamano,
   }: {
     tareaId: string;
     matriculaId: string;
     comentarioEstudiante?: string;
+    archivoUrl?: string;
+    archivoNombre?: string;
+    archivoTamano?: string;
   }) => {
     const task = tasks.find(t => t.id === tareaId);
     const targetEnr = enrollments.find(e => e.id === matriculaId);
@@ -973,7 +982,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const copy = [...submissions];
       copy[existingIdx] = {
         ...copy[existingIdx],
-        comentario_estudiante: comentarioEstudiante,
+        comentario_estudiante: comentarioEstudiante !== undefined ? comentarioEstudiante : copy[existingIdx].comentario_estudiante,
+        archivo_url: archivoUrl || copy[existingIdx].archivo_url,
+        archivo_nombre: archivoNombre || copy[existingIdx].archivo_nombre,
+        archivo_tamano: archivoTamano || copy[existingIdx].archivo_tamano,
         fecha_entrega: new Date().toISOString(),
       };
       setSubmissions(copy);
@@ -985,6 +997,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         matricula_id: matriculaId,
         fecha_entrega: new Date().toISOString(),
         comentario_estudiante: comentarioEstudiante,
+        archivo_url: archivoUrl,
+        archivo_nombre: archivoNombre,
+        archivo_tamano: archivoTamano,
       };
       setSubmissions(prev => [newSub, ...prev]);
       resultSub = newSub;
@@ -1113,7 +1128,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }) => {
     const seccion = MOCK_SECTIONS.find(s => s.id === params.seccionId);
     const curso = MOCK_COURSES.find(c => c.id === params.cursoId);
-    const docente = MOCK_USERS.find(u => u.id === params.docenteId);
+    const docente = users.find(u => u.id === params.docenteId) || teachers.find(t => t.id === params.docenteId) || MOCK_USERS.find(u => u.id === params.docenteId);
 
     const existingIdx = sectionCourses.findIndex(
       sc => sc.seccion_id === params.seccionId && sc.curso_id === params.cursoId
@@ -1200,7 +1215,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateSectionCourseTeacher = (assignmentId: string, newDocenteId: string) => {
-    const targetDocente = MOCK_USERS.find(u => u.id === newDocenteId);
+    const targetDocente = users.find(u => u.id === newDocenteId) || teachers.find(t => t.id === newDocenteId) || MOCK_USERS.find(u => u.id === newDocenteId);
     const targetAssignment = sectionCourses.find(sc => sc.id === assignmentId);
     if (!targetAssignment) return;
 

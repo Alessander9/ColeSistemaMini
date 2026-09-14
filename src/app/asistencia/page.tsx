@@ -42,33 +42,46 @@ export default function AsistenciaKioscoPage() {
   const aTiempo = todayAttendances.filter(a => a.estado === 'presente').length;
   const tardanzas = todayAttendances.filter(a => a.estado === 'tardanza').length;
 
+  const getReturnUrl = () => {
+    if (currentUser?.rol === 'admin') return '/admin';
+    if (currentUser?.rol === 'docente') return '/docente/asistencia';
+    if (currentUser?.rol === 'asistencia') return '/bienvenida';
+    return '/bienvenida';
+  };
+
+  const handleExit = () => {
+    router.push(getReturnUrl());
+  };
+
   return (
     <div className="min-h-screen bg-slate-950 text-white flex flex-col justify-between p-3 sm:p-6 lg:p-8 select-none">
       
-      {/* 1. Header del Kiosco */}
+      {/* 1. Header del Terminal */}
       <header className="flex items-center justify-between pb-4 border-b border-slate-800 max-w-4xl mx-auto w-full">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-indigo-600 flex items-center justify-center font-black text-white shadow-lg shadow-indigo-500/20 shrink-0">
+          <div className="w-10 h-10 rounded-2xl bg-emerald-600 flex items-center justify-center font-black text-white shadow-lg shadow-emerald-500/20 shrink-0">
             <QrCode className="w-5 h-5" />
           </div>
           <div>
             <h1 className="text-sm sm:text-base font-black text-white leading-tight flex items-center gap-2">
-              Terminal de Control de Ingreso QR
+              Terminal de Control de Asistencia QR
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
             </h1>
             <p className="text-[11px] text-slate-400">
-              ColeSistemaMini • Puerta Principal (2026)
+              Portería Principal & Ingreso General • Año Lectivo 2026
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          <Link
-            href="/admin"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition-all shadow-sm"
+          <button
+            type="button"
+            onClick={handleExit}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer border border-slate-700"
           >
-            <ArrowLeft className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Salir del Kiosco</span>
-          </Link>
+            <ArrowLeft className="w-4 h-4 text-emerald-400" />
+            <span>Volver al Panel</span>
+          </button>
         </div>
       </header>
 

@@ -351,7 +351,7 @@ export default function SectionHubDashboardPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {courses.map((course) => {
               const assignment = sectionAssignments.find(sa => sa.curso_id === course.id);
-              const teacher = assignment?.docente || teachers[0];
+              const teacher = assignment?.docente || (assignment?.docente_id ? teachers.find(t => t.id === assignment.docente_id) : undefined) || teachers[0];
 
               return (
                 <div

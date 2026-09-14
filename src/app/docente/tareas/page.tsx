@@ -23,6 +23,10 @@ export default function DocenteTareasPage() {
     studentName: string;
     currentGrade?: GradeLetter;
     retroalimentacion?: string;
+    comentarioEstudiante?: string;
+    archivoUrl?: string;
+    archivoNombre?: string;
+    archivoTamano?: string;
   } | null>(null);
 
   // New Task Form
@@ -313,31 +317,51 @@ export default function DocenteTareasPage() {
                 );
                 const studentName = `${enr.estudiante?.profile?.apellidos || ''}, ${enr.estudiante?.profile?.nombres || ''}`;
 
-
                 return (
                   <div
                     key={enr.id}
-                    className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3 text-xs"
+                    className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-start gap-3">
                       <img
                         src={enr.estudiante?.profile?.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150'}
                         alt={studentName}
-                        className="w-8 h-8 rounded-xl object-cover"
+                        className="w-9 h-9 rounded-xl object-cover shrink-0"
                       />
-                      <div>
+                      <div className="space-y-1">
                         <p className="font-extrabold text-slate-800 dark:text-white">{studentName}</p>
                         <p className="text-[10px] text-slate-400">
-                          {sub ? `Entregado el ${new Date(sub.fecha_entrega).toLocaleDateString('es-PE')}` : 'Sin entrega aún'}
+                          {sub ? `Entregado el ${new Date(sub.fecha_entrega).toLocaleString('es-PE')}` : 'Sin entrega aún'}
                         </p>
+
+                        {/* File preview badge in list */}
+                        {sub?.archivo_nombre && (
+                          <a
+                            href={sub.archivo_url || '#'}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            download={sub.archivo_nombre}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 text-[11px] font-bold hover:bg-blue-100"
+                          >
+                            <Paperclip className="w-3 h-3 text-blue-600" />
+                            <span className="truncate max-w-[200px]">{sub.archivo_nombre}</span>
+                            {sub.archivo_tamano && <span className="text-[10px] text-slate-400">({sub.archivo_tamano})</span>}
+                          </a>
+                        )}
+
+                        {sub?.comentario_estudiante && (
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400 italic">
+                            &quot;{sub.comentario_estudiante}&quot;
+                          </p>
+                        )}
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 self-end sm:self-center">
                       {sub?.calificacion_letra ? (
                         <GradeBadge grade={sub.calificacion_letra} size="sm" />
                       ) : (
-                        <span className="text-[10px] text-amber-600 font-bold bg-amber-50 px-2 py-0.5 rounded-md">
+                        <span className="text-[10px] text-amber-600 font-bold bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-md">
                           Pendiente
                         </span>
                       )}
@@ -351,9 +375,13 @@ export default function DocenteTareasPage() {
                             studentName,
                             currentGrade: sub?.calificacion_letra,
                             retroalimentacion: sub?.retroalimentacion_docente,
+                            comentarioEstudiante: sub?.comentario_estudiante,
+                            archivoUrl: sub?.archivo_url,
+                            archivoNombre: sub?.archivo_nombre,
+                            archivoTamano: sub?.archivo_tamano,
                           })
                         }
-                        className="px-3 py-1.5 rounded-xl font-bold bg-slate-900 text-white hover:bg-slate-800 text-[11px] transition-all"
+                        className="px-3 py-1.5 rounded-xl font-bold bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 text-[11px] transition-all cursor-pointer"
                       >
                         Calificar
                       </button>
@@ -375,9 +403,47 @@ export default function DocenteTareasPage() {
           maxWidth="md"
         >
           <div className="space-y-4 text-xs">
+            {/* Student Attached File and Comment in Grading Modal */}
+            {(gradingSubmission.archivoNombre || gradingSubmission.comentarioEstudiante) && (
+              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-2">
+                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">
+                  Material Entregado por el Alumno
+                </span>
+                {gradingSubmission.archivoNombre && (
+                  <div className="flex items-center justify-between gap-2 p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Paperclip className="w-4 h-4 text-blue-600 shrink-0" />
+                      <span className="font-bold text-slate-800 dark:text-slate-200 truncate">
+                        {gradingSubmission.archivoNombre}
+                      </span>
+                      {gradingSubmission.archivoTamano && (
+                        <span className="text-[10px] text-slate-400 shrink-0">({gradingSubmission.archivoTamano})</span>
+                      )}
+                    </div>
+                    {gradingSubmission.archivoUrl && (
+                      <a
+                        href={gradingSubmission.archivoUrl}
+                        download={gradingSubmission.archivoNombre}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-2.5 py-1 rounded-lg bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 font-bold text-[11px] hover:bg-blue-100 shrink-0 flex items-center gap-1"
+                      >
+                        Descargar
+                      </a>
+                    )}
+                  </div>
+                )}
+                {gradingSubmission.comentarioEstudiante && (
+                  <p className="text-xs text-slate-600 dark:text-slate-300 italic">
+                    &quot;{gradingSubmission.comentarioEstudiante}&quot;
+                  </p>
+                )}
+              </div>
+            )}
+
             <div>
               <label className="block font-bold text-slate-700 dark:text-slate-300 mb-2 text-center">
-                Calificación (AD, A, B, C):
+                Calificación Oficial (Escala CNEB: AD, A, B, C):
               </label>
               <div className="flex justify-center">
                 <GradeSelector
@@ -393,7 +459,7 @@ export default function DocenteTareasPage() {
               </label>
               <textarea
                 rows={3}
-                placeholder="Observaciones o recomendaciones para el estudiante..."
+                placeholder="Escribe aquí tus observaciones o felicitaciones..."
                 value={gradingSubmission.retroalimentacion || ''}
                 onChange={(e) =>
                   setGradingSubmission({
@@ -421,7 +487,7 @@ export default function DocenteTareasPage() {
                     gradingSubmission.retroalimentacion
                   )
                 }
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow"
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow cursor-pointer"
               >
                 Guardar Calificación
               </button>

@@ -192,6 +192,8 @@ export interface TaskSubmission {
   matricula_id: string;
   fecha_entrega: string;
   archivo_url?: string;
+  archivo_nombre?: string;
+  archivo_tamano?: string;
   enlace_entrega?: string;
   comentario_estudiante?: string;
   calificacion_letra?: GradeLetter;
