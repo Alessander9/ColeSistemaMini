@@ -340,11 +340,28 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         scheduleService.fetchClassSessions(),
       ]);
 
-      // Solo sobrescribir si el servidor devolvió MÁS datos que el estado local
-      // Esto evita perder estudiantes/matrículas recién creados que aún no están en Supabase
-      setStudents(prev => loadedStudents.length > prev.length ? loadedStudents : prev);
-      setEnrollments(prev => loadedEnrollments.length > prev.length ? loadedEnrollments : prev);
-      setAttendances(prev => loadedAttendances.length > prev.length ? loadedAttendances : prev);
+      // Sincronización inteligente sin sobrescribir estudiantes locales recién creados
+      setStudents(prev => {
+        const map = new Map<string, Student>();
+        loadedStudents.forEach(s => map.set(s.id, s));
+        prev.forEach(s => map.set(s.id, s));
+        return Array.from(map.values());
+      });
+
+      setEnrollments(prev => {
+        const map = new Map<string, Enrollment>();
+        loadedEnrollments.forEach(e => map.set(e.id, e));
+        prev.forEach(e => map.set(e.id, e));
+        return Array.from(map.values());
+      });
+
+      setAttendances(prev => {
+        const map = new Map<string, AttendanceRecord>();
+        loadedAttendances.forEach(a => map.set(a.id, a));
+        prev.forEach(a => map.set(a.id, a));
+        return Array.from(map.values());
+      });
+
       if (loadedGrades && loadedGrades.length > 0) setGrades(loadedGrades);
       if (loadedTasks && loadedTasks.length > 0) setTasks(loadedTasks);
       if (loadedSubmissions && loadedSubmissions.length > 0) setSubmissions(loadedSubmissions);
@@ -557,6 +574,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const normToken = normalize(studentQrToken);
       const rawToken = studentQrToken.trim();
 
+      // Extraer posible código de estudiante (ej: EST-2026-123456) o DNI numérico de 8 dígitos
+      const codeMatch = rawToken.match(/EST-\d{4}-[\w-]+/i);
+      const extractedCode = codeMatch ? normalize(codeMatch[0]) : '';
+      const dniMatch = rawToken.match(/\b\d{8}\b/);
+      const extractedDni = dniMatch ? dniMatch[0] : '';
+
       const student = students.find(s => {
         const sToken = normalize(s.token_qr);
         const sCode = normalize(s.codigo_estudiante);
@@ -565,20 +588,34 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const pId = s.profile_id;
         
         return (
-          sToken === normToken ||
-          sCode === normToken ||
-          sDni === normToken ||
+          (sToken && (sToken === normToken || normToken.includes(sToken) || sToken.includes(normToken))) ||
+          (sCode && (sCode === normToken || normToken.includes(sCode) || sCode.includes(normToken) || (extractedCode && sCode === extractedCode))) ||
+          (sDni && (sDni === normToken || normToken.includes(sDni) || (extractedDni && sDni === extractedDni))) ||
           sId === rawToken ||
-          pId === rawToken ||
-          (sCode && normToken.includes(sCode)) ||
-          (sToken && normToken.includes(sToken)) ||
-          (sDni && normToken.includes(sDni))
+          pId === rawToken
         );
       });
       if (!student) {
         return { success: false, message: 'Código QR no reconocido o estudiante inexistente' };
       }
       targetEnrollment = enrollments.find(e => e.estudiante_id === student.id);
+
+      // Si el estudiante existe pero no tiene registro en matrículas, crear fallback activo automáticamente
+      if (!targetEnrollment) {
+        const fallbackSection = MOCK_SECTIONS[0];
+        targetEnrollment = {
+          id: `enr-auto-${student.id}`,
+          estudiante_id: student.id,
+          periodo_id: MOCK_PERIOD.id,
+          seccion_id: fallbackSection.id,
+          fecha_matricula: new Date().toISOString().split('T')[0],
+          estado: 'activo',
+          estudiante: student,
+          seccion: fallbackSection,
+          periodo: MOCK_PERIOD,
+        };
+        setEnrollments(prev => [targetEnrollment!, ...prev]);
+      }
     } else if (matriculaId) {
       targetEnrollment = enrollments.find(e => e.id === matriculaId);
     }
@@ -823,7 +860,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       profile: newProfile,
     };
 
-    const targetSection = MOCK_SECTIONS.find(s => s.id === data.seccionId);
+    const targetSection = MOCK_SECTIONS.find(s => s.id === data.seccionId) || MOCK_SECTIONS[0];
 
     const newEnrollment: Enrollment = {
       id: `enr-${Date.now()}`,
@@ -839,6 +876,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     setStudents(prev => [newStudent, ...prev]);
     setEnrollments(prev => [newEnrollment, ...prev]);
+
+    // Persistencia inmediata síncrona en localStorage para evitar pérdida al navegar
+    if (typeof window !== 'undefined') {
+      try {
+        const currentSavedStudents = JSON.parse(localStorage.getItem('colegio_students') || '[]');
+        localStorage.setItem('colegio_students', JSON.stringify([newStudent, ...currentSavedStudents]));
+        const currentSavedEnrollments = JSON.parse(localStorage.getItem('colegio_enrollments') || '[]');
+        localStorage.setItem('colegio_enrollments', JSON.stringify([newEnrollment, ...currentSavedEnrollments]));
+      } catch (err) {
+        console.warn('[Storage] Error al persistir inmediatamente:', err);
+      }
+    }
 
     // Persistir en Supabase de manera asíncrona si está activo
     academicService.createStudentInDb({

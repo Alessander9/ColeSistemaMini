@@ -203,19 +203,21 @@ export function QrScanner({
       str ? str.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "";
     const normClean = normalize(rawClean);
 
+    const codeMatch = rawClean.match(/EST-\d{4}-[\w-]+/i);
+    const extractedCode = codeMatch ? normalize(codeMatch[0]) : '';
+    const dniMatch = rawClean.match(/\b\d{8}\b/);
+    const extractedDni = dniMatch ? dniMatch[0] : '';
+
     const foundStudent = students.find((s) => {
       const sToken = normalize(s.token_qr);
       const sCode = normalize(s.codigo_estudiante);
       const sDni = normalize(s.profile?.dni);
       return (
-        sToken === normClean ||
-        sCode === normClean ||
-        sDni === normClean ||
+        (sToken && (sToken === normClean || normClean.includes(sToken) || sToken.includes(normClean))) ||
+        (sCode && (sCode === normClean || normClean.includes(sCode) || sCode.includes(normClean) || (extractedCode && sCode === extractedCode))) ||
+        (sDni && (sDni === normClean || normClean.includes(sDni) || (extractedDni && sDni === extractedDni))) ||
         s.id === rawClean ||
-        s.profile_id === rawClean ||
-        (sCode && normClean.includes(sCode)) ||
-        (sToken && normClean.includes(sToken)) ||
-        (sDni && normClean.includes(sDni))
+        s.profile_id === rawClean
       );
     });
 
