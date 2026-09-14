@@ -66,40 +66,40 @@ export function AcademicContextSelector() {
       <button
         onClick={() => setIsOpen(!isOpen)}
         aria-expanded={isOpen}
-        className="group flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100/90 dark:bg-slate-800/80 hover:bg-slate-200/80 dark:hover:bg-slate-700/80 border border-slate-200/80 dark:border-slate-700/80 transition-all text-xs select-none shadow-sm"
+        className="group flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 rounded-full bg-slate-100/90 dark:bg-slate-800/80 hover:bg-slate-200/80 dark:hover:bg-slate-700/80 border border-slate-200/80 dark:border-slate-700/80 transition-all text-xs select-none shadow-sm max-w-[190px] xs:max-w-[260px] sm:max-w-none truncate"
       >
-        <div className="flex items-center gap-1.5 font-semibold text-slate-700 dark:text-slate-200">
-          <School className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+        <div className="flex items-center gap-1.5 font-semibold text-slate-700 dark:text-slate-200 truncate">
+          <School className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
           <span className="hidden sm:inline truncate max-w-[120px] font-medium text-slate-500 dark:text-slate-400">
             {academicContext.institucion.split(' ')[0]}
           </span>
           <span className="text-slate-300 dark:text-slate-600 hidden sm:inline">•</span>
-          <span className="font-mono text-slate-500 dark:text-slate-400">2026</span>
-          <span className="text-slate-300 dark:text-slate-600">•</span>
-          <span className="font-bold text-slate-900 dark:text-white capitalize">
-            {academicContext.nivel === 'todos' ? 'Todos los Niveles' : academicContext.nivel}
+          <span className="font-mono text-slate-500 dark:text-slate-400 hidden xs:inline">2026</span>
+          <span className="text-slate-300 dark:text-slate-600 hidden xs:inline">•</span>
+          <span className="font-bold text-slate-900 dark:text-white capitalize truncate">
+            {academicContext.nivel === 'todos' ? 'Todos' : academicContext.nivel}
           </span>
           {selectedGrade && (
             <>
-              <span className="text-slate-300 dark:text-slate-600">•</span>
-              <span className="text-indigo-600 dark:text-indigo-400 font-semibold truncate max-w-[110px]">
+              <span className="text-slate-300 dark:text-slate-600 hidden sm:inline">•</span>
+              <span className="text-indigo-600 dark:text-indigo-400 font-semibold truncate max-w-[110px] hidden sm:inline">
                 {selectedGrade.nombre}
               </span>
             </>
           )}
           {selectedSection && (
-            <span className="px-1.5 py-0.2 rounded bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-bold text-[10px]">
-              Aula {selectedSection.letra}
+            <span className="px-1.5 py-0.2 rounded bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-bold text-[10px] shrink-0">
+              {selectedSection.letra}
             </span>
           )}
         </div>
 
-        <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+        <ChevronDown className={`w-3.5 h-3.5 text-slate-400 shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
       {/* Popover Dropdown Panel */}
       {isOpen && (
-        <div className="absolute top-full left-0 sm:left-auto sm:right-0 mt-2 w-[340px] sm:w-[420px] rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl shadow-slate-900/10 dark:shadow-black/60 p-4 z-50 text-slate-900 dark:text-slate-100 animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed sm:absolute top-16 sm:top-full left-3 right-3 sm:left-auto sm:right-0 mt-1 sm:mt-2 sm:w-[420px] max-w-[420px] mx-auto rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl shadow-slate-900/20 dark:shadow-black/60 p-4 z-50 text-slate-900 dark:text-slate-100 animate-in fade-in zoom-in-95 duration-150">
           
           <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-100 dark:border-slate-800">
             <div>

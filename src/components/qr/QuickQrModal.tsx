@@ -44,10 +44,15 @@ export const QuickQrModal: React.FC<QuickQrModalProps> = ({ isOpen, onClose }) =
         </div>
 
         {/* Modal Body */}
-        <div className="p-4 sm:p-6 max-h-[80vh] overflow-y-auto">
-          <QrScanner onScanSuccess={() => {
-            // Optional auto close or keep open for continuous rapid scans
-          }} />
+        <div className="p-4 sm:p-6 max-h-[85vh] overflow-y-auto">
+          <QrScanner 
+            variant="embedded"
+            showHeader={false}
+            autoStart={true}
+            onScanSuccess={() => {
+              // Optional auto close or keep open for continuous rapid scans
+            }} 
+          />
         </div>
       </div>
     </div>

@@ -27,12 +27,16 @@ interface QrScannerProps {
   onScanSuccess?: (result: string) => void;
   statusMode?: AttendanceStatus;
   autoStart?: boolean;
+  variant?: 'card' | 'embedded' | 'kiosk';
+  showHeader?: boolean;
 }
 
 export function QrScanner({
   onScanSuccess,
   statusMode = 'presente',
   autoStart = false,
+  variant = 'card',
+  showHeader = true,
 }: QrScannerProps) {
   const { registerAttendance, students, enrollments } = useApp();
 
@@ -586,8 +590,15 @@ export function QrScanner({
   };
 
   // ── RENDER ────────────────────────────────────────────────────────────────
+  const containerClasses =
+    variant === 'embedded'
+      ? 'w-full relative overflow-hidden'
+      : variant === 'kiosk'
+      ? 'w-full max-w-xl mx-auto relative overflow-hidden p-2 sm:p-4 bg-slate-900/80 rounded-3xl border border-slate-800 shadow-2xl'
+      : 'w-full max-w-lg mx-auto bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl p-4 sm:p-6 relative overflow-hidden';
+
   return (
-    <div className="w-full max-w-lg mx-auto bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl p-4 sm:p-6 relative overflow-hidden">
+    <div className={containerClasses}>
 
       {/* Screen flash on scan */}
       {flashColor === 'green' && (
@@ -601,46 +612,48 @@ export function QrScanner({
       )}
 
       {/* Header */}
-      <div className="flex items-center justify-between pb-3.5 border-b border-slate-100 dark:border-slate-800 mb-4">
-        <div className="flex items-center gap-2.5">
-          <div
-            className={`w-10 h-10 rounded-2xl flex items-center justify-center transition-all ${
-              isCameraActive
-                ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/25 ring-2 ring-emerald-400/40 animate-pulse'
-                : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
-            }`}
-          >
-            <Camera className="w-5 h-5" />
+      {showHeader && variant !== 'embedded' && (
+        <div className="flex items-center justify-between pb-3.5 border-b border-slate-100 dark:border-slate-800 mb-4">
+          <div className="flex items-center gap-2.5">
+            <div
+              className={`w-10 h-10 rounded-2xl flex items-center justify-center transition-all ${
+                isCameraActive
+                  ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/25 ring-2 ring-emerald-400/40 animate-pulse'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
+              }`}
+            >
+              <Camera className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-extrabold text-slate-900 dark:text-white text-base leading-tight">
+                Lector QR de Asistencia
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                {isCameraActive
+                  ? `📸 Cámara ${currentFacing === 'environment' ? 'trasera' : 'frontal'} activa`
+                  : 'Toca el botón para encender la cámara'}
+              </p>
+            </div>
           </div>
-          <div>
-            <h3 className="font-extrabold text-slate-900 dark:text-white text-base leading-tight">
-              Lector QR de Asistencia
-            </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              {isCameraActive
-                ? `📸 Cámara ${currentFacing === 'environment' ? 'trasera' : 'frontal'} activa`
-                : 'Toca el botón para encender la cámara'}
-            </p>
-          </div>
-        </div>
 
-        <button
-          type="button"
-          onClick={() => setSoundEnabled((v) => !v)}
-          className={`p-2.5 rounded-xl border transition-all cursor-pointer flex items-center gap-1.5 font-bold text-xs ${
-            soundEnabled
-              ? 'bg-emerald-50 border-emerald-300 text-emerald-700 dark:bg-emerald-950/60 dark:border-emerald-700 dark:text-emerald-300 shadow-sm'
-              : 'bg-slate-100 border-slate-200 text-slate-400 dark:bg-slate-800 dark:border-slate-700'
-          }`}
-          title={soundEnabled ? 'Sonido y voz activados (Volumen Máx)' : 'Sonido silenciado'}
-        >
-          {soundEnabled ? <Volume2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> : <VolumeX className="w-4 h-4" />}
-          <span className="hidden sm:inline text-[11px]">{soundEnabled ? 'Audio 100%' : 'Mudo'}</span>
-        </button>
-      </div>
+          <button
+            type="button"
+            onClick={() => setSoundEnabled((v) => !v)}
+            className={`p-2.5 rounded-xl border transition-all cursor-pointer flex items-center gap-1.5 font-bold text-xs ${
+              soundEnabled
+                ? 'bg-emerald-50 border-emerald-300 text-emerald-700 dark:bg-emerald-950/60 dark:border-emerald-700 dark:text-emerald-300 shadow-sm'
+                : 'bg-slate-100 border-slate-200 text-slate-400 dark:bg-slate-800 dark:border-slate-700'
+            }`}
+            title={soundEnabled ? 'Sonido y voz activados (Volumen Máx)' : 'Sonido silenciado'}
+          >
+            {soundEnabled ? <Volume2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> : <VolumeX className="w-4 h-4" />}
+            <span className="hidden sm:inline text-[11px]">{soundEnabled ? 'Audio 100%' : 'Mudo'}</span>
+          </button>
+        </div>
+      )}
 
       {/* Viewport */}
-      <div className="relative bg-black rounded-2xl mb-4 overflow-hidden" style={{ minHeight: 290 }}>
+      <div className="relative bg-black rounded-2xl mb-4 overflow-hidden" style={{ minHeight: 280 }}>
         {/* Native <video> element */}
         <video
           ref={videoRef}
@@ -651,8 +664,8 @@ export function QrScanner({
           style={{
             display: isCameraActive ? 'block' : 'none',
             objectFit: 'cover',
-            maxHeight: '70vw',
-            minHeight: 250,
+            maxHeight: '65vw',
+            minHeight: 240,
             background: '#000',
           }}
         />
@@ -663,21 +676,21 @@ export function QrScanner({
         {/* Scan frame overlay */}
         {isCameraActive && (
           <div
-            className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center"
+            className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center p-4"
             style={{ background: 'transparent' }}
           >
-            <div className="relative w-56 h-56 sm:w-64 sm:h-64">
+            <div className="relative w-48 h-48 xs:w-56 xs:h-56 sm:w-64 sm:h-64 max-w-[85vw] max-h-[85vw]">
               <div className="absolute inset-0 border-2 border-emerald-400/80 rounded-2xl shadow-lg shadow-emerald-500/20" />
-              <div className="absolute -top-0.5 -left-0.5 w-7 h-7 border-t-4 border-l-4 border-emerald-400 rounded-tl-xl" />
-              <div className="absolute -top-0.5 -right-0.5 w-7 h-7 border-t-4 border-r-4 border-emerald-400 rounded-tr-xl" />
-              <div className="absolute -bottom-0.5 -left-0.5 w-7 h-7 border-b-4 border-l-4 border-emerald-400 rounded-bl-xl" />
-              <div className="absolute -bottom-0.5 -right-0.5 w-7 h-7 border-b-4 border-r-4 border-emerald-400 rounded-br-xl" />
+              <div className="absolute -top-0.5 -left-0.5 w-6 h-6 sm:w-7 sm:h-7 border-t-4 border-l-4 border-emerald-400 rounded-tl-xl" />
+              <div className="absolute -top-0.5 -right-0.5 w-6 h-6 sm:w-7 sm:h-7 border-t-4 border-r-4 border-emerald-400 rounded-tr-xl" />
+              <div className="absolute -bottom-0.5 -left-0.5 w-6 h-6 sm:w-7 sm:h-7 border-b-4 border-l-4 border-emerald-400 rounded-bl-xl" />
+              <div className="absolute -bottom-0.5 -right-0.5 w-6 h-6 sm:w-7 sm:h-7 border-b-4 border-r-4 border-emerald-400 rounded-br-xl" />
               <div
-                className="absolute left-4 right-4 top-1/2 -translate-y-1/2 h-1 bg-gradient-to-r from-transparent via-emerald-400 to-transparent animate-pulse"
+                className="absolute left-3 right-3 top-1/2 -translate-y-1/2 h-1 bg-gradient-to-r from-transparent via-emerald-400 to-transparent animate-pulse"
                 style={{ boxShadow: '0 0 12px #10b981' }}
               />
             </div>
-            <p className="mt-3 px-3.5 py-1.5 rounded-full bg-black/75 text-xs font-extrabold text-emerald-300 border border-emerald-500/40 shadow-md">
+            <p className="mt-3 px-3 py-1 sm:px-3.5 sm:py-1.5 rounded-full bg-black/80 text-[11px] sm:text-xs font-extrabold text-emerald-300 border border-emerald-500/40 shadow-md text-center max-w-[90%] truncate">
               Apunta al código QR del carnet escolar
             </p>
           </div>

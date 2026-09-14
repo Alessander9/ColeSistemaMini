@@ -19,6 +19,8 @@ import {
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
+import { QrScanner } from '@/components/qr/QrScanner';
+
 export default function DocenteAsistenciaPage() {
   const { 
     students, 
@@ -36,6 +38,7 @@ export default function DocenteAsistenciaPage() {
     teacherSections[0]?.seccion.id || enrollments[0]?.seccion_id || 'sec-3pri-a'
   );
 
+  const [viewMode, setViewMode] = useState<'lista' | 'qr'>('lista');
   const [searchQuery, setSearchQuery] = useState('');
   const [isSavedFeedback, setIsSavedFeedback] = useState(false);
   const [isClosed, setIsClosed] = useState(false);
@@ -111,21 +114,47 @@ export default function DocenteAsistenciaPage() {
       {/* Header */}
       <PageHeader
         title="Toma de Asistencia Ultrarrápida"
-        description="Por defecto todos los estudiantes figuran en estado PRESENTE. Modifica únicamente las excepciones."
+        description="Por defecto todos los estudiantes figuran en estado PRESENTE. Modifica excepciones o escanea los carnets QR."
         badge={activeSectionInfo ? `${activeSectionInfo.grado?.nombre || ''} "${activeSectionInfo.letra}"` : "Aula 3° 'A'"}
       >
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Mode Switcher */}
+          <div className="flex items-center p-1 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+            <button
+              type="button"
+              onClick={() => setViewMode('lista')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                viewMode === 'lista'
+                  ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
+                  : 'text-slate-500 hover:text-slate-900 dark:text-slate-400'
+              }`}
+            >
+              📋 Lista de Aula
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('qr')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                viewMode === 'qr'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'text-slate-500 hover:text-slate-900 dark:text-slate-400'
+              }`}
+            >
+              <QrCode className="w-3.5 h-3.5" /> 📷 Lector QR
+            </button>
+          </div>
+
           {isSavedFeedback && (
             <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/60 px-3 py-1.5 rounded-xl border border-emerald-500/20 animate-fade-in">
-              <Check className="w-3.5 h-3.5" /> ✓ Guardado Automático
+              <Check className="w-3.5 h-3.5" /> ✓ Guardado
             </span>
           )}
           <button
             onClick={handleCloseAttendance}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold text-xs shadow-sm active:scale-95 transition-all"
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold text-xs shadow-sm active:scale-95 transition-all"
           >
             <ShieldCheck className="w-4 h-4" />
-            {isClosed ? '✓ Asistencia Cerrada' : 'Cerrar Asistencia'}
+            {isClosed ? '✓ Cerrada' : 'Cerrar Asistencia'}
           </button>
         </div>
       </PageHeader>
@@ -133,7 +162,7 @@ export default function DocenteAsistenciaPage() {
       {/* Salones & Acciones Rápidas */}
       <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
         {/* Selector de salón */}
-        <div className="flex items-center gap-2 overflow-x-auto w-full sm:w-auto">
+        <div className="flex items-center gap-2 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0 scrollbar-thin">
           <span className="text-xs font-bold text-slate-400 shrink-0">Aula:</span>
           {teacherSections.map(ts => (
             <button
@@ -142,7 +171,7 @@ export default function DocenteAsistenciaPage() {
               className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
                 selectedSectionId === ts.seccion.id
                   ? 'bg-indigo-600 text-white shadow-sm'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
               }`}
             >
               {ts.seccion.grado?.nombre} &quot;{ts.seccion.letra}&quot;
@@ -151,27 +180,46 @@ export default function DocenteAsistenciaPage() {
         </div>
 
         {/* Botones de acción masiva */}
-        <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-          <button
-            onClick={() => handleMarkAll('presente')}
-            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 font-bold text-xs hover:bg-emerald-100 transition-colors"
-          >
-            <CheckCheck className="w-3.5 h-3.5" /> Marcar Todos Presentes
-          </button>
-          <button
-            onClick={() => handleMarkAll('falta')}
-            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 font-bold text-xs hover:bg-rose-100 transition-colors"
-          >
-            <XCircle className="w-3.5 h-3.5" /> Marcar Todos Ausentes
-          </button>
-        </div>
+        {viewMode === 'lista' && (
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+            <button
+              onClick={() => handleMarkAll('presente')}
+              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 font-bold text-xs hover:bg-emerald-100 transition-colors"
+            >
+              <CheckCheck className="w-3.5 h-3.5" /> <span className="hidden xs:inline">Marcar</span> Todos Presentes
+            </button>
+            <button
+              onClick={() => handleMarkAll('falta')}
+              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 font-bold text-xs hover:bg-rose-100 transition-colors"
+            >
+              <XCircle className="w-3.5 h-3.5" /> <span className="hidden xs:inline">Marcar</span> Ausentes
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* Lista Interactiva de Alumnos */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden divide-y divide-slate-100 dark:divide-slate-800/60">
-        
-        {/* Search */}
-        <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center gap-3">
+      {/* RENDER SEGÚN MODO: QR SCANNER O LISTA */}
+      {viewMode === 'qr' ? (
+        <div className="space-y-6 animate-in fade-in zoom-in-95 duration-150">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-4 sm:p-6 shadow-sm">
+            <div className="max-w-lg mx-auto">
+              <div className="mb-4 text-center">
+                <h3 className="font-extrabold text-base text-slate-900 dark:text-white">
+                  Lector de Carnets para {activeSectionInfo?.grado?.nombre} &quot;{activeSectionInfo?.letra}&quot;
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Apunta la cámara al carnet de cada estudiante para registrar su asistencia en vivo
+                </p>
+              </div>
+              <QrScanner autoStart={true} variant="embedded" showHeader={false} />
+            </div>
+          </div>
+        </div>
+      ) : (
+        /* Lista Interactiva de Alumnos */
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden divide-y divide-slate-100 dark:divide-slate-800/60">
+          {/* Search */}
+          <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center gap-3">
           <Search className="w-4 h-4 text-slate-400 shrink-0" />
           <input
             type="text"
@@ -264,7 +312,8 @@ export default function DocenteAsistenciaPage() {
             </div>
           );
         })}
-      </div>
+        </div>
+      )}
 
     </div>
   );

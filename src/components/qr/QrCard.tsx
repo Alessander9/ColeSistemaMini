@@ -47,11 +47,11 @@ export function QrCard({
   const seccionLetra = section?.letra || 'A';
 
   return (
-    <div className="flex flex-col items-center gap-4">
+    <div className="w-full flex flex-col items-center gap-4">
       {/* Carnet Container */}
       <div
         ref={cardRef}
-        className="printable-card relative w-[340px] sm:w-[360px] rounded-3xl overflow-hidden shadow-2xl bg-gradient-to-b from-slate-900 via-slate-800 to-slate-950 text-white border border-slate-700/60 p-6"
+        className="printable-card relative w-full max-w-[360px] rounded-3xl overflow-hidden shadow-2xl bg-gradient-to-b from-slate-900 via-slate-800 to-slate-950 text-white border border-slate-700/60 p-4 sm:p-6"
       >
         {/* Decorative Top Banner */}
         <div className="absolute top-0 left-0 right-0 h-3 bg-gradient-to-r from-blue-500 via-emerald-500 to-teal-400" />

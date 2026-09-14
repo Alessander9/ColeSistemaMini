@@ -153,7 +153,7 @@ export default function AdminDashboardPage() {
 
           {/* Quick Action Grid Directiva */}
           <div className="flex flex-col sm:flex-row lg:flex-col gap-2 shrink-0">
-            <div className="grid grid-cols-2 sm:grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-2 gap-2">
               <Link
                 href="/admin/matriculas"
                 className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-md shadow-indigo-600/30 transition-all hover:scale-102 active:scale-98"

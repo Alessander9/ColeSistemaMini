@@ -57,6 +57,13 @@ export function BottomNav() {
     { href: '/asistencia', label: 'Terminal QR', icon: QrCode, badge: 'Live' },
   ];
 
+  const apoderadoItems: BottomNavItem[] = [
+    { href: '/apoderado', label: 'Familia', icon: LayoutDashboard },
+    { href: '/estudiante/libreta-notas', label: 'Notas', icon: Award },
+    { href: '/estudiante/horario', label: 'Horario', icon: Calendar },
+    { href: '/estudiante/carnet-qr', label: 'Carnet QR', icon: QrCode },
+  ];
+
   let items = adminItems;
   let activeColor = 'text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/40';
   let activeIconColor = 'text-purple-600 dark:text-purple-400';
@@ -69,6 +76,10 @@ export function BottomNav() {
     items = estudianteItems;
     activeColor = 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40';
     activeIconColor = 'text-emerald-600 dark:text-emerald-400';
+  } else if (currentUser.rol === 'apoderado') {
+    items = apoderadoItems;
+    activeColor = 'text-pink-600 dark:text-pink-400 bg-pink-50 dark:bg-pink-950/40';
+    activeIconColor = 'text-pink-600 dark:text-pink-400';
   } else if (currentUser.rol === 'asistencia') {
     items = asistenciaItems;
     activeColor = 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40';
