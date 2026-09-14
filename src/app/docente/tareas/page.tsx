@@ -106,7 +106,7 @@ export default function DocenteTareasPage() {
     {
       header: 'Fecha Límite',
       cell: (task) => (
-        <span className="text-xs text-slate-600 dark:text-slate-300 font-medium flex items-center gap-1">
+        <span className="text-xs text-slate-600 dark:text-slate-300 font-medium flex items-center gap-1" suppressHydrationWarning>
           <Clock className="w-3.5 h-3.5 text-amber-500" />
           {new Date(task.fecha_limite).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
         </span>
@@ -185,7 +185,7 @@ export default function DocenteTareasPage() {
                   <span className="font-extrabold text-xs px-2.5 py-1 rounded-xl bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300">
                     {task.curso?.nombre}
                   </span>
-                  <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500">
+                  <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500" suppressHydrationWarning>
                     <Clock className="w-3.5 h-3.5 text-amber-500" />
                     {new Date(task.fecha_limite).toLocaleDateString('es-PE', { day: '2-digit', month: 'short' })}
                   </span>

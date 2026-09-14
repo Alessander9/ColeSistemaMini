@@ -341,7 +341,7 @@ export function AnnualReportCardView({ reportCard, showPrintButton = true }: Ann
         </div>
 
         {/* Footer Note */}
-        <div className="mt-8 pt-4 border-t border-slate-100 dark:border-slate-800 text-center text-[10px] text-slate-400">
+        <div className="mt-8 pt-4 border-t border-slate-100 dark:border-slate-800 text-center text-[10px] text-slate-400" suppressHydrationWarning>
           Este documento es un extracto oficial del Sistema Integrado de Matrícula y Evaluación (ColeSistema / SIAGIE). Fecha de emisión: {new Date().toLocaleDateString('es-PE', { year: 'numeric', month: 'long', day: 'numeric' })}.
         </div>
       </div>

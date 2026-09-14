@@ -114,7 +114,7 @@ export default function EstudianteDashboardPage() {
             </div>
 
             <h1 className="text-2xl sm:text-4xl font-black tracking-tight text-white flex items-center gap-2.5">
-              {greeting}, {studentName}! <span className="inline-block animate-wave origin-bottom-right">🎒</span>
+              <span suppressHydrationWarning>{greeting}</span>, <span suppressHydrationWarning>{studentName}</span>! <span className="inline-block animate-wave origin-bottom-right">🎒</span>
             </h1>
             <p className="text-xs sm:text-sm text-slate-300 font-normal leading-relaxed">
               {gradeName} — Sección &quot;{sectionLetter}&quot; • Código Oficial: <span className="font-mono font-bold text-emerald-300 bg-emerald-950/60 px-2 py-0.5 rounded-lg border border-emerald-500/30">{activeStudent?.codigo_estudiante || 'EST-2026-001'}</span>

@@ -68,7 +68,7 @@ export function AcademicContextSelector() {
         aria-expanded={isOpen}
         className="group flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 rounded-full bg-slate-100/90 dark:bg-slate-800/80 hover:bg-slate-200/80 dark:hover:bg-slate-700/80 border border-slate-200/80 dark:border-slate-700/80 transition-all text-xs select-none shadow-sm max-w-[190px] xs:max-w-[260px] sm:max-w-none truncate"
       >
-        <div className="flex items-center gap-1.5 font-semibold text-slate-700 dark:text-slate-200 truncate">
+        <div className="flex items-center gap-1.5 font-semibold text-slate-700 dark:text-slate-200 truncate" suppressHydrationWarning>
           <School className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
           <span className="hidden sm:inline truncate max-w-[120px] font-medium text-slate-500 dark:text-slate-400">
             {academicContext.institucion.split(' ')[0]}

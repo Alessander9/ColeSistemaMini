@@ -155,13 +155,13 @@ export function ProfileDropdown() {
           </div>
 
           {/* Name & Role Tag (Desktop) */}
-          <div className="hidden sm:block text-left min-w-0">
-            <p className="text-xs font-bold text-slate-800 dark:text-white leading-tight truncate max-w-[110px]">
+          <div className="hidden sm:block text-left min-w-0" suppressHydrationWarning>
+            <p className="text-xs font-bold text-slate-800 dark:text-white leading-tight truncate max-w-[110px]" suppressHydrationWarning>
               {currentUser.nombres.split(' ')[0]}
             </p>
-            <div className={`inline-flex items-center gap-1 px-1.5 py-0.2 rounded-md text-[9px] font-extrabold bg-gradient-to-r ${cfg.gradient} text-white shadow-xs`}>
+            <div className={`inline-flex items-center gap-1 px-1.5 py-0.2 rounded-md text-[9px] font-extrabold bg-gradient-to-r ${cfg.gradient} text-white shadow-xs`} suppressHydrationWarning>
               {cfg.icon}
-              <span>{cfg.label}</span>
+              <span suppressHydrationWarning>{cfg.label}</span>
             </div>
           </div>
 

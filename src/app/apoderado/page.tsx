@@ -60,7 +60,7 @@ export default function ApoderadoDashboardPage() {
             </div>
 
             <h1 className="text-2xl sm:text-4xl font-black tracking-tight text-white flex items-center gap-2.5">
-              {greeting}, Estimada Familia <span className="inline-block animate-wave origin-bottom-right">👨‍👩‍👧</span>
+              <span suppressHydrationWarning>{greeting}</span>, Estimada Familia <span className="inline-block animate-wave origin-bottom-right">👨‍👩‍👧</span>
             </h1>
             <p className="text-xs sm:text-sm text-slate-300 font-normal leading-relaxed">
               Monitoreo en tiempo real de asistencia, calificaciones oficiales CNEB y avisos de tutoría de sus hijos.

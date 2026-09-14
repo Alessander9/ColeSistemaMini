@@ -81,7 +81,7 @@ export default function DocenteDashboardPage() {
             </div>
 
             <h1 className="text-2xl sm:text-4xl font-black tracking-tight text-white flex items-center gap-2.5">
-              {greeting}, Prof. {teacherFirstName} <span className="inline-block animate-wave origin-bottom-right">👋</span>
+              <span suppressHydrationWarning>{greeting}</span>, Prof. <span suppressHydrationWarning>{teacherFirstName}</span> <span className="inline-block animate-wave origin-bottom-right">👋</span>
             </h1>
             <p className="text-xs sm:text-sm text-slate-300 font-normal leading-relaxed">
               Tienes <strong className="text-white font-bold">{todaySlots.length} sesiones programadas</strong> para la jornada de hoy.

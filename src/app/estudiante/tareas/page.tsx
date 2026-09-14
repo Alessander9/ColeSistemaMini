@@ -102,7 +102,7 @@ export default function EstudianteTareasPage() {
                   <span className="text-xs font-black px-2.5 py-0.5 rounded-lg bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300 border border-blue-200">
                     {task.curso?.nombre}
                   </span>
-                  <span className="text-xs text-slate-400 font-medium flex items-center gap-1">
+                  <span className="text-xs text-slate-400 font-medium flex items-center gap-1" suppressHydrationWarning>
                     <Clock className="w-3.5 h-3.5 text-amber-500" />
                     Límite: {new Date(task.fecha_limite).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                   </span>

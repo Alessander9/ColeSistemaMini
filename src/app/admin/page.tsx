@@ -120,7 +120,7 @@ export default function AdminDashboardPage() {
             </div>
 
             <h1 className="text-2xl sm:text-4xl font-black tracking-tight text-white flex items-center gap-2.5">
-              {greeting}, Director <span className="inline-block animate-wave origin-bottom-right">👋</span>
+              <span suppressHydrationWarning>{greeting}</span>, Director <span className="inline-block animate-wave origin-bottom-right">👋</span>
             </h1>
             <p className="text-xs sm:text-sm text-slate-300 max-w-2xl font-normal leading-relaxed">
               Supervisión operativa, asistencia biométrica QR y consolidado académico de Inicial, Primaria y Secundaria.
