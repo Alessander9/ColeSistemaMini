@@ -174,7 +174,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
           <div className="flex overflow-hidden" style={{ height: 'calc(100dvh - 64px)' }}>
             <Sidebar />
-            <main className="flex-1 overflow-y-auto p-3.5 sm:p-6 lg:p-8 pb-24 md:pb-8">
+            <main className="flex-1 overflow-y-auto p-3.5 sm:p-6 lg:p-8 pb-24 md:pb-8 transition-all duration-300 ease-in-out">
               <InnerShell>{children}</InnerShell>
             </main>
           </div>

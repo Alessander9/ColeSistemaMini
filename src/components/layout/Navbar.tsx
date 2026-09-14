@@ -8,7 +8,9 @@ import {
   GraduationCap, 
   Search,
   Menu,
-  QrCode
+  QrCode,
+  PanelLeftClose,
+  PanelLeftOpen
 } from 'lucide-react';
 import { NotificationBell } from '@/components/notificaciones/NotificationBell';
 import { ProfileDropdown } from '@/components/layout/ProfileDropdown';
@@ -20,7 +22,7 @@ interface NavbarProps {
 }
 
 export function Navbar({ onOpenMobileMenu }: NavbarProps) {
-  const { currentUser, toggleCommandPalette } = useApp();
+  const { currentUser, toggleCommandPalette, isSidebarCollapsed, toggleSidebar } = useApp();
   const [isQrOpen, setIsQrOpen] = useState(false);
 
   // Permiso para escanear asistencia QR: Solo Admin, Docente y Asistencia (Portero)
@@ -40,8 +42,9 @@ export function Navbar({ onOpenMobileMenu }: NavbarProps) {
       <header className="sticky top-0 z-50 w-full border-b border-slate-200/70 dark:border-slate-800/70 bg-white/90 dark:bg-slate-950/90 backdrop-blur-xl">
         <div className="px-3 sm:px-6 h-16 flex items-center justify-between gap-3">
           
-          {/* Left: Mobile Hamburger + Logo */}
-          <div className="flex items-center gap-2">
+          {/* Left: Mobile Hamburger / Desktop Toggle + Logo */}
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            {/* Mobile drawer trigger */}
             <button
               type="button"
               onClick={onOpenMobileMenu}
@@ -49,6 +52,21 @@ export function Navbar({ onOpenMobileMenu }: NavbarProps) {
               aria-label="Abrir menú"
             >
               <Menu className="w-5 h-5" />
+            </button>
+
+            {/* Desktop sidebar toggle button */}
+            <button
+              type="button"
+              onClick={toggleSidebar}
+              className="hidden md:flex items-center justify-center p-2 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/80 rounded-xl transition-all active:scale-95 cursor-pointer"
+              title={isSidebarCollapsed ? "Desplegar menú lateral" : "Colapsar menú lateral"}
+              aria-label="Alternar barra lateral"
+            >
+              {isSidebarCollapsed ? (
+                <PanelLeftOpen className="w-5 h-5 text-indigo-600 dark:text-indigo-400 animate-in fade-in duration-200" />
+              ) : (
+                <PanelLeftClose className="w-5 h-5 text-slate-500 dark:text-slate-400 animate-in fade-in duration-200" />
+              )}
             </button>
 
             <Link href={homeHref} className="flex items-center gap-2.5 group shrink-0" title="Ir a mi Dashboard">

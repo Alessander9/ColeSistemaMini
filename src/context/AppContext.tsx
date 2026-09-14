@@ -121,6 +121,11 @@ interface AppContextType {
   onboardingCompleted: boolean;
   setOnboardingCompleted: (completed: boolean) => void;
 
+  // ── Sidebar Collapse / Expand State ──
+  isSidebarCollapsed: boolean;
+  setIsSidebarCollapsed: (collapsed: boolean) => void;
+  toggleSidebar: () => void;
+
   // ── Asistencia Rápida Docente ──
   saveClassAttendanceQuickly: (
     seccionId: string,
@@ -313,6 +318,30 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>(() => getInitialData('colegio_audit_logs', MOCK_AUDIT_LOGS));
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [onboardingCompleted, setOnboardingCompleted] = useState<boolean>(() => getInitialData('colegio_onboarding', true));
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('colegio_sidebar_collapsed') === 'true';
+    }
+    return false;
+  });
+
+  const toggleSidebar = useCallback(() => {
+    setIsSidebarCollapsed(prev => {
+      const next = !prev;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('colegio_sidebar_collapsed', String(next));
+      }
+      return next;
+    });
+  }, []);
+
+  const setSidebarCollapsedState = useCallback((collapsed: boolean) => {
+    setIsSidebarCollapsed(collapsed);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('colegio_sidebar_collapsed', String(collapsed));
+    }
+  }, []);
+
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -1605,6 +1634,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     toggleCommandPalette: () => setIsCommandPaletteOpen(prev => !prev),
     onboardingCompleted,
     setOnboardingCompleted,
+    isSidebarCollapsed,
+    setIsSidebarCollapsed: setSidebarCollapsedState,
+    toggleSidebar,
     saveClassAttendanceQuickly: (
       seccionId: string,
       fecha: string,
