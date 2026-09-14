@@ -572,6 +572,41 @@ export const MOCK_STUDENTS: Student[] = [
 // MATRÍCULAS POR SECCIÓN
 // ─────────────────────────────────────────────────────────────────────────────
 export const MOCK_ENROLLMENTS: Enrollment[] = [
+  // 3 Años de Inicial - Sección A
+  {
+    id: 'enr-ini-1',
+    estudiante_id: 'student-1',
+    periodo_id: 'period-2026',
+    seccion_id: 'sec-ini-3a',
+    fecha_matricula: '2026-02-10',
+    estado: 'activo',
+    estudiante: MOCK_STUDENTS[0],
+    seccion: MOCK_SECTIONS[0],
+    periodo: MOCK_PERIOD,
+  },
+  {
+    id: 'enr-ini-2',
+    estudiante_id: 'student-2',
+    periodo_id: 'period-2026',
+    seccion_id: 'sec-ini-3a',
+    fecha_matricula: '2026-02-12',
+    estado: 'activo',
+    estudiante: MOCK_STUDENTS[1],
+    seccion: MOCK_SECTIONS[0],
+    periodo: MOCK_PERIOD,
+  },
+  {
+    id: 'enr-ini-3',
+    estudiante_id: 'student-3',
+    periodo_id: 'period-2026',
+    seccion_id: 'sec-ini-3a',
+    fecha_matricula: '2026-02-14',
+    estado: 'activo',
+    estudiante: MOCK_STUDENTS[2],
+    seccion: MOCK_SECTIONS[0],
+    periodo: MOCK_PERIOD,
+  },
+
   // 3° de Primaria - Sección A
   {
     id: 'enr-1',
