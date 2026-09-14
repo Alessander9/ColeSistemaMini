@@ -1,0 +1,8 @@
+node_modules
+.next
+.git
+.agents
+.gemini
+*.log
+tests_e2e_selenium.py
+.env*.local

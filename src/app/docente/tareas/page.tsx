@@ -303,11 +303,16 @@ export default function DocenteTareasPage() {
             </div>
 
             <div className="space-y-2.5">
-              {enrollments.map((enr) => {
+              {(
+                enrollments.filter(e => !selectedTaskForGrading.seccion_id || e.seccion_id === selectedTaskForGrading.seccion_id).length > 0
+                  ? enrollments.filter(e => !selectedTaskForGrading.seccion_id || e.seccion_id === selectedTaskForGrading.seccion_id)
+                  : enrollments
+              ).map((enr) => {
                 const sub = submissions.find(
                   s => s.tarea_id === selectedTaskForGrading.id && s.matricula_id === enr.id
                 );
-                const studentName = `${enr.estudiante?.profile?.apellidos}, ${enr.estudiante?.profile?.nombres}`;
+                const studentName = `${enr.estudiante?.profile?.apellidos || ''}, ${enr.estudiante?.profile?.nombres || ''}`;
+
 
                 return (
                   <div

@@ -292,18 +292,66 @@
   animation: orbit 20s linear infinite;
 }
 
+/* ===== DOT GRID PATTERN (Subtle institutional texture) ===== */
+.bg-dot-pattern {
+  background-image: radial-gradient(rgba(100, 116, 139, 0.15) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+.dark .bg-dot-pattern {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* ===== LINEAR-STYLE CARD SURFACES ===== */
+.surface-card {
+  background: white;
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.03), 0 1px 2px -1px rgba(0, 0, 0, 0.03);
+}
+.dark .surface-card {
+  background: #0f172a;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.4);
+}
+
 /* ===== PRINT STYLES ===== */
 @media print {
-  body * { visibility: hidden; }
-  .printable-card, .printable-card * { visibility: visible; }
-  .printable-card {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    margin: 0;
-    padding: 0;
-    box-shadow: none !important;
+  @page {
+    margin: 1.2cm;
+    size: A4 portrait;
   }
-  .no-print { display: none !important; }
+
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    font-size: 11pt;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  header, nav, aside, footer, .no-print, [data-sidebar], [data-navbar] {
+    display: none !important;
+  }
+
+  main {
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: 100% !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  table {
+    page-break-inside: auto;
+  }
+
+  tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+
+  .page-break-avoid {
+    page-break-inside: avoid;
+  }
 }
+

@@ -217,7 +217,11 @@ export default function DocenteEvaluacionesPage() {
               <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Curso *</label>
               <select
                 value={formData.cursoId}
-                onChange={(e) => setFormData({ ...formData, cursoId: e.target.value })}
+                onChange={(e) => {
+                  const newCursoId = e.target.value;
+                  const firstComp = courses.find(c => c.id === newCursoId)?.competencias?.[0]?.id || 'comp-mat-1';
+                  setFormData({ ...formData, cursoId: newCursoId, competenciaId: firstComp });
+                }}
                 className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
               >
                 {courses.map((c) => (
@@ -238,6 +242,34 @@ export default function DocenteEvaluacionesPage() {
               </select>
             </div>
           </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Competencia a Evaluar *</label>
+              <select
+                value={formData.competenciaId}
+                onChange={(e) => setFormData({ ...formData, competenciaId: e.target.value })}
+                className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
+              >
+                {(courses.find(c => c.id === formData.cursoId)?.competencias || []).map((comp) => (
+                  <option key={comp.id} value={comp.id}>{comp.codigo} — {comp.descripcion}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Bimestre / Periodo</label>
+              <select
+                value={formData.periodoEvaluacionId}
+                onChange={(e) => setFormData({ ...formData, periodoEvaluacionId: e.target.value })}
+                className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
+              >
+                {evaluationPeriods.map((p) => (
+                  <option key={p.id} value={p.id}>{p.nombre}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>

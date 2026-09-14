@@ -17,7 +17,10 @@ import {
   SectionCourseAssignment,
   ScheduleSlot,
   DayOfWeek,
-  ClassSessionLog
+  ClassSessionLog,
+  PreuniExamSimulation,
+  PreuniRankingEntry,
+  ChildProfile
 } from '@/types';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -252,9 +255,13 @@ export const MOCK_EVALUATION_PERIODS: EvaluationPeriod[] = [
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
-// GRADOS ESCOLARES (6 PRIMARIA + 5 SECUNDARIA = 11 GRADOS)
+// GRADOS & CICLOS EDUCATIVOS (INICIAL + PRIMARIA + SECUNDARIA + PREUNIVERSITARIO)
 // ─────────────────────────────────────────────────────────────────────────────
 export const MOCK_GRADES: GradeLevel[] = [
+  // Inicial
+  { id: 'grade-ini-3', nivel: 'inicial', nombre: '3 Años (Inicial)',   numero_grado: 1 },
+  { id: 'grade-ini-4', nivel: 'inicial', nombre: '4 Años (Inicial)',   numero_grado: 2 },
+  { id: 'grade-ini-5', nivel: 'inicial', nombre: '5 Años (Inicial)',   numero_grado: 3 },
   // Primaria
   { id: 'grade-pri-1', nivel: 'primaria', nombre: '1° de Primaria',   numero_grado: 1 },
   { id: 'grade-pri-2', nivel: 'primaria', nombre: '2° de Primaria',   numero_grado: 2 },
@@ -268,36 +275,54 @@ export const MOCK_GRADES: GradeLevel[] = [
   { id: 'grade-sec-3', nivel: 'secundaria', nombre: '3° de Secundaria', numero_grado: 3 },
   { id: 'grade-sec-4', nivel: 'secundaria', nombre: '4° de Secundaria', numero_grado: 4 },
   { id: 'grade-sec-5', nivel: 'secundaria', nombre: '5° de Secundaria', numero_grado: 5 },
+  // Preuniversitario
+  { id: 'grade-pre-anual', nivel: 'preuniversitario', nombre: 'Ciclo Anual Regular', numero_grado: 1 },
+  { id: 'grade-pre-semestral', nivel: 'preuniversitario', nombre: 'Ciclo Semestral UNI / UNMSM', numero_grado: 2 },
+  { id: 'grade-pre-intensivo', nivel: 'preuniversitario', nombre: 'Ciclo Intensivo / Verano', numero_grado: 3 },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SECCIONES (22 SECCIONES TOTALES - 2 POR GRADO)
+// SECCIONES & AULAS
 // ─────────────────────────────────────────────────────────────────────────────
 export const MOCK_SECTIONS: Section[] = [
+  // Inicial
+  { id: 'sec-ini3-a', grado_id: 'grade-ini-3', letra: 'A', capacidad_maxima: 20, grado: MOCK_GRADES[0] },
+  { id: 'sec-ini3-b', grado_id: 'grade-ini-3', letra: 'B', capacidad_maxima: 20, grado: MOCK_GRADES[0] },
+  { id: 'sec-ini4-a', grado_id: 'grade-ini-4', letra: 'A', capacidad_maxima: 22, grado: MOCK_GRADES[1] },
+  { id: 'sec-ini4-b', grado_id: 'grade-ini-4', letra: 'B', capacidad_maxima: 22, grado: MOCK_GRADES[1] },
+  { id: 'sec-ini5-a', grado_id: 'grade-ini-5', letra: 'A', capacidad_maxima: 25, grado: MOCK_GRADES[2] },
+  { id: 'sec-ini5-b', grado_id: 'grade-ini-5', letra: 'B', capacidad_maxima: 25, grado: MOCK_GRADES[2] },
   // Primaria
-  { id: 'sec-1pri-a', grado_id: 'grade-pri-1', letra: 'A', capacidad_maxima: 28, grado: MOCK_GRADES[0] },
-  { id: 'sec-1pri-b', grado_id: 'grade-pri-1', letra: 'B', capacidad_maxima: 28, grado: MOCK_GRADES[0] },
-  { id: 'sec-2pri-a', grado_id: 'grade-pri-2', letra: 'A', capacidad_maxima: 30, grado: MOCK_GRADES[1] },
-  { id: 'sec-2pri-b', grado_id: 'grade-pri-2', letra: 'B', capacidad_maxima: 30, grado: MOCK_GRADES[1] },
-  { id: 'sec-3pri-a', grado_id: 'grade-pri-3', letra: 'A', capacidad_maxima: 30, grado: MOCK_GRADES[2] },
-  { id: 'sec-3pri-b', grado_id: 'grade-pri-3', letra: 'B', capacidad_maxima: 30, grado: MOCK_GRADES[2] },
-  { id: 'sec-4pri-a', grado_id: 'grade-pri-4', letra: 'A', capacidad_maxima: 32, grado: MOCK_GRADES[3] },
-  { id: 'sec-4pri-b', grado_id: 'grade-pri-4', letra: 'B', capacidad_maxima: 32, grado: MOCK_GRADES[3] },
-  { id: 'sec-5pri-a', grado_id: 'grade-pri-5', letra: 'A', capacidad_maxima: 32, grado: MOCK_GRADES[4] },
-  { id: 'sec-5pri-b', grado_id: 'grade-pri-5', letra: 'B', capacidad_maxima: 32, grado: MOCK_GRADES[4] },
-  { id: 'sec-6pri-a', grado_id: 'grade-pri-6', letra: 'A', capacidad_maxima: 30, grado: MOCK_GRADES[5] },
-  { id: 'sec-6pri-b', grado_id: 'grade-pri-6', letra: 'B', capacidad_maxima: 30, grado: MOCK_GRADES[5] },
+  { id: 'sec-1pri-a', grado_id: 'grade-pri-1', letra: 'A', capacidad_maxima: 28, grado: MOCK_GRADES[3] },
+  { id: 'sec-1pri-b', grado_id: 'grade-pri-1', letra: 'B', capacidad_maxima: 28, grado: MOCK_GRADES[3] },
+  { id: 'sec-2pri-a', grado_id: 'grade-pri-2', letra: 'A', capacidad_maxima: 30, grado: MOCK_GRADES[4] },
+  { id: 'sec-2pri-b', grado_id: 'grade-pri-2', letra: 'B', capacidad_maxima: 30, grado: MOCK_GRADES[4] },
+  { id: 'sec-3pri-a', grado_id: 'grade-pri-3', letra: 'A', capacidad_maxima: 30, grado: MOCK_GRADES[5] },
+  { id: 'sec-3pri-b', grado_id: 'grade-pri-3', letra: 'B', capacidad_maxima: 30, grado: MOCK_GRADES[5] },
+  { id: 'sec-4pri-a', grado_id: 'grade-pri-4', letra: 'A', capacidad_maxima: 32, grado: MOCK_GRADES[6] },
+  { id: 'sec-4pri-b', grado_id: 'grade-pri-4', letra: 'B', capacidad_maxima: 32, grado: MOCK_GRADES[6] },
+  { id: 'sec-5pri-a', grado_id: 'grade-pri-5', letra: 'A', capacidad_maxima: 32, grado: MOCK_GRADES[7] },
+  { id: 'sec-5pri-b', grado_id: 'grade-pri-5', letra: 'B', capacidad_maxima: 32, grado: MOCK_GRADES[7] },
+  { id: 'sec-6pri-a', grado_id: 'grade-pri-6', letra: 'A', capacidad_maxima: 30, grado: MOCK_GRADES[8] },
+  { id: 'sec-6pri-b', grado_id: 'grade-pri-6', letra: 'B', capacidad_maxima: 30, grado: MOCK_GRADES[8] },
   // Secundaria
-  { id: 'sec-1sec-a', grado_id: 'grade-sec-1', letra: 'A', capacidad_maxima: 35, grado: MOCK_GRADES[6] },
-  { id: 'sec-1sec-b', grado_id: 'grade-sec-1', letra: 'B', capacidad_maxima: 35, grado: MOCK_GRADES[6] },
-  { id: 'sec-2sec-a', grado_id: 'grade-sec-2', letra: 'A', capacidad_maxima: 35, grado: MOCK_GRADES[7] },
-  { id: 'sec-2sec-b', grado_id: 'grade-sec-2', letra: 'B', capacidad_maxima: 35, grado: MOCK_GRADES[7] },
-  { id: 'sec-3sec-a', grado_id: 'grade-sec-3', letra: 'A', capacidad_maxima: 35, grado: MOCK_GRADES[8] },
-  { id: 'sec-3sec-b', grado_id: 'grade-sec-3', letra: 'B', capacidad_maxima: 35, grado: MOCK_GRADES[8] },
-  { id: 'sec-4sec-a', grado_id: 'grade-sec-4', letra: 'A', capacidad_maxima: 35, grado: MOCK_GRADES[9] },
-  { id: 'sec-4sec-b', grado_id: 'grade-sec-4', letra: 'B', capacidad_maxima: 35, grado: MOCK_GRADES[9] },
-  { id: 'sec-5sec-a', grado_id: 'grade-sec-5', letra: 'A', capacidad_maxima: 35, grado: MOCK_GRADES[10] },
-  { id: 'sec-5sec-b', grado_id: 'grade-sec-5', letra: 'B', capacidad_maxima: 35, grado: MOCK_GRADES[10] },
+  { id: 'sec-1sec-a', grado_id: 'grade-sec-1', letra: 'A', capacidad_maxima: 35, grado: MOCK_GRADES[9] },
+  { id: 'sec-1sec-b', grado_id: 'grade-sec-1', letra: 'B', capacidad_maxima: 35, grado: MOCK_GRADES[9] },
+  { id: 'sec-2sec-a', grado_id: 'grade-sec-2', letra: 'A', capacidad_maxima: 35, grado: MOCK_GRADES[10] },
+  { id: 'sec-2sec-b', grado_id: 'grade-sec-2', letra: 'B', capacidad_maxima: 35, grado: MOCK_GRADES[10] },
+  { id: 'sec-3sec-a', grado_id: 'grade-sec-3', letra: 'A', capacidad_maxima: 35, grado: MOCK_GRADES[11] },
+  { id: 'sec-3sec-b', grado_id: 'grade-sec-3', letra: 'B', capacidad_maxima: 35, grado: MOCK_GRADES[11] },
+  { id: 'sec-4sec-a', grado_id: 'grade-sec-4', letra: 'A', capacidad_maxima: 35, grado: MOCK_GRADES[12] },
+  { id: 'sec-4sec-b', grado_id: 'grade-sec-4', letra: 'B', capacidad_maxima: 35, grado: MOCK_GRADES[12] },
+  { id: 'sec-5sec-a', grado_id: 'grade-sec-5', letra: 'A', capacidad_maxima: 35, grado: MOCK_GRADES[13] },
+  { id: 'sec-5sec-b', grado_id: 'grade-sec-5', letra: 'B', capacidad_maxima: 35, grado: MOCK_GRADES[13] },
+  // Preuniversitario
+  { id: 'sec-pre-anual-a', grado_id: 'grade-pre-anual', letra: 'A', capacidad_maxima: 45, grado: MOCK_GRADES[14] },
+  { id: 'sec-pre-anual-b', grado_id: 'grade-pre-anual', letra: 'B', capacidad_maxima: 45, grado: MOCK_GRADES[14] },
+  { id: 'sec-pre-sem-a', grado_id: 'grade-pre-semestral', letra: 'A', capacidad_maxima: 50, grado: MOCK_GRADES[15] },
+  { id: 'sec-pre-sem-b', grado_id: 'grade-pre-semestral', letra: 'B', capacidad_maxima: 50, grado: MOCK_GRADES[15] },
+  { id: 'sec-pre-int-a', grado_id: 'grade-pre-intensivo', letra: 'A', capacidad_maxima: 40, grado: MOCK_GRADES[16] },
+  { id: 'sec-pre-int-b', grado_id: 'grade-pre-intensivo', letra: 'B', capacidad_maxima: 40, grado: MOCK_GRADES[16] },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -682,48 +707,112 @@ export const MOCK_ATTENDANCES: AttendanceRecord[] = [
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
-// REGISTRO DE CALIFICACIONES MINEDU (I BIMESTRE CERRADO + II BIMESTRE PROCESO)
+// REGISTRO DE CALIFICACIONES MINEDU (I, II, III Y IV BIMESTRE - AÑO LECTIVO COMPLETO)
 // ─────────────────────────────────────────────────────────────────────────────
 export const MOCK_GRADE_RECORDS: GradeRecord[] = [
-  // ═══ I BIMESTRE (OFICIAL CERRADO) ══════════════════════════════════════════
-  // Mateo Silva (enr-1)
-  { id: 'gr-1', matricula_id: 'enr-1', competencia_id: 'comp-mat-1', periodo_evaluacion_id: 'eval-bim-1', nota_letra: 'AD', nota_numerica: 4, conclusion_descriptiva: 'Excelente resolución de problemas complejos y cálculo mental.' },
-  { id: 'gr-2', matricula_id: 'enr-1', competencia_id: 'comp-mat-2', periodo_evaluacion_id: 'eval-bim-1', nota_letra: 'AD', nota_numerica: 4, conclusion_descriptiva: 'Domina patrones numéricos y ecuaciones simples con fluidez.' },
-  { id: 'gr-3', matricula_id: 'enr-1', competencia_id: 'comp-mat-3', periodo_evaluacion_id: 'eval-bim-1', nota_letra: 'A', nota_numerica: 3, conclusion_descriptiva: 'Buen manejo de figuras geométricas y ubicación en el plano cartesiano.' },
-  { id: 'gr-4', matricula_id: 'enr-1', competencia_id: 'comp-mat-4', periodo_evaluacion_id: 'eval-bim-1', nota_letra: 'AD', nota_numerica: 4, conclusion_descriptiva: 'Interpreta gráficos estadísticos y tablas de doble entrada con precisión.' },
-  { id: 'gr-com-1', matricula_id: 'enr-1', competencia_id: 'comp-com-1', periodo_evaluacion_id: 'eval-bim-1', nota_letra: 'AD', nota_numerica: 4, conclusion_descriptiva: 'Excelente expresión oral y fluidez comunicativa.' },
-  { id: 'gr-com-2', matricula_id: 'enr-1', competencia_id: 'comp-com-2', periodo_evaluacion_id: 'eval-bim-1', nota_letra: 'AD', nota_numerica: 4, conclusion_descriptiva: 'Comprensión lectora crítica destacada en textos narrativos.' },
-  { id: 'gr-com-3', matricula_id: 'enr-1', competencia_id: 'comp-com-3', periodo_evaluacion_id: 'eval-bim-1', nota_letra: 'A', nota_numerica: 3, conclusion_descriptiva: 'Redacta textos coherentes con buena ortografía.' },
-  { id: 'gr-cta-1', matricula_id: 'enr-1', competencia_id: 'comp-cta-1', periodo_evaluacion_id: 'eval-bim-1', nota_letra: 'AD', nota_numerica: 4, conclusion_descriptiva: 'Aplica el método de indagación científica con curiosidad y orden.' },
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ESTUDIANTE: Mateo Silva Mendoza (enr-1 - 3° Primaria A)
+  // Perfil de Logro Destacado (Promovido con excelencia)
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ── I Bimestre ──
+  { id: 'gr-m1-bim1-mat1', matricula_id: 'enr-1', competencia_id: 'comp-mat-1', periodo_evaluacion_id: 'eval-bim-1', nota_letra: 'AD', nota_numerica: 4, conclusion_descriptiva: 'Excelente resolución de problemas de cantidad y cálculo mental rápido.' },
+  { id: 'gr-m1-bim1-mat2', matricula_id: 'enr-1', competencia_id: 'comp-mat-2', periodo_evaluacion_id: 'eval-bim-1', nota_letra: 'AD', nota_numerica: 4, conclusion_descriptiva: 'Domina patrones numéricos y ecuaciones con fluidez.' },
+  { id: 'gr-m1-bim1-mat3', matricula_id: 'enr-1', competencia_id: 'comp-mat-3', periodo_evaluacion_id: 'eval-bim-1', nota_letra: 'A',  nota_numerica: 3, conclusion_descriptiva: 'Buen manejo de figuras geométricas y ubicación en el plano.' },
+  { id: 'gr-m1-bim1-mat4', matricula_id: 'enr-1', competencia_id: 'comp-mat-4', periodo_evaluacion_id: 'eval-bim-1', nota_letra: 'AD', nota_numerica: 4, conclusion_descriptiva: 'Interpreta tablas de doble entrada y gráficos estadísticos.' },
+  { id: 'gr-m1-bim1-com1', matricula_id: 'enr-1', competencia_id: 'comp-com-1', periodo_evaluacion_id: 'eval-bim-1', nota_letra: 'AD', nota_numerica: 4, conclusion_descriptiva: 'Excelente expresión oral y argumentación fluida.' },
+  { id: 'gr-m1-bim1-com2', matricula_id: 'enr-1', competencia_id: 'comp-com-2', periodo_evaluacion_id: 'eval-bim-1', nota_letra: 'AD', nota_numerica: 4, conclusion_descriptiva: 'Comprensión lectora crítica destacada en textos narrativos.' },
+  { id: 'gr-m1-bim1-com3', matricula_id: 'enr-1', competencia_id: 'comp-com-3', periodo_evaluacion_id: 'eval-bim-1', nota_letra: 'A',  nota_numerica: 3, conclusion_descriptiva: 'Redacta textos con coherencia y buena ortografía.' },
+  { id: 'gr-m1-bim1-cta1', matricula_id: 'enr-1', competencia_id: 'comp-cta-1', periodo_evaluacion_id: 'eval-bim-1', nota_letra: 'AD', nota_numerica: 4, conclusion_descriptiva: 'Aplica el método de indagación científica con curiosidad y orden.' },
+  { id: 'gr-m1-bim1-cta2', matricula_id: 'enr-1', competencia_id: 'comp-cta-2', periodo_evaluacion_id: 'eval-bim-1', nota_letra: 'A',  nota_numerica: 3, conclusion_descriptiva: 'Explica el mundo físico y los ecosistemas con solvencia.' },
+  { id: 'gr-m1-bim1-soc1', matricula_id: 'enr-1', competencia_id: 'comp-soc-1', periodo_evaluacion_id: 'eval-bim-1', nota_letra: 'AD', nota_numerica: 4, conclusion_descriptiva: 'Convive democráticamente y participa activamente en el aula.' },
+  { id: 'gr-m1-bim1-ing1', matricula_id: 'enr-1', competencia_id: 'comp-ing-1', periodo_evaluacion_id: 'eval-bim-1', nota_letra: 'A',  nota_numerica: 3, conclusion_descriptiva: 'Comunica frases en inglés con adecuada pronunciación.' },
 
-  // Sofía Romero (enr-2)
-  { id: 'gr-5', matricula_id: 'enr-2', competencia_id: 'comp-mat-1', periodo_evaluacion_id: 'eval-bim-1', nota_letra: 'A', nota_numerica: 3, conclusion_descriptiva: 'Cumple satisfactoriamente con la resolución de operaciones.' },
-  { id: 'gr-6', matricula_id: 'enr-2', competencia_id: 'comp-mat-2', periodo_evaluacion_id: 'eval-bim-1', nota_letra: 'A', nota_numerica: 3, conclusion_descriptiva: 'Buen avance en cálculo mental y secuencias.' },
-  { id: 'gr-7', matricula_id: 'enr-2', competencia_id: 'comp-mat-3', periodo_evaluacion_id: 'eval-bim-1', nota_letra: 'B', nota_numerica: 2, conclusion_descriptiva: 'Requiere reforzar giros y traslación en el plano.' },
-  { id: 'gr-8', matricula_id: 'enr-2', competencia_id: 'comp-mat-4', periodo_evaluacion_id: 'eval-bim-1', nota_letra: 'A', nota_numerica: 3, conclusion_descriptiva: 'Organiza tablas y pictogramas correctamente.' },
-  { id: 'gr-com-21', matricula_id: 'enr-2', competencia_id: 'comp-com-2', periodo_evaluacion_id: 'eval-bim-1', nota_letra: 'AD', nota_numerica: 4, conclusion_descriptiva: 'Gran hábito lector y análisis inferencial.' },
+  // ── II Bimestre ──
+  { id: 'gr-m1-bim2-mat1', matricula_id: 'enr-1', competencia_id: 'comp-mat-1', periodo_evaluacion_id: 'eval-bim-2', nota_letra: 'AD', nota_numerica: 4, conclusion_descriptiva: 'Gran dominio en operaciones con fracciones y números decimales.' },
+  { id: 'gr-m1-bim2-mat2', matricula_id: 'enr-1', competencia_id: 'comp-mat-2', periodo_evaluacion_id: 'eval-bim-2', nota_letra: 'AD', nota_numerica: 4, conclusion_descriptiva: 'Excelente planteamiento de igualdades algebraicas.' },
+  { id: 'gr-m1-bim2-mat3', matricula_id: 'enr-1', competencia_id: 'comp-mat-3', periodo_evaluacion_id: 'eval-bim-2', nota_letra: 'AD', nota_numerica: 4, conclusion_descriptiva: 'Calcula perímetros y áreas de polígonos regulares.' },
+  { id: 'gr-m1-bim2-mat4', matricula_id: 'enr-1', competencia_id: 'comp-mat-4', periodo_evaluacion_id: 'eval-bim-2', nota_letra: 'AD', nota_numerica: 4, conclusion_descriptiva: 'Analiza probabilidades en experimentos sencillos.' },
+  { id: 'gr-m1-bim2-com1', matricula_id: 'enr-1', competencia_id: 'comp-com-1', periodo_evaluacion_id: 'eval-bim-2', nota_letra: 'AD', nota_numerica: 4, conclusion_descriptiva: 'Oratoria y debate escolar impecable.' },
+  { id: 'gr-m1-bim2-com2', matricula_id: 'enr-1', competencia_id: 'comp-com-2', periodo_evaluacion_id: 'eval-bim-2', nota_letra: 'AD', nota_numerica: 4, conclusion_descriptiva: 'Identifica ideas principales y secundarias en textos continuos.' },
+  { id: 'gr-m1-bim2-com3', matricula_id: 'enr-1', competencia_id: 'comp-com-3', periodo_evaluacion_id: 'eval-bim-2', nota_letra: 'AD', nota_numerica: 4, conclusion_descriptiva: 'Produce ensayos cortos respetando normas gramaticales.' },
+  { id: 'gr-m1-bim2-cta1', matricula_id: 'enr-1', competencia_id: 'comp-cta-1', periodo_evaluacion_id: 'eval-bim-2', nota_letra: 'A',  nota_numerica: 3, conclusion_descriptiva: 'Elabora hipótesis comprobables en proyectos de ciencias.' },
+  { id: 'gr-m1-bim2-cta2', matricula_id: 'enr-1', competencia_id: 'comp-cta-2', periodo_evaluacion_id: 'eval-bim-2', nota_letra: 'AD', nota_numerica: 4, conclusion_descriptiva: 'Comprende el funcionamiento del cuerpo humano.' },
+  { id: 'gr-m1-bim2-soc1', matricula_id: 'enr-1', competencia_id: 'comp-soc-1', periodo_evaluacion_id: 'eval-bim-2', nota_letra: 'AD', nota_numerica: 4, conclusion_descriptiva: 'Liderazgo positivo en el trabajo colaborativo.' },
+  { id: 'gr-m1-bim2-ing1', matricula_id: 'enr-1', competencia_id: 'comp-ing-1', periodo_evaluacion_id: 'eval-bim-2', nota_letra: 'AD', nota_numerica: 4, conclusion_descriptiva: 'Vocabulario enriquecido y comprensión auditiva destacada.' },
 
-  // Lucas Castro (enr-3)
-  { id: 'gr-9', matricula_id: 'enr-3', competencia_id: 'comp-mat-1', periodo_evaluacion_id: 'eval-bim-1', nota_letra: 'B', nota_numerica: 2, conclusion_descriptiva: 'Necesita apoyo en problemas de multiplicación de dos etapas.' },
-  { id: 'gr-10', matricula_id: 'enr-3', competencia_id: 'comp-mat-2', periodo_evaluacion_id: 'eval-bim-1', nota_letra: 'B', nota_numerica: 2, conclusion_descriptiva: 'En proceso de reconocer regularidades numéricas.' },
-  { id: 'gr-11', matricula_id: 'enr-3', competencia_id: 'comp-mat-3', periodo_evaluacion_id: 'eval-bim-1', nota_letra: 'C', nota_numerica: 1, conclusion_descriptiva: 'Presenta dificultades en orientación espacial y polígonos.' },
-  { id: 'gr-12', matricula_id: 'enr-3', competencia_id: 'comp-mat-4', periodo_evaluacion_id: 'eval-bim-1', nota_letra: 'B', nota_numerica: 2, conclusion_descriptiva: 'En proceso de interpretar gráficos de barras.' },
+  // ── III Bimestre ──
+  { id: 'gr-m1-bim3-mat1', matricula_id: 'enr-1', competencia_id: 'comp-mat-1', periodo_evaluacion_id: 'eval-bim-3', nota_letra: 'AD', nota_numerica: 4, conclusion_descriptiva: 'Resuelve problemas de proporcionalidad directa con soltura.' },
+  { id: 'gr-m1-bim3-mat2', matricula_id: 'enr-1', competencia_id: 'comp-mat-2', periodo_evaluacion_id: 'eval-bim-3', nota_letra: 'AD', nota_numerica: 4, conclusion_descriptiva: 'Aplica funciones y sucesiones numéricas correctamente.' },
+  { id: 'gr-m1-bim3-mat3', matricula_id: 'enr-1', competencia_id: 'comp-mat-3', periodo_evaluacion_id: 'eval-bim-3', nota_letra: 'AD', nota_numerica: 4, conclusion_descriptiva: 'Domina transformaciones geométricas y simetría axial.' },
+  { id: 'gr-m1-bim3-mat4', matricula_id: 'enr-1', competencia_id: 'comp-mat-4', periodo_evaluacion_id: 'eval-bim-3', nota_letra: 'AD', nota_numerica: 4, conclusion_descriptiva: 'Calcula media y moda en conjuntos de datos.' },
+  { id: 'gr-m1-bim3-com1', matricula_id: 'enr-1', competencia_id: 'comp-com-1', periodo_evaluacion_id: 'eval-bim-3', nota_letra: 'AD', nota_numerica: 4, conclusion_descriptiva: 'Participación elocuente en exposiciones orales.' },
+  { id: 'gr-m1-bim3-com2', matricula_id: 'enr-1', competencia_id: 'comp-com-2', periodo_evaluacion_id: 'eval-bim-3', nota_letra: 'AD', nota_numerica: 4, conclusion_descriptiva: 'Infiere mensajes implícitos en textos discontinuos.' },
+  { id: 'gr-m1-bim3-com3', matricula_id: 'enr-1', competencia_id: 'comp-com-3', periodo_evaluacion_id: 'eval-bim-3', nota_letra: 'AD', nota_numerica: 4, conclusion_descriptiva: 'Escribe artículos con conectores lógicos variados.' },
+  { id: 'gr-m1-bim3-cta1', matricula_id: 'enr-1', competencia_id: 'comp-cta-1', periodo_evaluacion_id: 'eval-bim-3', nota_letra: 'AD', nota_numerica: 4, conclusion_descriptiva: 'Presenta cuaderno de campo científico con rigor.' },
+  { id: 'gr-m1-bim3-cta2', matricula_id: 'enr-1', competencia_id: 'comp-cta-2', periodo_evaluacion_id: 'eval-bim-3', nota_letra: 'AD', nota_numerica: 4, conclusion_descriptiva: 'Explica las propiedades de la materia y energía.' },
+  { id: 'gr-m1-bim3-soc1', matricula_id: 'enr-1', competencia_id: 'comp-soc-1', periodo_evaluacion_id: 'eval-bim-3', nota_letra: 'AD', nota_numerica: 4, conclusion_descriptiva: 'Compromiso cívico y respeto a la diversidad.' },
+  { id: 'gr-m1-bim3-ing1', matricula_id: 'enr-1', competencia_id: 'comp-ing-1', periodo_evaluacion_id: 'eval-bim-3', nota_letra: 'AD', nota_numerica: 4, conclusion_descriptiva: 'Diálogos fluidos en situaciones cotidianas.' },
 
-  // Camila Flores (enr-4)
-  { id: 'gr-13', matricula_id: 'enr-4', competencia_id: 'comp-mat-1', periodo_evaluacion_id: 'eval-bim-1', nota_letra: 'A', nota_numerica: 3, conclusion_descriptiva: 'Resuelve problemas aritméticos con dedicación.' },
-  { id: 'gr-14', matricula_id: 'enr-4', competencia_id: 'comp-mat-2', periodo_evaluacion_id: 'eval-bim-1', nota_letra: 'AD', nota_numerica: 4, conclusion_descriptiva: 'Sobresaliente en equivalencias numéricas.' },
+  // ── IV Bimestre ──
+  { id: 'gr-m1-bim4-mat1', matricula_id: 'enr-1', competencia_id: 'comp-mat-1', periodo_evaluacion_id: 'eval-bim-4', nota_letra: 'AD', nota_numerica: 4, conclusion_descriptiva: 'Cierre de año excepcional en resolución matemática integral.' },
+  { id: 'gr-m1-bim4-mat2', matricula_id: 'enr-1', competencia_id: 'comp-mat-2', periodo_evaluacion_id: 'eval-bim-4', nota_letra: 'AD', nota_numerica: 4, conclusion_descriptiva: 'Razonamiento abstracto y modelado algebraico consolidado.' },
+  { id: 'gr-m1-bim4-mat3', matricula_id: 'enr-1', competencia_id: 'comp-mat-3', periodo_evaluacion_id: 'eval-bim-4', nota_letra: 'AD', nota_numerica: 4, conclusion_descriptiva: 'Geometría analítica básica superada con honores.' },
+  { id: 'gr-m1-bim4-mat4', matricula_id: 'enr-1', competencia_id: 'comp-mat-4', periodo_evaluacion_id: 'eval-bim-4', nota_letra: 'AD', nota_numerica: 4, conclusion_descriptiva: 'Elabora conclusiones estadísticas avanzadas.' },
+  { id: 'gr-m1-bim4-com1', matricula_id: 'enr-1', competencia_id: 'comp-com-1', periodo_evaluacion_id: 'eval-bim-4', nota_letra: 'AD', nota_numerica: 4, conclusion_descriptiva: 'Excelente dominio del auditorio y declamación.' },
+  { id: 'gr-m1-bim4-com2', matricula_id: 'enr-1', competencia_id: 'comp-com-2', periodo_evaluacion_id: 'eval-bim-4', nota_letra: 'AD', nota_numerica: 4, conclusion_descriptiva: 'Lectura crítica y argumentación de alto nivel.' },
+  { id: 'gr-m1-bim4-com3', matricula_id: 'enr-1', competencia_id: 'comp-com-3', periodo_evaluacion_id: 'eval-bim-4', nota_letra: 'AD', nota_numerica: 4, conclusion_descriptiva: 'Excelente redacción de cuentos y microrelatos.' },
+  { id: 'gr-m1-bim4-cta1', matricula_id: 'enr-1', competencia_id: 'comp-cta-1', periodo_evaluacion_id: 'eval-bim-4', nota_letra: 'AD', nota_numerica: 4, conclusion_descriptiva: 'Prototipo tecnológico funcional para feria de ciencias.' },
+  { id: 'gr-m1-bim4-cta2', matricula_id: 'enr-1', competencia_id: 'comp-cta-2', periodo_evaluacion_id: 'eval-bim-4', nota_letra: 'AD', nota_numerica: 4, conclusion_descriptiva: 'Comprensión avanzada de sostenibilidad ambiental.' },
+  { id: 'gr-m1-bim4-soc1', matricula_id: 'enr-1', competencia_id: 'comp-soc-1', periodo_evaluacion_id: 'eval-bim-4', nota_letra: 'AD', nota_numerica: 4, conclusion_descriptiva: 'Ciudadano modelo en convivencia escolar y empatía.' },
+  { id: 'gr-m1-bim4-ing1', matricula_id: 'enr-1', competencia_id: 'comp-ing-1', periodo_evaluacion_id: 'eval-bim-4', nota_letra: 'AD', nota_numerica: 4, conclusion_descriptiva: 'Nivel A2 alcanzado satisfactoriamente.' },
 
-  // ═══ II BIMESTRE (EN PROCESO / PARCIALES) ══════════════════════════════════
-  // Mateo Silva (enr-1)
-  { id: 'gr-b2-1', matricula_id: 'enr-1', competencia_id: 'comp-mat-1', periodo_evaluacion_id: 'eval-bim-2', nota_letra: 'AD', nota_numerica: 4, conclusion_descriptiva: 'Gran dominio en operaciones con fracciones homogéneas.' },
-  { id: 'gr-b2-2', matricula_id: 'enr-1', competencia_id: 'comp-mat-2', periodo_evaluacion_id: 'eval-bim-2', nota_letra: 'AD', nota_numerica: 4, conclusion_descriptiva: 'Excelente planteamiento de ecuaciones lineales.' },
-  { id: 'gr-b2-3', matricula_id: 'enr-1', competencia_id: 'comp-com-1', periodo_evaluacion_id: 'eval-bim-2', nota_letra: 'AD', nota_numerica: 4, conclusion_descriptiva: 'Oratoria y debate escolar impecable.' },
-  { id: 'gr-b2-4', matricula_id: 'enr-1', competencia_id: 'comp-cta-1', periodo_evaluacion_id: 'eval-bim-2', nota_letra: 'A', nota_numerica: 3, conclusion_descriptiva: 'Buen informe sobre la célula y seres vivos.' },
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ESTUDIANTE: Sofía Romero Benítez (enr-2 - 3° Primaria A)
+  // Perfil: Logro Esperado A (Promovido)
+  // ═══════════════════════════════════════════════════════════════════════════
+  { id: 'gr-s2-bim1-mat1', matricula_id: 'enr-2', competencia_id: 'comp-mat-1', periodo_evaluacion_id: 'eval-bim-1', nota_letra: 'A', nota_numerica: 3, conclusion_descriptiva: 'Cumple satisfactoriamente con la resolución de operaciones.' },
+  { id: 'gr-s2-bim1-mat2', matricula_id: 'enr-2', competencia_id: 'comp-mat-2', periodo_evaluacion_id: 'eval-bim-1', nota_letra: 'A', nota_numerica: 3, conclusion_descriptiva: 'Buen avance en secuencias numéricas.' },
+  { id: 'gr-s2-bim1-com1', matricula_id: 'enr-2', competencia_id: 'comp-com-1', periodo_evaluacion_id: 'eval-bim-1', nota_letra: 'AD', nota_numerica: 4, conclusion_descriptiva: 'Excelente participación oral.' },
+  { id: 'gr-s2-bim1-cta1', matricula_id: 'enr-2', competencia_id: 'comp-cta-1', periodo_evaluacion_id: 'eval-bim-1', nota_letra: 'A', nota_numerica: 3, conclusion_descriptiva: 'Buen reporte de observaciones.' },
 
-  // Sofía Romero (enr-2)
-  { id: 'gr-b2-5', matricula_id: 'enr-2', competencia_id: 'comp-mat-1', periodo_evaluacion_id: 'eval-bim-2', nota_letra: 'A', nota_numerica: 3, conclusion_descriptiva: 'Avance notable en fracciones.' },
-  { id: 'gr-b2-6', matricula_id: 'enr-2', competencia_id: 'comp-com-2', periodo_evaluacion_id: 'eval-bim-2', nota_letra: 'AD', nota_numerica: 4, conclusion_descriptiva: 'Excelente análisis literario.' },
+  { id: 'gr-s2-bim2-mat1', matricula_id: 'enr-2', competencia_id: 'comp-mat-1', periodo_evaluacion_id: 'eval-bim-2', nota_letra: 'A', nota_numerica: 3, conclusion_descriptiva: 'Avance notable en fracciones y sumas complejas.' },
+  { id: 'gr-s2-bim2-mat2', matricula_id: 'enr-2', competencia_id: 'comp-mat-2', periodo_evaluacion_id: 'eval-bim-2', nota_letra: 'A', nota_numerica: 3, conclusion_descriptiva: 'Reconoce patrones y tablas con rapidez.' },
+  { id: 'gr-s2-bim2-com1', matricula_id: 'enr-2', competencia_id: 'comp-com-1', periodo_evaluacion_id: 'eval-bim-2', nota_letra: 'AD', nota_numerica: 4, conclusion_descriptiva: 'Gran hábito lector y comprensión inferencial.' },
+  { id: 'gr-s2-bim2-cta1', matricula_id: 'enr-2', competencia_id: 'comp-cta-1', periodo_evaluacion_id: 'eval-bim-2', nota_letra: 'A', nota_numerica: 3, conclusion_descriptiva: 'Desarrolla proyectos en equipo.' },
+
+  { id: 'gr-s2-bim3-mat1', matricula_id: 'enr-2', competencia_id: 'comp-mat-1', periodo_evaluacion_id: 'eval-bim-3', nota_letra: 'A', nota_numerica: 3, conclusion_descriptiva: 'Resuelve problemas aritméticos con dedicación.' },
+  { id: 'gr-s2-bim3-mat2', matricula_id: 'enr-2', competencia_id: 'comp-mat-2', periodo_evaluacion_id: 'eval-bim-3', nota_letra: 'AD', nota_numerica: 4, conclusion_descriptiva: 'Sobresaliente en equivalencias.' },
+  { id: 'gr-s2-bim3-com1', matricula_id: 'enr-2', competencia_id: 'comp-com-1', periodo_evaluacion_id: 'eval-bim-3', nota_letra: 'A', nota_numerica: 3, conclusion_descriptiva: 'Redacción fluida de textos narrativos.' },
+  { id: 'gr-s2-bim3-cta1', matricula_id: 'enr-2', competencia_id: 'comp-cta-1', periodo_evaluacion_id: 'eval-bim-3', nota_letra: 'A', nota_numerica: 3, conclusion_descriptiva: 'Explica fenómenos biológicos con precisión.' },
+
+  { id: 'gr-s2-bim4-mat1', matricula_id: 'enr-2', competencia_id: 'comp-mat-1', periodo_evaluacion_id: 'eval-bim-4', nota_letra: 'A', nota_numerica: 3, conclusion_descriptiva: 'Cierra el año con un sólido dominio de las 4 operaciones.' },
+  { id: 'gr-s2-bim4-mat2', matricula_id: 'enr-2', competencia_id: 'comp-mat-2', periodo_evaluacion_id: 'eval-bim-4', nota_letra: 'A', nota_numerica: 3, conclusion_descriptiva: 'Cumple los objetivos curriculares del grado.' },
+  { id: 'gr-s2-bim4-com1', matricula_id: 'enr-2', competencia_id: 'comp-com-1', periodo_evaluacion_id: 'eval-bim-4', nota_letra: 'AD', nota_numerica: 4, conclusion_descriptiva: 'Destacada participación en el festival de talentos.' },
+  { id: 'gr-s2-bim4-cta1', matricula_id: 'enr-2', competencia_id: 'comp-cta-1', periodo_evaluacion_id: 'eval-bim-4', nota_letra: 'A', nota_numerica: 3, conclusion_descriptiva: 'Logro esperado alcanzado en ciencias.' },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ESTUDIANTE: Lucas Castro Vidal (enr-3 - 3° Primaria A)
+  // Perfil: En Proceso / Requiere Recuperación Pedagógica
+  // ═══════════════════════════════════════════════════════════════════════════
+  { id: 'gr-l3-bim1-mat1', matricula_id: 'enr-3', competencia_id: 'comp-mat-1', periodo_evaluacion_id: 'eval-bim-1', nota_letra: 'B', nota_numerica: 2, conclusion_descriptiva: 'Necesita apoyo en problemas multiplicativos de dos etapas.' },
+  { id: 'gr-l3-bim1-mat2', matricula_id: 'enr-3', competencia_id: 'comp-mat-2', periodo_evaluacion_id: 'eval-bim-1', nota_letra: 'B', nota_numerica: 2, conclusion_descriptiva: 'En proceso de reconocer regularidades numéricas.' },
+  { id: 'gr-l3-bim1-mat3', matricula_id: 'enr-3', competencia_id: 'comp-mat-3', periodo_evaluacion_id: 'eval-bim-1', nota_letra: 'C', nota_numerica: 1, conclusion_descriptiva: 'Dificultad en ubicación y áreas espaciales.' },
+  { id: 'gr-l3-bim1-com1', matricula_id: 'enr-3', competencia_id: 'comp-com-1', periodo_evaluacion_id: 'eval-bim-1', nota_letra: 'B', nota_numerica: 2, conclusion_descriptiva: 'Expresión oral tímida pero colaborativo.' },
+
+  { id: 'gr-l3-bim2-mat1', matricula_id: 'enr-3', competencia_id: 'comp-mat-1', periodo_evaluacion_id: 'eval-bim-2', nota_letra: 'B', nota_numerica: 2, conclusion_descriptiva: 'Refuerza operaciones con apoyo en casa.' },
+  { id: 'gr-l3-bim2-mat2', matricula_id: 'enr-3', competencia_id: 'comp-mat-2', periodo_evaluacion_id: 'eval-bim-2', nota_letra: 'C', nota_numerica: 1, conclusion_descriptiva: 'Requiere nivelación en álgebra básica.' },
+  { id: 'gr-l3-bim2-mat3', matricula_id: 'enr-3', competencia_id: 'comp-mat-3', periodo_evaluacion_id: 'eval-bim-2', nota_letra: 'B', nota_numerica: 2, conclusion_descriptiva: 'Mejora con materiales concretos.' },
+  { id: 'gr-l3-bim2-com1', matricula_id: 'enr-3', competencia_id: 'comp-com-1', periodo_evaluacion_id: 'eval-bim-2', nota_letra: 'B', nota_numerica: 2, conclusion_descriptiva: 'Mejora progresiva en lectura guiada.' },
+
+  { id: 'gr-l3-bim3-mat1', matricula_id: 'enr-3', competencia_id: 'comp-mat-1', periodo_evaluacion_id: 'eval-bim-3', nota_letra: 'B', nota_numerica: 2, conclusion_descriptiva: 'Cumple tareas con seguimiento docente.' },
+  { id: 'gr-l3-bim3-mat2', matricula_id: 'enr-3', competencia_id: 'comp-mat-2', periodo_evaluacion_id: 'eval-bim-3', nota_letra: 'B', nota_numerica: 2, conclusion_descriptiva: 'Progresos lentos pero constantes.' },
+  { id: 'gr-l3-bim3-com1', matricula_id: 'enr-3', competencia_id: 'comp-com-1', periodo_evaluacion_id: 'eval-bim-3', nota_letra: 'A', nota_numerica: 3, conclusion_descriptiva: 'Buen esfuerzo en redacción.' },
+
+  { id: 'gr-l3-bim4-mat1', matricula_id: 'enr-3', competencia_id: 'comp-mat-1', periodo_evaluacion_id: 'eval-bim-4', nota_letra: 'B', nota_numerica: 2, conclusion_descriptiva: 'Requiere afianzar conceptos durante el verano.' },
+  { id: 'gr-l3-bim4-mat2', matricula_id: 'enr-3', competencia_id: 'comp-mat-2', periodo_evaluacion_id: 'eval-bim-4', nota_letra: 'B', nota_numerica: 2, conclusion_descriptiva: 'En proceso de afianzar razonamiento matemático.' },
+  { id: 'gr-l3-bim4-com1', matricula_id: 'enr-3', competencia_id: 'comp-com-1', periodo_evaluacion_id: 'eval-bim-4', nota_letra: 'B', nota_numerica: 2, conclusion_descriptiva: 'Se sugiere lectura diaria en casa.' },
 ];
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TAREAS ESCOLARES ASIGNADAS (HISTORIAL DE 3 MESES)
@@ -1761,4 +1850,123 @@ export const MOCK_CLASS_SESSIONS: ClassSessionLog[] = [
 // Aliases for compatibility
 export const MOCK_GRADE_LEVELS: GradeLevel[] = MOCK_GRADES;
 export const MOCK_TEACHERS: UserProfile[] = MOCK_USERS.filter(u => u.rol === 'docente');
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PREUNIVERSITARIO: SIMULACROS DE ADMISIÓN
+// ─────────────────────────────────────────────────────────────────────────────
+export const MOCK_SIMULACROS: PreuniExamSimulation[] = [
+  {
+    id: 'sim-1',
+    titulo: 'Simulacro General Tipo UNI - Fase 1 (Ciencias & Aptitud)',
+    universidad: 'UNI',
+    fecha: '2026-09-12',
+    preguntas_totales: 100,
+    puntaje_maximo: 500,
+    puntaje_obtenido: 412.5,
+    puesto_ranking: 4,
+    total_participantes: 185,
+    percentil: 97.8,
+    carrera_objetivo: 'Ingeniería de Sistemas',
+    areas: [
+      { nombre: 'Matemática (Aritmética/Álgebra/Geometría/Trigonometría)', aciertos: 34, errores: 4, blancos: 2, puntaje: 162.0 },
+      { nombre: 'Física y Química', aciertos: 26, errores: 3, blancos: 1, puntaje: 125.5 },
+      { nombre: 'Aptitud Académica & Humanidades', aciertos: 28, errores: 2, blancos: 0, puntaje: 125.0 },
+    ],
+  },
+  {
+    id: 'sim-2',
+    titulo: 'Simulacro Especial UNMSM Decana de América (Área A: Ciencias de la Salud)',
+    universidad: 'San Marcos (UNMSM)',
+    fecha: '2026-08-28',
+    preguntas_totales: 100,
+    puntaje_maximo: 2000,
+    puntaje_obtenido: 1684.25,
+    puesto_ranking: 8,
+    total_participantes: 240,
+    percentil: 96.6,
+    carrera_objetivo: 'Medicina Humana',
+    areas: [
+      { nombre: 'Habilidad Verbal & Razonamiento Matemático', aciertos: 28, errores: 2, blancos: 0, puntaje: 540.0 },
+      { nombre: 'Biología, Anatomía & Química', aciertos: 32, errores: 3, blancos: 1, puntaje: 615.5 },
+      { nombre: 'Matemática, Física & Humanidades', aciertos: 27, errores: 4, blancos: 3, puntaje: 528.75 },
+    ],
+  },
+  {
+    id: 'sim-3',
+    titulo: 'Simulacro PUCP Talento - Primera Opción',
+    universidad: 'Católica (PUCP)',
+    fecha: '2026-07-20',
+    preguntas_totales: 120,
+    puntaje_maximo: 1000,
+    puntaje_obtenido: 845.0,
+    puesto_ranking: 3,
+    total_participantes: 150,
+    percentil: 98.0,
+    carrera_objetivo: 'Ingeniería Industrial',
+    areas: [
+      { nombre: 'Lectura Crítica & Redacción', aciertos: 44, errores: 4, blancos: 2, puntaje: 380.0 },
+      { nombre: 'Matemática & Ciencias', aciertos: 58, errores: 6, blancos: 6, puntaje: 465.0 },
+    ],
+  },
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PREUNIVERSITARIO: CUADRO DE MÉRITO & RANKING INSTITUCIONAL
+// ─────────────────────────────────────────────────────────────────────────────
+export const MOCK_PREUNI_RANKINGS: PreuniRankingEntry[] = [
+  { puesto: 1, estudiante_id: 'student-pre-1', nombre: 'Franco David Huamán Ramos', codigo: 'PRE-2026-012', carrera_objetivo: 'Ing. Mecatrónica (UNI)', puntaje_total: 445.8, puntaje_maximo: 500, tendencia: 'up', aula: 'Aula UNI A' },
+  { puesto: 2, estudiante_id: 'student-pre-2', nombre: 'Valeria Nicole Quispe Soto', codigo: 'PRE-2026-004', carrera_objetivo: 'Medicina Humana (UNMSM)', puntaje_total: 438.2, puntaje_maximo: 500, tendencia: 'up', aula: 'Aula San Marcos B' },
+  { puesto: 3, estudiante_id: 'student-pre-3', nombre: 'Rodrigo Gonzalo Mendoza Lara', codigo: 'PRE-2026-021', carrera_objetivo: 'Ing. Industrial (PUCP)', puntaje_total: 425.0, puntaje_maximo: 500, tendencia: 'equal', aula: 'Aula UNI A' },
+  { puesto: 4, estudiante_id: 'student-8', nombre: 'Gabriel Alonso Medina Cruz', codigo: 'EST-2026-008', carrera_objetivo: 'Ing. de Sistemas (UNI)', puntaje_total: 412.5, puntaje_maximo: 500, tendencia: 'up', aula: 'Aula UNI A' },
+  { puesto: 5, estudiante_id: 'student-pre-5', nombre: 'Andrea Camila Benavides Prado', codigo: 'PRE-2026-033', carrera_objetivo: 'Derecho (UNMSM)', puntaje_total: 405.0, puntaje_maximo: 500, tendencia: 'down', aula: 'Aula San Marcos B' },
+  { puesto: 6, estudiante_id: 'student-pre-6', nombre: 'Diego Alejandro Vargas Ponce', codigo: 'PRE-2026-015', carrera_objetivo: 'Economía (PUCP)', puntaje_total: 398.4, puntaje_maximo: 500, tendencia: 'up', aula: 'Aula Católica C' },
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// APODERADOS: HIJOS MATRICULADOS
+// ─────────────────────────────────────────────────────────────────────────────
+export const MOCK_CHILDREN: ChildProfile[] = [
+  {
+    id: 'child-1',
+    estudiante_id: 'student-1',
+    nombre: 'Mateo Alejandro',
+    apellidos: 'Silva Mendoza',
+    nivel: 'primaria',
+    grado_nombre: '3° de Primaria',
+    seccion_letra: 'A',
+    avatar_url: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150&auto=format&fit=crop&q=80',
+    promedio_letra: 'AD',
+    promedio_score: 3.8,
+    asistencia_porcentaje: 98,
+    tareas_pendientes: 1,
+  },
+  {
+    id: 'child-2',
+    estudiante_id: 'student-2',
+    nombre: 'Sofía Lucía',
+    apellidos: 'Romero Benítez',
+    nivel: 'inicial',
+    grado_nombre: '5 Años (Inicial)',
+    seccion_letra: 'A',
+    avatar_url: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80',
+    promedio_letra: 'A',
+    promedio_score: 3.2,
+    asistencia_porcentaje: 95,
+    tareas_pendientes: 0,
+  },
+  {
+    id: 'child-3',
+    estudiante_id: 'student-8',
+    nombre: 'Gabriel Alonso',
+    apellidos: 'Medina Cruz',
+    nivel: 'preuniversitario',
+    grado_nombre: 'Ciclo Anual Regular',
+    seccion_letra: 'A',
+    avatar_url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
+    promedio_letra: 'AD',
+    promedio_score: 4.0,
+    asistencia_porcentaje: 100,
+    tareas_pendientes: 2,
+  },
+];
 

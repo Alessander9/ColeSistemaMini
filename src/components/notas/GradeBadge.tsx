@@ -21,9 +21,9 @@ export function GradeBadge({ grade, size = 'md', showLabel = false }: GradeBadge
   };
 
   return (
-    <div className="inline-flex items-center gap-1.5">
+    <div className="inline-flex items-center gap-1.5" title={`${meta.label} — ${meta.desc}`}>
       <span
-        className={`inline-flex items-center justify-center font-bold rounded-lg border shadow-sm transition-all ${meta.bg} ${meta.text} ${meta.border} ${sizeClasses[size]}`}
+        className={`inline-flex items-center justify-center font-black rounded-lg border shadow-sm transition-all select-none ${meta.bg} ${meta.text} ${meta.border} ${sizeClasses[size]}`}
       >
         {grade || '-'}
       </span>
@@ -33,5 +33,6 @@ export function GradeBadge({ grade, size = 'md', showLabel = false }: GradeBadge
         </span>
       )}
     </div>
+
   );
 }

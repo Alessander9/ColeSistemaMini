@@ -45,9 +45,11 @@ export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
   const pathname = usePathname();
   const { currentUser, gradeLevels, sections } = useApp();
 
+  const [isInicialOpen, setIsInicialOpen] = useState(false);
   const [isPrimariaOpen, setIsPrimariaOpen] = useState(true);
   const [isSecundariaOpen, setIsSecundariaOpen] = useState(false);
-  const [openGradeId, setOpenGradeId] = useState<string | null>('grade-3pri');
+  const [isPreuniOpen, setIsPreuniOpen] = useState(false);
+  const [openGradeId, setOpenGradeId] = useState<string | null>('grade-pri-3');
 
   const handleLinkClick = () => {
     if (isMobileDrawer && onClose) {
@@ -59,19 +61,24 @@ export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
     {
       section: 'Principal',
       items: [
-        { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
-        { href: '/admin/academico', label: 'Explorador Escolar', icon: School, badge: '2026', badgeColor: 'bg-purple-500/20 text-purple-600 dark:text-purple-300' },
-        { href: '/admin/docentes', label: 'Docentes & Plana', icon: GraduationCap, badge: 'Asignación' },
-        { href: '/admin/estudiantes', label: 'Estudiantes & QR', icon: Users, badge: 'Carnets' },
-        { href: '/admin/matriculas', label: 'Matrículas', icon: UserPlus },
+        { href: '/admin', label: 'Dashboard Institucional', icon: LayoutDashboard },
+        { href: '/admin/academico', label: 'Explorador Escolar', icon: School, badge: '4 Niveles', badgeColor: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400' },
       ]
     },
     {
-      section: 'Gestión Curricular',
+      section: 'Gestión Académica',
       items: [
         { href: '/admin/horarios', label: 'Horarios & Asignación', icon: Calendar, badge: 'Anti-cruce' },
-        { href: '/admin/notas-salon', label: 'Notas por Salón', icon: BarChart3, badge: '11 grados' },
+        { href: '/admin/notas-salon', label: 'Notas & Competencias', icon: BarChart3, badge: 'CNEB' },
         { href: '/admin/reportes', label: 'Reportes & Actas', icon: FileText },
+      ]
+    },
+    {
+      section: 'Comunidad Escolar',
+      items: [
+        { href: '/admin/estudiantes', label: 'Estudiantes & QR', icon: Users, badge: 'Padrón' },
+        { href: '/admin/docentes', label: 'Plana Docente', icon: GraduationCap },
+        { href: '/admin/matriculas', label: 'Matrículas 2026', icon: UserPlus },
       ]
     }
   ];
@@ -80,64 +87,64 @@ export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
     {
       section: 'Principal',
       items: [
-        { href: '/docente', label: 'Mi Panel', icon: LayoutDashboard },
-        { href: '/docente/asistencia', label: 'Asistencia QR', icon: QrCode, badge: '● Live', badgeColor: 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400' },
+        { href: '/docente', label: 'Mi Panel Diario', icon: LayoutDashboard },
+        { href: '/docente/asistencia', label: 'Asistencia QR / Aula', icon: QrCode, badge: '● Live', badgeColor: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
       ]
     },
     {
-      section: 'Académico',
+      section: 'Gestión Pedagógica',
       items: [
-        { href: '/docente/horario', label: 'Mi Horario', icon: Calendar, badge: 'Semanal' },
-        { href: '/docente/notas', label: 'Notas AD–A–B–C', icon: Award },
-        { href: '/docente/tareas', label: 'Tareas', icon: FileText },
-        { href: '/docente/evaluaciones', label: 'Evaluaciones', icon: Calendar },
+        { href: '/docente/horario', label: 'Mi Malla Horaria', icon: Calendar, badge: 'Semanal' },
+        { href: '/docente/notas', label: 'Calificaciones AD–A–B–C', icon: Award },
+        { href: '/docente/tareas', label: 'Tareas & Entregas', icon: FileText },
+        { href: '/docente/evaluaciones', label: 'Evaluaciones & Exámenes', icon: Calendar },
       ]
     }
   ];
 
   const estudianteNav: NavSection[] = [
     {
-      section: 'Mi Portal',
+      section: 'Mi Portal Escolar',
       items: [
-        { href: '/estudiante', label: 'Inicio', icon: LayoutDashboard },
-        { href: '/estudiante/carnet-qr', label: 'Carnet QR', icon: QrCode, badge: 'Digital' },
+        { href: '/estudiante', label: 'Mi Dashboard', icon: LayoutDashboard },
+        { href: '/estudiante/carnet-qr', label: 'Carnet Digital QR', icon: QrCode, badge: 'Oficial' },
       ]
     },
     {
-      section: 'Académico',
+      section: 'Avance Académico',
       items: [
-        { href: '/estudiante/horario', label: 'Horario Escolar', icon: Calendar },
-        { href: '/estudiante/libreta-notas', label: 'Mis Notas', icon: Award },
-        { href: '/estudiante/asistencias', label: 'Asistencias', icon: ClipboardCheck },
-        { href: '/estudiante/tareas', label: 'Tareas', icon: FileText },
-        { href: '/estudiante/evaluaciones', label: 'Evaluaciones', icon: Calendar },
+        { href: '/estudiante/horario', label: 'Horario de Clases', icon: Calendar },
+        { href: '/estudiante/libreta-notas', label: 'Libreta de Calificaciones', icon: Award },
+        { href: '/estudiante/asistencias', label: 'Registro de Asistencias', icon: ClipboardCheck },
+        { href: '/estudiante/tareas', label: 'Mis Tareas', icon: FileText },
+        { href: '/estudiante/evaluaciones', label: 'Exámenes & Simulacros', icon: Calendar },
       ]
     }
   ];
 
   const asistenciaNav: NavSection[] = [
     {
-      section: 'Control de Asistencia',
+      section: 'Control de Acceso',
       items: [
-        { href: '/asistencia', label: 'Terminal QR Móvil', icon: QrCode, badge: '● Live', badgeColor: 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400' },
+        { href: '/asistencia', label: 'Terminal QR Portería', icon: QrCode, badge: '● Live', badgeColor: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
       ]
     }
   ];
 
   let currentNav = adminNav;
   let roleConfig = {
-    label: 'Administrador',
-    color: 'from-purple-600 via-violet-600 to-indigo-600',
-    lightBg: 'bg-purple-50 dark:bg-purple-950/30',
-    lightText: 'text-purple-700 dark:text-purple-300',
-    dot: 'bg-purple-500',
+    label: 'Dirección & Administración',
+    color: 'from-indigo-600 to-purple-600',
+    lightBg: 'bg-indigo-50 dark:bg-indigo-950/30',
+    lightText: 'text-indigo-700 dark:text-indigo-300',
+    dot: 'bg-indigo-500',
   };
 
   if (currentUser.rol === 'docente') {
     currentNav = docenteNav;
     roleConfig = {
-      label: 'Profesor',
-      color: 'from-blue-600 via-sky-600 to-cyan-600',
+      label: 'Docente Especialista',
+      color: 'from-blue-600 to-indigo-600',
       lightBg: 'bg-blue-50 dark:bg-blue-950/30',
       lightText: 'text-blue-700 dark:text-blue-300',
       dot: 'bg-blue-500',
@@ -146,7 +153,7 @@ export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
     currentNav = estudianteNav;
     roleConfig = {
       label: 'Estudiante',
-      color: 'from-emerald-600 via-teal-600 to-cyan-600',
+      color: 'from-emerald-600 to-teal-600',
       lightBg: 'bg-emerald-50 dark:bg-emerald-950/30',
       lightText: 'text-emerald-700 dark:text-emerald-300',
       dot: 'bg-emerald-500',
@@ -154,16 +161,18 @@ export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
   } else if (currentUser.rol === 'asistencia') {
     currentNav = asistenciaNav;
     roleConfig = {
-      label: 'Control QR',
-      color: 'from-amber-500 via-orange-500 to-emerald-600',
+      label: 'Control de Puerta / QR',
+      color: 'from-amber-500 to-orange-600',
       lightBg: 'bg-amber-50 dark:bg-amber-950/30',
       lightText: 'text-amber-700 dark:text-amber-300',
       dot: 'bg-amber-500',
     };
   }
 
-  const primariaGrades = gradeLevels.filter(g => g.nivel.toLowerCase() === 'primaria');
-  const secundariaGrades = gradeLevels.filter(g => g.nivel.toLowerCase() === 'secundaria');
+  const inicialGrades = gradeLevels.filter(g => g.nivel === 'inicial');
+  const primariaGrades = gradeLevels.filter(g => g.nivel === 'primaria');
+  const secundariaGrades = gradeLevels.filter(g => g.nivel === 'secundaria');
+  const preuniGrades = gradeLevels.filter(g => g.nivel === 'preuniversitario');
 
   return (
     <aside className={
@@ -271,6 +280,64 @@ export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
                 </Link>
               </div>
 
+              {/* Inicial Accordion */}
+              <div className="space-y-0.5">
+                <button
+                  type="button"
+                  onClick={() => setIsInicialOpen(!isInicialOpen)}
+                  className="w-full flex items-center justify-between px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors"
+                >
+                  <span className="flex items-center gap-1.5 text-pink-600 dark:text-pink-400">
+                    <span>🎨</span> Inicial (3–5 Años)
+                  </span>
+                  <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform ${isInicialOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                {isInicialOpen && (
+                  <div className="pl-3 space-y-0.5 border-l border-pink-200/60 dark:border-pink-900/40 ml-3">
+                    {inicialGrades.map(grade => {
+                      const gradeSections = sections.filter(s => s.grado_id === grade.id);
+                      const isGradeOpen = openGradeId === grade.id;
+
+                      return (
+                        <div key={grade.id}>
+                          <button
+                            type="button"
+                            onClick={() => setOpenGradeId(isGradeOpen ? null : grade.id)}
+                            className="w-full flex items-center justify-between px-2 py-1 text-[11px] font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-lg transition-colors"
+                          >
+                            <span>{grade.nombre}</span>
+                            <span className="text-[10px] text-slate-400">{isGradeOpen ? '▴' : '▾'}</span>
+                          </button>
+
+                          {isGradeOpen && (
+                            <div className="pl-3 py-1 flex items-center gap-1.5">
+                              {gradeSections.map(sec => {
+                                const isSecActive = pathname === `/admin/secciones/${sec.id}`;
+                                return (
+                                  <Link
+                                    key={sec.id}
+                                    href={`/admin/secciones/${sec.id}`}
+                                    onClick={handleLinkClick}
+                                    className={`px-2 py-0.5 rounded-md text-[10px] font-black transition-all ${
+                                      isSecActive
+                                        ? 'bg-pink-600 text-white shadow-sm'
+                                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-pink-100 hover:text-pink-700'
+                                    }`}
+                                  >
+                                    Aula &quot;{sec.letra}&quot;
+                                  </Link>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
               {/* Primaria Accordion */}
               <div className="space-y-0.5">
                 <button
@@ -312,8 +379,8 @@ export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
                                     onClick={handleLinkClick}
                                     className={`px-2.5 py-0.5 rounded-md text-[10px] font-black transition-all ${
                                       isSecActive
-                                        ? 'bg-purple-600 text-white shadow-sm'
-                                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-purple-100 hover:text-purple-700'
+                                        ? 'bg-indigo-600 text-white shadow-sm'
+                                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-indigo-100 hover:text-indigo-700'
                                     }`}
                                   >
                                     Sec &quot;{sec.letra}&quot;
@@ -336,14 +403,14 @@ export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
                   onClick={() => setIsSecundariaOpen(!isSecundariaOpen)}
                   className="w-full flex items-center justify-between px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors"
                 >
-                  <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+                  <span className="flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400">
                     <span>🎓</span> Secundaria (5 Grados)
                   </span>
                   <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform ${isSecundariaOpen ? 'rotate-180' : ''}`} />
                 </button>
 
                 {isSecundariaOpen && (
-                  <div className="pl-3 space-y-0.5 border-l border-emerald-200/60 dark:border-emerald-900/40 ml-3">
+                  <div className="pl-3 space-y-0.5 border-l border-indigo-200/60 dark:border-indigo-900/40 ml-3">
                     {secundariaGrades.map(grade => {
                       const gradeSections = sections.filter(s => s.grado_id === grade.id);
                       const isGradeOpen = openGradeId === grade.id;
@@ -370,11 +437,69 @@ export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
                                     onClick={handleLinkClick}
                                     className={`px-2.5 py-0.5 rounded-md text-[10px] font-black transition-all ${
                                       isSecActive
-                                        ? 'bg-emerald-600 text-white shadow-sm'
-                                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-emerald-100 hover:text-emerald-700'
+                                        ? 'bg-indigo-600 text-white shadow-sm'
+                                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-indigo-100 hover:text-indigo-700'
                                     }`}
                                   >
                                     Sec &quot;{sec.letra}&quot;
+                                  </Link>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Preuniversitario Accordion */}
+              <div className="space-y-0.5">
+                <button
+                  type="button"
+                  onClick={() => setIsPreuniOpen(!isPreuniOpen)}
+                  className="w-full flex items-center justify-between px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors"
+                >
+                  <span className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400">
+                    <span>🏛️</span> Preuniversitario
+                  </span>
+                  <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform ${isPreuniOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                {isPreuniOpen && (
+                  <div className="pl-3 space-y-0.5 border-l border-amber-200/60 dark:border-amber-900/40 ml-3">
+                    {preuniGrades.map(grade => {
+                      const gradeSections = sections.filter(s => s.grado_id === grade.id);
+                      const isGradeOpen = openGradeId === grade.id;
+
+                      return (
+                        <div key={grade.id}>
+                          <button
+                            type="button"
+                            onClick={() => setOpenGradeId(isGradeOpen ? null : grade.id)}
+                            className="w-full flex items-center justify-between px-2 py-1 text-[11px] font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-lg transition-colors"
+                          >
+                            <span>{grade.nombre}</span>
+                            <span className="text-[10px] text-slate-400">{isGradeOpen ? '▴' : '▾'}</span>
+                          </button>
+
+                          {isGradeOpen && (
+                            <div className="pl-3 py-1 flex items-center gap-1.5">
+                              {gradeSections.map(sec => {
+                                const isSecActive = pathname === `/admin/secciones/${sec.id}`;
+                                return (
+                                  <Link
+                                    key={sec.id}
+                                    href={`/admin/secciones/${sec.id}`}
+                                    onClick={handleLinkClick}
+                                    className={`px-2 py-0.5 rounded-md text-[10px] font-black transition-all ${
+                                      isSecActive
+                                        ? 'bg-amber-600 text-white shadow-sm'
+                                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-amber-100 hover:text-amber-700'
+                                    }`}
+                                  >
+                                    Aula &quot;{sec.letra}&quot;
                                   </Link>
                                 );
                               })}

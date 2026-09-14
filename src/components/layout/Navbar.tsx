@@ -18,6 +18,7 @@ import {
 import { NotificationBell } from '@/components/notificaciones/NotificationBell';
 import { ProfileDropdown } from '@/components/layout/ProfileDropdown';
 import { QuickQrModal } from '@/components/qr/QuickQrModal';
+import { AcademicContextSelector } from '@/components/layout/AcademicContextSelector';
 import { QrCode } from 'lucide-react';
 
 interface NavbarProps {
@@ -74,18 +75,19 @@ export function Navbar({ onOpenMobileMenu }: NavbarProps) {
             })()}
           </div>
 
-          {/* Center: Quick QR Reader Button for High Visibility */}
-          <div className="flex-1 flex justify-center max-w-xs mx-auto">
+          {/* Center: Persistent Academic Context Selector + Quick QR */}
+          <div className="flex-1 flex items-center justify-center gap-2 max-w-xl mx-auto">
+            <AcademicContextSelector />
+            
             <button
               onClick={() => setIsQrOpen(true)}
-              className="group flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200/80 dark:border-emerald-800/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 font-semibold text-xs shadow-sm hover:shadow transition-all duration-200 active:scale-95"
+              className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200/80 dark:border-emerald-800/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 font-semibold text-xs shadow-sm hover:shadow transition-all duration-200 active:scale-95 shrink-0"
               title="Abrir Lector de Asistencia QR"
             >
-              <div className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center group-hover:rotate-12 transition-transform">
-                <QrCode className="w-3 h-3" />
+              <div className="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center">
+                <QrCode className="w-2.5 h-2.5" />
               </div>
-              <span className="hidden sm:inline">Lector QR</span>
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="text-[11px]">Escanear QR</span>
             </button>
           </div>
 

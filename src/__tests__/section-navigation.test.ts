@@ -12,7 +12,7 @@ describe('Navegación y Consultas por Sección Escolar', () => {
     MOCK_SECTIONS.forEach(sec => {
       const parentGrade = MOCK_GRADES.find(g => g.id === sec.grado_id);
       expect(parentGrade).toBeDefined();
-      expect(['primaria', 'secundaria']).toContain(parentGrade!.nivel);
+      expect(['inicial', 'primaria', 'secundaria', 'preuniversitario']).toContain(parentGrade!.nivel);
     });
   });
 

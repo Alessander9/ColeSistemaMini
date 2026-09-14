@@ -7,18 +7,22 @@ import {
   MOCK_EVALUATION_PERIODS 
 } from '@/lib/mock-data';
 
-describe('Estructura Académica Escolar (LMS Peruano)', () => {
-  it('debe contener exactamente 6 grados en Primaria y 5 grados en Secundaria (11 grados en total)', () => {
+describe('Estructura Académica Escolar (LMS Peruano & Preuniversitario)', () => {
+  it('debe contener los 4 niveles educativos: Inicial (3), Primaria (6), Secundaria (5) y Preuniversitario (3)', () => {
+    const inicialGrades = MOCK_GRADES.filter(g => g.nivel === 'inicial');
     const primariaGrades = MOCK_GRADES.filter(g => g.nivel === 'primaria');
     const secundariaGrades = MOCK_GRADES.filter(g => g.nivel === 'secundaria');
+    const preuniGrades = MOCK_GRADES.filter(g => g.nivel === 'preuniversitario');
 
+    expect(inicialGrades.length).toBe(3);
     expect(primariaGrades.length).toBe(6);
     expect(secundariaGrades.length).toBe(5);
-    expect(MOCK_GRADES.length).toBe(11);
+    expect(preuniGrades.length).toBe(3);
+    expect(MOCK_GRADES.length).toBe(17);
   });
 
-  it('debe contar con 2 secciones por grado (A y B) para un total de 22 secciones', () => {
-    expect(MOCK_SECTIONS.length).toBe(22);
+  it('debe contar con 2 secciones por grado/ciclo (A y B) para un total de 34 secciones', () => {
+    expect(MOCK_SECTIONS.length).toBe(34);
 
     MOCK_GRADES.forEach(grade => {
       const gradeSections = MOCK_SECTIONS.filter(s => s.grado_id === grade.id);

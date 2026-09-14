@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import { 
   UserProfile, 
   Student, 
@@ -23,7 +23,12 @@ import {
   DayOfWeek,
   ClassSessionLog,
   ScheduleConflict,
-  ToastMessage
+  ToastMessage,
+  EducationalLevel,
+  AcademicContextState,
+  PreuniExamSimulation,
+  PreuniRankingEntry,
+  ChildProfile
 } from '@/types';
 import { ToastContainer } from '@/components/ui/ToastContainer';
 import { 
@@ -43,7 +48,10 @@ import {
   MOCK_NOTIFICATIONS,
   MOCK_SECTION_COURSES,
   MOCK_SCHEDULE_SLOTS,
-  MOCK_CLASS_SESSIONS
+  MOCK_CLASS_SESSIONS,
+  MOCK_SIMULACROS,
+  MOCK_PREUNI_RANKINGS,
+  MOCK_CHILDREN
 } from '@/lib/mock-data';
 import * as academicService from '@/lib/services/academicService';
 import * as attendanceService from '@/lib/services/attendanceService';
@@ -61,6 +69,13 @@ interface AppContextType {
   isLoading: boolean;
   refreshData: () => Promise<void>;
   logout: () => Promise<void>;
+
+  // ── Contexto Académico Institucional (Inicial, Primaria, Secundaria, Preuni) ──
+  academicContext: AcademicContextState;
+  setAcademicContext: (ctx: Partial<AcademicContextState>) => void;
+  setAcademicLevel: (level: EducationalLevel | 'todos') => void;
+  setAcademicGrade: (gradeId?: string) => void;
+  setAcademicSection: (sectionId?: string) => void;
   
   toasts: ToastMessage[];
   showToast: (mensaje: string, tipo?: 'success' | 'error' | 'info' | 'warning', titulo?: string, duracionMs?: number) => void;
@@ -73,6 +88,17 @@ interface AppContextType {
   gradeLevels: GradeLevel[];
   evaluationPeriods: EvaluationPeriod[];
   teachers: UserProfile[];
+  
+  // ── Preuniversitario & Simulacros ──
+  simulacros: PreuniExamSimulation[];
+  addSimulacro: (sim: PreuniExamSimulation) => void;
+  rankings: PreuniRankingEntry[];
+
+  // ── Portal de Apoderados ──
+  childrenList: ChildProfile[];
+  selectedChildId: string;
+  setSelectedChildId: (id: string) => void;
+  selectedChild: ChildProfile | undefined;
   addTeacher: (data: {
     nombres: string;
     apellidos: string;
@@ -242,6 +268,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [sectionCourses, setSectionCourses] = useState<SectionCourseAssignment[]>(() => getInitialData('colegio_section_courses', MOCK_SECTION_COURSES));
   const [scheduleSlots, setScheduleSlots] = useState<ScheduleSlot[]>(() => getInitialData('colegio_schedule_slots', MOCK_SCHEDULE_SLOTS));
   const [classSessions, setClassSessions] = useState<ClassSessionLog[]>(() => getInitialData('colegio_class_sessions', MOCK_CLASS_SESSIONS));
+  const [academicContext, setAcademicContextState] = useState<AcademicContextState>(() => getInitialData('colegio_academic_context', {
+    institucion: 'Colegio & Academia San José',
+    anio: 2026,
+    nivel: 'todos',
+  }));
+  const [simulacros, setSimulacros] = useState<PreuniExamSimulation[]>(() => getInitialData('colegio_simulacros', MOCK_SIMULACROS));
+  const [rankings, setRankings] = useState<PreuniRankingEntry[]>(() => getInitialData('colegio_preuni_rankings', MOCK_PREUNI_RANKINGS));
+  const [childrenList, setChildrenList] = useState<ChildProfile[]>(() => getInitialData('colegio_children', MOCK_CHILDREN));
+  const [selectedChildId, setSelectedChildId] = useState<string>(() => childrenList[0]?.id || 'child-1');
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -377,11 +412,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     showToast('Datos del sistema restaurados al estado original', 'info', 'Datos Reiniciados');
   };
 
-  const removeToast = (id: string) => {
+  const removeToast = useCallback((id: string) => {
     setToasts(prev => prev.filter(t => t.id !== id));
-  };
+  }, []);
 
-  const showToast = (
+  const showToast = useCallback((
     mensaje: string, 
     tipo: 'success' | 'error' | 'info' | 'warning' = 'success', 
     titulo?: string, 
@@ -394,9 +429,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setTimeout(() => {
       removeToast(id);
     }, duracionMs);
-  };
+  }, [removeToast]);
 
-  const teachers = users.filter(u => u.rol === 'docente');
+  const teachers = useMemo(() => users.filter(u => u.rol === 'docente'), [users]);
 
   const addTeacher = (data: {
     nombres: string;
@@ -466,7 +501,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     );
   };
 
-  const unreadCount = notifications.filter(n => !n.leido).length;
+  const unreadCount = useMemo(() => notifications.filter(n => !n.leido).length, [notifications]);
 
   const registerAttendance = ({
     studentQrToken,
@@ -1165,19 +1200,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     showToast('Bloque de horario eliminado.', 'info', 'Horario Actualizado');
   };
 
-  const getSectionCourses = (seccionId: string) => {
+  const getSectionCourses = useCallback((seccionId: string) => {
     return sectionCourses.filter(sc => sc.seccion_id === seccionId);
-  };
+  }, [sectionCourses]);
 
-  const getSectionSchedule = (seccionId: string) => {
+  const getSectionSchedule = useCallback((seccionId: string) => {
     return scheduleSlots.filter(slot => slot.seccion_id === seccionId);
-  };
+  }, [scheduleSlots]);
 
-  const getTeacherSchedule = (docenteId: string) => {
+  const getTeacherSchedule = useCallback((docenteId: string) => {
     return scheduleSlots.filter(slot => slot.docente_id === docenteId);
-  };
+  }, [scheduleSlots]);
 
-  const getTeacherSections = (docenteId: string) => {
+  const getTeacherSections = useCallback((docenteId: string) => {
     const assignments = sectionCourses.filter(sc => sc.docente_id === docenteId);
     const uniqueSecIds = Array.from(new Set(assignments.map(a => a.seccion_id)));
     return uniqueSecIds
@@ -1190,10 +1225,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         return seccion ? { seccion, cursos } : null;
       })
       .filter((item): item is { seccion: Section; cursos: Course[] } => item !== null);
-  };
+  }, [sectionCourses]);
 
   // ── Validación Anti-Cruce de Horarios ──
-  const checkTeacherConflict = (
+  const checkTeacherConflict = useCallback((
     docenteId: string,
     dia: DayOfWeek,
     horaInicio: string,
@@ -1220,9 +1255,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
 
     return { hasConflict: false };
-  };
+  }, [scheduleSlots]);
 
-  const auditScheduleIntegrity = () => {
+  const auditScheduleIntegrity = useCallback(() => {
     const conflicts: { slotA: ScheduleSlot; slotB: ScheduleSlot }[] = [];
 
     for (let i = 0; i < scheduleSlots.length; i++) {
@@ -1259,10 +1294,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       conflictsCount: conflicts.length,
       conflicts,
     };
-  };
+  }, [scheduleSlots]);
 
   // ── Helper Contextual: Clase Actual / Siguiente del Docente ──
-  const getCurrentOrNextClass = (docenteId: string) => {
+  const getCurrentOrNextClass = useCallback((docenteId: string) => {
     const teacherSlots = getTeacherSchedule(docenteId);
     
     // Convert current JS day to DayOfWeek
@@ -1294,7 +1329,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       nextSlot,
       todaySlots,
     };
-  };
+  }, [getTeacherSchedule]);
 
   // ── Bitácora de Sesiones de Clase & Asistencia por Hora ──
   const saveClassSessionLog = (data: {
@@ -1351,60 +1386,129 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return newSession;
   };
 
+  const setAcademicContext = useCallback((ctx: Partial<AcademicContextState>) => {
+    setAcademicContextState(prev => {
+      const next = { ...prev, ...ctx };
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('colegio_academic_context', JSON.stringify(next));
+        } catch {}
+      }
+      return next;
+    });
+  }, []);
+
+  const setAcademicLevel = useCallback((level: EducationalLevel | 'todos') => {
+    setAcademicContext({ nivel: level, gradoId: undefined, seccionId: undefined });
+  }, [setAcademicContext]);
+
+  const setAcademicGrade = useCallback((gradoId?: string) => {
+    setAcademicContext({ gradoId, seccionId: undefined });
+  }, [setAcademicContext]);
+
+  const setAcademicSection = useCallback((seccionId?: string) => {
+    setAcademicContext({ seccionId });
+  }, [setAcademicContext]);
+
+  const addSimulacro = useCallback((sim: PreuniExamSimulation) => {
+    setSimulacros(prev => [sim, ...prev]);
+    showToast(`Simulacro "${sim.titulo}" registrado correctamente.`, 'success', 'Simulacro Registrado');
+  }, [showToast]);
+
+  const selectedChild = useMemo(() => {
+    return childrenList.find(c => c.id === selectedChildId) || childrenList[0];
+  }, [childrenList, selectedChildId]);
+
+  const contextValue = useMemo<AppContextType>(() => ({
+    currentUser,
+    setCurrentUser,
+    switchRole,
+    academicContext,
+    setAcademicContext,
+    setAcademicLevel,
+    setAcademicGrade,
+    setAcademicSection,
+    toasts,
+    showToast,
+    removeToast,
+    students,
+    enrollments,
+    courses: MOCK_COURSES,
+    sections: MOCK_SECTIONS,
+    gradeLevels: MOCK_GRADES,
+    evaluationPeriods: MOCK_EVALUATION_PERIODS,
+    teachers,
+    addTeacher,
+    sectionCourses,
+    assignCourseToSection,
+    removeSectionCourse,
+    updateSectionCourseTeacher,
+    scheduleSlots,
+    addScheduleSlot,
+    removeScheduleSlot,
+    checkTeacherConflict,
+    auditScheduleIntegrity,
+    getSectionCourses,
+    getSectionSchedule,
+    getTeacherSchedule,
+    getTeacherSections,
+    getCurrentOrNextClass,
+    classSessions,
+    saveClassSessionLog,
+    attendances,
+    registerAttendance,
+    grades,
+    updateGrade,
+    addStudent,
+    tasks,
+    addTask,
+    submissions,
+    submitTask,
+    gradeTask,
+    exams,
+    addExam,
+    simulacros,
+    addSimulacro,
+    rankings,
+    childrenList,
+    selectedChildId,
+    setSelectedChildId,
+    selectedChild,
+    notifications,
+    markNotificationRead,
+    unreadCount,
+    isLoading,
+    refreshData,
+    logout,
+    resetToDemoData,
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [
+    currentUser,
+    academicContext,
+    toasts,
+    students,
+    enrollments,
+    teachers,
+    sectionCourses,
+    scheduleSlots,
+    classSessions,
+    attendances,
+    grades,
+    tasks,
+    submissions,
+    exams,
+    simulacros,
+    rankings,
+    childrenList,
+    selectedChildId,
+    selectedChild,
+    notifications,
+    unreadCount,
+    isLoading,
+  ]);
+
   return (
-    <AppContext.Provider
-      value={{
-        currentUser,
-        setCurrentUser,
-        switchRole,
-        toasts,
-        showToast,
-        removeToast,
-        students,
-        enrollments,
-        courses: MOCK_COURSES,
-        sections: MOCK_SECTIONS,
-        gradeLevels: MOCK_GRADES,
-        evaluationPeriods: MOCK_EVALUATION_PERIODS,
-        teachers,
-        addTeacher,
-        sectionCourses,
-        assignCourseToSection,
-        removeSectionCourse,
-        updateSectionCourseTeacher,
-        scheduleSlots,
-        addScheduleSlot,
-        removeScheduleSlot,
-        checkTeacherConflict,
-        auditScheduleIntegrity,
-        getSectionCourses,
-        getSectionSchedule,
-        getTeacherSchedule,
-        getTeacherSections,
-        getCurrentOrNextClass,
-        classSessions,
-        saveClassSessionLog,
-        attendances,
-        registerAttendance,
-        grades,
-        updateGrade,
-        addStudent,
-        tasks,
-        addTask,
-        submissions,
-        submitTask,
-        gradeTask,
-        exams,
-        addExam,
-        notifications,
-        markNotificationRead,
-        unreadCount,
-        isLoading,
-        refreshData,
-        logout,
-        resetToDemoData,
-      }}
-    >
+    <AppContext.Provider value={contextValue}>
       {children}
     </AppContext.Provider>
   );

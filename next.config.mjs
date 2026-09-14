@@ -1,6 +1,12 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  swcMinify: true,
+  compress: true,
+  poweredByHeader: false,
+  experimental: {
+    optimizePackageImports: ['lucide-react', 'jspdf', 'html2canvas', 'clsx', 'tailwind-merge'],
+  },
   images: {
     remotePatterns: [
       {

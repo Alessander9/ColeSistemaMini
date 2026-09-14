@@ -1,12 +1,69 @@
 export type UserRole = 'admin' | 'docente' | 'estudiante' | 'asistencia';
 
-export type EducationalLevel = 'primaria' | 'secundaria';
+export type EducationalLevel = 'inicial' | 'primaria' | 'secundaria' | 'preuniversitario';
 
 export type GradeLetter = 'AD' | 'A' | 'B' | 'C';
 
 export type AttendanceStatus = 'presente' | 'tardanza' | 'falta' | 'justificado';
 
 export type AttendanceMethod = 'qr' | 'manual';
+
+export interface AcademicContextState {
+  institucion: string;
+  anio: number;
+  nivel: EducationalLevel | 'todos';
+  gradoId?: string;
+  seccionId?: string;
+  periodoId?: string;
+}
+
+export interface PreuniExamSimulation {
+  id: string;
+  titulo: string;
+  universidad: 'UNI' | 'San Marcos (UNMSM)' | 'Católica (PUCP)' | 'Nacional General';
+  fecha: string;
+  preguntas_totales: number;
+  puntaje_maximo: number;
+  puntaje_obtenido?: number;
+  puesto_ranking?: number;
+  total_participantes?: number;
+  percentil?: number;
+  carrera_objetivo?: string;
+  areas?: {
+    nombre: string;
+    aciertos: number;
+    errores: number;
+    blancos: number;
+    puntaje: number;
+  }[];
+}
+
+export interface PreuniRankingEntry {
+  puesto: number;
+  estudiante_id: string;
+  nombre: string;
+  codigo: string;
+  carrera_objetivo: string;
+  puntaje_total: number;
+  puntaje_maximo: number;
+  tendencia: 'up' | 'down' | 'equal';
+  aula: string;
+}
+
+export interface ChildProfile {
+  id: string;
+  estudiante_id: string;
+  nombre: string;
+  apellidos: string;
+  nivel: EducationalLevel;
+  grado_nombre: string;
+  seccion_letra: string;
+  avatar_url?: string;
+  promedio_letra?: GradeLetter;
+  promedio_score?: number;
+  asistencia_porcentaje: number;
+  tareas_pendientes: number;
+}
 
 export interface UserProfile {
   id: string;

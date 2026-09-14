@@ -1,13 +1,13 @@
-import { GradeLetter, AttendanceStatus } from '@/types';
+import { GradeLetter, AttendanceStatus, GradeRecord, Competency, Course } from '@/types';
 
 /**
  * Mapeo oficial de notas cualitativas a valor cuantitativo para cálculo pedagógico
  */
-export const GRADE_SCALE: Record<GradeLetter, { value: number; label: string; minScore: number; maxScore: number }> = {
-  AD: { value: 4, label: 'Logro Destacado', minScore: 18, maxScore: 20 },
-  A:  { value: 3, label: 'Logro Esperado',   minScore: 14, maxScore: 17 },
-  B:  { value: 2, label: 'En Proceso',       minScore: 11, maxScore: 13 },
-  C:  { value: 1, label: 'En Inicio',        minScore: 0,  maxScore: 10 },
+export const GRADE_SCALE: Record<GradeLetter, { value: number; label: string; minScore: number; maxScore: number; defaultNumeric: number }> = {
+  AD: { value: 4, label: 'Logro Destacado', minScore: 18, maxScore: 20, defaultNumeric: 19 },
+  A:  { value: 3, label: 'Logro Esperado',   minScore: 14, maxScore: 17, defaultNumeric: 16 },
+  B:  { value: 2, label: 'En Proceso',       minScore: 11, maxScore: 13, defaultNumeric: 12 },
+  C:  { value: 1, label: 'En Inicio',        minScore: 0,  maxScore: 10, defaultNumeric: 8 },
 };
 
 /**
@@ -24,6 +24,23 @@ export function numberToGrade(score: number): GradeLetter {
   if (score >= 3.5) return 'AD';
   if (score >= 2.5) return 'A';
   if (score >= 1.5) return 'B';
+  return 'C';
+}
+
+/**
+ * Convierte una nota cualitativa a escala vigesimal (0 a 20)
+ */
+export function gradeToVigesimal(grade: GradeLetter): number {
+  return GRADE_SCALE[grade]?.defaultNumeric ?? 0;
+}
+
+/**
+ * Convierte un puntaje vigesimal (0 a 20) a letra cualitativa
+ */
+export function vigesimalToGrade(score: number): GradeLetter {
+  if (score >= 17.5) return 'AD';
+  if (score >= 13.5) return 'A';
+  if (score >= 10.5) return 'B';
   return 'C';
 }
 
@@ -48,6 +65,264 @@ export function calculateAverage(grades: GradeLetter[]): {
 }
 
 /**
+ * Calcula la calificación de un curso en un bimestre específico
+ * a partir de las competencias registradas.
+ */
+export function calculateCourseBimesterGrade(
+  grades: GradeRecord[],
+  enrollmentId: string,
+  competencies: Competency[],
+  bimesterPeriodId: string
+): {
+  gradeLetter: GradeLetter | null;
+  numericScore: number | null;
+  competenciesCount: number;
+  evaluatedCount: number;
+} {
+  const compIds = competencies.map((c) => c.id);
+  const bimesterGrades = grades.filter(
+    (g) =>
+      g.matricula_id === enrollmentId &&
+      g.periodo_evaluacion_id === bimesterPeriodId &&
+      compIds.includes(g.competencia_id)
+  );
+
+  if (bimesterGrades.length === 0) {
+    return {
+      gradeLetter: null,
+      numericScore: null,
+      competenciesCount: competencies.length,
+      evaluatedCount: 0,
+    };
+  }
+
+  const letters = bimesterGrades.map((g) => g.nota_letra);
+  const avg = calculateAverage(letters);
+
+  return {
+    gradeLetter: avg.averageLetter,
+    numericScore: avg.averageScore,
+    competenciesCount: competencies.length,
+    evaluatedCount: bimesterGrades.length,
+  };
+}
+
+/**
+ * Resumen anual de un curso basado en los 4 bimestres
+ */
+export interface AnnualCourseSummary {
+  courseId: string;
+  courseName: string;
+  courseCode: string;
+  colorHex?: string;
+  bimesters: {
+    periodId: string;
+    bimesterNumber: number;
+    gradeLetter: GradeLetter | null;
+    score: number | null;
+  }[];
+  finalGrade: GradeLetter;
+  finalScore: number;
+  vigesimalScore: number;
+  status: 'aprobado' | 'desaprobado';
+  evaluatedBimestersCount: number;
+  annualConclusion: string;
+}
+
+/**
+ * Calcula la nota final anual de un curso promediando los 4 bimestres
+ */
+export function calculateCourseAnnualSummary(
+  course: Course,
+  bimestersData: { periodId: string; bimesterNumber: number; gradeLetter: GradeLetter | null; score: number | null }[],
+  recordedDescriptiveConclusion?: string
+): AnnualCourseSummary {
+  const validGrades = bimestersData
+    .map((b) => b.gradeLetter)
+    .filter((g): g is GradeLetter => Boolean(g) && ['AD', 'A', 'B', 'C'].includes(g as string));
+
+  let finalGrade: GradeLetter = 'C';
+  let finalScore = 0;
+
+  if (validGrades.length > 0) {
+    const avg = calculateAverage(validGrades);
+    finalGrade = avg.averageLetter;
+    finalScore = avg.averageScore;
+  }
+
+  const vigesimalScore = Number((finalScore * 5).toFixed(1)); // Scale 1..4 -> 5..20 approx
+  const status: 'aprobado' | 'desaprobado' = finalGrade === 'C' ? 'desaprobado' : 'aprobado';
+
+  let annualConclusion = recordedDescriptiveConclusion || '';
+  if (!annualConclusion) {
+    if (finalGrade === 'AD') {
+      annualConclusion = 'Demostró un desempeño sobresaliente en todas las competencias del área a lo largo de los cuatro bimestres.';
+    } else if (finalGrade === 'A') {
+      annualConclusion = 'Alcanzó satisfactoriamente los aprendizajes esperados demostrando solvencia y autonomía.';
+    } else if (finalGrade === 'B') {
+      annualConclusion = 'En proceso de consolidar aprendizajes. Se recomienda afianzar hábitos de estudio y repaso.';
+    } else {
+      annualConclusion = 'Presenta dificultades en los aprendizajes previstos. Requiere participar en el Programa de Recuperación Pedagógica.';
+    }
+  }
+
+  return {
+    courseId: course.id,
+    courseName: course.nombre,
+    courseCode: course.codigo,
+    colorHex: course.color_hex,
+    bimesters: bimestersData,
+    finalGrade,
+    finalScore,
+    vigesimalScore,
+    status,
+    evaluatedBimestersCount: validGrades.length,
+    annualConclusion,
+  };
+}
+
+/**
+ * Estructura completa de la Libreta Final Anual Oficial (Informe de Progreso Anual)
+ */
+export interface StudentAnnualReportCard {
+  enrollmentId: string;
+  studentId: string;
+  studentName: string;
+  studentDni: string;
+  studentCode: string;
+  gradeLevelName: string;
+  sectionLetter: string;
+  academicYear: number;
+  tutorName: string;
+  courses: AnnualCourseSummary[];
+  generalAverageGrade: GradeLetter;
+  generalAverageScore: number;
+  generalVigesimalScore: number;
+  totalCourses: number;
+  passedCourses: number;
+  failedCourses: number;
+  attendancePercentage: number;
+  conductGrade: GradeLetter;
+  finalAcademicStatus: 'PROMOVIDO' | 'RECUPERACIÓN' | 'PERMANECE';
+  statusLabel: string;
+  statusColor: string;
+  isCompleteYear: boolean;
+}
+
+/**
+ * Calcula la Libreta Final Oficial de Fin de Año de un estudiante
+ */
+export function calculateStudentAnnualReportCard(params: {
+  enrollmentId: string;
+  studentId: string;
+  studentName: string;
+  studentDni: string;
+  studentCode: string;
+  gradeLevelName: string;
+  sectionLetter: string;
+  academicYear: number;
+  tutorName?: string;
+  courses: Course[];
+  grades: GradeRecord[];
+  evaluationPeriodIds: { id: string; numero_periodo: number }[];
+  attendancePercentage?: number;
+  conductGrade?: GradeLetter;
+}): StudentAnnualReportCard {
+  const {
+    enrollmentId,
+    studentId,
+    studentName,
+    studentDni,
+    studentCode,
+    gradeLevelName,
+    sectionLetter,
+    academicYear,
+    tutorName = 'Docente Tutor Institucional',
+    courses,
+    grades,
+    evaluationPeriodIds,
+    attendancePercentage = 98,
+    conductGrade = 'AD',
+  } = params;
+
+  // Sorted periods 1..4
+  const sortedPeriods = [...evaluationPeriodIds].sort((a, b) => a.numero_periodo - b.numero_periodo);
+
+  // Filter or compute all course summaries
+  const courseSummaries: AnnualCourseSummary[] = courses.map((course) => {
+    const competencies = course.competencias || [];
+    const bimestersData = sortedPeriods.map((p) => {
+      const bim = calculateCourseBimesterGrade(grades, enrollmentId, competencies, p.id);
+      return {
+        periodId: p.id,
+        bimesterNumber: p.numero_periodo,
+        gradeLetter: bim.gradeLetter,
+        score: bim.numericScore,
+      };
+    });
+
+    return calculateCourseAnnualSummary(course, bimestersData);
+  });
+
+  // Evaluated courses (those that have at least 1 evaluated bimester)
+  const evaluatedCourses = courseSummaries.filter((c) => c.evaluatedBimestersCount > 0);
+  const effectiveCourses = evaluatedCourses.length > 0 ? evaluatedCourses : courseSummaries;
+
+  const allFinalGrades = effectiveCourses.map((c) => c.finalGrade);
+  const avg = calculateAverage(allFinalGrades);
+
+  const totalCourses = effectiveCourses.length;
+  const passedCourses = effectiveCourses.filter((c) => c.status === 'aprobado').length;
+  const failedCourses = effectiveCourses.filter((c) => c.status === 'desaprobado').length;
+
+  // CNEB Promotion Rules:
+  // - Promovido: 0 failed courses (or all passed)
+  // - Recuperación: 1 to 3 failed courses
+  // - Permanece: 4 or more failed courses
+  let finalAcademicStatus: 'PROMOVIDO' | 'RECUPERACIÓN' | 'PERMANECE' = 'PROMOVIDO';
+  let statusLabel = 'PROMOVIDO(A) DE GRADO';
+  let statusColor = 'bg-emerald-600 text-white border-emerald-500';
+
+  if (failedCourses >= 4) {
+    finalAcademicStatus = 'PERMANECE';
+    statusLabel = 'PERMANECE EN EL GRADO (REPITENCIA)';
+    statusColor = 'bg-rose-600 text-white border-rose-500';
+  } else if (failedCourses >= 1) {
+    finalAcademicStatus = 'RECUPERACIÓN';
+    statusLabel = 'REQUIERE RECUPERACIÓN PEDAGÓGICA (ENERO - FEBRERO)';
+    statusColor = 'bg-amber-500 text-white border-amber-400';
+  }
+
+  const isCompleteYear = effectiveCourses.every((c) => c.evaluatedBimestersCount >= 4);
+
+  return {
+    enrollmentId,
+    studentId,
+    studentName,
+    studentDni,
+    studentCode,
+    gradeLevelName,
+    sectionLetter,
+    academicYear,
+    tutorName,
+    courses: effectiveCourses,
+    generalAverageGrade: avg.averageLetter,
+    generalAverageScore: avg.averageScore,
+    generalVigesimalScore: Number((avg.averageScore * 5).toFixed(1)),
+    totalCourses,
+    passedCourses,
+    failedCourses,
+    attendancePercentage,
+    conductGrade,
+    finalAcademicStatus,
+    statusLabel,
+    statusColor,
+    isCompleteYear,
+  };
+
+}
+
+/**
  * Calcula el estado final anual según la escala de evaluación escolar
  */
 export function calculateAnnualStatus(periodAverages: GradeLetter[]): {
@@ -58,9 +333,6 @@ export function calculateAnnualStatus(periodAverages: GradeLetter[]): {
 } {
   const { averageLetter, averageScore } = calculateAverage(periodAverages);
 
-  // Criterio pedagógico estándar:
-  // Si tiene mayoría de C o el promedio es C => Requiere recuperación o permanece
-  // Si promedio >= B => Promovido
   let status: 'PROMOVIDO' | 'RECUPERACIÓN' | 'PERMANECE' = 'PROMOVIDO';
   let statusColor = 'text-emerald-600 bg-emerald-50 border-emerald-200';
 
@@ -164,3 +436,4 @@ export function getAttendanceMeta(status: AttendanceStatus) {
       };
   }
 }
+
