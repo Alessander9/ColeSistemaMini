@@ -224,20 +224,30 @@ export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
 
   return (
     <aside 
-      className={`flex flex-col h-full bg-white dark:bg-slate-900 border-r border-slate-200/80 dark:border-slate-800 transition-all duration-300 ease-in-out select-none ${
-        isMobileDrawer ? 'w-full' : isCollapsed ? 'w-[72px]' : 'w-72'
+      className={`flex flex-col h-full bg-white dark:bg-slate-900 border-r border-slate-200/80 dark:border-slate-800 transition-all duration-300 ease-in-out select-none shrink-0 overflow-hidden ${
+        isMobileDrawer 
+          ? 'w-full' 
+          : `hidden md:flex ${isCollapsed ? 'w-[72px]' : 'w-72'}`
       }`}
     >
       {/* Header Institucional */}
       <div className={`flex items-center border-b border-slate-100 dark:border-slate-800/80 shrink-0 ${
         isCollapsed ? 'justify-center p-3.5' : 'justify-between px-4 py-4'
       }`}>
-        <div className={`flex items-center gap-3 min-w-0 ${isCollapsed ? 'justify-center' : ''}`}>
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-600 to-indigo-800 flex items-center justify-center text-white shadow-md shadow-indigo-500/20 font-black text-lg shrink-0">
+        <div className={`flex items-center gap-3 min-w-0 overflow-hidden ${isCollapsed ? 'justify-center' : ''}`}>
+          <button
+            type="button"
+            onClick={isCollapsed ? toggleSidebar : undefined}
+            className={`w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-600 to-indigo-800 flex items-center justify-center text-white shadow-md shadow-indigo-500/20 font-black text-lg shrink-0 ${
+              isCollapsed ? 'cursor-pointer hover:scale-105 active:scale-95 transition-all' : ''
+            }`}
+            title={isCollapsed ? "Clic para desplegar menú lateral" : undefined}
+            aria-label={isCollapsed ? "Desplegar menú lateral" : "Logo ColeSistema"}
+          >
             CS
-          </div>
+          </button>
           {!isCollapsed && (
-            <div className="min-w-0">
+            <div className="min-w-0 overflow-hidden">
               <h2 className="text-sm font-bold text-slate-900 dark:text-white leading-tight truncate">
                 ColeSistemaMini
               </h2>

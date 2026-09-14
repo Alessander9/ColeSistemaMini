@@ -318,18 +318,30 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>(() => getInitialData('colegio_audit_logs', MOCK_AUDIT_LOGS));
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [onboardingCompleted, setOnboardingCompleted] = useState<boolean>(() => getInitialData('colegio_onboarding', true));
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
+
+  useEffect(() => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('colegio_sidebar_collapsed') === 'true';
+      try {
+        const saved = localStorage.getItem('colegio_sidebar_collapsed');
+        if (saved !== null) {
+          setIsSidebarCollapsed(saved === 'true');
+        }
+      } catch {
+        /* ignore */
+      }
     }
-    return false;
-  });
+  }, []);
 
   const toggleSidebar = useCallback(() => {
     setIsSidebarCollapsed(prev => {
       const next = !prev;
       if (typeof window !== 'undefined') {
-        localStorage.setItem('colegio_sidebar_collapsed', String(next));
+        try {
+          localStorage.setItem('colegio_sidebar_collapsed', String(next));
+        } catch {
+          /* ignore */
+        }
       }
       return next;
     });
@@ -338,7 +350,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const setSidebarCollapsedState = useCallback((collapsed: boolean) => {
     setIsSidebarCollapsed(collapsed);
     if (typeof window !== 'undefined') {
-      localStorage.setItem('colegio_sidebar_collapsed', String(collapsed));
+      try {
+        localStorage.setItem('colegio_sidebar_collapsed', String(collapsed));
+      } catch {
+        /* ignore */
+      }
     }
   }, []);
 
