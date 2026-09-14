@@ -226,13 +226,13 @@ export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
 
   return (
     <aside 
-      className={`flex flex-col h-full bg-white dark:bg-slate-900 transition-all duration-300 ease-in-out select-none shrink-0 overflow-hidden ${
+      className={
         isMobileDrawer 
-          ? 'w-full' 
+          ? 'flex flex-col h-full w-full bg-white dark:bg-slate-900 select-none' 
           : isDesktopCollapsed
-            ? 'hidden md:flex w-0 max-w-0 border-0 opacity-0 pointer-events-none p-0'
-            : 'hidden md:flex w-72 max-w-72 border-r border-slate-200/80 dark:border-slate-800 opacity-100'
-      }`}
+            ? 'hidden'
+            : 'hidden md:flex flex-col h-full bg-white dark:bg-slate-900 border-r border-slate-200/80 dark:border-slate-800 select-none shrink-0 w-72 max-w-72'
+      }
     >
       {/* Header Institucional */}
       <div className="flex items-center justify-between px-4 py-4 border-b border-slate-100 dark:border-slate-800/80 shrink-0">

@@ -54,14 +54,18 @@ export function Navbar({ onOpenMobileMenu }: NavbarProps) {
                   toggleSidebar();
                 }
               }}
-              className="flex items-center justify-center p-2 text-slate-600 hover:text-indigo-600 dark:text-slate-300 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-800/80 rounded-xl transition-all active:scale-95 cursor-pointer"
+              className={`flex items-center justify-center p-2 rounded-xl transition-all active:scale-95 cursor-pointer ${
+                isSidebarCollapsed
+                  ? 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 border border-indigo-200/80 dark:border-indigo-800/60 shadow-sm'
+                  : 'text-slate-600 hover:text-indigo-600 dark:text-slate-300 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-800/80'
+              }`}
               title={isSidebarCollapsed ? "Desplegar menú lateral" : "Ocultar menú lateral"}
               aria-label="Alternar menú lateral"
             >
               {isSidebarCollapsed ? (
-                <PanelLeftOpen className="w-5 h-5 text-indigo-600 dark:text-indigo-400 animate-in fade-in duration-200" />
+                <PanelLeftOpen className="w-5 h-5 text-indigo-600 dark:text-indigo-400 animate-in zoom-in-75 duration-150" />
               ) : (
-                <PanelLeftClose className="w-5 h-5 text-slate-500 dark:text-slate-400 animate-in fade-in duration-200" />
+                <PanelLeftClose className="w-5 h-5 text-slate-500 dark:text-slate-400 animate-in zoom-in-75 duration-150" />
               )}
             </button>
 
