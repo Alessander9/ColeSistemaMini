@@ -4,13 +4,31 @@ import React from 'react';
 import { useApp } from '@/context/AppContext';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { QrCard } from '@/components/qr/QrCard';
-import { Sparkles, ShieldCheck } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 
 export default function EstudianteCarnetQrPage() {
   const { students, enrollments, currentUser } = useApp();
 
-  const activeStudent = students.find(s => s.profile_id === currentUser.id) || students[0];
-  const activeEnrollment = enrollments.find(e => e.estudiante_id === activeStudent.id) || enrollments[0];
+  const activeStudent = students.find(s => s.profile_id === currentUser.id);
+  const activeEnrollment = activeStudent
+    ? enrollments.find(e => e.estudiante_id === activeStudent.id)
+    : undefined;
+
+  if (!activeStudent) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[40vh] gap-4 text-center p-8">
+        <div className="w-14 h-14 rounded-full bg-amber-100 dark:bg-amber-950/60 flex items-center justify-center">
+          <AlertCircle className="w-7 h-7 text-amber-500" />
+        </div>
+        <div>
+          <h3 className="font-bold text-slate-800 dark:text-white text-base">Carnet no disponible</h3>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+            Tu perfil de estudiante aún no está vinculado al sistema. Contacta al administrador.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto animate-in fade-in-50">

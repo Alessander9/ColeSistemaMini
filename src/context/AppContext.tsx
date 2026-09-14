@@ -411,7 +411,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const cleanLast = data.apellidos.trim().split(' ')[0].toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     const autoEmail = data.email?.trim() || `${cleanFirst[0]}${cleanLast}@colegio.edu.pe`;
     const autoUsername = `${cleanFirst[0]}${cleanLast}${data.dni.slice(-4)}`;
-    const autoPassword = `Docente2026!`;
+    const autoPassword = `Doc${cleanFirst[0].toUpperCase()}${cleanLast.slice(0,3)}${data.dni.slice(-4)}!`;
 
     const newTeacher: UserProfile = {
       id: `user-docente-${Date.now()}`,

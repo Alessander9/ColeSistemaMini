@@ -8,8 +8,7 @@ export async function loginWithCredentials(emailOrUsername: string, password: st
     const cleanInput = emailOrUsername.trim().toLowerCase();
     const matchedUser = MOCK_USERS.find(u => 
       u.email?.toLowerCase() === cleanInput || 
-      u.dni === cleanInput ||
-      Boolean(u.email && u.email.toLowerCase().startsWith(cleanInput))
+      u.dni === cleanInput
     );
 
     if (matchedUser) {

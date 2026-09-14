@@ -13,8 +13,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const normalize = (s?: string) =>
+      s ? s.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') : '';
+    const normToken = normalize(tokenQr);
+
     const student = MOCK_STUDENTS.find(
-      (s) => s.token_qr === tokenQr || s.codigo_estudiante === tokenQr
+      (s) =>
+        s.token_qr === tokenQr ||
+        normalize(s.codigo_estudiante) === normToken ||
+        normalize(s.profile?.dni) === normToken
     );
 
     if (!student) {
