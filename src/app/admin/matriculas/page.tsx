@@ -278,7 +278,7 @@ export default function AdminMatriculasPage() {
                   {/* Nivel */}
                   <div>
                     <label className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-1.5 block">Nivel Educativo</label>
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                       {[
                         { id: 'inicial', label: '🧸 Inicial (3-5 Años)' },
                         { id: 'primaria', label: '📚 Primaria (1°-6°)' },
@@ -296,10 +296,10 @@ export default function AdminMatriculasPage() {
                               seccionId: '',
                             });
                           }}
-                          className={`p-3 rounded-xl border text-xs font-bold transition-all ${
+                          className={`p-3 rounded-xl border text-xs font-bold transition-all text-center sm:text-left ${
                             wizardData.nivel === lvl.id
                               ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
-                              : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'
+                              : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100'
                           }`}
                         >
                           {lvl.label}

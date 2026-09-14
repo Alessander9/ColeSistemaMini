@@ -58,18 +58,18 @@ export default function DocenteNotasPage() {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-4 pt-3 border-t border-slate-100 dark:border-slate-800">
-          <div className="flex flex-wrap items-center gap-3">
-            <div>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-3 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full sm:w-auto">
+            <div className="w-full sm:w-auto">
               <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
                 Curso:
               </label>
-              <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl border border-slate-200 dark:border-slate-700">
+              <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-x-auto max-w-full scrollbar-thin">
                 {courses.map((course) => (
                   <button
                     key={course.id}
                     onClick={() => setSelectedCourseId(course.id)}
-                    className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all ${
+                    className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all shrink-0 ${
                       selectedCourseId === course.id
                         ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
                         : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
@@ -81,16 +81,16 @@ export default function DocenteNotasPage() {
               </div>
             </div>
 
-            <div>
+            <div className="w-full sm:w-auto">
               <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
                 Periodo / Bimestre:
               </label>
-              <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl border border-slate-200 dark:border-slate-700">
+              <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-x-auto max-w-full scrollbar-thin">
                 {evaluationPeriods.map((period) => (
                   <button
                     key={period.id}
                     onClick={() => setSelectedPeriodId(period.id)}
-                    className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all ${
+                    className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all shrink-0 ${
                       selectedPeriodId === period.id
                         ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm'
                         : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'

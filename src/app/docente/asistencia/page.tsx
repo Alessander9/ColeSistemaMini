@@ -259,54 +259,58 @@ export default function DocenteAsistenciaPage() {
                 </div>
               </div>
 
-              {/* Botones de Selección de Estado (4 Estados) */}
-              <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
+              {/* Botones de Selección de Estado (4 Estados) - Responsive en Celular */}
+              <div className="grid grid-cols-2 sm:flex sm:items-center gap-1.5 w-full sm:w-auto shrink-0">
                 <button
                   type="button"
                   onClick={() => handleSetStatus(enr.id, 'presente')}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                  className={`px-2.5 sm:px-3 py-2 sm:py-1.5 rounded-xl text-xs font-bold transition-all text-center flex items-center justify-center gap-1 active:scale-95 ${
                     st === 'presente'
                       ? 'bg-emerald-600 text-white shadow-sm'
                       : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-emerald-50 hover:text-emerald-700'
                   }`}
                 >
-                  ✓ Presente
+                  <Check className="w-3.5 h-3.5" />
+                  <span>Presente</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => handleSetStatus(enr.id, 'tardanza')}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                  className={`px-2.5 sm:px-3 py-2 sm:py-1.5 rounded-xl text-xs font-bold transition-all text-center flex items-center justify-center gap-1 active:scale-95 ${
                     st === 'tardanza'
                       ? 'bg-amber-500 text-white shadow-sm'
                       : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-amber-50 hover:text-amber-700'
                   }`}
                 >
-                  ⏱ Tardanza
+                  <Clock className="w-3.5 h-3.5" />
+                  <span>Tardanza</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => handleSetStatus(enr.id, 'justificado')}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                  className={`px-2.5 sm:px-3 py-2 sm:py-1.5 rounded-xl text-xs font-bold transition-all text-center flex items-center justify-center gap-1 active:scale-95 ${
                     st === 'justificado'
                       ? 'bg-blue-600 text-white shadow-sm'
                       : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-blue-50 hover:text-blue-700'
                   }`}
                 >
-                  📄 Justificada
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>Justificada</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => handleSetStatus(enr.id, 'falta')}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                  className={`px-2.5 sm:px-3 py-2 sm:py-1.5 rounded-xl text-xs font-bold transition-all text-center flex items-center justify-center gap-1 active:scale-95 ${
                     st === 'falta'
                       ? 'bg-rose-600 text-white shadow-sm'
                       : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-rose-50 hover:text-rose-700'
                   }`}
                 >
-                  ✕ Injustificada
+                  <XCircle className="w-3.5 h-3.5" />
+                  <span>Injustificada</span>
                 </button>
               </div>
             </div>
