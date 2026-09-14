@@ -42,25 +42,21 @@ export function Navbar({ onOpenMobileMenu }: NavbarProps) {
       <header className="sticky top-0 z-50 w-full border-b border-slate-200/70 dark:border-slate-800/70 bg-white/90 dark:bg-slate-950/90 backdrop-blur-xl">
         <div className="px-3 sm:px-6 h-16 flex items-center justify-between gap-3">
           
-          {/* Left: Mobile Hamburger / Desktop Toggle + Logo */}
+          {/* Left: Sidebar Toggle + Logo */}
           <div className="flex items-center gap-1.5 sm:gap-2">
-            {/* Mobile drawer trigger */}
+            {/* Sidebar toggle button (Desplegable / Colapsable) */}
             <button
               type="button"
-              onClick={onOpenMobileMenu}
-              className="md:hidden p-2 -ml-1 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
-              aria-label="Abrir menú"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
-
-            {/* Desktop sidebar toggle button */}
-            <button
-              type="button"
-              onClick={toggleSidebar}
-              className="hidden md:flex items-center justify-center p-2 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/80 rounded-xl transition-all active:scale-95 cursor-pointer"
-              title={isSidebarCollapsed ? "Desplegar menú lateral" : "Colapsar menú lateral"}
-              aria-label="Alternar barra lateral"
+              onClick={() => {
+                if (typeof window !== 'undefined' && window.innerWidth < 768) {
+                  if (onOpenMobileMenu) onOpenMobileMenu();
+                } else {
+                  toggleSidebar();
+                }
+              }}
+              className="flex items-center justify-center p-2 text-slate-600 hover:text-indigo-600 dark:text-slate-300 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-800/80 rounded-xl transition-all active:scale-95 cursor-pointer"
+              title={isSidebarCollapsed ? "Desplegar menú lateral" : "Ocultar menú lateral"}
+              aria-label="Alternar menú lateral"
             >
               {isSidebarCollapsed ? (
                 <PanelLeftOpen className="w-5 h-5 text-indigo-600 dark:text-indigo-400 animate-in fade-in duration-200" />
