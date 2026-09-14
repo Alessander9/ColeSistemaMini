@@ -19,17 +19,16 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 function PwaInstallBanner() {
+  const [mounted, setMounted] = useState(false);
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [dismissed, setDismissed] = useState(false);
-  const [notifPermission, setNotifPermission] = useState<NotificationPermission>('default');
-  const { requestPermission } = usePushNotifications();
+  const pathname = usePathname();
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    if ('Notification' in window) setNotifPermission(Notification.permission);
+    setMounted(true);
 
-    // Check if already dismissed
-    if (sessionStorage.getItem('pwa-banner-dismissed')) {
+    // Check if already dismissed in session
+    if (typeof window !== 'undefined' && sessionStorage.getItem('pwa-banner-dismissed')) {
       setDismissed(true);
       return;
     }
@@ -42,6 +41,12 @@ function PwaInstallBanner() {
     return () => window.removeEventListener('beforeinstallprompt', handler);
   }, []);
 
+  if (!mounted) return null;
+
+  // Don't show in kiosk/terminal, login, or if dismissed, or if no install prompt is ready
+  const isKioskOrLogin = pathname === '/asistencia' || pathname === '/login' || pathname === '/despedida' || pathname === '/bienvenida';
+  if (dismissed || isKioskOrLogin || !installPrompt) return null;
+
   const handleInstall = async () => {
     if (!installPrompt) return;
     await installPrompt.prompt();
@@ -51,28 +56,15 @@ function PwaInstallBanner() {
     sessionStorage.setItem('pwa-banner-dismissed', '1');
   };
 
-  const handleEnableNotifications = async () => {
-    const perm = await requestPermission();
-    setNotifPermission(perm);
-    if (perm === 'granted') {
-      sessionStorage.setItem('pwa-banner-dismissed', '1');
-      setDismissed(true);
-    }
-  };
-
   const handleDismiss = () => {
     setDismissed(true);
     sessionStorage.setItem('pwa-banner-dismissed', '1');
   };
 
-  // Show if: install available OR notifications not yet granted
-  const shouldShow = !dismissed && (installPrompt !== null || notifPermission === 'default');
-  if (!shouldShow) return null;
-
   return (
     <div className="fixed bottom-20 md:bottom-6 left-3 md:left-6 z-[9998] max-w-xs animate-in slide-in-from-bottom-4 duration-500">
       <div
-        className="relative rounded-2xl overflow-hidden border border-blue-400/30 bg-gradient-to-br from-blue-700 to-indigo-800"
+        className="relative rounded-2xl overflow-hidden border border-blue-400/30 bg-gradient-to-br from-blue-700 to-indigo-800 shadow-2xl"
         style={{ boxShadow: '0 8px 32px rgba(59,130,246,0.4), 0 0 0 1px rgba(255,255,255,0.08)' }}
       >
         <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/5 to-white/0 pointer-events-none" />
@@ -81,29 +73,16 @@ function PwaInstallBanner() {
             📱 ColeSistema
           </p>
           <p className="text-blue-100 text-xs leading-relaxed mb-3">
-            {installPrompt
-              ? 'Instala la app para acceso rápido y notificaciones nativas en tu celular'
-              : 'Activa notificaciones para recibir alertas de asistencia en tiempo real'}
+            Instala la aplicación en tu dispositivo para acceso rápido y control en tiempo real.
           </p>
           <div className="flex gap-2">
-            {installPrompt && (
-              <button
-                type="button"
-                onClick={handleInstall}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-white text-blue-700 font-bold text-xs rounded-xl shadow active:scale-95 transition-all cursor-pointer"
-              >
-                <Download className="w-3.5 h-3.5" /> Instalar App
-              </button>
-            )}
-            {notifPermission === 'default' && (
-              <button
-                type="button"
-                onClick={handleEnableNotifications}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500 hover:bg-blue-400 text-white font-bold text-xs rounded-xl shadow active:scale-95 transition-all cursor-pointer border border-blue-400"
-              >
-                <Bell className="w-3.5 h-3.5" /> Activar Notif.
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={handleInstall}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 bg-white text-blue-700 font-bold text-xs rounded-xl shadow active:scale-95 transition-all cursor-pointer hover:bg-blue-50"
+            >
+              <Download className="w-3.5 h-3.5" /> Instalar App
+            </button>
           </div>
         </div>
         <button
@@ -126,7 +105,7 @@ import { CommandPalette } from '@/components/layout/CommandPalette';
 // ─────────────────────────────────────────────────────────────────────────────
 function InnerShell({ children }: { children: React.ReactNode }) {
   const { toasts, removeToast } = useApp();
-  const { requestPermission, sendNotification } = usePushNotifications();
+  const { sendNotification } = usePushNotifications();
   const prevToastsRef = useRef<typeof toasts>([]);
 
   // When a new toast appears, also fire a push notification
@@ -145,16 +124,6 @@ function InnerShell({ children }: { children: React.ReactNode }) {
     }
     prevToastsRef.current = toasts;
   }, [toasts, sendNotification]);
-
-  // Ask for notification permission after 3 seconds on first meaningful interaction
-  useEffect(() => {
-    const timer = setTimeout(async () => {
-      if ('Notification' in window && Notification.permission === 'default') {
-        await requestPermission();
-      }
-    }, 3000);
-    return () => clearTimeout(timer);
-  }, [requestPermission]);
 
   return (
     <>
