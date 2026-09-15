@@ -2,35 +2,32 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useApp } from '@/context/AppContext';
 import { logoutUser } from '@/lib/services/authService';
-import { GraduationCap, ShieldCheck, Loader2 } from 'lucide-react';
+import { Sparkles, Heart } from 'lucide-react';
 
 export default function DespedidaPage() {
   const router = useRouter();
-  const [progress, setProgress] = useState(15);
+  const { currentUser } = useApp();
+  const [userName, setUserName] = useState<string>('');
+  const [userAvatar, setUserAvatar] = useState<string>('');
 
   useEffect(() => {
-    // 1. Limpieza total e incondicional de credenciales, tokens y cookies
-    logoutUser();
+    // 1. Obtener datos del usuario antes de limpiar la sesión
+    if (currentUser?.nombres) {
+      setUserName(currentUser.nombres.split(' ')[0]);
+      setUserAvatar(currentUser.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.nombres)}&background=6366f1&color=fff&size=200`);
+    }
 
-    // 2. Animación de barra de progreso fluida
-    const interval = setInterval(() => {
-      setProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          return 100;
-        }
-        return prev + 25;
-      });
-    }, 280);
+    // 2. Limpieza de sesión
+    logoutUser();
 
     // 3. Redirección automática a /login al culminar
     const timeout = setTimeout(() => {
       router.replace('/login');
-    }, 1400);
+    }, 2200);
 
     return () => {
-      clearInterval(interval);
       clearTimeout(timeout);
     };
   }, [router]);
@@ -38,46 +35,48 @@ export default function DespedidaPage() {
   return (
     <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center relative overflow-hidden px-4 select-none">
       {/* Ambient background glows */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-indigo-600/15 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute top-1/3 left-1/3 w-64 h-64 bg-emerald-600/10 rounded-full blur-[100px] pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-purple-600/15 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-1/4 left-1/3 w-64 h-64 bg-indigo-600/10 rounded-full blur-[100px] pointer-events-none" />
 
-      {/* Main Loading Card */}
-      <div className="relative z-10 flex flex-col items-center max-w-sm w-full text-center space-y-6 animate-in fade-in zoom-in-95 duration-300">
+      {/* Main Farewell Card */}
+      <div className="relative z-10 flex flex-col items-center max-w-sm w-full text-center space-y-6 animate-scale-up">
         
-        {/* Animated Brand Icon */}
+        {/* Foto de perfil en tamaño circular */}
         <div className="relative">
-          <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-indigo-600 via-purple-600 to-emerald-500 flex items-center justify-center shadow-2xl shadow-indigo-500/30">
-            <GraduationCap className="w-8 h-8 text-white" />
+          <img
+            src={userAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'}
+            alt={userName || 'Usuario'}
+            className="w-28 h-28 rounded-full object-cover ring-4 ring-purple-500/30 shadow-2xl shadow-purple-500/20 mx-auto"
+          />
+          <div className="absolute bottom-0 right-1 w-6 h-6 rounded-full bg-purple-500 border-2 border-slate-950 flex items-center justify-center">
+            <Heart className="w-3 h-3 text-white fill-white" />
           </div>
-          <div className="absolute -inset-2 rounded-3xl border border-indigo-500/20 animate-ping pointer-events-none" />
         </div>
 
-        {/* Status Text */}
-        <div className="space-y-1.5">
-          <h2 className="text-xl font-black text-white tracking-tight flex items-center justify-center gap-2">
-            <span>Cerrando sesión</span>
-            <Loader2 className="w-4 h-4 text-emerald-400 animate-spin" />
-          </h2>
-          <p className="text-xs text-slate-400 font-medium">
-            Finalizando sesión segura y limpiando credenciales...
+        {/* Mensaje de despedida */}
+        <div className="space-y-2">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-purple-950/60 border border-purple-800/60 text-purple-300 mx-auto">
+            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+            <span>Sesión Finalizada</span>
+          </div>
+
+          <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+            ¡Hasta luego{userName ? `, ${userName}` : ''}!
+          </h1>
+
+          <p className="text-sm text-slate-400 font-medium leading-relaxed max-w-xs mx-auto">
+            Gracias por tu dedicación y esfuerzo hoy. ¡Esperamos verte pronto en ColeSistema!
           </p>
         </div>
 
-        {/* Smooth Progress Bar */}
-        <div className="w-full space-y-2">
-          <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden p-0.5">
-            <div
-              className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-400 rounded-full transition-all duration-300 ease-out shadow-sm shadow-emerald-500/50"
-              style={{ width: `${progress}%` }}
-            />
+        {/* Indicador de cierre */}
+        <div className="pt-2 w-full max-w-xs space-y-2">
+          <div className="w-24 h-1 bg-slate-800 rounded-full overflow-hidden mx-auto">
+            <div className="h-full bg-gradient-to-r from-purple-500 to-indigo-500 rounded-full animate-pulse w-full" />
           </div>
-          <div className="flex justify-between items-center text-[10px] text-slate-500 font-semibold px-0.5">
-            <span className="flex items-center gap-1">
-              <ShieldCheck className="w-3 h-3 text-emerald-400" />
-              ColeSistema Mini
-            </span>
-            <span>{progress}%</span>
-          </div>
+          <p className="text-[11px] text-slate-500 font-medium">
+            Cerrando sesión de forma segura...
+          </p>
         </div>
 
       </div>

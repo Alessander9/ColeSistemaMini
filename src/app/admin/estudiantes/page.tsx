@@ -9,7 +9,8 @@ import { Modal } from '@/components/ui/Modal';
 import { QrCard } from '@/components/qr/QrCard';
 import { AvatarUploader } from '@/components/ui/AvatarUploader';
 import { Student } from '@/types';
-import { UserPlus, QrCode, Phone, UserCheck, ShieldCheck } from 'lucide-react';
+import { UserPlus, QrCode, Phone, UserCheck, ShieldCheck, User, Hash, School, Calendar } from 'lucide-react';
+import { SearchableSelect } from '@/components/ui/SearchableSelect';
 
 export default function AdminEstudiantesPage() {
   const { students, enrollments, addStudent } = useApp();
@@ -257,76 +258,113 @@ export default function AdminEstudiantesPage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Nombres *</label>
-              <input
-                required
-                type="text"
-                placeholder="Ej. Mateo Alejandro"
-                value={formData.nombres}
-                onChange={(e) => setFormData({ ...formData, nombres: e.target.value })}
-                className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
-              />
+              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                <User className="w-3.5 h-3.5 text-blue-500" />
+                Nombres *
+              </label>
+              <div className="relative">
+                <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  required
+                  type="text"
+                  placeholder="Ej. Mateo Alejandro"
+                  value={formData.nombres}
+                  onChange={(e) => setFormData({ ...formData, nombres: e.target.value })}
+                  className="w-full pl-10 pr-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
             </div>
-            <div>
-              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Apellidos *</label>
-              <input
-                required
-                type="text"
-                placeholder="Ej. Silva Quispe"
-                value={formData.apellidos}
-                onChange={(e) => setFormData({ ...formData, apellidos: e.target.value })}
-                className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-          </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">DNI del Alumno *</label>
-              <input
-                required
-                type="text"
-                maxLength={8}
-                placeholder="8 dígitos"
-                value={formData.dni}
-                onChange={(e) => setFormData({ ...formData, dni: e.target.value })}
-                className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
-              />
+              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                <User className="w-3.5 h-3.5 text-blue-500" />
+                Apellidos *
+              </label>
+              <div className="relative">
+                <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  required
+                  type="text"
+                  placeholder="Ej. Silva Quispe"
+                  value={formData.apellidos}
+                  onChange={(e) => setFormData({ ...formData, apellidos: e.target.value })}
+                  className="w-full pl-10 pr-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
             </div>
+
             <div>
-              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Sección de Matrícula *</label>
-              <select
+              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                <Hash className="w-3.5 h-3.5 text-blue-500" />
+                DNI del Alumno *
+              </label>
+              <div className="relative">
+                <Hash className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  required
+                  type="text"
+                  maxLength={8}
+                  placeholder="8 dígitos"
+                  value={formData.dni}
+                  onChange={(e) => setFormData({ ...formData, dni: e.target.value })}
+                  className="w-full pl-10 pr-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 font-mono"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                <School className="w-3.5 h-3.5 text-blue-500" />
+                Sección de Matrícula *
+              </label>
+              <SearchableSelect
                 value={formData.seccionId}
-                onChange={(e) => setFormData({ ...formData, seccionId: e.target.value })}
-                className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="sec-3pri-a">3° de Primaria &quot;A&quot;</option>
-                <option value="sec-3pri-b">3° de Primaria &quot;B&quot;</option>
-                <option value="sec-5pri-a">5° de Primaria &quot;A&quot;</option>
-              </select>
+                onChange={(val) => setFormData({ ...formData, seccionId: val })}
+                icon={<School className="w-4 h-4" />}
+                options={[
+                  { value: 'sec-3pri-a', label: '3° de Primaria "A"', sublabel: 'Nivel Primaria' },
+                  { value: 'sec-3pri-b', label: '3° de Primaria "B"', sublabel: 'Nivel Primaria' },
+                  { value: 'sec-5pri-a', label: '5° de Primaria "A"', sublabel: 'Nivel Primaria' },
+                  { value: 'sec-1sec-a', label: '1° de Secundaria "A"', sublabel: 'Nivel Secundaria' },
+                  { value: 'sec-2sec-a', label: '2° de Secundaria "A"', sublabel: 'Nivel Secundaria' },
+                  { value: 'sec-3sec-a', label: '3° de Secundaria "A"', sublabel: 'Nivel Secundaria' },
+                ]}
+                placeholder="Seleccionar salón..."
+              />
             </div>
-          </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Nombre del Apoderado</label>
-              <input
-                type="text"
-                placeholder="Ej. Jorge Silva Rodríguez"
-                value={formData.nombreApoderado}
-                onChange={(e) => setFormData({ ...formData, nombreApoderado: e.target.value })}
-                className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
-              />
+              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                <UserCheck className="w-3.5 h-3.5 text-blue-500" />
+                Nombre del Apoderado
+              </label>
+              <div className="relative">
+                <UserCheck className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="Ej. Jorge Silva Rodríguez"
+                  value={formData.nombreApoderado}
+                  onChange={(e) => setFormData({ ...formData, nombreApoderado: e.target.value })}
+                  className="w-full pl-10 pr-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
             </div>
+
             <div>
-              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Teléfono de Contacto</label>
-              <input
-                type="text"
-                placeholder="Ej. 955443322"
-                value={formData.telefonoApoderado}
-                onChange={(e) => setFormData({ ...formData, telefonoApoderado: e.target.value })}
-                className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
-              />
+              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                <Phone className="w-3.5 h-3.5 text-blue-500" />
+                Teléfono de Contacto
+              </label>
+              <div className="relative">
+                <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="Ej. 955443322"
+                  value={formData.telefonoApoderado}
+                  onChange={(e) => setFormData({ ...formData, telefonoApoderado: e.target.value })}
+                  className="w-full pl-10 pr-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 font-mono"
+                />
+              </div>
             </div>
           </div>
 

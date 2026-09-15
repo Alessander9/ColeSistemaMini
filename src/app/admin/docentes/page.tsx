@@ -28,9 +28,12 @@ import {
   Layers,
   Clock,
   ChevronRight,
-  UserCheck
+  UserCheck,
+  User,
+  Hash
 } from 'lucide-react';
 import Link from 'next/link';
+import { SearchableSelect } from '@/components/ui/SearchableSelect';
 
 export default function AdminDocentesPage() {
   const { 
@@ -268,18 +271,6 @@ export default function AdminDocentesPage() {
             <School className="w-4 h-4" />
             Matriz de Salones & Cursos ({sectionCourses.length})
           </button>
-        </div>
-
-        {/* Search Bar */}
-        <div className="relative min-w-[260px]">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Buscar por nombre, DNI o curso..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 text-xs rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
-          />
         </div>
       </div>
 
@@ -601,10 +592,10 @@ export default function AdminDocentesPage() {
       {/* MODAL 1: REGISTRAR NUEVO DOCENTE */}
       {isNewTeacherModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-fade-in">
-          <div className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-scale-up">
+          <div className="w-full max-w-xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-scale-up">
             <div className="p-6 border-b border-slate-100 dark:border-slate-800 bg-gradient-to-r from-indigo-600/10 to-purple-600/10 flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-2xl bg-indigo-600 text-white flex items-center justify-center">
+                <div className="w-9 h-9 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-md">
                   <UserPlus className="w-5 h-5" />
                 </div>
                 <div>
@@ -632,96 +623,121 @@ export default function AdminDocentesPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                    <User className="w-3.5 h-3.5 text-indigo-500" />
                     Nombres *
                   </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Ej. Juan Carlos"
-                    value={newTeacherData.nombres}
-                    onChange={(e) => setNewTeacherData({ ...newTeacherData, nombres: e.target.value })}
-                    className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-indigo-500 font-medium"
-                  />
+                  <div className="relative">
+                    <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <input
+                      type="text"
+                      required
+                      placeholder="Ej. Juan Carlos"
+                      value={newTeacherData.nombres}
+                      onChange={(e) => setNewTeacherData({ ...newTeacherData, nombres: e.target.value })}
+                      className="w-full pl-10 pr-3.5 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 font-medium"
+                    />
+                  </div>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                    <User className="w-3.5 h-3.5 text-indigo-500" />
                     Apellidos *
                   </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Ej. Quispe Flores"
-                    value={newTeacherData.apellidos}
-                    onChange={(e) => setNewTeacherData({ ...newTeacherData, apellidos: e.target.value })}
-                    className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-indigo-500 font-medium"
-                  />
+                  <div className="relative">
+                    <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <input
+                      type="text"
+                      required
+                      placeholder="Ej. Quispe Flores"
+                      value={newTeacherData.apellidos}
+                      onChange={(e) => setNewTeacherData({ ...newTeacherData, apellidos: e.target.value })}
+                      className="w-full pl-10 pr-3.5 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 font-medium"
+                    />
+                  </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                    <Hash className="w-3.5 h-3.5 text-indigo-500" />
                     DNI (8 dígitos) *
                   </label>
-                  <input
-                    type="text"
-                    required
-                    maxLength={8}
-                    placeholder="Ej. 45678912"
-                    value={newTeacherData.dni}
-                    onChange={(e) => setNewTeacherData({ ...newTeacherData, dni: e.target.value })}
-                    className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-indigo-500 font-medium"
-                  />
+                  <div className="relative">
+                    <Hash className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <input
+                      type="text"
+                      required
+                      maxLength={8}
+                      placeholder="Ej. 45678912"
+                      value={newTeacherData.dni}
+                      onChange={(e) => setNewTeacherData({ ...newTeacherData, dni: e.target.value })}
+                      className="w-full pl-10 pr-3.5 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 font-mono font-medium"
+                    />
+                  </div>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                    <Phone className="w-3.5 h-3.5 text-indigo-500" />
                     Teléfono Celular
                   </label>
-                  <input
-                    type="tel"
-                    placeholder="Ej. 987654321"
-                    value={newTeacherData.telefono}
-                    onChange={(e) => setNewTeacherData({ ...newTeacherData, telefono: e.target.value })}
-                    className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-indigo-500 font-medium"
-                  />
+                  <div className="relative">
+                    <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <input
+                      type="tel"
+                      placeholder="Ej. 987654321"
+                      value={newTeacherData.telefono}
+                      onChange={(e) => setNewTeacherData({ ...newTeacherData, telefono: e.target.value })}
+                      className="w-full pl-10 pr-3.5 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 font-mono font-medium"
+                    />
+                  </div>
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Especialidad / Área Principal *
-                </label>
-                <select
-                  value={newTeacherData.especialidad}
-                  onChange={(e) => setNewTeacherData({ ...newTeacherData, especialidad: e.target.value })}
-                  className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-indigo-500 font-medium"
-                >
-                  <option value="Matemática">Matemática (Aritmética, Álgebra, Geometría)</option>
-                  <option value="Comunicación">Comunicación y Literatura</option>
-                  <option value="Ciencia y Tecnología">Ciencia y Tecnología / Laboratorio</option>
-                  <option value="Inglés">Inglés como Lengua Extranjera</option>
-                  <option value="Personal Social">Personal Social / Ciencias Sociales</option>
-                  <option value="Educación Física">Educación Física y Deportes</option>
-                  <option value="Arte y Cultura">Arte y Cultura</option>
-                  <option value="Computación y Robótica">Computación y Robótica Educativa</option>
-                  <option value="Educación Religiosa">Educación Religiosa</option>
-                </select>
-              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                    <Award className="w-3.5 h-3.5 text-indigo-500" />
+                    Especialidad / Área Principal *
+                  </label>
+                  <SearchableSelect
+                    value={newTeacherData.especialidad}
+                    onChange={(val) => setNewTeacherData({ ...newTeacherData, especialidad: val })}
+                    icon={<Award className="w-4 h-4" />}
+                    options={[
+                      { value: 'Matemática', label: 'Matemática', sublabel: 'Aritmética, Álgebra, Geometría' },
+                      { value: 'Comunicación', label: 'Comunicación', sublabel: 'Lenguaje y Literatura' },
+                      { value: 'Ciencia y Tecnología', label: 'Ciencia y Tecnología', sublabel: 'Biología, Física, Química' },
+                      { value: 'Inglés', label: 'Inglés', sublabel: 'Lengua Extranjera' },
+                      { value: 'Personal Social', label: 'Personal Social', sublabel: 'Ciencias Sociales e Historia' },
+                      { value: 'Educación Física', label: 'Educación Física', sublabel: 'Deportes y Psicomotricidad' },
+                      { value: 'Arte y Cultura', label: 'Arte y Cultura', sublabel: 'Artes Visuales y Música' },
+                      { value: 'Computación y Robótica', label: 'Computación y Robótica', sublabel: 'TIC y Tecnología' },
+                      { value: 'Educación Religiosa', label: 'Educación Religiosa', sublabel: 'Valores y Fe' },
+                    ]}
+                    placeholder="Buscar especialidad..."
+                  />
+                </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Correo Electrónico (Opcional - se autogenera si se deja vacío)
-                </label>
-                <input
-                  type="email"
-                  placeholder="nombre.apellido@colegio.edu.pe"
-                  value={newTeacherData.email}
-                  onChange={(e) => setNewTeacherData({ ...newTeacherData, email: e.target.value })}
-                  className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-indigo-500 font-medium"
-                />
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                    <Mail className="w-3.5 h-3.5 text-indigo-500" />
+                    Correo Electrónico (Opcional)
+                  </label>
+                  <div className="relative">
+                    <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <input
+                      type="email"
+                      placeholder="nombre.apellido@colegio.edu.pe"
+                      value={newTeacherData.email}
+                      onChange={(e) => setNewTeacherData({ ...newTeacherData, email: e.target.value })}
+                      className="w-full pl-10 pr-3.5 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 font-medium"
+                    />
+                  </div>
+                </div>
               </div>
 
               <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3">
@@ -734,7 +750,7 @@ export default function AdminDocentesPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-md transition-all"
+                  className="px-5 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-md transition-all active:scale-95"
                 >
                   Guardar y Emitir Credenciales
                 </button>
@@ -747,10 +763,10 @@ export default function AdminDocentesPage() {
       {/* MODAL 2: ASIGNAR CURSO Y SALÓN A DOCENTE */}
       {isAssignModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-fade-in">
-          <div className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-scale-up">
+          <div className="w-full max-w-xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-scale-up">
             <div className="p-6 border-b border-slate-100 dark:border-slate-800 bg-gradient-to-r from-purple-600/10 to-indigo-600/10 flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-2xl bg-purple-600 text-white flex items-center justify-center">
+                <div className="w-9 h-9 rounded-2xl bg-purple-600 text-white flex items-center justify-center shadow-md">
                   <School className="w-5 h-5" />
                 </div>
                 <div>
@@ -769,98 +785,103 @@ export default function AdminDocentesPage() {
             </div>
 
             <form onSubmit={handleAssignCourse} className="p-6 space-y-4">
-              {/* Docente */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Profesor Responsable *
-                </label>
-                <select
-                  required
-                  value={selectedTeacherId}
-                  onChange={(e) => setSelectedTeacherId(e.target.value)}
-                  className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-purple-500 font-bold text-slate-800 dark:text-white"
-                >
-                  {teachers.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.nombres} {t.apellidos} — ({t.especialidad})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Salón / Sección */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Salón / Grado y Sección *
-                </label>
-                <select
-                  required
-                  value={selectedSectionId}
-                  onChange={(e) => setSelectedSectionId(e.target.value)}
-                  className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-purple-500 font-medium"
-                >
-                  <optgroup label="Primaria (6 Grados)">
-                    {sections.filter(s => s.grado?.nivel === 'primaria').map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.grado?.nombre} — Sección &quot;{s.letra}&quot; (Cap. {s.capacidad_maxima})
-                      </option>
-                    ))}
-                  </optgroup>
-                  <optgroup label="Secundaria (5 Grados)">
-                    {sections.filter(s => s.grado?.nivel === 'secundaria').map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.grado?.nombre} — Sección &quot;{s.letra}&quot; (Cap. {s.capacidad_maxima})
-                      </option>
-                    ))}
-                  </optgroup>
-                </select>
-              </div>
-
-              {/* Curso / Materia */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Área Curricular / Materia *
-                </label>
-                <select
-                  required
-                  value={selectedCourseId}
-                  onChange={(e) => setSelectedCourseId(e.target.value)}
-                  className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-purple-500 font-medium"
-                >
-                  {courses.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.nombre} ({c.codigo})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Docente */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    Horas Semanales *
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                    <UserCheck className="w-3.5 h-3.5 text-purple-500" />
+                    Profesor Responsable *
                   </label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={12}
-                    required
-                    value={horasSemanales}
-                    onChange={(e) => setHorasSemanales(Number(e.target.value))}
-                    className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-purple-500 font-bold"
+                  <SearchableSelect
+                    value={selectedTeacherId}
+                    onChange={(val) => setSelectedTeacherId(val)}
+                    icon={<UserCheck className="w-4 h-4" />}
+                    options={teachers.map((t) => ({
+                      value: t.id,
+                      label: `${t.nombres} ${t.apellidos}`,
+                      sublabel: t.especialidad || 'Docente',
+                    }))}
+                    placeholder="Buscar profesor..."
                   />
                 </div>
+
+                {/* Salón / Sección */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                    <School className="w-3.5 h-3.5 text-purple-500" />
+                    Salón / Sección *
+                  </label>
+                  <SearchableSelect
+                    value={selectedSectionId}
+                    onChange={(val) => setSelectedSectionId(val)}
+                    icon={<School className="w-4 h-4" />}
+                    options={sections.map((s) => ({
+                      value: s.id,
+                      label: `${s.grado?.nombre} "${s.letra}"`,
+                      sublabel: `Nivel ${s.grado?.nivel === 'primaria' ? 'Primaria' : 'Secundaria'} (Cap. ${s.capacidad_maxima})`,
+                    }))}
+                    placeholder="Buscar salón..."
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Curso / Materia */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                    <BookOpen className="w-3.5 h-3.5 text-purple-500" />
+                    Área Curricular / Materia *
+                  </label>
+                  <SearchableSelect
+                    value={selectedCourseId}
+                    onChange={(val) => setSelectedCourseId(val)}
+                    icon={<BookOpen className="w-4 h-4" />}
+                    options={courses.map((c) => ({
+                      value: c.id,
+                      label: c.nombre,
+                      sublabel: `Código: ${c.codigo}`,
+                    }))}
+                    placeholder="Buscar materia..."
+                  />
+                </div>
+
+                {/* Horas Semanales */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-purple-500" />
+                    Horas Semanales *
+                  </label>
+                  <div className="relative">
+                    <Clock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <input
+                      type="number"
+                      min={1}
+                      max={12}
+                      required
+                      value={horasSemanales}
+                      onChange={(e) => setHorasSemanales(Number(e.target.value))}
+                      className="w-full pl-10 pr-3.5 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-purple-500 font-bold"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                    <Building2 className="w-3.5 h-3.5 text-purple-500" />
                     Aula por Defecto
                   </label>
-                  <input
-                    type="text"
-                    value={aulaDefecto}
-                    onChange={(e) => setAulaDefecto(e.target.value)}
-                    placeholder="Ej. Aula 301 / Lab 1"
-                    className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-purple-500 font-medium"
-                  />
+                  <div className="relative">
+                    <Building2 className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <input
+                      type="text"
+                      value={aulaDefecto}
+                      onChange={(e) => setAulaDefecto(e.target.value)}
+                      placeholder="Ej. Aula 301 / Lab 1"
+                      className="w-full pl-10 pr-3.5 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-purple-500 font-medium"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -881,7 +902,7 @@ export default function AdminDocentesPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 text-xs font-bold text-white bg-purple-600 hover:bg-purple-700 rounded-xl shadow-md transition-all"
+                  className="px-5 py-2 text-xs font-bold text-white bg-purple-600 hover:bg-purple-700 rounded-xl shadow-md transition-all active:scale-95"
                 >
                   Guardar Asignación
                 </button>

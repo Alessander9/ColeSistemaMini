@@ -8,7 +8,8 @@ import { Modal } from '@/components/ui/Modal';
 import { GradeSelector } from '@/components/notas/GradeSelector';
 import { GradeBadge } from '@/components/notas/GradeBadge';
 import { TaskAssignment, GradeLetter } from '@/types';
-import { PlusCircle, BookOpen, Clock, Calendar, CheckCircle2, User, Award, Paperclip } from 'lucide-react';
+import { PlusCircle, BookOpen, Clock, Calendar, CheckCircle2, User, Award, Paperclip, FileText, School, AlignLeft } from 'lucide-react';
+import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import confetti from 'canvas-confetti';
 
 export default function DocenteTareasPage() {
@@ -222,55 +223,96 @@ export default function DocenteTareasPage() {
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
         title="Publicar Nueva Tarea Escolar"
-        maxWidth="lg"
+        maxWidth="xl"
       >
         <form onSubmit={handleCreateTask} className="space-y-4 text-xs">
-          <div>
-            <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Título de la Tarea *</label>
-            <input
-              required
-              type="text"
-              placeholder="Ej. Guía de Fracciones y Números Mixtos"
-              value={formData.titulo}
-              onChange={(e) => setFormData({ ...formData, titulo: e.target.value })}
-              className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Curso *</label>
-              <select
-                value={formData.cursoId}
-                onChange={(e) => setFormData({ ...formData, cursoId: e.target.value })}
-                className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
-              >
-                {courses.map((c) => (
-                  <option key={c.id} value={c.id}>{c.nombre}</option>
-                ))}
-              </select>
+              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                <FileText className="w-3.5 h-3.5 text-blue-500" />
+                Título de la Tarea *
+              </label>
+              <div className="relative">
+                <FileText className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  required
+                  type="text"
+                  placeholder="Ej. Guía de Fracciones y Números Mixtos"
+                  value={formData.titulo}
+                  onChange={(e) => setFormData({ ...formData, titulo: e.target.value })}
+                  className="w-full pl-10 pr-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
             </div>
+
             <div>
-              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Fecha y Hora Límite *</label>
-              <input
-                required
-                type="datetime-local"
-                value={formData.fechaLimite}
-                onChange={(e) => setFormData({ ...formData, fechaLimite: e.target.value })}
-                className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
+              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5 text-blue-500" />
+                Fecha y Hora Límite *
+              </label>
+              <div className="relative">
+                <Clock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  required
+                  type="datetime-local"
+                  value={formData.fechaLimite}
+                  onChange={(e) => setFormData({ ...formData, fechaLimite: e.target.value })}
+                  className="w-full pl-10 pr-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                <BookOpen className="w-3.5 h-3.5 text-blue-500" />
+                Curso o Materia *
+              </label>
+              <SearchableSelect
+                value={formData.cursoId}
+                onChange={(val) => setFormData({ ...formData, cursoId: val })}
+                icon={<BookOpen className="w-4 h-4" />}
+                options={courses.map((c) => ({
+                  value: c.id,
+                  label: c.nombre,
+                  sublabel: `Código: ${c.codigo}`,
+                }))}
+                placeholder="Buscar materia..."
+              />
+            </div>
+
+            <div>
+              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                <School className="w-3.5 h-3.5 text-blue-500" />
+                Salón / Sección *
+              </label>
+              <SearchableSelect
+                value={formData.seccionId}
+                onChange={(val) => setFormData({ ...formData, seccionId: val })}
+                icon={<School className="w-4 h-4" />}
+                options={[
+                  { value: 'sec-3pri-a', label: '3° de Primaria "A"', sublabel: 'Nivel Primaria' },
+                  { value: 'sec-3pri-b', label: '3° de Primaria "B"', sublabel: 'Nivel Primaria' },
+                  { value: 'sec-5pri-a', label: '5° de Primaria "A"', sublabel: 'Nivel Primaria' },
+                  { value: 'sec-1sec-a', label: '1° de Secundaria "A"', sublabel: 'Nivel Secundaria' },
+                  { value: 'sec-2sec-a', label: '2° de Secundaria "A"', sublabel: 'Nivel Secundaria' },
+                ]}
+                placeholder="Buscar salón..."
               />
             </div>
           </div>
 
           <div>
-            <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Instrucciones y Descripción *</label>
+            <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+              <AlignLeft className="w-3.5 h-3.5 text-blue-500" />
+              Instrucciones y Descripción *
+            </label>
             <textarea
               required
               rows={4}
               placeholder="Describe detalladamente los ejercicios o actividades que deben presentar los alumnos..."
               value={formData.descripcion}
               onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
-              className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 resize-none"
             />
           </div>
 
@@ -278,7 +320,7 @@ export default function DocenteTareasPage() {
             <button
               type="button"
               onClick={() => setIsAddModalOpen(false)}
-              className="px-4 py-2 font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 rounded-xl"
+              className="px-4 py-2 font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl"
             >
               Cancelar
             </button>

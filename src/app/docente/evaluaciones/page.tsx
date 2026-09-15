@@ -6,7 +6,8 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { DataTable, Column } from '@/components/ui/DataTable';
 import { Modal } from '@/components/ui/Modal';
 import { EvaluationExam } from '@/types';
-import { Calendar, PlusCircle, Clock, BookOpen, Layers, CheckCircle2 } from 'lucide-react';
+import { Calendar, PlusCircle, Clock, BookOpen, Layers, CheckCircle2, FileText, Award, Timer } from 'lucide-react';
+import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import confetti from 'canvas-confetti';
 
 export default function DocenteEvaluacionesPage() {
@@ -197,108 +198,152 @@ export default function DocenteEvaluacionesPage() {
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
         title="Programar Nueva Evaluación Escolar"
-        maxWidth="lg"
+        maxWidth="xl"
       >
         <form onSubmit={handleCreateExam} className="space-y-4 text-xs">
-          <div>
-            <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Título de la Evaluación *</label>
-            <input
-              required
-              type="text"
-              placeholder="Ej. Examen Mensual de Álgebra y Geometría"
-              value={formData.titulo}
-              onChange={(e) => setFormData({ ...formData, titulo: e.target.value })}
-              className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
-            />
-          </div>
-
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Curso *</label>
-              <select
-                value={formData.cursoId}
-                onChange={(e) => {
-                  const newCursoId = e.target.value;
-                  const firstComp = courses.find(c => c.id === newCursoId)?.competencias?.[0]?.id || 'comp-mat-1';
-                  setFormData({ ...formData, cursoId: newCursoId, competenciaId: firstComp });
-                }}
-                className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
-              >
-                {courses.map((c) => (
-                  <option key={c.id} value={c.id}>{c.nombre}</option>
-                ))}
-              </select>
+              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                <FileText className="w-3.5 h-3.5 text-blue-500" />
+                Título de la Evaluación *
+              </label>
+              <div className="relative">
+                <FileText className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  required
+                  type="text"
+                  placeholder="Ej. Examen Mensual de Álgebra"
+                  value={formData.titulo}
+                  onChange={(e) => setFormData({ ...formData, titulo: e.target.value })}
+                  className="w-full pl-10 pr-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
             </div>
+
             <div>
-              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Tipo de Evaluación *</label>
-              <select
+              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                <Award className="w-3.5 h-3.5 text-blue-500" />
+                Tipo de Evaluación *
+              </label>
+              <SearchableSelect
                 value={formData.tipo}
-                onChange={(e) => setFormData({ ...formData, tipo: e.target.value as 'examen' | 'practica' | 'proyecto' })}
-                className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
-              >
-                <option value="examen">Examen Mensual / Bimestral</option>
-                <option value="practica">Práctica Calificada</option>
-                <option value="proyecto">Proyecto / Exposición</option>
-              </select>
+                onChange={(val) => setFormData({ ...formData, tipo: val as 'examen' | 'practica' | 'proyecto' })}
+                icon={<Award className="w-4 h-4" />}
+                options={[
+                  { value: 'examen', label: 'Examen Mensual / Bimestral', sublabel: 'Evaluación Sumativa' },
+                  { value: 'practica', label: 'Práctica Calificada', sublabel: 'Evaluación Formativa' },
+                  { value: 'proyecto', label: 'Proyecto / Exposición', sublabel: 'Rúbrica de Desempeño' },
+                ]}
+                placeholder="Buscar tipo..."
+              />
             </div>
-          </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Competencia a Evaluar *</label>
-              <select
+              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                <BookOpen className="w-3.5 h-3.5 text-blue-500" />
+                Curso o Materia *
+              </label>
+              <SearchableSelect
+                value={formData.cursoId}
+                onChange={(val) => {
+                  const firstComp = courses.find(c => c.id === val)?.competencias?.[0]?.id || 'comp-mat-1';
+                  setFormData({ ...formData, cursoId: val, competenciaId: firstComp });
+                }}
+                icon={<BookOpen className="w-4 h-4" />}
+                options={courses.map((c) => ({
+                  value: c.id,
+                  label: c.nombre,
+                  sublabel: `Código: ${c.codigo}`,
+                }))}
+                placeholder="Buscar materia..."
+              />
+            </div>
+
+            <div>
+              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                <Layers className="w-3.5 h-3.5 text-blue-500" />
+                Competencia a Evaluar *
+              </label>
+              <SearchableSelect
                 value={formData.competenciaId}
-                onChange={(e) => setFormData({ ...formData, competenciaId: e.target.value })}
-                className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
-              >
-                {(courses.find(c => c.id === formData.cursoId)?.competencias || []).map((comp) => (
-                  <option key={comp.id} value={comp.id}>{comp.codigo} — {comp.descripcion}</option>
-                ))}
-              </select>
+                onChange={(val) => setFormData({ ...formData, competenciaId: val })}
+                icon={<Layers className="w-4 h-4" />}
+                options={(courses.find(c => c.id === formData.cursoId)?.competencias || []).map((comp) => ({
+                  value: comp.id,
+                  label: comp.codigo,
+                  sublabel: comp.descripcion,
+                }))}
+                placeholder="Buscar competencia..."
+              />
             </div>
+
             <div>
-              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Bimestre / Periodo</label>
-              <select
+              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-blue-500" />
+                Bimestre / Periodo *
+              </label>
+              <SearchableSelect
                 value={formData.periodoEvaluacionId}
-                onChange={(e) => setFormData({ ...formData, periodoEvaluacionId: e.target.value })}
-                className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
-              >
-                {evaluationPeriods.map((p) => (
-                  <option key={p.id} value={p.id}>{p.nombre}</option>
-                ))}
-              </select>
+                onChange={(val) => setFormData({ ...formData, periodoEvaluacionId: val })}
+                icon={<Calendar className="w-4 h-4" />}
+                options={evaluationPeriods.map((p) => ({
+                  value: p.id,
+                  label: p.nombre,
+                  sublabel: `Periodo ${p.numero_periodo}`,
+                }))}
+                placeholder="Buscar periodo..."
+              />
             </div>
-          </div>
 
+            <div>
+              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-blue-500" />
+                Fecha Programada *
+              </label>
+              <div className="relative">
+                <Calendar className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  required
+                  type="date"
+                  value={formData.fechaProgramada}
+                  onChange={(e) => setFormData({ ...formData, fechaProgramada: e.target.value })}
+                  className="w-full pl-10 pr-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Fecha *</label>
-              <input
-                required
-                type="date"
-                value={formData.fechaProgramada}
-                onChange={(e) => setFormData({ ...formData, fechaProgramada: e.target.value })}
-                className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
-              />
+              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5 text-blue-500" />
+                Hora de Inicio
+              </label>
+              <div className="relative">
+                <Clock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  type="time"
+                  value={formData.horaInicio}
+                  onChange={(e) => setFormData({ ...formData, horaInicio: e.target.value })}
+                  className="w-full pl-10 pr-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
             </div>
+
             <div>
-              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Hora Inicio</label>
-              <input
-                type="time"
-                value={formData.horaInicio}
-                onChange={(e) => setFormData({ ...formData, horaInicio: e.target.value })}
-                className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
-              />
-            </div>
-            <div>
-              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Duración (min)</label>
-              <input
-                type="number"
-                value={formData.duracionMinutos}
-                onChange={(e) => setFormData({ ...formData, duracionMinutos: Number(e.target.value) })}
-                className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
-              />
+              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                <Timer className="w-3.5 h-3.5 text-blue-500" />
+                Duración (minutos)
+              </label>
+              <div className="relative">
+                <Timer className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  type="number"
+                  min={10}
+                  max={240}
+                  value={formData.duracionMinutos}
+                  onChange={(e) => setFormData({ ...formData, duracionMinutos: Number(e.target.value) })}
+                  className="w-full pl-10 pr-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 font-bold"
+                />
+              </div>
             </div>
           </div>
 
@@ -306,13 +351,13 @@ export default function DocenteEvaluacionesPage() {
             <button
               type="button"
               onClick={() => setIsAddModalOpen(false)}
-              className="px-4 py-2 font-bold text-slate-600 rounded-xl"
+              className="px-4 py-2 font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl"
             >
               Cancelar
             </button>
             <button
               type="submit"
-              className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow"
+              className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow transition-all active:scale-95"
             >
               Guardar y Notificar
             </button>

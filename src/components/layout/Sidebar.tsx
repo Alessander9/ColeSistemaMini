@@ -29,8 +29,6 @@ import {
   HelpCircle,
   LucideIcon,
   HeartHandshake,
-  PanelLeftClose,
-  PanelLeftOpen,
   X
 } from 'lucide-react';
 
@@ -54,14 +52,11 @@ interface SidebarProps {
 
 export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
   const pathname = usePathname();
-  const { currentUser, gradeLevels, sections, isSidebarCollapsed, toggleSidebar } = useApp();
+  const { currentUser, gradeLevels, sections, isSidebarCollapsed } = useApp();
 
   const [isInicialOpen, setIsInicialOpen] = useState(false);
   const [isPrimariaOpen, setIsPrimariaOpen] = useState(true);
   const [isSecundariaOpen, setIsSecundariaOpen] = useState(false);
-
-  // In mobile drawer, always expand full width
-  const isCollapsed = !isMobileDrawer && isSidebarCollapsed;
 
   const handleLinkClick = () => {
     if (isMobileDrawer && onClose) {
@@ -226,17 +221,24 @@ export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
 
   return (
     <aside 
+      style={
+        isMobileDrawer 
+          ? undefined 
+          : { 
+              width: isDesktopCollapsed ? '80px' : '288px',
+              minWidth: isDesktopCollapsed ? '80px' : '288px',
+              transition: 'width 300ms cubic-bezier(0.4, 0, 0.2, 1), min-width 300ms cubic-bezier(0.4, 0, 0.2, 1)',
+            }
+      }
       className={
         isMobileDrawer 
           ? 'flex flex-col h-full w-full bg-white dark:bg-slate-900 select-none' 
-          : `hidden md:flex flex-col h-full bg-white dark:bg-slate-900 border-r border-slate-200/80 dark:border-slate-800 select-none shrink-0 transition-all duration-300 ease-in-out ${
-              isDesktopCollapsed ? 'w-20' : 'w-72'
-            }`
+          : 'hidden md:flex flex-col h-full bg-white dark:bg-slate-900 border-r border-slate-200/80 dark:border-slate-800 select-none shrink-0 overflow-hidden'
       }
     >
       {/* Header Institucional */}
       <div className={`flex items-center border-b border-slate-100 dark:border-slate-800/80 shrink-0 transition-all duration-300 ${
-        isDesktopCollapsed ? 'flex-col justify-center py-3.5 px-2 gap-2' : 'justify-between px-4 py-4'
+        isDesktopCollapsed ? 'justify-center py-4 px-2' : 'justify-between px-4 py-4'
       }`}>
         <Link 
           href={currentUser?.rol ? `/${currentUser.rol}` : '/login'}
@@ -247,7 +249,7 @@ export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
             CS
           </div>
           {!isDesktopCollapsed && (
-            <div className="min-w-0 overflow-hidden animate-in fade-in duration-200">
+            <div className="min-w-0 overflow-hidden whitespace-nowrap animate-in fade-in duration-200">
               <h2 className="text-sm font-bold text-slate-900 dark:text-white leading-tight truncate">
                 ColeSistemaMini
               </h2>
@@ -258,8 +260,8 @@ export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
           )}
         </Link>
 
-        {/* Toggle Button / Close Mobile Button */}
-        {isMobileDrawer ? (
+        {/* Close button ONLY for mobile drawer */}
+        {isMobileDrawer && (
           <button
             type="button"
             onClick={onClose}
@@ -268,38 +270,24 @@ export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
           >
             <X className="w-5 h-5" />
           </button>
-        ) : (
-          <button
-            type="button"
-            onClick={toggleSidebar}
-            className="p-1.5 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 rounded-lg transition-colors cursor-pointer"
-            title={isDesktopCollapsed ? "Expandir barra lateral" : "Colapsar barra lateral"}
-            aria-label={isDesktopCollapsed ? "Expandir menú" : "Colapsar menú"}
-          >
-            {isDesktopCollapsed ? (
-              <PanelLeftOpen className="w-4 h-4 text-indigo-600 dark:text-indigo-400 animate-in zoom-in-75 duration-150" />
-            ) : (
-              <PanelLeftClose className="w-4 h-4" />
-            )}
-          </button>
         )}
       </div>
 
       {/* Navigation Scroll Area */}
       <div className={`flex-1 overflow-y-auto space-y-6 custom-scrollbar transition-all duration-300 ${
-        isDesktopCollapsed ? 'px-2 py-3 space-y-4' : 'px-3.5 py-4'
+        isDesktopCollapsed ? 'px-2 py-3 space-y-3' : 'px-3.5 py-4'
       }`}>
         {currentNav.map((sec, idx) => (
           <div key={idx} className="space-y-1">
             {!isDesktopCollapsed ? (
-              <h3 className="px-3 text-[10px] font-bold tracking-wider uppercase text-slate-400 dark:text-slate-500 mb-1.5 animate-in fade-in duration-200">
+              <h3 className="px-3 text-[10px] font-bold tracking-wider uppercase text-slate-400 dark:text-slate-500 mb-1.5 whitespace-nowrap animate-in fade-in duration-200">
                 {sec.section}
               </h3>
             ) : (
               idx > 0 && <div className="h-px bg-slate-100 dark:bg-slate-800 my-2 mx-1" />
             )}
 
-            <div className="space-y-0.5">
+            <div className="space-y-1">
               {sec.items.map((item) => {
                 const Icon = item.icon;
                 const isActive = pathname === item.href;
@@ -329,7 +317,7 @@ export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
                         isActive ? 'text-white' : 'text-slate-400 group-hover:text-indigo-600 dark:group-hover:text-indigo-400'
                       }`} />
                       {!isDesktopCollapsed && (
-                        <span className="truncate">{item.label}</span>
+                        <span className="truncate whitespace-nowrap">{item.label}</span>
                       )}
                     </div>
 
@@ -341,7 +329,7 @@ export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
                           title={item.badge}
                         />
                       ) : (
-                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 whitespace-nowrap ${
                           isActive
                             ? 'bg-white/20 text-white'
                             : item.badgeColor || 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
@@ -357,10 +345,10 @@ export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
           </div>
         ))}
 
-        {/* Explorador de Aulas por Nivel (Solo Admin) */}
+        {/* Explorador de Aulas por Nivel (Solo Admin, visible en modo expandido) */}
         {currentUser?.rol === 'admin' && !isDesktopCollapsed && (
           <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 space-y-2 animate-in fade-in duration-200">
-            <h3 className="px-3 text-[10px] font-bold tracking-wider uppercase text-slate-400 dark:text-slate-500">
+            <h3 className="px-3 text-[10px] font-bold tracking-wider uppercase text-slate-400 dark:text-slate-500 whitespace-nowrap">
               SECCIONES POR NIVEL
             </h3>
 
@@ -369,7 +357,7 @@ export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
               <button
                 type="button"
                 onClick={() => setIsInicialOpen(!isInicialOpen)}
-                className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/60 cursor-pointer"
+                className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/60 cursor-pointer whitespace-nowrap"
               >
                 <div className="flex items-center gap-2">
                   <span>🧸</span> Inicial (3-5 Años)
@@ -407,7 +395,7 @@ export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
               <button
                 type="button"
                 onClick={() => setIsPrimariaOpen(!isPrimariaOpen)}
-                className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/60 cursor-pointer"
+                className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/60 cursor-pointer whitespace-nowrap"
               >
                 <div className="flex items-center gap-2">
                   <span>📚</span> Primaria (1°-6° Grado)
@@ -445,7 +433,7 @@ export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
               <button
                 type="button"
                 onClick={() => setIsSecundariaOpen(!isSecundariaOpen)}
-                className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/60 cursor-pointer"
+                className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/60 cursor-pointer whitespace-nowrap"
               >
                 <div className="flex items-center gap-2">
                   <span>🎓</span> Secundaria (1°-5° Año)
@@ -483,27 +471,22 @@ export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
 
       {/* Footer Info */}
       <div className={`border-t border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-800/40 shrink-0 transition-all duration-300 ${
-        isDesktopCollapsed ? 'p-2 flex flex-col items-center gap-1.5' : 'p-3.5 flex items-center justify-between'
+        isDesktopCollapsed ? 'p-2 flex flex-col items-center justify-center' : 'p-3.5'
       }`}>
         {!isDesktopCollapsed ? (
-          <>
-            <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 w-full">
-              <span className="font-semibold">Año Escolar 2026</span>
-              <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                II Bimestre
-              </span>
-            </div>
-          </>
+          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap animate-in fade-in duration-200">
+            <span className="font-semibold">Año Escolar 2026</span>
+            <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+              II Bimestre
+            </span>
+          </div>
         ) : (
-          <button
-            type="button"
-            onClick={toggleSidebar}
-            className="w-9 h-9 flex items-center justify-center rounded-xl bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 border border-slate-200 dark:border-slate-700 shadow-xs cursor-pointer transition-all hover:scale-105 active:scale-95"
-            title="Expandir menú lateral"
-            aria-label="Expandir menú lateral"
+          <div 
+            className="text-[10px] font-bold text-slate-400 text-center py-1 cursor-default"
+            title="Año Escolar 2026 – II Bimestre"
           >
-            <PanelLeftOpen className="w-4 h-4" />
-          </button>
+            2026
+          </div>
         )}
       </div>
     </aside>

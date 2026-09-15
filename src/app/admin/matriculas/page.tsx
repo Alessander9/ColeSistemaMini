@@ -1,9 +1,12 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
+import Link from 'next/link';
 import { useApp } from '@/context/AppContext';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { Student } from '@/types';
+import { DataTable, Column, FilterChip } from '@/components/ui/DataTable';
+import { Modal } from '@/components/ui/Modal';
+import { Student, Enrollment } from '@/types';
 import { AvatarUploader } from '@/components/ui/AvatarUploader';
 import { QrCard } from '@/components/qr/QrCard';
 import {
@@ -25,11 +28,21 @@ import {
   Upload,
   Sparkles,
   QrCode,
-  Copy
+  Copy,
+  ExternalLink,
+  Building2,
+  Lock
 } from 'lucide-react';
+import { SearchableSelect } from '@/components/ui/SearchableSelect';
 
 export default function AdminMatriculasPage() {
   const { enrollments, addStudent, sections, gradeLevels, students, showToast } = useApp();
+
+  // Selected Enrollment for QR Modal
+  const [selectedEnrollmentForQr, setSelectedEnrollmentForQr] = useState<Enrollment | null>(null);
+
+  // Active filter tab (todos, inicial, primaria, secundaria, activo)
+  const [activeFilter, setActiveFilter] = useState<string>('todos');
 
   // Wizard State (Steps 1 to 6)
   const [isWizardOpen, setIsWizardOpen] = useState(false);
@@ -68,7 +81,7 @@ export default function AdminMatriculasPage() {
 
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
-  // Available sections for chosen grade
+  // Available sections for chosen grade in wizard
   const availableSections = useMemo(
     () => sections.filter(s => s.grado_id === wizardData.gradoId),
     [sections, wizardData.gradoId]
@@ -155,8 +168,182 @@ export default function AdminMatriculasPage() {
     setTimeout(() => setCopiedField(null), 2000);
   };
 
+  // Filter chips with dynamic counts
+  const filterChips: FilterChip[] = useMemo(() => [
+    { id: 'todos', label: 'Todas las Matrículas', count: enrollments.length },
+    { id: 'inicial', label: '🧸 Inicial', count: enrollments.filter(e => e.seccion?.grado?.nivel === 'inicial').length },
+    { id: 'primaria', label: '📚 Primaria', count: enrollments.filter(e => e.seccion?.grado?.nivel === 'primaria').length },
+    { id: 'secundaria', label: '🎓 Secundaria', count: enrollments.filter(e => e.seccion?.grado?.nivel === 'secundaria').length },
+    { id: 'activo', label: '✅ Activas', count: enrollments.filter(e => e.estado === 'activo').length },
+  ], [enrollments]);
+
+  // Filtered enrollments list based on active tab
+  const filteredEnrollments = useMemo(() => {
+    return enrollments.filter((enr) => {
+      if (activeFilter === 'todos') return true;
+      if (activeFilter === 'inicial') return enr.seccion?.grado?.nivel === 'inicial';
+      if (activeFilter === 'primaria') return enr.seccion?.grado?.nivel === 'primaria';
+      if (activeFilter === 'secundaria') return enr.seccion?.grado?.nivel === 'secundaria';
+      if (activeFilter === 'activo') return enr.estado === 'activo';
+      return true;
+    });
+  }, [enrollments, activeFilter]);
+
+  // Level badge styling helper
+  const getLevelBadgeClass = (nivel?: string) => {
+    switch (nivel) {
+      case 'inicial':
+        return 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800';
+      case 'primaria':
+        return 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800';
+      case 'secundaria':
+        return 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/50 dark:text-purple-300 dark:border-purple-800';
+      default:
+        return 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700';
+    }
+  };
+
+  // DataTable Columns Definition
+  const columns: Column<Enrollment>[] = [
+    {
+      header: 'Estudiante',
+      cell: (enr) => {
+        const student = enr.estudiante;
+        const fullName = `${student?.profile?.apellidos || ''}, ${student?.profile?.nombres || ''}`.trim() || 'Estudiante';
+        const avatarUrl = student?.profile?.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150';
+
+        return (
+          <div className="flex items-center gap-3">
+            <img
+              src={avatarUrl}
+              alt={fullName}
+              className="w-9 h-9 rounded-xl object-cover border border-slate-200 dark:border-slate-700 shrink-0"
+            />
+            <div className="min-w-0">
+              <p className="font-extrabold text-slate-800 dark:text-white truncate">
+                {fullName}
+              </p>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span className="text-[10px] font-mono font-bold text-slate-400">
+                  {student?.codigo_estudiante || 'EST-2026'}
+                </span>
+                {student?.profile?.dni && (
+                  <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-semibold">
+                    DNI {student.profile.dni}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      header: 'Nivel / Grado',
+      cell: (enr) => {
+        const nivel = enr.seccion?.grado?.nivel;
+        const gradoNombre = enr.seccion?.grado?.nombre || 'Grado 2026';
+        return (
+          <div className="flex flex-col gap-1 items-start">
+            <span
+              className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide border ${getLevelBadgeClass(nivel)}`}
+            >
+              {nivel === 'inicial' && '🧸 Inicial'}
+              {nivel === 'primaria' && '📚 Primaria'}
+              {nivel === 'secundaria' && '🎓 Secundaria'}
+              {!['inicial', 'primaria', 'secundaria'].includes(nivel || '') && (nivel || 'Académico')}
+            </span>
+            <span className="font-semibold text-slate-800 dark:text-slate-200 text-xs">
+              {gradoNombre}
+            </span>
+          </div>
+        );
+      },
+    },
+    {
+      header: 'Sección',
+      cell: (enr) => (
+        <div className="flex flex-col items-start gap-0.5">
+          <span className="font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded-lg border border-indigo-200/60 dark:border-indigo-800 text-xs">
+            Aula {enr.seccion?.letra || 'A'}
+          </span>
+          <span className="text-[10px] text-slate-400 font-medium">
+            {enr.seccion?.capacidad_maxima || 30} vacantes
+          </span>
+        </div>
+      ),
+    },
+    {
+      header: 'Apoderado / Contacto',
+      cell: (enr) => (
+        <div className="text-xs">
+          <p className="font-bold text-slate-700 dark:text-slate-300">
+            {enr.estudiante?.nombre_apoderado || 'No registrado'}
+          </p>
+          <p className="text-[11px] text-slate-400 flex items-center gap-1 mt-0.5">
+            <Phone className="w-3 h-3 text-slate-400" />
+            <span>{enr.estudiante?.telefono_apoderado || '-'}</span>
+          </p>
+        </div>
+      ),
+    },
+    {
+      header: 'Fecha Matrícula',
+      cell: (enr) => (
+        <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
+          <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+          <span className="font-medium">
+            {enr.fecha_matricula || '2026-02-15'}
+          </span>
+        </div>
+      ),
+    },
+    {
+      header: 'Estado',
+      cell: (enr) => (
+        <span
+          className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
+            enr.estado === 'activo'
+              ? 'bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800'
+              : 'bg-slate-100 text-slate-600 border-slate-300 dark:bg-slate-800 dark:text-slate-400'
+          }`}
+        >
+          {enr.estado}
+        </span>
+      ),
+    },
+    {
+      header: 'Acciones',
+      cell: (enr) => (
+        <div className="flex items-center gap-2">
+          {enr.estudiante && (
+            <button
+              type="button"
+              onClick={() => setSelectedEnrollmentForQr(enr)}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all cursor-pointer active:scale-95"
+              title="Ver Carnet Escolar QR"
+            >
+              <QrCode className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+              Carnet QR
+            </button>
+          )}
+          {enr.estudiante_id && (
+            <Link
+              href={`/admin/estudiantes/${enr.estudiante_id}`}
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-all cursor-pointer active:scale-95"
+              title="Ver Perfil Completo del Estudiante"
+            >
+              Perfil
+              <ArrowRight className="w-3 h-3" />
+            </Link>
+          )}
+        </div>
+      ),
+    },
+  ];
+
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-12">
+    <div className="space-y-6 max-w-7xl mx-auto pb-12 animate-in fade-in-50">
       
       {/* Page Header */}
       <PageHeader
@@ -310,25 +497,33 @@ export default function AdminMatriculasPage() {
 
                   {/* Grado */}
                   <div>
-                    <label className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-1 block">Grado / Aula</label>
-                    <select
+                    <SearchableSelect
+                      label="Grado / Aula"
+                      icon={<GraduationCap className="w-3.5 h-3.5" />}
                       value={wizardData.gradoId}
-                      onChange={e => {
-                        const gid = e.target.value;
+                      onChange={(gid: string) => {
                         const secs = sections.filter(s => s.grado_id === gid);
                         setWizardData({ ...wizardData, gradoId: gid, seccionId: secs[0]?.id || '' });
                       }}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white outline-none"
-                    >
-                      {availableGrades.map(g => (
-                        <option key={g.id} value={g.id}>{g.nombre}</option>
-                      ))}
-                    </select>
+                      options={availableGrades.map(g => ({
+                        value: g.id,
+                        label: g.nombre,
+                        sublabel: `Nivel ${g.nivel.toUpperCase()}`,
+                        icon: <GraduationCap className="w-3.5 h-3.5 text-indigo-500" />
+                      }))}
+                      placeholder="Seleccionar grado escolar..."
+                      searchPlaceholder="Buscar grado (ej. 3°, 5°)..."
+                      maxVisibleResults={2}
+                      required
+                    />
                   </div>
 
                   {/* Sección */}
                   <div>
-                    <label className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-1 block">Sección Asignada</label>
+                    <label className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-1 flex items-center gap-1.5">
+                      <Layers className="w-3.5 h-3.5 text-slate-400" />
+                      <span>Sección Asignada</span>
+                    </label>
                     <div className="flex gap-2">
                       {availableSections.map(sec => (
                         <button
@@ -359,7 +554,10 @@ export default function AdminMatriculasPage() {
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-1 block">Nombre del Apoderado *</label>
+                      <label className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-1 flex items-center gap-1.5">
+                        <User className="w-3.5 h-3.5 text-slate-400" />
+                        <span>Nombre del Apoderado *</span>
+                      </label>
                       <input
                         type="text"
                         value={wizardData.nombreApoderado}
@@ -369,7 +567,10 @@ export default function AdminMatriculasPage() {
                       />
                     </div>
                     <div>
-                      <label className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-1 block">Teléfono / WhatsApp *</label>
+                      <label className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-1 flex items-center gap-1.5">
+                        <Phone className="w-3.5 h-3.5 text-slate-400" />
+                        <span>Teléfono / WhatsApp *</span>
+                      </label>
                       <input
                         type="text"
                         value={wizardData.telefonoApoderado}
@@ -379,7 +580,10 @@ export default function AdminMatriculasPage() {
                       />
                     </div>
                     <div>
-                      <label className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-1 block">Correo Electrónico</label>
+                      <label className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-1 flex items-center gap-1.5">
+                        <Mail className="w-3.5 h-3.5 text-slate-400" />
+                        <span>Correo Electrónico</span>
+                      </label>
                       <input
                         type="email"
                         value={wizardData.emailApoderado}
@@ -389,16 +593,22 @@ export default function AdminMatriculasPage() {
                       />
                     </div>
                     <div>
-                      <label className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-1 block">Parentesco</label>
-                      <select
+                      <SearchableSelect
+                        label="Parentesco Legal"
+                        icon={<User className="w-3.5 h-3.5" />}
                         value={wizardData.parentesco}
-                        onChange={e => setWizardData({ ...wizardData, parentesco: e.target.value })}
-                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white outline-none"
-                      >
-                        <option value="Padre">Padre</option>
-                        <option value="Madre">Madre</option>
-                        <option value="Tutor Legal">Tutor Legal</option>
-                      </select>
+                        onChange={(p: string) => setWizardData({ ...wizardData, parentesco: p })}
+                        options={[
+                          { value: 'Padre', label: 'Padre', sublabel: 'Progenitor legal' },
+                          { value: 'Madre', label: 'Madre', sublabel: 'Progenitora legal' },
+                          { value: 'Tutor Legal', label: 'Tutor Legal', sublabel: 'Apoderado judicial' },
+                          { value: 'Abuelo/a', label: 'Abuelo / Abuela', sublabel: 'Familiar directo' },
+                          { value: 'Tío/a', label: 'Tío / Tía', sublabel: 'Familiar' },
+                        ]}
+                        placeholder="Seleccionar parentesco..."
+                        searchPlaceholder="Buscar parentesco..."
+                        maxVisibleResults={2}
+                      />
                     </div>
                   </div>
                 </div>
@@ -567,55 +777,157 @@ export default function AdminMatriculasPage() {
         </div>
       )}
 
-      {/* Enrollments Table */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-sm space-y-4">
-        <h3 className="text-base font-bold text-slate-900 dark:text-white">
-          Padrón de Matrículas Activas (2026)
-        </h3>
+      {/* Enrollments DataTable with Search, Level Filters, Pagination and Grid/List Mode */}
+      <DataTable
+        title="Padrón de Matrículas Activas (2026)"
+        data={filteredEnrollments}
+        columns={columns}
+        filterChips={filterChips}
+        activeFilter={activeFilter}
+        onFilterChange={setActiveFilter}
+        searchPlaceholder="Buscar por estudiante, DNI, código, nivel, grado, aula o apoderado..."
+        itemsPerPage={10}
+        searchFilter={(enr, q) => {
+          const student = enr.estudiante;
+          const profile = student?.profile;
+          const fullName = `${profile?.nombres || ''} ${profile?.apellidos || ''}`.toLowerCase();
+          const dni = (profile?.dni || '').toLowerCase();
+          const code = (student?.codigo_estudiante || '').toLowerCase();
+          const level = (enr.seccion?.grado?.nivel || '').toLowerCase();
+          const grade = (enr.seccion?.grado?.nombre || '').toLowerCase();
+          const section = `aula ${enr.seccion?.letra || ''}`.toLowerCase();
+          const guardian = (student?.nombre_apoderado || '').toLowerCase();
+          const phone = (student?.telefono_apoderado || '').toLowerCase();
+          const status = (enr.estado || '').toLowerCase();
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs text-left border-collapse">
-            <thead>
-              <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-400 font-bold uppercase tracking-wider">
-                <th className="py-3 px-3">Estudiante</th>
-                <th className="py-3 px-3">Código</th>
-                <th className="py-3 px-3">Nivel / Grado</th>
-                <th className="py-3 px-3">Sección</th>
-                <th className="py-3 px-3">Apoderado</th>
-                <th className="py-3 px-3">Estado</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-              {enrollments.map((enr) => (
-                <tr key={enr.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
-                  <td className="py-3 px-3 font-bold text-slate-900 dark:text-white">
-                    {enr.estudiante?.profile?.nombres} {enr.estudiante?.profile?.apellidos}
-                  </td>
-                  <td className="py-3 px-3 font-mono text-slate-500">
-                    {enr.estudiante?.codigo_estudiante}
-                  </td>
-                  <td className="py-3 px-3">
-                    <span className="capitalize font-semibold text-slate-700 dark:text-slate-300">
-                      {enr.seccion?.grado?.nivel} — {enr.seccion?.grado?.nombre}
+          return (
+            fullName.includes(q) ||
+            dni.includes(q) ||
+            code.includes(q) ||
+            level.includes(q) ||
+            grade.includes(q) ||
+            section.includes(q) ||
+            guardian.includes(q) ||
+            phone.includes(q) ||
+            status.includes(q)
+          );
+        }}
+        gridItemRender={(enr) => {
+          const student = enr.estudiante;
+          const fullName = `${student?.profile?.apellidos || ''}, ${student?.profile?.nombres || ''}`.trim() || 'Estudiante';
+          const avatarUrl = student?.profile?.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150';
+          const nivel = enr.seccion?.grado?.nivel;
+
+          return (
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-4.5 flex flex-col justify-between h-full shadow-sm hover:shadow-md hover:border-indigo-200 dark:hover:border-indigo-800 transition-all group">
+              <div>
+                {/* Header: Avatar, Name, Code & DNI */}
+                <div className="flex items-start justify-between gap-3 mb-3">
+                  <div className="flex items-center gap-3">
+                    <img
+                      src={avatarUrl}
+                      alt={fullName}
+                      className="w-11 h-11 rounded-2xl object-cover border border-slate-200 dark:border-slate-700 group-hover:scale-105 transition-transform shrink-0"
+                    />
+                    <div className="min-w-0">
+                      <h4 className="font-extrabold text-slate-800 dark:text-white text-sm leading-tight truncate">
+                        {fullName}
+                      </h4>
+                      <span className="text-[11px] font-mono font-bold text-slate-400">
+                        {student?.codigo_estudiante || 'EST-2026'}
+                      </span>
+                    </div>
+                  </div>
+                  {student?.profile?.dni && (
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-md font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 shrink-0">
+                      DNI {student.profile.dni}
                     </span>
-                  </td>
-                  <td className="py-3 px-3 font-bold text-indigo-600">
-                    Aula {enr.seccion?.letra}
-                  </td>
-                  <td className="py-3 px-3 text-slate-600 dark:text-slate-400">
-                    {enr.estudiante?.nombre_apoderado || 'Roberto Pérez'}
-                  </td>
-                  <td className="py-3 px-3">
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-emerald-50 text-emerald-600 border border-emerald-500/20">
-                      {enr.estado}
+                  )}
+                </div>
+
+                {/* Academic Level & Section Details */}
+                <div className="space-y-2 text-xs text-slate-600 dark:text-slate-400 mb-4 bg-slate-50/80 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[11px] text-slate-400">Nivel y Grado:</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className={`px-1.5 py-0.2 rounded text-[9px] font-bold uppercase border ${getLevelBadgeClass(nivel)}`}>
+                        {nivel}
+                      </span>
+                      <span className="font-bold text-slate-800 dark:text-slate-200 text-xs">
+                        {enr.seccion?.grado?.nombre}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between items-center">
+                    <span className="text-[11px] text-slate-400">Sección:</span>
+                    <span className="font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded-md text-[11px]">
+                      Aula &quot;{enr.seccion?.letra || 'A'}&quot;
                     </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+                  </div>
+
+                  <div className="flex justify-between items-center">
+                    <span className="text-[11px] text-slate-400">Apoderado:</span>
+                    <span className="font-medium text-slate-700 dark:text-slate-200 truncate max-w-[140px]">
+                      {student?.nombre_apoderado || 'No registrado'}
+                    </span>
+                  </div>
+
+                  {student?.telefono_apoderado && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-[11px] text-slate-400">Contacto:</span>
+                      <span className="text-slate-500 dark:text-slate-400 font-mono text-[11px] flex items-center gap-1">
+                        <Phone className="w-3 h-3 text-slate-400" />
+                        {student.telefono_apoderado}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Bottom Actions */}
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center gap-2">
+                {enr.estudiante && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedEnrollmentForQr(enr)}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all active:scale-95 cursor-pointer"
+                  >
+                    <QrCode className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                    Carnet QR
+                  </button>
+                )}
+                {enr.estudiante_id && (
+                  <Link
+                    href={`/admin/estudiantes/${enr.estudiante_id}`}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-all active:scale-95 cursor-pointer text-center"
+                  >
+                    Perfil 360°
+                  </Link>
+                )}
+              </div>
+            </div>
+          );
+        }}
+      />
+
+      {/* Carnet QR Modal for Enrolled Student */}
+      {selectedEnrollmentForQr && selectedEnrollmentForQr.estudiante && (
+        <Modal
+          isOpen={!!selectedEnrollmentForQr}
+          onClose={() => setSelectedEnrollmentForQr(null)}
+          title={`Carnet QR — ${selectedEnrollmentForQr.estudiante.profile?.nombres || ''} ${selectedEnrollmentForQr.estudiante.profile?.apellidos || ''}`}
+          maxWidth="md"
+        >
+          <div className="p-2">
+            <QrCard
+              student={selectedEnrollmentForQr.estudiante}
+              section={selectedEnrollmentForQr.seccion}
+              showActions={true}
+            />
+          </div>
+        </Modal>
+      )}
 
     </div>
   );

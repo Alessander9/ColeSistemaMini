@@ -33,6 +33,7 @@ import {
   Settings
 } from 'lucide-react';
 import { Student, Enrollment, GradeLetter, DayOfWeek } from '@/types';
+import { SearchableSelect } from '@/components/ui/SearchableSelect';
 
 export default function SectionHubDashboardPage() {
   const params = useParams();
@@ -467,10 +468,65 @@ export default function SectionHubDashboardPage() {
             <DataTable
               columns={studentColumns}
               data={sectionEnrollments}
+              itemsPerPage={10}
               searchPlaceholder="Buscar estudiante por nombre, apellidos o DNI..."
               searchFilter={(enr, q) => {
                 const full = `${enr.estudiante?.profile?.nombres} ${enr.estudiante?.profile?.apellidos} ${enr.estudiante?.profile?.dni} ${enr.estudiante?.codigo_estudiante}`.toLowerCase();
                 return full.includes(q);
+              }}
+              gridItemRender={(enr) => {
+                const student = enr.estudiante;
+                const fullName = `${student?.profile?.apellidos || ''}, ${student?.profile?.nombres || ''}`;
+                return (
+                  <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-md transition-all flex flex-col justify-between h-full group">
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-3">
+                        <img
+                          src={student?.profile?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(student?.profile?.nombres || 'Alumno')}`}
+                          alt={fullName}
+                          className="w-11 h-11 rounded-2xl object-cover ring-1 ring-slate-200 dark:ring-slate-700 shrink-0"
+                        />
+                        <div className="min-w-0">
+                          <p className="font-extrabold text-slate-800 dark:text-white text-xs leading-tight truncate">
+                            {fullName}
+                          </p>
+                          <p className="text-[10px] text-slate-400 font-mono mt-0.5">
+                            {student?.codigo_estudiante} · DNI {student?.profile?.dni}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 space-y-1.5 text-xs text-slate-600 dark:text-slate-400">
+                        <div className="flex justify-between items-center">
+                          <span className="text-slate-400">Apoderado:</span>
+                          <span className="font-semibold text-slate-700 dark:text-slate-200 truncate max-w-[140px]">
+                            {student?.nombre_apoderado || 'No registrado'}
+                          </span>
+                        </div>
+                        {student?.telefono_apoderado && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-slate-400">Teléfono:</span>
+                            <span className="font-mono text-slate-600 dark:text-slate-300 flex items-center gap-1">
+                              <Phone className="w-3 h-3 text-slate-400" />
+                              {student.telefono_apoderado}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between mt-3">
+                      <span className="inline-flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                        <QrCode className="w-3 h-3 text-emerald-500" />
+                        {student?.token_qr ? `${student.token_qr.substring(0, 10)}...` : 'QR-ACTIVO'}
+                      </span>
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                        <CheckCircle2 className="w-3 h-3" />
+                        Activo
+                      </span>
+                    </div>
+                  </div>
+                );
               }}
             />
           )}
@@ -589,17 +645,18 @@ export default function SectionHubDashboardPage() {
               </p>
             </div>
 
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-slate-400">Bimestre:</span>
-              <select
+            <div className="flex items-center gap-2 min-w-[200px]">
+              <SearchableSelect
                 value={selectedBimestre}
-                onChange={(e) => setSelectedBimestre(e.target.value)}
-                className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-bold border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white outline-none cursor-pointer"
-              >
-                {evaluationPeriods.map(p => (
-                  <option key={p.id} value={p.id}>{p.nombre}</option>
-                ))}
-              </select>
+                onChange={(val) => setSelectedBimestre(val)}
+                icon={<Calendar className="w-3.5 h-3.5" />}
+                options={evaluationPeriods.map(p => ({
+                  value: p.id,
+                  label: p.nombre,
+                  sublabel: `Periodo ${p.numero_periodo}`,
+                }))}
+                placeholder="Seleccionar Bimestre..."
+              />
             </div>
           </div>
 

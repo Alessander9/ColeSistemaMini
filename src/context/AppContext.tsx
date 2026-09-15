@@ -125,6 +125,7 @@ interface AppContextType {
   isSidebarCollapsed: boolean;
   setIsSidebarCollapsed: (collapsed: boolean) => void;
   toggleSidebar: () => void;
+  setSidebarCollapsedState: (collapsed: boolean) => void;
 
   // ── Asistencia Rápida Docente ──
   saveClassAttendanceQuickly: (
@@ -1691,8 +1692,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     onboardingCompleted,
     setOnboardingCompleted,
     isSidebarCollapsed,
-    setIsSidebarCollapsed: setSidebarCollapsedState,
+    setIsSidebarCollapsed,
     toggleSidebar,
+    setSidebarCollapsedState,
     saveClassAttendanceQuickly: (
       seccionId: string,
       fecha: string,
@@ -1756,6 +1758,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     auditLogs,
     isCommandPaletteOpen,
     onboardingCompleted,
+    isSidebarCollapsed,
+    toggleSidebar,
+    setSidebarCollapsedState,
     notifications,
     unreadCount,
     isLoading,

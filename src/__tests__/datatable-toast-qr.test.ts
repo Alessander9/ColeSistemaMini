@@ -88,4 +88,37 @@ describe('DataTable Pagination & Filters', () => {
     expect(findMatch('EST-2026-009')).toBeDefined(); // Code scan
     expect(findMatch('12345678')).toBeDefined(); // DNI scan
   });
+
+  it('filters enrollments by level, student name, and grade accurately', () => {
+    const mockEnrollments = [
+      {
+        id: 'enr-1',
+        estudiante: { profile: { nombres: 'Héctor', apellidos: 'Salazar' }, codigo_estudiante: 'EST-2026-001' },
+        seccion: { letra: 'A', grado: { nivel: 'inicial', nombre: '3 Años' } },
+        estado: 'activo'
+      },
+      {
+        id: 'enr-2',
+        estudiante: { profile: { nombres: 'Mateo', apellidos: 'Silva' }, codigo_estudiante: 'EST-2026-002' },
+        seccion: { letra: 'B', grado: { nivel: 'primaria', nombre: '3° De Primaria' } },
+        estado: 'activo'
+      },
+      {
+        id: 'enr-3',
+        estudiante: { profile: { nombres: 'Lucía', apellidos: 'Romero' }, codigo_estudiante: 'EST-2026-003' },
+        seccion: { letra: 'A', grado: { nivel: 'secundaria', nombre: '1° De Secundaria' } },
+        estado: 'activo'
+      }
+    ];
+
+    const inicialList = mockEnrollments.filter(e => e.seccion.grado.nivel === 'inicial');
+    expect(inicialList.length).toBe(1);
+    expect(inicialList[0].estudiante.profile.nombres).toBe('Héctor');
+
+    const searchPrimaria = mockEnrollments.filter(e => 
+      `${e.estudiante.profile.nombres} ${e.seccion.grado.nombre}`.toLowerCase().includes('mateo')
+    );
+    expect(searchPrimaria.length).toBe(1);
+    expect(searchPrimaria[0].seccion.grado.nivel).toBe('primaria');
+  });
 });

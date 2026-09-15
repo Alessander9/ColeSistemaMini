@@ -14,6 +14,7 @@ import {
   X,
   Filter
 } from 'lucide-react';
+import { SearchableSelect } from '@/components/ui/SearchableSelect';
 
 export function AcademicContextSelector() {
   const { 
@@ -160,18 +161,20 @@ export function AcademicContextSelector() {
               <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 block">
                 2. Grado o Ciclo ({filteredGrades.length})
               </label>
-              <select
+              <SearchableSelect
                 value={academicContext.gradoId || ''}
-                onChange={(e) => setAcademicGrade(e.target.value || undefined)}
-                className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              >
-                <option value="">Todos los grados / ciclos del nivel</option>
-                {filteredGrades.map((g) => (
-                  <option key={g.id} value={g.id}>
-                    {g.nombre}
-                  </option>
-                ))}
-              </select>
+                onChange={(val) => setAcademicGrade(val || undefined)}
+                icon={<GraduationCap className="w-3.5 h-3.5" />}
+                options={[
+                  { value: '', label: 'Todos los grados / ciclos del nivel', sublabel: 'Nivel completo' },
+                  ...filteredGrades.map(g => ({
+                    value: g.id,
+                    label: g.nombre,
+                    sublabel: `Nivel ${g.nivel}`,
+                  })),
+                ]}
+                placeholder="Buscar grado..."
+              />
             </div>
           )}
 

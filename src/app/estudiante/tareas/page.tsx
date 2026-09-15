@@ -1,20 +1,36 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { useApp } from '@/context/AppContext';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { DataTable, Column, FilterChip } from '@/components/ui/DataTable';
 import { Modal } from '@/components/ui/Modal';
 import { GradeBadge } from '@/components/notas/GradeBadge';
 import { TaskAssignment } from '@/types';
-import { Clock, BookOpen, CheckCircle2, Upload, Paperclip, AlertCircle, FileText, X, FileCheck, Download } from 'lucide-react';
+import { 
+  Clock, 
+  BookOpen, 
+  CheckCircle2, 
+  Upload, 
+  Paperclip, 
+  AlertCircle, 
+  FileText, 
+  X, 
+  FileCheck, 
+  Download,
+  Calendar,
+  Sparkles,
+  ArrowRight
+} from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 export default function EstudianteTareasPage() {
   const { tasks, submissions, submitTask, enrollments, currentUser, students, showToast } = useApp();
   
   const activeStudent = students.find(s => s.profile_id === currentUser.id) || students[0];
-  const activeEnrollment = enrollments.find(e => e.estudiante_id === activeStudent.id) || enrollments[0];
+  const activeEnrollment = enrollments.find(e => e.estudiante_id === activeStudent?.id) || enrollments[0];
 
+  const [activeFilter, setActiveFilter] = useState<string>('todos');
   const [selectedTaskToSubmit, setSelectedTaskToSubmit] = useState<TaskAssignment | null>(null);
   const [comment, setComment] = useState('');
   const [attachedFile, setAttachedFile] = useState<{
@@ -77,105 +93,257 @@ export default function EstudianteTareasPage() {
     setAttachedFile(null);
   };
 
+  // Filter chips with dynamic counters
+  const filterChips: FilterChip[] = useMemo(() => {
+    const total = tasks.length;
+    const submittedCount = tasks.filter(t => 
+      submissions.some(s => s.tarea_id === t.id && s.matricula_id === activeEnrollment?.id)
+    ).length;
+    const pendingCount = total - submittedCount;
+    const gradedCount = tasks.filter(t => 
+      submissions.some(s => s.tarea_id === t.id && s.matricula_id === activeEnrollment?.id && s.calificacion_letra)
+    ).length;
+
+    return [
+      { id: 'todos', label: 'Todas las Tareas', count: total },
+      { id: 'pendientes', label: '⏳ Pendientes', count: pendingCount },
+      { id: 'entregadas', label: '✅ Entregadas', count: submittedCount },
+      { id: 'calificadas', label: '⭐ Calificadas', count: gradedCount },
+    ];
+  }, [tasks, submissions, activeEnrollment?.id]);
+
+  // Filtered dataset
+  const filteredTasks = useMemo(() => {
+    return tasks.filter((task) => {
+      const sub = submissions.find(
+        s => s.tarea_id === task.id && s.matricula_id === activeEnrollment?.id
+      );
+      if (activeFilter === 'todos') return true;
+      if (activeFilter === 'pendientes') return !sub;
+      if (activeFilter === 'entregadas') return !!sub;
+      if (activeFilter === 'calificadas') return !!sub?.calificacion_letra;
+      return true;
+    });
+  }, [tasks, submissions, activeEnrollment?.id, activeFilter]);
+
+  const columns: Column<TaskAssignment>[] = [
+    {
+      header: 'Tarea / Actividad',
+      cell: (task) => {
+        const submission = submissions.find(
+          s => s.tarea_id === task.id && s.matricula_id === activeEnrollment?.id
+        );
+        return (
+          <div className="space-y-1 max-w-sm">
+            <p className="font-extrabold text-slate-800 dark:text-white text-xs leading-snug">
+              {task.titulo}
+            </p>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1">
+              {task.descripcion}
+            </p>
+            {submission?.archivo_nombre && (
+              <div className="inline-flex items-center gap-1 text-[10px] text-blue-600 dark:text-blue-400 font-semibold mt-0.5">
+                <FileCheck className="w-3 h-3" />
+                <span className="truncate max-w-[150px]">{submission.archivo_nombre}</span>
+              </div>
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      header: 'Materia',
+      cell: (task) => (
+        <span className="inline-flex items-center px-2.5 py-1 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200/80 dark:border-blue-800 text-xs font-bold">
+          {task.curso?.nombre || 'Curso'}
+        </span>
+      ),
+    },
+    {
+      header: 'Fecha Límite',
+      cell: (task) => (
+        <div className="text-xs text-slate-600 dark:text-slate-300">
+          <span className="flex items-center gap-1.5 font-medium">
+            <Clock className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+            {new Date(task.fecha_limite).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+          </span>
+        </div>
+      ),
+    },
+    {
+      header: 'Estado & Nota',
+      cell: (task) => {
+        const submission = submissions.find(
+          s => s.tarea_id === task.id && s.matricula_id === activeEnrollment?.id
+        );
+        if (!submission) {
+          return (
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50 dark:bg-amber-950/60 dark:text-amber-300 px-2.5 py-1 rounded-full border border-amber-200 dark:border-amber-800">
+              <Clock className="w-3 h-3" />
+              Pendiente
+            </span>
+          );
+        }
+        return (
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 dark:bg-emerald-950/60 dark:text-emerald-300 px-2.5 py-1 rounded-full border border-emerald-200 dark:border-emerald-800">
+              <CheckCircle2 className="w-3 h-3" />
+              Entregado
+            </span>
+            {submission.calificacion_letra && (
+              <GradeBadge grade={submission.calificacion_letra} size="sm" />
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      header: 'Acciones',
+      cell: (task) => {
+        const submission = submissions.find(
+          s => s.tarea_id === task.id && s.matricula_id === activeEnrollment?.id
+        );
+        return (
+          <div>
+            {!submission ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedTaskToSubmit(task);
+                  setAttachedFile(null);
+                  setComment('');
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-600/20 transition-all active:scale-95 cursor-pointer"
+              >
+                <Upload className="w-3.5 h-3.5" />
+                Entregar
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedTaskToSubmit(task);
+                  setComment(submission.comentario_estudiante || '');
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all cursor-pointer"
+              >
+                <FileCheck className="w-3.5 h-3.5 text-emerald-600" />
+                Ver Entrega
+              </button>
+            )}
+          </div>
+        );
+      },
+    },
+  ];
+
   return (
-    <div className="space-y-6 max-w-5xl mx-auto animate-in fade-in-50 pb-12">
+    <div className="space-y-6 max-w-6xl mx-auto animate-in fade-in-50 pb-12">
       <PageHeader
         title="Mis Tareas Escolares"
         description="Consulta las asignaciones de tus cursos, revisa fechas límite y entrega tus trabajos escolares."
         badge={`${tasks.length} Tareas Asignadas`}
       />
 
-      <div className="space-y-4">
-        {tasks.map((task) => {
+      <DataTable
+        title="Listado de Tareas Escolares"
+        data={filteredTasks}
+        columns={columns}
+        filterChips={filterChips}
+        activeFilter={activeFilter}
+        onFilterChange={setActiveFilter}
+        searchPlaceholder="Buscar tarea por título, materia o descripción..."
+        itemsPerPage={10}
+        searchFilter={(task, q) =>
+          `${task.titulo} ${task.descripcion} ${task.curso?.nombre}`.toLowerCase().includes(q)
+        }
+        gridItemRender={(task) => {
           const submission = submissions.find(
             s => s.tarea_id === task.id && s.matricula_id === activeEnrollment?.id
           );
           const isSubmitted = !!submission;
 
           return (
-            <div
-              key={task.id}
-              className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-            >
-              <div className="space-y-2 max-w-xl">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-black px-2.5 py-0.5 rounded-lg bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300 border border-blue-200">
+            <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-md transition-all flex flex-col justify-between h-full group">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-bold px-2.5 py-1 rounded-xl bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800">
                     {task.curso?.nombre}
                   </span>
-                  <span className="text-xs text-slate-400 font-medium flex items-center gap-1" suppressHydrationWarning>
+                  <span className="text-[11px] text-slate-400 font-medium flex items-center gap-1" suppressHydrationWarning>
                     <Clock className="w-3.5 h-3.5 text-amber-500" />
-                    Límite: {new Date(task.fecha_limite).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                    {new Date(task.fecha_limite).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                   </span>
                 </div>
 
-                <h3 className="font-extrabold text-base text-slate-900 dark:text-white">
+                <h3 className="font-extrabold text-sm text-slate-900 dark:text-white leading-snug">
                   {task.titulo}
                 </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2">
                   {task.descripcion}
                 </p>
 
-                {/* Delivered File and Comment preview */}
-                {isSubmitted && (
-                  <div className="space-y-1.5 pt-1">
-                    {submission.archivo_nombre && (
-                      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 text-xs font-semibold">
-                        <FileCheck className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                        <span className="truncate max-w-xs">{submission.archivo_nombre}</span>
-                        {submission.archivo_tamano && (
-                          <span className="text-[10px] text-slate-400">({submission.archivo_tamano})</span>
-                        )}
-                      </div>
-                    )}
-                    {submission.comentario_estudiante && (
-                      <p className="text-[11px] text-slate-600 dark:text-slate-400 italic">
-                        &quot;{submission.comentario_estudiante}&quot;
-                      </p>
-                    )}
+                {isSubmitted && submission.archivo_nombre && (
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 text-xs font-semibold">
+                    <FileCheck className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                    <span className="truncate max-w-xs">{submission.archivo_nombre}</span>
                   </div>
                 )}
 
                 {submission?.retroalimentacion_docente && (
-                  <div className="p-3 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-xs text-emerald-800 dark:text-emerald-200">
-                    <strong>Comentario del Profesor:</strong> &quot;{submission.retroalimentacion_docente}&quot;
+                  <div className="p-2.5 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-[11px] text-emerald-800 dark:text-emerald-200">
+                    <strong>Profesor:</strong> &quot;{submission.retroalimentacion_docente}&quot;
                   </div>
                 )}
               </div>
 
-              {/* Status & Submission Button */}
-              <div className="flex sm:flex-col items-center sm:items-end justify-between gap-3 shrink-0">
+              <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3 mt-4">
                 {isSubmitted ? (
-                  <div className="text-right space-y-1">
-                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/60 dark:text-emerald-300 px-2.5 py-1 rounded-full border border-emerald-200 dark:border-emerald-800">
-                      <CheckCircle2 className="w-3.5 h-3.5" />
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/60 dark:text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
+                      <CheckCircle2 className="w-3 h-3" />
                       Entregado
                     </span>
                     {submission.calificacion_letra && (
-                      <div className="flex items-center gap-1.5 justify-end">
-                        <span className="text-[10px] text-slate-400 font-bold">Nota:</span>
-                        <GradeBadge grade={submission.calificacion_letra} size="sm" />
-                      </div>
+                      <GradeBadge grade={submission.calificacion_letra} size="sm" />
                     )}
                   </div>
                 ) : (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedTaskToSubmit(task);
-                      setAttachedFile(null);
-                      setComment('');
-                    }}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-md transition-all active:scale-95 cursor-pointer"
-                  >
-                    <Upload className="w-3.5 h-3.5" />
-                    Entregar Tarea
-                  </button>
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50 dark:bg-amber-950/60 dark:text-amber-300 px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-800">
+                    <Clock className="w-3 h-3" />
+                    Pendiente
+                  </span>
                 )}
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedTaskToSubmit(task);
+                    setComment(submission?.comentario_estudiante || '');
+                  }}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer ${
+                    isSubmitted
+                      ? 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-200'
+                      : 'bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-600/20'
+                  }`}
+                >
+                  {isSubmitted ? (
+                    <>
+                      <FileCheck className="w-3.5 h-3.5" />
+                      Ver Entrega
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-3.5 h-3.5" />
+                      Entregar
+                    </>
+                  )}
+                </button>
               </div>
             </div>
           );
-        })}
-      </div>
+        }}
+      />
 
       {/* Submit Homework Modal */}
       {selectedTaskToSubmit && (
@@ -248,16 +416,9 @@ export default function EstudianteTareasPage() {
                 <div className="flex items-center gap-1.5 shrink-0">
                   <button
                     type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="px-2.5 py-1 text-[11px] font-bold text-blue-600 hover:bg-blue-100 rounded-lg"
-                  >
-                    Cambiar
-                  </button>
-                  <button
-                    type="button"
                     onClick={() => setAttachedFile(null)}
-                    className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40"
-                    title="Quitar archivo"
+                    className="p-1.5 rounded-lg hover:bg-rose-100 dark:hover:bg-rose-900/40 text-rose-500 transition-colors"
+                    title="Eliminar archivo adjunto"
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -265,27 +426,29 @@ export default function EstudianteTareasPage() {
               </div>
             )}
 
-            <div className="pt-2 flex justify-end gap-2">
+            <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100 dark:border-slate-800">
               <button
                 type="button"
                 onClick={() => {
                   setSelectedTaskToSubmit(null);
                   setAttachedFile(null);
                 }}
-                className="px-4 py-2 font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl"
+                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
-                className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow transition-all active:scale-95 cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-600/20 transition-all active:scale-95"
               >
-                Enviar Entrega
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                Confirmar Entrega
               </button>
             </div>
           </form>
         </Modal>
       )}
+
     </div>
   );
 }

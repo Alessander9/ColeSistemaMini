@@ -2,7 +2,8 @@
 
 import React, { useState, useMemo } from 'react';
 import { useApp } from '@/context/AppContext';
-import { DayOfWeek, Section, Course, UserProfile } from '@/types';
+import { Student, Enrollment, GradeLetter, DayOfWeek, Section, Course, UserProfile } from '@/types';
+import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { 
   Calendar, 
   BookOpen, 
@@ -937,19 +938,18 @@ export default function AdminHorariosPage() {
             </div>
 
             {/* Teacher Dropdown */}
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-slate-500">Docente:</span>
-              <select
+            <div className="flex items-center gap-2 min-w-[240px]">
+              <SearchableSelect
                 value={selectedTeacherId}
-                onChange={(e) => setSelectedTeacherId(e.target.value)}
-                className="px-4 py-2 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 font-extrabold text-xs text-slate-800 dark:text-slate-200 shadow-sm focus:ring-2 focus:ring-purple-500 outline-none"
-              >
-                {teachers.map(t => (
-                  <option key={t.id} value={t.id}>
-                    Prof. {t.nombres} {t.apellidos}
-                  </option>
-                ))}
-              </select>
+                onChange={(val) => setSelectedTeacherId(val)}
+                icon={<UserCheck className="w-3.5 h-3.5" />}
+                options={teachers.map(t => ({
+                  value: t.id,
+                  label: `Prof. ${t.nombres} ${t.apellidos}`,
+                  sublabel: t.especialidad || 'Docente',
+                }))}
+                placeholder="Buscar docente..."
+              />
             </div>
           </div>
 
@@ -1054,10 +1054,10 @@ export default function AdminHorariosPage() {
       {/* ═══════════════════════════════════════════════════════════════════════ */}
       {isAssignModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-fade-in">
-          <div className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-scale-up">
+          <div className="w-full max-w-xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-scale-up">
             <div className="p-6 border-b border-slate-100 dark:border-slate-800 bg-gradient-to-r from-purple-600/10 to-indigo-600/10 flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-2xl bg-purple-600 text-white flex items-center justify-center">
+                <div className="w-9 h-9 rounded-2xl bg-purple-600 text-white flex items-center justify-center shadow-md">
                   <BookOpen className="w-5 h-5" />
                 </div>
                 <div>
@@ -1076,68 +1076,78 @@ export default function AdminHorariosPage() {
             </div>
 
             <form onSubmit={handleSaveAssignment} className="p-6 space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Curso / Área Curricular *
-                </label>
-                <select
-                  required
-                  value={formCourseId}
-                  onChange={(e) => setFormCourseId(e.target.value)}
-                  className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-purple-500 font-bold"
-                >
-                  {courses.map(c => (
-                    <option key={c.id} value={c.id}>
-                      {c.nombre} ({c.codigo})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Profesor Responsable *
-                </label>
-                <select
-                  required
-                  value={formTeacherId}
-                  onChange={(e) => setFormTeacherId(e.target.value)}
-                  className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-purple-500 font-bold"
-                >
-                  {teachers.map(t => (
-                    <option key={t.id} value={t.id}>
-                      Prof. {t.nombres} {t.apellidos} — ({t.especialidad})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    Horas Semanales *
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                    <BookOpen className="w-3.5 h-3.5 text-purple-500" />
+                    Curso / Área Curricular *
                   </label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={10}
-                    required
-                    value={formHours}
-                    onChange={(e) => setFormHours(Number(e.target.value))}
-                    className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-purple-500 font-bold"
+                  <SearchableSelect
+                    value={formCourseId}
+                    onChange={(val) => setFormCourseId(val)}
+                    icon={<BookOpen className="w-4 h-4" />}
+                    options={courses.map(c => ({
+                      value: c.id,
+                      label: c.nombre,
+                      sublabel: `Código: ${c.codigo}`,
+                    }))}
+                    placeholder="Buscar materia..."
                   />
                 </div>
+
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                    <UserCheck className="w-3.5 h-3.5 text-purple-500" />
+                    Profesor Responsable *
+                  </label>
+                  <SearchableSelect
+                    value={formTeacherId}
+                    onChange={(val) => setFormTeacherId(val)}
+                    icon={<UserCheck className="w-4 h-4" />}
+                    options={teachers.map(t => ({
+                      value: t.id,
+                      label: `Prof. ${t.nombres} ${t.apellidos}`,
+                      sublabel: t.especialidad || 'Docente',
+                    }))}
+                    placeholder="Buscar profesor..."
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-purple-500" />
+                    Horas Semanales *
+                  </label>
+                  <div className="relative">
+                    <Clock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <input
+                      type="number"
+                      min={1}
+                      max={10}
+                      required
+                      value={formHours}
+                      onChange={(e) => setFormHours(Number(e.target.value))}
+                      className="w-full pl-10 pr-3.5 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-purple-500 font-bold"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5 text-purple-500" />
                     Aula por Defecto
                   </label>
-                  <input
-                    type="text"
-                    value={formClassroom}
-                    onChange={(e) => setFormClassroom(e.target.value)}
-                    placeholder="Ej. Aula 301 / Lab 1"
-                    className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-purple-500 font-medium"
-                  />
+                  <div className="relative">
+                    <MapPin className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <input
+                      type="text"
+                      value={formClassroom}
+                      onChange={(e) => setFormClassroom(e.target.value)}
+                      placeholder="Ej. Aula 301 / Lab 1"
+                      className="w-full pl-10 pr-3.5 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-purple-500 font-medium"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -1151,7 +1161,7 @@ export default function AdminHorariosPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 text-xs font-bold text-white bg-purple-600 hover:bg-purple-700 rounded-xl shadow-md transition-all"
+                  className="px-5 py-2 text-xs font-bold text-white bg-purple-600 hover:bg-purple-700 rounded-xl shadow-md transition-all active:scale-95"
                 >
                   Guardar Asignación
                 </button>
@@ -1166,10 +1176,10 @@ export default function AdminHorariosPage() {
       {/* ═══════════════════════════════════════════════════════════════════════ */}
       {isSlotModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-fade-in">
-          <div className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-scale-up">
+          <div className="w-full max-w-xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-scale-up">
             <div className="p-6 border-b border-slate-100 dark:border-slate-800 bg-gradient-to-r from-purple-600/10 to-indigo-600/10 flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-2xl bg-purple-600 text-white flex items-center justify-center">
+                <div className="w-9 h-9 rounded-2xl bg-purple-600 text-white flex items-center justify-center shadow-md">
                   <Calendar className="w-5 h-5" />
                 </div>
                 <div>
@@ -1188,76 +1198,83 @@ export default function AdminHorariosPage() {
             </div>
 
             <form onSubmit={handleSaveSlot} className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5 text-purple-500" />
                     Día de la Semana *
                   </label>
-                  <select
+                  <SearchableSelect
                     value={slotDay}
-                    onChange={(e) => setSlotDay(e.target.value as DayOfWeek)}
-                    className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-purple-500 font-bold"
-                  >
-                    {DAYS.map(d => (
-                      <option key={d.key} value={d.key}>{d.label}</option>
-                    ))}
-                  </select>
+                    onChange={(val) => setSlotDay(val as DayOfWeek)}
+                    icon={<Calendar className="w-4 h-4" />}
+                    options={DAYS.map(d => ({
+                      value: d.key,
+                      label: d.label,
+                      sublabel: `Día de clase (${d.short})`,
+                    }))}
+                    placeholder="Seleccionar día..."
+                  />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-purple-500" />
                     Hora / Bloque *
                   </label>
-                  <select
-                    value={slotTimeIndex}
-                    onChange={(e) => setSlotTimeIndex(Number(e.target.value))}
-                    className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-purple-500 font-bold"
-                  >
-                    {TIME_BLOCKS.map((b, idx) => {
-                      if (b.isBreak) return null;
-                      return (
-                        <option key={b.id} value={idx}>
-                          {b.label} ({b.inicio} - {b.fin})
-                        </option>
-                      );
-                    })}
-                  </select>
+                  <SearchableSelect
+                    value={String(slotTimeIndex)}
+                    onChange={(val) => setSlotTimeIndex(Number(val))}
+                    icon={<Clock className="w-4 h-4" />}
+                    options={TIME_BLOCKS.filter(b => !b.isBreak).map((b) => ({
+                      value: String(TIME_BLOCKS.findIndex(tb => tb.id === b.id)),
+                      label: b.label,
+                      sublabel: `${b.inicio} - ${b.fin}`,
+                    }))}
+                    placeholder="Seleccionar bloque..."
+                  />
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Materia Asignada *
-                </label>
-                <select
-                  required
-                  value={slotCourseId}
-                  onChange={(e) => {
-                    setSlotCourseId(e.target.value);
-                    const asig = currentSectionCourses.find(sc => sc.curso_id === e.target.value);
-                    if (asig) setSlotRoom(asig.aula_defecto || 'Aula 301');
-                  }}
-                  className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-purple-500 font-bold text-slate-800 dark:text-white"
-                >
-                  {currentSectionCourses.map(sc => (
-                    <option key={sc.id} value={sc.curso_id}>
-                      {sc.curso?.nombre} — Prof. {sc.docente?.nombres} {sc.docente?.apellidos}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                    <BookOpen className="w-3.5 h-3.5 text-purple-500" />
+                    Materia Asignada *
+                  </label>
+                  <SearchableSelect
+                    value={slotCourseId}
+                    onChange={(val) => {
+                      setSlotCourseId(val);
+                      const asig = currentSectionCourses.find(sc => sc.curso_id === val);
+                      if (asig) setSlotRoom(asig.aula_defecto || 'Aula 301');
+                    }}
+                    icon={<BookOpen className="w-4 h-4" />}
+                    options={currentSectionCourses.map(sc => ({
+                      value: sc.curso_id,
+                      label: sc.curso?.nombre || 'Curso',
+                      sublabel: `Prof. ${sc.docente?.nombres || ''} ${sc.docente?.apellidos || ''}`,
+                    }))}
+                    placeholder="Seleccionar materia..."
+                  />
+                </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Aula / Laboratorio
-                </label>
-                <input
-                  type="text"
-                  value={slotRoom}
-                  onChange={(e) => setSlotRoom(e.target.value)}
-                  placeholder="Ej. Aula 301 / Lab de Ciencias"
-                  className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-purple-500 font-medium"
-                />
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5 text-purple-500" />
+                    Aula / Laboratorio
+                  </label>
+                  <div className="relative">
+                    <MapPin className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <input
+                      type="text"
+                      value={slotRoom}
+                      onChange={(e) => setSlotRoom(e.target.value)}
+                      placeholder="Ej. Aula 301 / Lab de Ciencias"
+                      className="w-full pl-10 pr-3.5 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-purple-500 font-medium"
+                    />
+                  </div>
+                </div>
               </div>
 
               {/* Conflict warning in real-time */}
@@ -1284,7 +1301,7 @@ export default function AdminHorariosPage() {
                 <button
                   type="submit"
                   disabled={modalConflictCheck.hasConflict}
-                  className={`px-5 py-2 text-xs font-bold text-white rounded-xl shadow-md transition-all ${
+                  className={`px-5 py-2 text-xs font-bold text-white rounded-xl shadow-md transition-all active:scale-95 ${
                     modalConflictCheck.hasConflict
                       ? 'bg-slate-400 cursor-not-allowed'
                       : 'bg-purple-600 hover:bg-purple-700'
@@ -1381,20 +1398,21 @@ export default function AdminHorariosPage() {
 
             <form onSubmit={handleSaveTeacherChange} className="p-5 space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                  <UserCheck className="w-3.5 h-3.5 text-purple-500" />
                   Nuevo Profesor Titular
                 </label>
-                <select
+                <SearchableSelect
                   value={formTeacherId}
-                  onChange={(e) => setFormTeacherId(e.target.value)}
-                  className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-bold"
-                >
-                  {teachers.map(t => (
-                    <option key={t.id} value={t.id}>
-                      Prof. {t.nombres} {t.apellidos} ({t.especialidad})
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => setFormTeacherId(val)}
+                  icon={<UserCheck className="w-4 h-4" />}
+                  options={teachers.map(t => ({
+                    value: t.id,
+                    label: `Prof. ${t.nombres} ${t.apellidos}`,
+                    sublabel: t.especialidad || 'Docente',
+                  }))}
+                  placeholder="Buscar profesor..."
+                />
               </div>
 
               <div className="flex justify-end gap-2 pt-2">

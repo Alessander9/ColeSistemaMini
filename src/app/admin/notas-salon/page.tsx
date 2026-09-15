@@ -34,6 +34,7 @@ import {
   X,
   FileText
 } from 'lucide-react';
+import { SearchableSelect } from '@/components/ui/SearchableSelect';
 
 // Grade letter to number mapping
 const gradeToNum: Record<GradeLetter, number> = { AD: 4, A: 3, B: 2, C: 1 };
@@ -391,18 +392,21 @@ export default function NotasSalonPage() {
         </div>
 
         {/* Course filter */}
-        <div className="relative shrink-0">
-          <Filter className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <select
+        <div className="shrink-0 min-w-[200px]">
+          <SearchableSelect
             value={filterCurso}
-            onChange={e => setFilterCurso(e.target.value)}
-            className="pl-9 pr-8 py-2.5 text-xs font-bold rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 focus:ring-2 focus:ring-purple-500 outline-none cursor-pointer"
-          >
-            <option value="todos">Todos los cursos</option>
-            {courses.map(c => (
-              <option key={c.id} value={c.id}>{c.nombre}</option>
-            ))}
-          </select>
+            onChange={(val) => setFilterCurso(val)}
+            icon={<BookOpen className="w-3.5 h-3.5" />}
+            options={[
+              { value: 'todos', label: 'Todos los cursos', sublabel: 'Malla completa' },
+              ...courses.map(c => ({
+                value: c.id,
+                label: c.nombre,
+                sublabel: `Código: ${c.codigo}`,
+              })),
+            ]}
+            placeholder="Filtrar por curso..."
+          />
         </div>
       </div>
 
