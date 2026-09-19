@@ -16,7 +16,8 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SCREENSHOTS_DIR = os.path.join(BASE_DIR, "docs", "screenshots")
 os.makedirs(SCREENSHOTS_DIR, exist_ok=True)
 
-BASE_URL = "https://cole-sistema-mini.vercel.app"
+# Prefer local server if available, fallback to vercel
+BASE_URL = "http://localhost:3000"
 
 def capture_screenshots():
     print(f"[1/3] Iniciando navegador Chrome Headless para capturar pantallas desde {BASE_URL}...")
@@ -58,8 +59,8 @@ def capture_screenshots():
         driver.save_screenshot(path)
         screenshots["login"] = path
 
-        # 2. Admin Dashboard
-        print("  -> Capturando Admin Dashboard...")
+        # 2. Admin Dashboard (con Stepper de 5 Pasos)
+        print("  -> Capturando Admin Dashboard (con Asistente de 5 Pasos)...")
         set_auth('admin', 'user-admin', 'Administrador', 'General', 'admin@colegio.edu.pe')
         driver.get(f"{BASE_URL}/admin")
         time.sleep(2.5)
@@ -67,81 +68,99 @@ def capture_screenshots():
         driver.save_screenshot(path)
         screenshots["admin_dashboard"] = path
 
-        # 3. Admin Branding & Carnets
-        print("  -> Capturando Branding & Carnets QR...")
-        driver.get(f"{BASE_URL}/admin/branding")
-        time.sleep(2.5)
-        path = os.path.join(SCREENSHOTS_DIR, "03_admin_branding.png")
-        driver.save_screenshot(path)
-        screenshots["admin_branding"] = path
-
-        # 4. Estructura Academica & Salones
-        print("  -> Capturando Estructura Académica...")
+        # 3. Paso 1 & 2: Estructura Académica (Cursos y Salones)
+        print("  -> Capturando Estructura Académica (Paso 1 y 2)...")
         driver.get(f"{BASE_URL}/admin/academico")
         time.sleep(2.5)
-        path = os.path.join(SCREENSHOTS_DIR, "04_admin_academico.png")
+        path = os.path.join(SCREENSHOTS_DIR, "03_admin_academico.png")
         driver.save_screenshot(path)
         screenshots["admin_academico"] = path
 
-        # 5. Horarios Semanales
-        print("  -> Capturando Horarios...")
+        # 4. Paso 3: Plana Docente y Tutorías
+        print("  -> Capturando Plana Docente (Paso 3)...")
+        driver.get(f"{BASE_URL}/admin/docentes")
+        time.sleep(2.5)
+        path = os.path.join(SCREENSHOTS_DIR, "04_admin_docentes.png")
+        driver.save_screenshot(path)
+        screenshots["admin_docentes"] = path
+
+        # 5. Paso 4: Horarios Semanales
+        print("  -> Capturando Horarios Semanales (Paso 4)...")
         driver.get(f"{BASE_URL}/admin/horarios")
         time.sleep(2.5)
         path = os.path.join(SCREENSHOTS_DIR, "05_admin_horarios.png")
         driver.save_screenshot(path)
         screenshots["admin_horarios"] = path
 
-        # 6. Docente - Asistencia y Notas
-        print("  -> Capturando Docente Notas...")
+        # 6. Paso 5: Matrículas & Fichas PDF
+        print("  -> Capturando Matrículas y Fichas PDF (Paso 5)...")
+        driver.get(f"{BASE_URL}/admin/matriculas")
+        time.sleep(2.5)
+        path = os.path.join(SCREENSHOTS_DIR, "06_admin_matriculas.png")
+        driver.save_screenshot(path)
+        screenshots["admin_matriculas"] = path
+
+        # 7. Branding & Carnets QR
+        print("  -> Capturando Branding & Carnets QR...")
+        driver.get(f"{BASE_URL}/admin/branding")
+        time.sleep(2.5)
+        path = os.path.join(SCREENSHOTS_DIR, "07_admin_branding.png")
+        driver.save_screenshot(path)
+        screenshots["admin_branding"] = path
+
+        # 8. Docente - Asistencia y Notas CNEB
+        print("  -> Capturando Docente Notas CNEB...")
         set_auth('docente', 'user-docente-1', 'Carlos', 'Mendoza', 'carlos.mendoza@colegio.edu.pe')
         driver.get(f"{BASE_URL}/docente/notas")
         time.sleep(2.5)
-        path = os.path.join(SCREENSHOTS_DIR, "06_docente_notas.png")
+        path = os.path.join(SCREENSHOTS_DIR, "08_docente_notas.png")
         driver.save_screenshot(path)
         screenshots["docente_notas"] = path
 
-        # 7. Docente - Tareas
+        # 9. Docente - Tareas
         print("  -> Capturando Docente Tareas...")
         driver.get(f"{BASE_URL}/docente/tareas")
         time.sleep(2.5)
-        path = os.path.join(SCREENSHOTS_DIR, "07_docente_tareas.png")
+        path = os.path.join(SCREENSHOTS_DIR, "09_docente_tareas.png")
         driver.save_screenshot(path)
         screenshots["docente_tareas"] = path
 
-        # 8. Estudiante - Carnet QR
+        # 10. Estudiante - Carnet QR
         print("  -> Capturando Estudiante Carnet QR...")
         set_auth('estudiante', 'user-estudiante-1', 'Mateo', 'Torres', 'mateo.torres@colegio.edu.pe')
         driver.get(f"{BASE_URL}/estudiante/carnet-qr")
         time.sleep(2.5)
-        path = os.path.join(SCREENSHOTS_DIR, "08_estudiante_carnet.png")
+        path = os.path.join(SCREENSHOTS_DIR, "10_estudiante_carnet.png")
         driver.save_screenshot(path)
         screenshots["estudiante_carnet"] = path
 
-        # 9. Estudiante - Libreta de Notas
+        # 11. Estudiante - Libreta de Notas
         print("  -> Capturando Libreta de Notas...")
         driver.get(f"{BASE_URL}/estudiante/libreta-notas")
         time.sleep(2.5)
-        path = os.path.join(SCREENSHOTS_DIR, "09_estudiante_libreta.png")
+        path = os.path.join(SCREENSHOTS_DIR, "11_estudiante_libreta.png")
         driver.save_screenshot(path)
         screenshots["estudiante_libreta"] = path
 
-        # 10. Apoderado Dashboard
+        # 12. Apoderado Dashboard
         print("  -> Capturando Portal Apoderado...")
         set_auth('apoderado', 'user-apoderado-1', 'Héctor', 'Vargas', 'apoderado@colegio.edu.pe')
         driver.get(f"{BASE_URL}/apoderado")
         time.sleep(2.5)
-        path = os.path.join(SCREENSHOTS_DIR, "10_apoderado.png")
+        path = os.path.join(SCREENSHOTS_DIR, "12_apoderado.png")
         driver.save_screenshot(path)
         screenshots["apoderado"] = path
 
-        # 11. Kiosco QR
-        print("  -> Capturando Kiosco QR...")
+        # 13. Kiosco QR
+        print("  -> Capturando Kiosco QR de Portería...")
         driver.get(f"{BASE_URL}/asistencia")
         time.sleep(2.5)
-        path = os.path.join(SCREENSHOTS_DIR, "11_kiosco_asistencia.png")
+        path = os.path.join(SCREENSHOTS_DIR, "13_kiosco_asistencia.png")
         driver.save_screenshot(path)
         screenshots["kiosco"] = path
 
+    except Exception as e:
+        print(f"Advertencia durante captura: {e}")
     finally:
         driver.quit()
 
@@ -160,9 +179,11 @@ def generate_pdf():
     print("[2/3] Generando plantilla HTML para PDF...")
     img_login = to_base64(screenshots.get("login", ""))
     img_admin = to_base64(screenshots.get("admin_dashboard", ""))
-    img_branding = to_base64(screenshots.get("admin_branding", ""))
     img_academico = to_base64(screenshots.get("admin_academico", ""))
+    img_docentes = to_base64(screenshots.get("admin_docentes", ""))
     img_horarios = to_base64(screenshots.get("admin_horarios", ""))
+    img_matriculas = to_base64(screenshots.get("admin_matriculas", ""))
+    img_branding = to_base64(screenshots.get("admin_branding", ""))
     img_doc_notas = to_base64(screenshots.get("docente_notas", ""))
     img_doc_tareas = to_base64(screenshots.get("docente_tareas", ""))
     img_est_carnet = to_base64(screenshots.get("estudiante_carnet", ""))
@@ -296,7 +317,7 @@ def generate_pdf():
 
   /* ENCABEZADOS Y SECCIONES */
   h1 {{
-    font-size: 18pt;
+    font-size: 17pt;
     font-weight: 800;
     color: #0f172a;
     border-bottom: 2.5px solid #4f46e5;
@@ -309,7 +330,7 @@ def generate_pdf():
   }}
 
   h2 {{
-    font-size: 13pt;
+    font-size: 12.5pt;
     font-weight: 700;
     color: #1e1b4b;
     margin-top: 16px;
@@ -317,7 +338,7 @@ def generate_pdf():
   }}
 
   h3 {{
-    font-size: 11pt;
+    font-size: 10.5pt;
     font-weight: 700;
     color: #334155;
     margin-top: 12px;
@@ -449,6 +470,15 @@ def generate_pdf():
     font-weight: 800;
   }}
 
+  .badge-flow {{
+    background: #0ea5e9;
+    color: #ffffff;
+    font-size: 7pt;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 700;
+  }}
+
   ul, ol {{
     margin-left: 18px;
     margin-bottom: 8px;
@@ -469,25 +499,25 @@ def generate_pdf():
     <div class="cover-badge">ColeSistema Mini • Versión Oficial 2026</div>
     <h1 class="cover-title">Manual Integral y Guía de Operaciones Escolar</h1>
     <p class="cover-subtitle">
-      Guía práctica no técnica para la configuración institucional, control de asistencia QR en portería, calificaciones CNEB, aula virtual LMS y portal para familias.
+      Guía práctica no técnica para la configuración institucional paso a paso, control de asistencia QR en portería, calificaciones CNEB, aula virtual LMS y portal para familias.
     </p>
 
     <div class="cover-features">
       <div class="cover-feature-card">
-        <strong>🛡️ Gestión de Dirección</strong>
-        Control institucional, aforo en vivo, actas de notas y personalización White-Label.
+        <strong>🛡️ Flujo de Configuración en 5 Pasos</strong>
+        Cursos ➔ Salones ➔ Docentes ➔ Horarios ➔ Matrículas & Fichas PDF con Asistente Interactivo.
       </div>
       <div class="cover-feature-card">
         <strong>👨‍🏫 Trabajo Pedagógico</strong>
-        Asistencia por salón, escalas CNEB (AD/A/B/C), tareas y evaluaciones.
+        Asistencia por salón, escalas CNEB (AD/A/B/C), tareas con adjuntos y evaluaciones.
       </div>
       <div class="cover-feature-card">
         <strong>👨‍👩‍👦 Portal para Apoderados</strong>
-        Seguimiento de ingreso en tiempo real, libretas oficiales en PDF y justificación médica.
+        Monitoreo de ingreso en tiempo real, descarga de libretas oficiales y justificación médica.
       </div>
       <div class="cover-feature-card">
         <strong>📷 Kiosco QR en Puerta</strong>
-        Escaneo ultrarrápido sin filas, lluvia de confetti y detección automática de tardanzas.
+        Escaneo instantáneo sin filas, lluvia de confetti y detección automática de tardanzas.
       </div>
     </div>
   </div>
@@ -566,85 +596,130 @@ def generate_pdf():
 </table>
 
 <!-- ═══════════════════════════════════════════════════════════════ -->
-<!-- SECCIÓN 2: CONFIGURACIÓN PREVIA Y PUESTA A PUNTO               -->
+<!-- SECCIÓN 2: CONFIGURACIÓN PREVIA Y PUESTA A PUNTO (5 PASOS)     -->
 <!-- ═══════════════════════════════════════════════════════════════ -->
 <div class="page-break"></div>
-<h1>🛠️ 2. Configuración Previa: Puesta a Punto (8 Pasos)</h1>
+<h1>🛠️ 2. Configuración Previa: Flujo Oficial de 5 Pasos</h1>
 <p>
-  Antes de iniciar el año escolar o abrir las puertas el primer día, la Dirección debe completar la siguiente ruta de 8 pasos para dejar el sistema 100% operativo:
+  Para una puesta en marcha ordenada y sin errores, la plataforma cuenta con un <strong>Asistente Interactivo de 5 Pasos</strong> en el Dashboard de Administración y un menú lateral estructurado en este orden lógico:
 </p>
 
-<div class="step-box">
-  <div class="step-title"><span class="badge-step">PASO 1</span> Identidad Institucional y Branding (/admin/branding)</div>
-  <p>Configura el nombre del colegio, código modular, UGEL, lema, colores institucionales y sube el logo oficial y la firma digital de la Dirección para los documentos legales.</p>
+<div class="callout callout-info" style="font-weight: 600; text-align: center;">
+  1. Cursos & Materias ➔ 2. Grados & Secciones ➔ 3. Plana Docente ➔ 4. Horarios por Aula ➔ 5. Matrícula de Alumnos & Fichas PDF
 </div>
 
 <div class="screenshot-container">
   <div class="screenshot-header">
-    <span>MÓDULO DE BRANDING INSTITUCIONAL (/admin/branding)</span>
-    <span>PERSONALIZACIÓN TOTAL</span>
+    <span>PANEL DE ADMINISTRACIÓN CON ASISTENTE DE 5 PASOS (/admin)</span>
+    <span>FLUJO DE CONFIGURACIÓN</span>
   </div>
-  <img class="screenshot-img" src="{img_branding}" alt="Personalización de Branding" />
+  <img class="screenshot-img" src="{img_admin}" alt="Admin Dashboard con Stepper" />
   <div class="screenshot-caption">
-    Figura 2.1: Diseñador de identidad visual, carnet escolar PVC y firma digital de la dirección.
+    Figura 2.1: Panel de administración con asistente paso a paso, barra de progreso interactiva y métricas en vivo.
   </div>
 </div>
 
 <div class="step-box">
-  <div class="step-title"><span class="badge-step">PASO 2</span> Estructura de Niveles y Salones (/admin/academico)</div>
-  <p>Habilita los grados en Inicial (3, 4, 5 años), Primaria (1° a 6°) y Secundaria (1° a 5°). Crea las <strong>Secciones A y B</strong> con su límite de aforo (ej. 30 alumnos).</p>
+  <div class="step-title"><span class="badge-step">PASO 1</span> Cursos, Malla Curricular y Competencias CNEB (/admin/academico)</div>
+  <p><strong>¿Por qué primero?</strong> Para poder asignar materias a los profesores y armar horarios, primero deben existir los cursos oficiales del colegio.</p>
+  <p>Verifica las materias oficiales precargadas del CNEB (Matemática, Comunicación, Ciencia, etc.) o añade talleres especiales como Robótica o Ajedrez.</p>
+</div>
+
+<div class="step-box">
+  <div class="step-title"><span class="badge-step">PASO 2</span> Grados, Niveles y Aulas / Secciones (/admin/academico)</div>
+  <p><strong>¿Por qué segundo?</strong> Los profesores y horarios necesitan un salón físico y una sección a la cual pertenecer.</p>
+  <p>Crea las secciones A y B para Inicial, Primaria y Secundaria. Configura el <strong>Aforo Máximo</strong> de cada aula para el control de capacidad.</p>
 </div>
 
 <div class="screenshot-container">
   <div class="screenshot-header">
-    <span>ESTRUCTURA ACADÉMICA (/admin/academico)</span>
-    <span>GRADOS Y SECCIONES</span>
+    <span>ESTRUCTURA ACADÉMICA (PASO 1 Y 2) (/admin/academico)</span>
+    <span>CURSOS Y SECCIONES</span>
   </div>
   <img class="screenshot-img" src="{img_academico}" alt="Estructura Académica" />
   <div class="screenshot-caption">
-    Figura 2.2: Organización de niveles educativos, grados y secciones A/B con control de capacidad.
+    Figura 2.2: Catálogo de materias curriculares y estructura de niveles/grados con control de cupos.
   </div>
 </div>
 
-<div class="step-box">
-  <div class="step-title"><span class="badge-step">PASO 3</span> Malla de Cursos y Competencias MINEDU</div>
-  <p>Verifica las materias curriculares (Matemática, Comunicación, Ciencia, Personal Social, Inglés, etc.) y sus competencias oficiales CNEB precargadas.</p>
-</div>
+<div class="page-break"></div>
 
 <div class="step-box">
-  <div class="step-title"><span class="badge-step">PASO 4</span> Plana Docente y Asignación de Tutorías (/admin/docentes)</div>
-  <p>Registra a los profesores con sus datos de contacto y designa al <strong>Tutor de Salón</strong> responsable de cada aula.</p>
-</div>
-
-<div class="step-box">
-  <div class="step-title"><span class="badge-step">PASO 5</span> Malla Horaria Semanal (/admin/horarios)</div>
-  <p>Distribuye las materias en los 7 bloques horarios diarios (08:00 AM a 01:45 PM). El sistema cuenta con detección inteligente anti-cruces de profesores.</p>
+  <div class="step-title"><span class="badge-step">PASO 3</span> Plana Docente, Tutorías y Credenciales de Acceso (/admin/docentes)</div>
+  <p><strong>¿Por qué tercero?</strong> Con cursos y salones creados, registras a los profesores, les asignas su usuario institucional con contraseña y designas al <strong>Profesor Tutor</strong> del salón.</p>
 </div>
 
 <div class="screenshot-container">
   <div class="screenshot-header">
-    <span>MATRIZ DE HORARIOS SEMANALES (/admin/horarios)</span>
+    <span>PLANA DOCENTE Y TUTORÍAS (PASO 3) (/admin/docentes)</span>
+    <span>GESTIÓN DE PROFESORES</span>
+  </div>
+  <img class="screenshot-img" src="{img_docentes}" alt="Plana Docente" />
+  <div class="screenshot-caption">
+    Figura 2.3: Directorio docente con designación de tutorías de aula, especialidades y credenciales.
+  </div>
+</div>
+
+<div class="step-box">
+  <div class="step-title"><span class="badge-step">PASO 4</span> Horarios Semanales por Aula sin Cruces (/admin/horarios)</div>
+  <p><strong>¿Por qué cuarto?</strong> Con profesores y materias listas, diseñas la matriz horaria semanal de 7 bloques diarios (08:00 AM – 01:45 PM) con detección inteligente anti-cruces.</p>
+</div>
+
+<div class="screenshot-container">
+  <div class="screenshot-header">
+    <span>MATRIZ DE HORARIOS SEMANALES (PASO 4) (/admin/horarios)</span>
     <span>DISTRIBUCIÓN DE CLASES</span>
   </div>
   <img class="screenshot-img" src="{img_horarios}" alt="Matriz de Horarios" />
   <div class="screenshot-caption">
-    Figura 2.3: Diseñador visual de horarios de Lunes a Viernes con bloques de 45 minutos y recreo.
+    Figura 2.4: Diseñador visual de horarios de Lunes a Viernes con bloques de 45 minutos y recreo.
+  </div>
+</div>
+
+<div class="page-break"></div>
+
+<div class="step-box">
+  <div class="step-title"><span class="badge-step">PASO 5</span> Matrícula de Alumnos, Credenciales y Ficha PDF (/admin/matriculas)</div>
+  <p><strong>¿Por qué quinto?</strong> El estudiante ingresa a un salón que ya tiene horario, profesores y materias completamente definidas.</p>
+  <ul>
+    <li><strong>Registro Completo:</strong> Datos del alumno, datos médicos y datos del apoderado.</li>
+    <li><strong>Credenciales Personalizables:</strong> Configura el usuario y contraseña del alumno y del padre de familia.</li>
+    <li><strong>Descarga Automática de Ficha PDF:</strong> Al confirmar la matrícula, el sistema descarga automáticamente la Ficha Oficial de Matrícula con los accesos a la plataforma y token QR.</li>
+    <li><strong>Cero Datos Ficticios:</strong> El nuevo alumno inicia limpiamente con su registro real sin notas ni asistencias simuladas.</li>
+  </ul>
+</div>
+
+<div class="screenshot-container">
+  <div class="screenshot-header">
+    <span>MATRÍCULAS Y FICHAS PDF (PASO 5) (/admin/matriculas)</span>
+    <span>EMISIÓN DE CREDENCIALES</span>
+  </div>
+  <img class="screenshot-img" src="{img_matriculas}" alt="Matrículas y Fichas PDF" />
+  <div class="screenshot-caption">
+    Figura 2.5: Módulo de matrícula con generador de credenciales y descarga de Ficha PDF oficial.
+  </div>
+</div>
+
+<h3>Pasos Complementarios de Identidad y Portería</h3>
+<div class="step-box">
+  <div class="step-title">A. Identidad Institucional & Carnets QR (/admin/branding)</div>
+  <p>Configura el nombre del colegio, código modular, UGEL, lema, logo oficial y firma digital. Emite los carnets escolares en formato vertical (cinta) u horizontal (tarjeta PVC).</p>
+</div>
+
+<div class="screenshot-container">
+  <div class="screenshot-header">
+    <span>BRANDING Y CARNETS ESCOLARES QR (/admin/branding)</span>
+    <span>IDENTIDAD INSTITUCIONAL</span>
+  </div>
+  <img class="screenshot-img" src="{img_branding}" alt="Branding y Carnets" />
+  <div class="screenshot-caption">
+    Figura 2.6: Personalización visual, sello de dirección y diseñador de carnets QR para estudiantes.
   </div>
 </div>
 
 <div class="step-box">
-  <div class="step-title"><span class="badge-step">PASO 6</span> Padrón de Estudiantes y Matrícula (/admin/matriculas)</div>
-  <p>Registra al estudiante con su DNI, datos médicos y apoderado. Al matricularlo en su sección, el sistema le generará su <strong>Código Oficial</strong> y <strong>Token QR</strong>.</p>
-</div>
-
-<div class="step-box">
-  <div class="step-title"><span class="badge-step">PASO 7</span> Emisión e Impresión de Carnets QR</div>
-  <p>Imprime los fotochecks en formato Vertical (con cinta) u Horizontal (tarjeta PVC). Cada carnet incluye foto, código QR, sello <em>"Matriculado 2026"</em> y datos de emergencia.</p>
-</div>
-
-<div class="step-box">
-  <div class="step-title"><span class="badge-step">PASO 8</span> Puesta a Punto del Kiosco en Portería (/asistencia)</div>
-  <p>Enciende la computadora o tablet de la puerta, apunta la cámara web hacia los alumnos y abre el Kiosco en pantalla completa.</p>
+  <div class="step-title">B. Puesta a Punto del Kiosco en Portería (/asistencia)</div>
+  <p>Conecta la cámara web en la mesa de entrada y abre <span style="font-family: monospace;">/asistencia</span> en pantalla completa para iniciar el escaneo QR.</p>
 </div>
 
 <!-- ═══════════════════════════════════════════════════════════════ -->
@@ -704,31 +779,62 @@ def generate_pdf():
 </table>
 
 <!-- ═══════════════════════════════════════════════════════════════ -->
-<!-- SECCIÓN 4: GUÍA POR ROLES                                      -->
+<!-- SECCIÓN 4: ORGANIZACIÓN DEL MENÚ Y ROLES                       -->
 <!-- ═══════════════════════════════════════════════════════════════ -->
 <div class="page-break"></div>
-<h1>👑 4. Guía del Administrador / Dirección (/admin)</h1>
+<h1>👑 4. Guía del Administrador y Organización del Menú</h1>
 <p>
-  La Dirección tiene acceso al centro de mando con métricas 100% en vivo, seguridad y control académico general.
+  El menú lateral del Administrador está organizado en 4 bloques claros para facilitar el trabajo institucional:
 </p>
 
-<div class="screenshot-container">
-  <div class="screenshot-header">
-    <span>PANEL DE CONTROL GENERAL (/admin)</span>
-    <span>MÉTRICAS EN TIEMPO REAL</span>
-  </div>
-  <img class="screenshot-img" src="{img_admin}" alt="Admin Dashboard" />
-  <div class="screenshot-caption">
-    Figura 4.1: Dashboard principal con aforo en vivo, gráfico de puntualidad, balance CNEB y ticker de escaneo.
-  </div>
-</div>
-
-<h3>Funciones Clave del Director:</h3>
-<ul>
-  <li><strong>Monitoreo de Asistencia:</strong> Gráfico dinámico con alumnos presentes, tardanzas y faltas filtrables por nivel (Inicial, Primaria, Secundaria).</li>
-  <li><strong>Actas de Calificaciones (/admin/notas-salon):</strong> Visualización de las matrices de notas de cualquier grado y opción de <em>Cierre de Bimestre</em>.</li>
-  <li><strong>Gestión de Seguridad (/admin/alertas):</strong> Auditoría de accesos y prevención de incidentes.</li>
-</ul>
+<table>
+  <thead>
+    <tr>
+      <th>Bloque del Menú</th>
+      <th>Módulos Incluidos</th>
+      <th>Propósito Principal</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>INICIO</strong></td>
+      <td>Panel Principal (<span style="font-family: monospace;">/admin</span>)</td>
+      <td>Asistente de 5 pasos, aforo en vivo, gráfico de puntualidad y ticker de escaneos.</td>
+    </tr>
+    <tr>
+      <td><strong>CONFIGURACIÓN INICIAL (PASO A PASO)</strong></td>
+      <td>
+        1. Cursos & Materias<br/>
+        2. Grados & Secciones<br/>
+        3. Plana Docente<br/>
+        4. Horarios por Aula<br/>
+        5. Matrículas & Fichas PDF<br/>
+        Directorio Estudiantil
+      </td>
+      <td>Ruta ordenada para dar de alta el colegio y matricular alumnos con emisión de credenciales.</td>
+    </tr>
+    <tr>
+      <td><strong>OPERACIÓN & ASISTENCIA DIARIA</strong></td>
+      <td>
+        Kiosco Asistencia QR<br/>
+        Notas por Salón<br/>
+        Tareas Escolares<br/>
+        Evaluaciones & Exámenes
+      </td>
+      <td>Control diario del aula, supervisión de notas bimestrales y cierre de periodos.</td>
+    </tr>
+    <tr>
+      <td><strong>SUPERVISIÓN, SEGURIDAD & MARCA</strong></td>
+      <td>
+        Reportes Oficiales<br/>
+        Usuarios del Sistema<br/>
+        Alertas & Auditoría<br/>
+        Identidad & Carnets QR
+      </td>
+      <td>Auditoría de accesos, métricas consolidadas, gestión de cuentas y branding escolar.</td>
+    </tr>
+  </tbody>
+</table>
 
 <!-- ═══════════════════════════════════════════════════════════════ -->
 <!-- SECCIÓN 5: GUÍA DEL DOCENTE                                    -->
@@ -792,6 +898,8 @@ def generate_pdf():
   </div>
 </div>
 
+<div class="page-break"></div>
+
 <h2>Para el Apoderado / Padre de Familia (/apoderado)</h2>
 <p>El portal familiar brinda tranquilidad total con monitoreo de ingreso en vivo, selector multihijo y descarga directa de la libreta oficial para impresión:</p>
 
@@ -846,8 +954,8 @@ def generate_pdf():
         <td>Los padres pueden entrar a <span style="font-family: monospace;">/apoderado</span>, presionar <em>"Justificar Inasistencia"</em> y enviar el motivo al tutor del aula.</td>
       </tr>
       <tr>
-        <td><strong>¿Cómo se emiten las libretas para impresión?</strong></td>
-        <td>Tanto el Director como el Apoderado pueden hacer clic en <em>"Ver Libreta Oficial"</em> y presionar el botón <strong>Imprimir / Guardar PDF</strong> con sellos y firmas digitales incluidas.</td>
+        <td><strong>¿Cómo se emiten las Fichas de Matrícula y Libretas?</strong></td>
+        <td>Al matricular a un alumno en <span style="font-family: monospace;">/admin/matriculas</span>, se descarga automáticamente la <strong>Ficha de Matrícula PDF</strong> con sus credenciales. Las libretas oficiales pueden imprimirse desde el portal del Director o del Apoderado.</td>
       </tr>
     </tbody>
   </table>
@@ -894,12 +1002,18 @@ def generate_pdf():
         result = driver.execute_cdp_cmd("Page.printToPDF", print_options)
         pdf_bytes = base64.b64decode(result['data'])
 
-        pdf_path = os.path.join(BASE_DIR, "Guia_Usuario_ColeSistema_Mini.pdf")
-        with open(pdf_path, "wb") as f:
+        # Save to both standard names
+        pdf_path_1 = os.path.join(BASE_DIR, "Guia_Usuario_ColeSistema_Mini.pdf")
+        pdf_path_2 = os.path.join(BASE_DIR, "guia_usuario_sistema_escolar_2026.pdf")
+        
+        with open(pdf_path_1, "wb") as f:
+            f.write(pdf_bytes)
+        with open(pdf_path_2, "wb") as f:
             f.write(pdf_bytes)
 
         print(f"\n[🎉 ÉXITO] PDF Generado Exitosamente:")
-        print(f"  -> Archivo: {pdf_path}")
+        print(f"  -> Archivo 1: {pdf_path_1}")
+        print(f"  -> Archivo 2: {pdf_path_2}")
         print(f"  -> Tamaño: {len(pdf_bytes) / 1024:.2f} KB")
 
     finally:

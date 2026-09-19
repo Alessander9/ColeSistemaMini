@@ -14,78 +14,66 @@
 
 ---
 
-## 🛠️ 2. Configuración Previa y Puesta a Punto del Colegio (Paso a Paso)
+## 🛠️ 2. Configuración Previa y Puesta a Punto del Colegio (Flujo Oficial de 5 Pasos)
 
-Antes de iniciar el año escolar o abrir la portería el primer día de clases, la **Dirección / Administración** debe completar esta configuración base. Una vez realizada, todo el sistema funcionará de forma automática y fluida.
+Antes de iniciar el año escolar o abrir la portería el primer día de clases, la **Dirección / Administración** debe completar la configuración en el orden lógico natural establecido en la plataforma.
+
+El nuevo **Panel de Administración (`/admin`)** incluye un **Asistente Interactivo de 5 Pasos** con indicador de avance en tiempo real, y el menú lateral (*Sidebar*) está organizado exactamente en esta secuencia:
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│                  RUTA DE CONFIGURACIÓN PREVIA (8 PASOS)                       │
+│             FLUJO OFICIAL DE CONFIGURACIÓN INICIAL (5 PASOS)                 │
 ├──────────────────────────────────────────────────────────────────────────────┤
-│ 1. Identidad ➔ 2. Salones ➔ 3. Cursos ➔ 4. Docentes ➔ 5. Horarios            │
-│ ➔ 6. Matrícula Alumnos ➔ 7. Imprimir Carnets ➔ 8. Kiosco en Puerta           │
+│ 1. Cursos & Materias ➔ 2. Grados & Secciones ➔ 3. Plana Docente              │
+│ ➔ 4. Horarios por Aula ➔ 5. Matrícula de Alumnos & Fichas PDF                │
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-### Paso 1: Identidad Institucional y Datos Oficiales (`/admin/branding`)
-El primer paso es personalizar el sistema con los datos y colores de tu institución educativa:
-1. **Datos Principales**:
-   - **Nombre Oficial de la Institución**: Ej. *Colegio Nacional San Agustín*.
-   - **Código Modular y UGEL**: Datos oficiales del MINEDU para que aparezcan en las libretas y certificados.
-   - **Lema Institucional**: Frase representativa del colegio.
-   - **Dirección, Teléfono y Correo Institucional**.
-2. **Identidad Visual**:
-   - **Logo del Colegio**: Sube la imagen del escudo o insignia oficial.
-   - **Firma y Sello de la Dirección**: Sube la imagen de la firma/sello digital para que todas las libretas generadas salgan firmadas automáticamente.
-   - **Colores Corporativos**: Elige el color principal (ej. Azul Marino, Granate, Verde Botella). Toda la plataforma se adaptará a esos tonos.
+### Paso 1: Malla Curricular, Cursos y Competencias CNEB (`/admin/academico`)
+*¿Por qué primero?* Para poder asignar materias a los profesores y armar horarios, primero deben existir los cursos oficiales del colegio.
+
+1. **Catálogo Curricular Nacional**:
+   - El sistema viene pre-cargado con las áreas oficiales del Currículo Nacional de la Educación Básica (**CNEB**): *Matemática, Comunicación, Ciencia y Tecnología, Personal Social, Inglés, Arte y Cultura, Educación Física y Educación Religiosa*.
+2. **Personalización de Cursos**:
+   - Puedes crear cursos adicionales o talleres (ej. *Robótica, Computación, Ajedrez*).
+   - Asigna a cada curso su color distintivo y sus competencias de evaluación con conclusiones descriptivas.
 
 ---
 
-### Paso 2: Configuración de Niveles, Grados y Salones (`/admin/academico`)
-Define los grados y cuántas aulas funcionarán este año escolar:
+### Paso 2: Grados, Niveles y Aulas / Secciones (`/admin/academico`)
+*¿Por qué segundo?* Los profesores y horarios necesitan un salón físico y una sección a la cual pertenecer.
+
 1. **Niveles Educativos**:
    - 🧸 **Inicial**: 3 años, 4 años y 5 años.
    - ✏️ **Primaria**: 1° a 6° de Primaria.
    - 🎓 **Secundaria**: 1° a 5° de Secundaria.
 2. **Creación de Secciones (Aulas A y B)**:
-   - Para cada grado, crea las secciones necesarias (ej. *1° de Secundaria - Sección "A"* y *1° de Secundaria - Sección "B"*).
-   - Define el **Aforo Máximo** de cada salón (por defecto 30 o 35 alumnos) para que el sistema controle la capacidad y evite sobrecupos.
+   - Crea las secciones correspondientes (ej. *1° de Secundaria - Sección "A"* y *1° de Secundaria - Sección "B"*).
+   - Configura el **Aforo Máximo** de cada salón (ej. 30 o 35 estudiantes) para control automático de capacidad y prevención de sobrecupos.
    - Asigna el aula física (ej. *Pabellón B - Aula 204*).
 
 ---
 
-### Paso 3: Catálogo de Cursos y Competencias MINEDU (`/admin/academico`)
-El sistema ya viene pre-cargado con el Currículo Nacional de la Educación Básica (CNEB), pero puedes verificar y ajustar las materias:
-1. **Malla Curricular Oficial**:
-   - **Matemática** (Resuelve problemas de cantidad, regularidad, forma y gestión de datos).
-   - **Comunicación** (Se comunica oralmente, lee diversos tipos de textos, escribe textos).
-   - **Ciencia y Tecnología** (Indaga mediante métodos científicos, explica el mundo físico, diseña soluciones tecnológicas).
-   - **Personal Social / Ciencias Sociales** (Construye su identidad, convive democráticamente, construye interpretaciones históricas).
-   - **Inglés como Lengua Extranjera**.
-   - **Arte y Cultura**.
-   - **Educación Física**.
-   - **Educación Religiosa**.
-2. Cada curso cuenta con su color distintivo para que los horarios y libretas sean fáciles de leer para padres y estudiantes.
+### Paso 3: Plana Docente, Tutorías y Credenciales de Acceso (`/admin/docentes`)
+*¿Por qué tercero?* Con los cursos y salones listos, ya puedes registrar a cada profesor y asignarle su aula tutora y especialidad.
 
----
-
-### Paso 4: Plana Docente y Asignación de Tutorías (`/admin/docentes`)
-Registra a todos los profesores que enseñarán en el colegio:
-1. **Registro de Profesores**:
+1. **Registro del Docente**:
    - Haz clic en **"+ Nuevo Docente"**.
    - Ingresa: Nombres, Apellidos, DNI, Teléfono y Especialidad (ej. *Licenciado en Matemáticas y Física*).
-   - El sistema le generará automáticamente su correo institucional (ej. `carlos.mendoza@colegio.edu.pe`) y su contraseña de acceso.
-2. **Designación de Tutores**:
-   - Asigna un **Profesor Tutor** a cada salón. El tutor será el responsable del seguimiento conductual, justificaciones médicas y atención directa a los padres de esa aula.
-3. **Asignación de Cursos**:
-   - Vincula qué materias dictará cada profesor en cada grado y sección.
+2. **Credenciales y Acceso al Sistema**:
+   - El sistema genera o permite personalizar el usuario institucional (ej. `carlos.mendoza@colegio.edu.pe`) y su contraseña de ingreso para que el profesor entre a `/docente`.
+3. **Designación de Tutoría de Aula**:
+   - Asigna al docente como **Profesor Tutor** de una sección específica. El tutor será el responsable del seguimiento conductual, justificaciones médicas y atención directa a los padres.
+4. **Asignación de Cursos**:
+   - Vincula las materias que dictará en cada grado y sección.
 
 ---
 
-### Paso 5: Armado de la Malla Horaria Semanal (`/admin/horarios`)
-Organiza el horario de clases para evitar cruces de profesores o aulas:
+### Paso 4: Horarios Semanales por Aula sin Cruces (`/admin/horarios`)
+*¿Por qué cuarto?* Ahora que los profesores tienen cursos y salones asignados, se diseña el horario semanal para que los alumnos y maestros conozcan su rutina diaria.
+
 1. **Estructura Diaria de 7 Bloques**:
    - **1° Hora**: 08:00 AM – 08:45 AM
    - **2° Hora**: 08:45 AM – 09:30 AM
@@ -95,54 +83,56 @@ Organiza el horario de clases para evitar cruces de profesores o aulas:
    - **5° Hora**: 11:30 AM – 12:15 PM
    - **6° Hora**: 12:15 PM – 01:00 PM
    - **7° Hora**: 01:00 PM – 01:45 PM
-2. **Diseñador Visual**:
+2. **Diseñador Visual Anti-Cruces**:
    - Selecciona el salón (ej. *5to Secundaria "A"*).
-   - Arrastra cada materia al día y hora correspondiente de Lunes a Viernes.
-   - El sistema te avisará con una alerta roja si intentas asignar al mismo profesor en dos salones al mismo tiempo.
+   - Distribuye las materias de Lunes a Viernes. El sistema detecta y bloquea en rojo si intentas programar al mismo profesor en dos salones al mismo tiempo.
 
 ---
 
-### Paso 6: Padrón de Estudiantes, Apoderados y Matrícula (`/admin/matriculas`)
-Registra a la comunidad de alumnos y formaliza su matrícula:
-1. **Ficha del Alumno**:
-   - Nombres, Apellidos, DNI y Fecha de Nacimiento.
-   - Datos Médicos: Grupo sanguíneo (ej. *O Positivo*), alergias o condiciones especiales.
-2. **Datos del Apoderado (Papá / Mamá / Tutor)**:
-   - Nombre completo, teléfono celular (para llamadas de emergencia y WhatsApp) y correo electrónico.
-   - *Nota*: Un mismo apoderado puede tener 2 o más hijos vinculados y verlos a todos desde una sola cuenta.
-3. **Confirmación de Matrícula**:
-   - Selecciona el Grado, la Sección (A o B) y el Año Académico (2026).
-   - Al confirmar, el sistema le asigna su **Código Oficial de Estudiante** (ej. `EST-2026-0042`) y genera su **Token QR único de Asistencia**.
+### Paso 5: Matrícula de Alumnos, Credenciales y Descarga Automática de Ficha PDF (`/admin/matriculas`)
+*¿Por qué quinto?* El alumno ingresa a un salón que ya tiene horario, materias y docentes completamente definidos.
+
+1. **Datos del Estudiante y Apoderado**:
+   - Nombres, Apellidos, DNI, Fecha de Nacimiento y datos médicos (grupo sanguíneo, alergias).
+   - Datos del Apoderado (Papá / Mamá / Tutor): Nombre completo, teléfono celular y correo.
+2. **Configuración de Credenciales de Acceso**:
+   - Puedes definir o editar el usuario y contraseña de acceso para el **Estudiante** (portal `/estudiante`) y para el **Apoderado** (portal `/apoderado`).
+3. **Confirmación y Descarga Automática de Ficha de Matrícula en PDF**:
+   - Al confirmar la matrícula, el sistema:
+     - Asigna el **Código Oficial de Estudiante** (ej. `EST-2026-0042`).
+     - Genera su **Token QR Único de Asistencia**.
+     - **Descarga automáticamente la Ficha de Matrícula Oficial en PDF**, la cual incluye:
+       - Datos completos del alumno y grado/sección asignado.
+       - Datos del apoderado registrado.
+       - **Credenciales de acceso a la plataforma** (usuario y contraseña para el portal del alumno y del apoderado).
+       - Espacios para firma de compromiso y sello de la dirección.
+4. **Cero Datos Ficticios**:
+   - El estudiante recién matriculado inicia limpiamente con su récord en blanco: sin notas ni asistencias inventadas, listo para registrar su progreso real.
 
 ---
 
-### Paso 7: Emisión e Impresión de Carnets Escolares QR (`/admin/branding` ➔ *Carnets QR*)
-Con los alumnos ya matriculados, imprime sus credenciales para el primer día de clases:
-1. **Selecciona el Formato de Carnet**:
-   - 📱 **Vertical (Credencial con cinta)**: Para micas transparentes colgantes.
-   - 💳 **Horizontal (Tarjeta PVC)**: Tamaño billetera.
-2. **Elementos del Carnet Oficial**:
-   - **Anverso (Frente)**: Foto del estudiante, Nombre completo, Grado y Sección, Código Escolar, Código QR de alta resolución y sello brillante animado *"Matriculado Oficial 2026"*.
-   - **Reverso**: Normas de uso del colegio, teléfono de emergencia de la enfermería/tópico y grupo sanguíneo.
-3. Haz clic en **"Imprimir Carnets"** o descárgalos en PDF listos para plastificar y entregar a los padres.
+### Pasos Complementarios de Soporte y Portería
 
----
+#### A. Identidad Institucional y Branding (`/admin/branding`)
+- Personaliza el Nombre del Colegio, Código Modular, UGEL, Lema, Colores Corporativos, Logo oficial y la Firma/Sello Digital de la Dirección para que aparezcan en todas las libretas y certificados.
 
-### Paso 8: Puesta a Punto de la Estación de Portería (`/asistencia`)
-1. Coloca una computadora portátil, tablet o monitor táctil en la mesa de ingreso del colegio.
-2. Conecta una cámara web o lector de código de barras QR apuntando hacia los alumnos.
-3. Abre la dirección `/asistencia` y haz clic en el botón de pantalla completa.
-4. **¡Listo!** El colegio está 100% operativo para recibir a los estudiantes.
+#### B. Directorio Estudiantil y Emisión de Carnets QR (`/admin/estudiantes` y `/admin/branding`)
+- Imprime los fotochecks escolares en formato Vertical (con cinta) u Horizontal (tarjeta PVC). Cada carnet incluye foto, código QR de alta resolución, sello brillante *"Matriculado Oficial 2026"* y teléfonos de emergencia.
+
+#### C. Puesta a Punto de la Estación de Portería (`/asistencia`)
+- Coloca una computadora o tablet en la puerta de ingreso con cámara web o lector QR.
+- Abre la pantalla `/asistencia` a pantalla completa. ¡El colegio está listo para operar!
 
 ---
 
 ### 📋 Checklist de Verificación para el Primer Día de Clases
-Antes de que suene el timbre del primer día, verifica que:
-- [x] Los datos y logos del colegio estén actualizados.
-- [x] Todas las secciones tengan su profesor tutor asignado.
-- [x] Los horarios semanales no tengan cruces de profesores.
-- [x] Todos los alumnos tengan su código QR generado y carnet entregado.
-- [x] La cámara del Kiosco en la puerta esté enfocada y con buena iluminación.
+Antes de iniciar las clases, verifica que:
+- [x] La Malla Curricular y Cursos estén configurados.
+- [x] Todas las secciones tengan su aula física y aforo establecido.
+- [x] Toda la plana docente tenga sus usuarios activos y tutores asignados.
+- [x] La matriz de horarios semanales esté completa y sin cruces.
+- [x] Los alumnos estén matriculados y sus Fichas PDF con credenciales entregadas a los padres.
+- [x] Los carnets escolares QR estén impresos y la cámara del Kiosco en puerta conectada.
 
 ---
 
