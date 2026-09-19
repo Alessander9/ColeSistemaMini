@@ -113,30 +113,32 @@ export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
     }
   ];
 
+  // Secciones Estructuradas para Docente (Secuencia Lógica de Jornada Pedagógica)
   const docenteNav: NavSection[] = [
     {
-      section: 'PANEL DOCENTE',
+      section: 'INICIO',
       items: [
         { href: '/docente', label: 'Mi Panel Diario', icon: LayoutDashboard },
-        { href: '/docente/asistencia', label: 'Pase de Asistencia Rápido', icon: QrCode, badge: '● Live', badgeColor: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
+      ]
+    },
+    {
+      section: 'MI JORNADA & AULA DIARIA',
+      items: [
+        { href: '/docente/horario', label: '1. Mi Horario Semanal', icon: Calendar },
+        { href: '/docente/asistencia', label: '2. Pase de Asistencia', icon: QrCode, badge: '● Live', badgeColor: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
       ]
     },
     {
       section: 'GESTIÓN PEDAGÓGICA',
       items: [
-        { href: '/docente/horario', label: 'Mi Horario Semanal', icon: Calendar },
-        { href: '/docente/notas', label: 'Registro de Calificaciones', icon: Award, badge: 'CNEB' },
-      ]
-    },
-    {
-      section: 'LMS & AULA VIRTUAL',
-      items: [
-        { href: '/docente/tareas', label: 'Tareas & Actividades', icon: FileText },
-        { href: '/docente/evaluaciones', label: 'Evaluaciones Programadas', icon: CheckSquare },
+        { href: '/docente/notas', label: '3. Calificaciones CNEB', icon: Award, badge: 'CNEB' },
+        { href: '/docente/tareas', label: '4. Tareas & Actividades', icon: FileText },
+        { href: '/docente/evaluaciones', label: '5. Evaluaciones & Exámenes', icon: CheckSquare },
       ]
     }
   ];
 
+  // Secciones Estructuradas para Estudiante (Secuencia Lógica de Aprendizaje Escolar)
   const estudianteNav: NavSection[] = [
     {
       section: 'INICIO',
@@ -145,28 +147,24 @@ export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
       ]
     },
     {
-      section: 'RENDIMIENTO ACADÉMICO',
+      section: 'MI DÍA A DÍA EN EL COLEGIO',
       items: [
-        { href: '/estudiante/libreta-notas', label: 'Libreta Oficial de Notas', icon: Award, badge: 'PDF' },
-        { href: '/estudiante/asistencias', label: 'Historial de Asistencia', icon: Clock },
-        { href: '/estudiante/horario', label: 'Mi Horario Escolar', icon: Calendar },
+        { href: '/estudiante/carnet-qr', label: '1. Mi Carnet Escolar QR', icon: QrCode, badge: 'Oficial' },
+        { href: '/estudiante/horario', label: '2. Mi Horario de Clases', icon: Calendar },
+        { href: '/estudiante/asistencias', label: '3. Mi Asistencia & Puntualidad', icon: Clock },
       ]
     },
     {
-      section: 'LMS & DEBERES',
+      section: 'MIS ESTUDIOS & RENDIMIENTO',
       items: [
-        { href: '/estudiante/tareas', label: 'Mis Tareas & Entregas', icon: FileText },
-        { href: '/estudiante/evaluaciones', label: 'Calendario de Exámenes', icon: CheckSquare },
-      ]
-    },
-    {
-      section: 'CREDENCIAL DIGITAL',
-      items: [
-        { href: '/estudiante/carnet-qr', label: 'Mi Carnet con Código QR', icon: QrCode },
+        { href: '/estudiante/tareas', label: '4. Mis Tareas & Entregas', icon: FileText },
+        { href: '/estudiante/evaluaciones', label: '5. Calendario de Exámenes', icon: CheckSquare },
+        { href: '/estudiante/libreta-notas', label: '6. Libreta Oficial de Notas', icon: Award, badge: 'CNEB' },
       ]
     }
   ];
 
+  // Secciones Estructuradas para Apoderado (Secuencia Lógica de Seguridad y Seguimiento Familiar)
   const apoderadoNav: NavSection[] = [
     {
       section: 'PANEL DE FAMILIA',
@@ -175,11 +173,23 @@ export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
       ]
     },
     {
-      section: 'REPORTES & CONSULTAS',
+      section: 'CONTROL DE ASISTENCIA & BIENESTAR',
       items: [
-        { href: '/estudiante/libreta-notas', label: 'Libreta de Notas del Hijo', icon: Award },
-        { href: '/estudiante/asistencias', label: 'Asistencia y Puntualidad', icon: Clock },
-        { href: '/apoderado/tareas', label: 'Tareas y Deberes', icon: FileText, badge: 'LMS' },
+        { href: '/estudiante/asistencias', label: '1. Monitoreo de Asistencia', icon: Clock, badge: '● Live', badgeColor: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
+        { href: '/apoderado', label: '2. Justificar Inasistencia', icon: ShieldCheck },
+      ]
+    },
+    {
+      section: 'SEGUIMIENTO ACADÉMICO',
+      items: [
+        { href: '/apoderado/tareas', label: '3. Tareas & Deberes', icon: FileText, badge: 'LMS' },
+        { href: '/estudiante/horario', label: '4. Horario Escolar del Hijo', icon: Calendar },
+      ]
+    },
+    {
+      section: 'DOCUMENTOS & CONTACTO OFICIAL',
+      items: [
+        { href: '/estudiante/libreta-notas', label: '5. Libreta Oficial CNEB', icon: Award, badge: 'PDF' },
       ]
     }
   ];

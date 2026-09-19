@@ -241,7 +241,108 @@ export default function EstudianteDashboardPage() {
         </div>
       </div>
 
-      {/* ── 2. 4 CARDS DE MÉTRICAS PRINCIPALES (DISEÑO SAAS EXACTO AL SCREENSHOT) ── */}
+      {/* ── 2. BARRA DE RUTA DE APRENDIZAJE SECUENCIAL DEL ESTUDIANTE ── */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-2">
+            <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+            <h3 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">
+              Mi Ruta de Estudio Diaria
+            </h3>
+          </div>
+          <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+            Acceso rápido a todas tus herramientas escolares
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 pt-3">
+          <Link
+            href="/estudiante/carnet-qr"
+            className="group flex flex-col p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 border border-slate-200/60 dark:border-slate-700/60 hover:border-emerald-300 transition-all text-left"
+          >
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300">
+                1. Entrada
+              </span>
+              <QrCode className="w-3.5 h-3.5 text-emerald-500 group-hover:scale-110 transition-transform" />
+            </div>
+            <span className="text-xs font-bold text-slate-900 dark:text-white">Carnet QR</span>
+            <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate">Pase de portería</span>
+          </Link>
+
+          <Link
+            href="/estudiante/horario"
+            className="group flex flex-col p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 hover:bg-sky-50 dark:hover:bg-sky-950/40 border border-slate-200/60 dark:border-slate-700/60 hover:border-sky-300 transition-all text-left"
+          >
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-sky-100 dark:bg-sky-900/60 text-sky-700 dark:text-sky-300">
+                2. Clases
+              </span>
+              <Calendar className="w-3.5 h-3.5 text-sky-500 group-hover:scale-110 transition-transform" />
+            </div>
+            <span className="text-xs font-bold text-slate-900 dark:text-white">Mi Horario</span>
+            <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate">Cursos de hoy</span>
+          </Link>
+
+          <Link
+            href="/estudiante/asistencias"
+            className="group flex flex-col p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 hover:bg-teal-50 dark:hover:bg-teal-950/40 border border-slate-200/60 dark:border-slate-700/60 hover:border-teal-300 transition-all text-left"
+          >
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-teal-100 dark:bg-teal-900/60 text-teal-700 dark:text-teal-300">
+                3. Puntualidad
+              </span>
+              <Clock className="w-3.5 h-3.5 text-teal-500 group-hover:scale-110 transition-transform" />
+            </div>
+            <span className="text-xs font-bold text-slate-900 dark:text-white">Asistencia</span>
+            <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate">Récord y récord</span>
+          </Link>
+
+          <Link
+            href="/estudiante/tareas"
+            className="group flex flex-col p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 hover:bg-purple-50 dark:hover:bg-purple-950/40 border border-slate-200/60 dark:border-slate-700/60 hover:border-purple-300 transition-all text-left"
+          >
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-purple-100 dark:bg-purple-900/60 text-purple-700 dark:text-purple-300">
+                4. Deberes
+              </span>
+              <FileText className="w-3.5 h-3.5 text-purple-500 group-hover:scale-110 transition-transform" />
+            </div>
+            <span className="text-xs font-bold text-slate-900 dark:text-white">Mis Tareas</span>
+            <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate">Entregas y archivos</span>
+          </Link>
+
+          <Link
+            href="/estudiante/evaluaciones"
+            className="group flex flex-col p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 hover:bg-blue-50 dark:hover:bg-blue-950/40 border border-slate-200/60 dark:border-slate-700/60 hover:border-blue-300 transition-all text-left"
+          >
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300">
+                5. Exámenes
+              </span>
+              <CheckSquare className="w-3.5 h-3.5 text-blue-500 group-hover:scale-110 transition-transform" />
+            </div>
+            <span className="text-xs font-bold text-slate-900 dark:text-white">Evaluaciones</span>
+            <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate">Calendario de pruebas</span>
+          </Link>
+
+          <Link
+            href="/estudiante/libreta-notas"
+            className="group flex flex-col p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 hover:bg-amber-50 dark:hover:bg-amber-950/40 border border-slate-200/60 dark:border-slate-700/60 hover:border-amber-300 transition-all text-left"
+          >
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300">
+                6. Notas
+              </span>
+              <Award className="w-3.5 h-3.5 text-amber-500 group-hover:scale-110 transition-transform" />
+            </div>
+            <span className="text-xs font-bold text-slate-900 dark:text-white">Libreta CNEB</span>
+            <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate">Promedios y reporte</span>
+          </Link>
+        </div>
+      </div>
+
+      {/* ── 3. CARDS DE MÉTRICAS PRINCIPALES ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         
         {/* CARD 1: PROMEDIO ACTUAL */}
