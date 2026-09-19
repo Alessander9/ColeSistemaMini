@@ -6,17 +6,149 @@
 ## 🌟 1. ¿Qué es ColeSistema Mini?
 
 **ColeSistema Mini** es una plataforma digital moderna y sencilla diseñada para gestionar toda la vida diaria del colegio en un solo lugar:
-- **Control de Asistencia por Código QR**: Registro rápido en la entrada sin filas ni papel.
-- **Libretas y Notas Oficiales CNEB**: Calificaciones con escala de letras (**AD**, **A**, **B**, **C**) y conclusiones descriptivas.
-- **Portal para la Familia**: Los padres pueden ver en tiempo real si su hijo llegó al colegio y revisar sus notas desde el celular.
-- **Aula Virtual & Tareas**: Los profesores dejan tareas y los alumnos envían sus trabajos por internet.
-- **Carnet Escolar Oficial**: Credencial digital con foto, datos de emergencia y código QR personal.
+- **Control de Asistencia por Código QR**: Registro instantáneo en la entrada sin filas, papel ni demoras.
+- **Libretas y Notas Oficiales CNEB**: Calificaciones con la escala nacional de letras (**AD**, **A**, **B**, **C**) y conclusiones descriptivas obligatorias.
+- **Portal para la Familia**: Los padres pueden monitorear en vivo si su hijo llegó al colegio y consultar sus notas desde el celular.
+- **Aula Virtual & Tareas**: Los profesores dejan tareas con adjuntos y los alumnos suben sus trabajos por internet.
+- **Carnet Escolar Oficial**: Credencial digital y física con foto, datos de emergencia y código QR personal.
 
 ---
 
-## ⏰ 2. El Día a Día Escolar: Flujo Operativo Diario
+## 🛠️ 2. Configuración Previa y Puesta a Punto del Colegio (Paso a Paso)
 
-A continuación se muestra cómo todos los miembros de la comunidad educativa interactúan con el sistema a lo largo de un día escolar típico:
+Antes de iniciar el año escolar o abrir la portería el primer día de clases, la **Dirección / Administración** debe completar esta configuración base. Una vez realizada, todo el sistema funcionará de forma automática y fluida.
+
+```
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                  RUTA DE CONFIGURACIÓN PREVIA (8 PASOS)                       │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ 1. Identidad ➔ 2. Salones ➔ 3. Cursos ➔ 4. Docentes ➔ 5. Horarios            │
+│ ➔ 6. Matrícula Alumnos ➔ 7. Imprimir Carnets ➔ 8. Kiosco en Puerta           │
+└──────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### Paso 1: Identidad Institucional y Datos Oficiales (`/admin/branding`)
+El primer paso es personalizar el sistema con los datos y colores de tu institución educativa:
+1. **Datos Principales**:
+   - **Nombre Oficial de la Institución**: Ej. *Colegio Nacional San Agustín*.
+   - **Código Modular y UGEL**: Datos oficiales del MINEDU para que aparezcan en las libretas y certificados.
+   - **Lema Institucional**: Frase representativa del colegio.
+   - **Dirección, Teléfono y Correo Institucional**.
+2. **Identidad Visual**:
+   - **Logo del Colegio**: Sube la imagen del escudo o insignia oficial.
+   - **Firma y Sello de la Dirección**: Sube la imagen de la firma/sello digital para que todas las libretas generadas salgan firmadas automáticamente.
+   - **Colores Corporativos**: Elige el color principal (ej. Azul Marino, Granate, Verde Botella). Toda la plataforma se adaptará a esos tonos.
+
+---
+
+### Paso 2: Configuración de Niveles, Grados y Salones (`/admin/academico`)
+Define los grados y cuántas aulas funcionarán este año escolar:
+1. **Niveles Educativos**:
+   - 🧸 **Inicial**: 3 años, 4 años y 5 años.
+   - ✏️ **Primaria**: 1° a 6° de Primaria.
+   - 🎓 **Secundaria**: 1° a 5° de Secundaria.
+2. **Creación de Secciones (Aulas A y B)**:
+   - Para cada grado, crea las secciones necesarias (ej. *1° de Secundaria - Sección "A"* y *1° de Secundaria - Sección "B"*).
+   - Define el **Aforo Máximo** de cada salón (por defecto 30 o 35 alumnos) para que el sistema controle la capacidad y evite sobrecupos.
+   - Asigna el aula física (ej. *Pabellón B - Aula 204*).
+
+---
+
+### Paso 3: Catálogo de Cursos y Competencias MINEDU (`/admin/academico`)
+El sistema ya viene pre-cargado con el Currículo Nacional de la Educación Básica (CNEB), pero puedes verificar y ajustar las materias:
+1. **Malla Curricular Oficial**:
+   - **Matemática** (Resuelve problemas de cantidad, regularidad, forma y gestión de datos).
+   - **Comunicación** (Se comunica oralmente, lee diversos tipos de textos, escribe textos).
+   - **Ciencia y Tecnología** (Indaga mediante métodos científicos, explica el mundo físico, diseña soluciones tecnológicas).
+   - **Personal Social / Ciencias Sociales** (Construye su identidad, convive democráticamente, construye interpretaciones históricas).
+   - **Inglés como Lengua Extranjera**.
+   - **Arte y Cultura**.
+   - **Educación Física**.
+   - **Educación Religiosa**.
+2. Cada curso cuenta con su color distintivo para que los horarios y libretas sean fáciles de leer para padres y estudiantes.
+
+---
+
+### Paso 4: Plana Docente y Asignación de Tutorías (`/admin/docentes`)
+Registra a todos los profesores que enseñarán en el colegio:
+1. **Registro de Profesores**:
+   - Haz clic en **"+ Nuevo Docente"**.
+   - Ingresa: Nombres, Apellidos, DNI, Teléfono y Especialidad (ej. *Licenciado en Matemáticas y Física*).
+   - El sistema le generará automáticamente su correo institucional (ej. `carlos.mendoza@colegio.edu.pe`) y su contraseña de acceso.
+2. **Designación de Tutores**:
+   - Asigna un **Profesor Tutor** a cada salón. El tutor será el responsable del seguimiento conductual, justificaciones médicas y atención directa a los padres de esa aula.
+3. **Asignación de Cursos**:
+   - Vincula qué materias dictará cada profesor en cada grado y sección.
+
+---
+
+### Paso 5: Armado de la Malla Horaria Semanal (`/admin/horarios`)
+Organiza el horario de clases para evitar cruces de profesores o aulas:
+1. **Estructura Diaria de 7 Bloques**:
+   - **1° Hora**: 08:00 AM – 08:45 AM
+   - **2° Hora**: 08:45 AM – 09:30 AM
+   - **3° Hora**: 09:30 AM – 10:15 AM
+   - 🥪 **RECREO GENERAL**: 10:15 AM – 10:45 AM
+   - **4° Hora**: 10:45 AM – 11:30 AM
+   - **5° Hora**: 11:30 AM – 12:15 PM
+   - **6° Hora**: 12:15 PM – 01:00 PM
+   - **7° Hora**: 01:00 PM – 01:45 PM
+2. **Diseñador Visual**:
+   - Selecciona el salón (ej. *5to Secundaria "A"*).
+   - Arrastra cada materia al día y hora correspondiente de Lunes a Viernes.
+   - El sistema te avisará con una alerta roja si intentas asignar al mismo profesor en dos salones al mismo tiempo.
+
+---
+
+### Paso 6: Padrón de Estudiantes, Apoderados y Matrícula (`/admin/matriculas`)
+Registra a la comunidad de alumnos y formaliza su matrícula:
+1. **Ficha del Alumno**:
+   - Nombres, Apellidos, DNI y Fecha de Nacimiento.
+   - Datos Médicos: Grupo sanguíneo (ej. *O Positivo*), alergias o condiciones especiales.
+2. **Datos del Apoderado (Papá / Mamá / Tutor)**:
+   - Nombre completo, teléfono celular (para llamadas de emergencia y WhatsApp) y correo electrónico.
+   - *Nota*: Un mismo apoderado puede tener 2 o más hijos vinculados y verlos a todos desde una sola cuenta.
+3. **Confirmación de Matrícula**:
+   - Selecciona el Grado, la Sección (A o B) y el Año Académico (2026).
+   - Al confirmar, el sistema le asigna su **Código Oficial de Estudiante** (ej. `EST-2026-0042`) y genera su **Token QR único de Asistencia**.
+
+---
+
+### Paso 7: Emisión e Impresión de Carnets Escolares QR (`/admin/branding` ➔ *Carnets QR*)
+Con los alumnos ya matriculados, imprime sus credenciales para el primer día de clases:
+1. **Selecciona el Formato de Carnet**:
+   - 📱 **Vertical (Credencial con cinta)**: Para micas transparentes colgantes.
+   - 💳 **Horizontal (Tarjeta PVC)**: Tamaño billetera.
+2. **Elementos del Carnet Oficial**:
+   - **Anverso (Frente)**: Foto del estudiante, Nombre completo, Grado y Sección, Código Escolar, Código QR de alta resolución y sello brillante animado *"Matriculado Oficial 2026"*.
+   - **Reverso**: Normas de uso del colegio, teléfono de emergencia de la enfermería/tópico y grupo sanguíneo.
+3. Haz clic en **"Imprimir Carnets"** o descárgalos en PDF listos para plastificar y entregar a los padres.
+
+---
+
+### Paso 8: Puesta a Punto de la Estación de Portería (`/asistencia`)
+1. Coloca una computadora portátil, tablet o monitor táctil en la mesa de ingreso del colegio.
+2. Conecta una cámara web o lector de código de barras QR apuntando hacia los alumnos.
+3. Abre la dirección `/asistencia` y haz clic en el botón de pantalla completa.
+4. **¡Listo!** El colegio está 100% operativo para recibir a los estudiantes.
+
+---
+
+### 📋 Checklist de Verificación para el Primer Día de Clases
+Antes de que suene el timbre del primer día, verifica que:
+- [x] Los datos y logos del colegio estén actualizados.
+- [x] Todas las secciones tengan su profesor tutor asignado.
+- [x] Los horarios semanales no tengan cruces de profesores.
+- [x] Todos los alumnos tengan su código QR generado y carnet entregado.
+- [x] La cámara del Kiosco en la puerta esté enfocada y con buena iluminación.
+
+---
+
+## ⏰ 3. El Día a Día Escolar: Flujo Operativo Diario Cronológico
+
+Así interactúa toda la comunidad educativa a lo largo de una jornada escolar:
 
 ```
 ┌───────────────────────────────────────────────────────────────────────────────┐
@@ -31,11 +163,11 @@ A continuación se muestra cómo todos los miembros de la comunidad educativa in
 ```
 
 ### 1. Mañana temprano (07:00 AM – 08:00 AM) — *La Llegada al Colegio*
-1. **En la Puerta del Colegio**: El personal de portería enciende la pantalla del **Kiosco QR** (`/asistencia`).
-2. **El Alumno llega**: Muestra su **Carnet Escolar** (impreso o en la pantalla de su celular).
-3. **El Kiosco escanea**: En menos de un segundo, la pantalla se ilumina en **verde**, suena un tono agradable, cae una lluvia de confetti y muestra la foto del alumno con el mensaje: *"¡Bienvenido Mateo Torres! Ingreso puntual: 07:48 AM"*.
-4. **Alarma de Tardanza**: Si el alumno llega después de las 08:00 AM, la pantalla cambia a color **ámbar** y registra automáticamente los minutos de tardanza.
-5. **Notificación al Padre**: En ese mismo instante, el apoderado puede ver en su portal que su hijo ya está dentro del colegio.
+1. **En la Puerta del Colegio**: El personal de portería tiene el **Kiosco QR** abierto (`/asistencia`).
+2. **El Alumno llega**: Muestra su **Carnet Escolar** (físico o desde su celular).
+3. **El Kiosco escanea**: En menos de 1 segundo, la pantalla se ilumina en **verde**, suena un tono agradable, cae una lluvia de confetti y muestra la foto del alumno con el mensaje: *"¡Bienvenido Mateo Torres! Ingreso puntual: 07:48 AM"*.
+4. **Alarma de Tardanza**: Si el alumno llega después de las 08:00 AM, la pantalla cambia a color **ámbar** y registra automáticamente los minutos de retraso.
+5. **Notificación al Padre**: En ese mismo instante, el apoderado puede ver en su celular que su hijo ya ingresó al colegio.
 
 ### 2. Primera hora de la mañana (08:00 AM – 08:30 AM) — *Revisión de Dirección*
 1. El **Director o Administrador** entra a su panel (`/admin`).
@@ -44,7 +176,7 @@ A continuación se muestra cómo todos los miembros de la comunidad educativa in
 
 ### 3. Durante las clases (08:30 AM – 01:45 PM) — *Trabajo Pedagógico*
 1. El **Profesor** entra con su cuenta (`/docente`) desde su laptop o tablet.
-2. Abre la **Asistencia de Aula** para verificar que todos los alumnos escaneados en la puerta estén sentados en su salón.
+2. Abre la **Asistencia de Aula** para verificar que todos los alumnos escaneados en la puerta estén en sus asientos.
 3. En la sección de **Calificaciones**, registra el progreso de los alumnos en escala de letras (**AD**, **A**, **B**, **C**) y escribe comentarios motivadores.
 4. En **Tareas**, publica la actividad para la casa adjuntando indicaciones o lecturas en PDF.
 
@@ -52,184 +184,104 @@ A continuación se muestra cómo todos los miembros de la comunidad educativa in
 1. El **Estudiante** entra a su portal (`/estudiante`) para ver qué tareas le dejaron hoy y subir sus archivos resueltos.
 2. El **Apoderado** entra a su portal (`/apoderado`) desde su celular:
    - Confirma que su hijo asistió puntualmente.
-   - Si su hijo no pudo asistir por motivos de salud, llena el formulario de **Justificación de Inasistencia** y adjunta el motivo para que el tutor lo sepa.
+   - Si su hijo faltó por salud, llena el formulario de **Justificación de Inasistencia** y adjunta el motivo para que el tutor lo sepa.
    - Revisa la **Libreta de Notas Oficial** y puede imprimirla con un clic.
 
 ---
 
-## 📖 3. Guía Paso a Paso para Cada Rol
+## 📖 4. Guía Paso a Paso para Cada Rol
 
 ---
 
 ### 👑 ROL 1: ADMINISTRADOR Y DIRECCIÓN
 *Para directores, coordinadores académicos y administradores.*
 
-```
-   [1. Personalizar] ➔ [2. Matricular] ➔ [3. Asignar Profesores] ➔ [4. Imprimir Carnets] ➔ [5. Supervisar]
-```
+#### 1. Panel de Control y Auditoría (`/admin`)
+- Monitorea el porcentaje de asistencia diaria en vivo, capacidad de aforo de los salones y el balance de notas CNEB.
+- Observa el ticker en tiempo real con el último estudiante que marcó ingreso.
 
-#### Paso 1: Personalizar la Imagen de tu Colegio
-1. Ingresa a la barra lateral y haz clic en **"Personalización / Branding"** (`/admin/branding`).
-2. Escribe el **Nombre Oficial** de tu institución (ej. *Colegio San Agustín*), el lema y los datos de contacto.
-3. Sube el **Logo del Colegio** y la **Firma Digital de la Dirección**.
-4. Elige los **Colores Institucionales** (el sistema cambiará automáticamente el diseño para que coincida con tu colegio).
+#### 2. Gestión de Estudiantes y Secciones (`/admin/estudiantes` y `/admin/academico`)
+- Modifica datos de contacto, cambia de sección a un estudiante o imprime credenciales individuales.
 
-#### Paso 2: Crear Salones y Matricular Estudiantes
-1. Ve a **"Estructura Académica"** (`/admin/academico`) para ver tus grados en Inicial, Primaria y Secundaria.
-2. Si un salón tiene muchos alumnos, puedes habilitar fácilmente las **Secciones A y B**.
-3. Entra a **"Matrículas"** (`/admin/matriculas`), haz clic en **"Nueva Matrícula"**, selecciona al estudiante, su grado y salón. El sistema le generará automáticamente su código único escolar.
-
-#### Paso 3: Asignar Profesores y Horarios
-1. En **"Docentes"** (`/admin/docentes`), registra a los maestros, sus correos y teléfonos.
-2. Designa quién será el **Tutor** principal de cada salón.
-3. En **"Horarios"** (`/admin/horarios`), arrastra los cursos a la cuadrícula semanal (de Lunes a Viernes) para armar el horario escolar.
-
-#### Paso 4: Generar e Imprimir los Carnets Escolares QR
-1. Entra a **"Branding"** y abre la pestaña **"Carnets QR"**.
-2. Elige el formato que prefieras:
-   - 📱 **Vertical**: Ideal para micas de fotocheck con cinta colgante.
-   - 💳 **Horizontal**: Estilo tarjeta PVC para llevar en la billetera.
-3. El carnet incluye foto, datos de emergencia, grupo sanguíneo, código QR y el sello brillante *"Matriculado 2026"*.
-4. Haz clic en **Imprimir Todos los Carnets** para entregárselos a los padres al inicio del año.
-
-#### Paso 5: Supervisar Notas y Cerrar Bimestres
-1. Entra a **"Notas por Salón"** (`/admin/notas-salon`).
-2. Selecciona cualquier grado para ver las actas completas de calificaciones.
-3. Al finalizar cada periodo (1°, 2°, 3° o 4° Bimestre), haz clic en **"Cerrar Bimestre"** para proteger las notas y dejarlas listas para el reporte a los padres.
+#### 3. Notas por Salón y Cierre Bimestral (`/admin/notas-salon`)
+- Consulta las actas de notas completas de cualquier grado o curso.
+- Al terminar el bimestre, haz clic en **"Cerrar Periodo"** para congelar las actas y permitir la emisión de libretas.
 
 ---
 
 ### 👨‍🏫 ROL 2: DOCENTE / PROFESOR
 *Para maestros de aula, profesores de curso y tutores.*
 
-```
-   [1. Mi Horario] ➔ [2. Asistencia en Aula] ➔ [3. Calificar CNEB] ➔ [4. Dejar Tareas] ➔ [5. Exámenes]
-```
+#### 1. Mi Horario y Clases del Día (`/docente` y `/docente/horario`)
+- Consulta qué salones te tocan hoy y la distribución de horas de toda la semana.
 
-#### Paso 1: Conocer mi Horario y Mis Salones
-1. Al iniciar sesión en `/docente`, verás tu **Panel Principal** con los cursos que te tocan dictar el día de hoy.
-2. En **"Mi Horario"** (`/docente/horario`), consulta la distribución de todas tus clases de la semana.
+#### 2. Tomar Asistencia en Salón (`/docente/asistencia`)
+- Marca con un toque: 🟢 Presente, 🟡 Tardanza, 🔴 Falta o 🔵 Justificado. Haz clic en **Guardar**.
 
-#### Paso 2: Tomar Asistencia en el Salón
-1. Haz clic en **"Asistencia"** (`/docente/asistencia`).
-2. Selecciona tu salón y fecha de hoy.
-3. Verás la lista de alumnos con un botón de estado para cada uno:
-   - 🟢 **Presente**: Alumno en clase.
-   - 🟡 **Tardanza**: Alumno ingresó tarde al aula.
-   - 🔴 **Falta**: Alumno ausente.
-   - 🔵 **Justificado**: Alumno con permiso médico validado.
-4. Haz clic en **"Guardar Asistencia"**.
+#### 3. Calificar por Competencias CNEB (`/docente/notas`)
+- Selecciona tu curso y califica con **AD**, **A**, **B** o **C**.
+- Escribe la conclusión descriptiva con recomendaciones claras para el estudiante.
 
-#### Paso 3: Calificar Notas por Competencias (CNEB)
-1. Ve a **"Registro de Notas"** (`/docente/notas`).
-2. Selecciona tu curso (ej. *Matemática*) y el Bimestre actual.
-3. Elige la letra correspondiente para cada alumno:
-   - **AD**: Logro Destacado (superó lo esperado).
-   - **A**: Logro Esperado (alcanzó el nivel).
-   - **B**: En Proceso (requiere acompañamiento).
-   - **C**: En Inicio (dificultades significativas).
-4. Escribe la **Conclusión Descriptiva** en el casillero para explicarle al estudiante y a sus padres qué aspectos debe reforzar.
-
-#### Paso 4: Dejar Tareas y Calificar Entregas
-1. Ve a **"Tareas"** (`/docente/tareas`) y haz clic en **"+ Crear Nueva Tarea"**.
-2. Escribe el título, instrucciones, fecha máxima de entrega y adjunta materiales si es necesario.
-3. Cuando los alumnos suban sus trabajos, entra a la tarea para ver la lista de entregas, calificar con un clic y escribirles una felicitación o sugerencia.
+#### 4. Dejar Tareas y Revisar Entregas (`/docente/tareas`)
+- Crea tareas con fecha límite y archivos adjuntos.
+- Revisa los trabajos enviados por los alumnos, califícalos y envíales tu retroalimentación.
 
 ---
 
 ### 🎓 ROL 3: ESTUDIANTE / ALUMNO
 *Para los alumnos del colegio.*
 
-```
-   [1. Mi Carnet QR] ➔ [2. Mis Tareas] ➔ [3. Mis Calificaciones] ➔ [4. Mis Asistencias]
-```
+#### 1. Mi Carnet QR Digital (`/estudiante/carnet-qr`)
+- Muestra este código en la puerta del colegio para registrar tu ingreso en el Kiosco.
 
-#### Paso 1: Usar mi Carnet QR para Entrar al Colegio
-1. Entra a tu cuenta en `/estudiante` y abre **"Mi Carnet QR"** (`/estudiante/carnet-qr`).
-2. Puedes guardar la imagen en tu teléfono o llevar tu fotocheck impreso.
-3. Al llegar a la puerta del colegio, muéstralo frente a la cámara del Kiosco para registrar tu ingreso.
+#### 2. Mis Tareas y Entregas (`/estudiante/tareas`)
+- Revisa las tareas pendientes, descarga los archivos de los profesores y sube tus trabajos resueltos.
 
-#### Paso 2: Ver mis Tareas y Enviar Mis Trabajos
-1. Entra a **"Tareas"** (`/estudiante/tareas`).
-2. Verás dos pestañas: **Pendientes** y **Entregadas**.
-3. Haz clic en una tarea para leer las indicaciones del profesor, haz clic en **"Subir Archivo / Entregar"**, selecciona tu documento o foto de tu cuaderno y confirma el envío.
-
-#### Paso 3: Revisar mi Libreta de Notas
-1. Entra a **"Libreta de Notas"** (`/estudiante/libreta-notas`).
-2. Podrás ver tus notas por cada materia, tus promedios en letras (**AD, A, B, C**) y los comentarios que tus profesores escribieron para ti.
-
-#### Paso 4: Ver mis Asistencias y Horario
-1. En **"Asistencias"** puedes ver a qué hora exacta marcaste tu ingreso cada día del mes.
-2. En **"Horario"** consulta qué cursos te tocan mañana y qué materiales debes alistar en tu mochila.
+#### 3. Mi Libreta de Calificaciones (`/estudiante/libreta-notas`)
+- Consulta tus notas bimestrales, tu promedio anual y los comentarios de tus profesores.
 
 ---
 
 ### 👨‍👩‍👦 ROL 4: APODERADO / PADRE DE FAMILIA
 *Para papás, mamás y tutores legales.*
 
-```
-   [1. Elegir Hijo] ➔ [2. Ver Asistencia en Vivo] ➔ [3. Justificar Falta] ➔ [4. Ver Libreta Oficial]
-```
+#### 1. Selector Multi-Hijo
+- Si tienes varios hijos en el colegio, cambia entre ellos con un solo clic en la parte superior.
 
-#### Paso 1: Cambiar entre mis Hijos
-1. Ingresa a `/apoderado`.
-2. Si tienes más de un hijo en el colegio, en la parte superior verás las tarjetas con sus nombres y fotos. Haz clic sobre el hijo que deseas consultar.
+#### 2. Monitoreo de Asistencia en Tiempo Real
+- Verifica a qué hora exacta ingresó tu hijo hoy y su récord mensual de puntualidad.
 
-#### Paso 2: Saber si mi Hijo ya está en el Colegio
-1. En la pantalla principal verás el indicador **"Asistencia de Hoy"**:
-   - Si ya ingresó, verás la hora exacta (ej. *Marcó ingreso a las 07:49 AM en Kiosco QR*).
-   - Verás también el porcentaje de puntualidad del mes.
+#### 3. Justificación de Inasistencias
+- Justifica faltas por motivos de salud o emergencia familiar directamente desde tu celular.
 
-#### Paso 3: Justificar una Falta o Tardanza por Salud
-1. Si tu hijo se enfermó o tiene cita médica, haz clic en el botón **"Justificar Inasistencia"**.
-2. Selecciona la fecha, el motivo (Salud, Cita Médica, Emergencia Familiar) y escribe una breve explicación.
-3. Al enviar, el profesor tutor y la dirección recibirán la justificación inmediatamente.
+#### 4. Ver e Imprimir Libreta Oficial
+- Haz clic en **"Ver Libreta Oficial"** para abrir el documento formal con firmas digitales de la dirección y presiona **"Imprimir / Guardar en PDF"**.
 
-#### Paso 4: Ver, Descargar e Imprimir la Libreta Oficial
-1. En la sección de notas, haz clic en el botón azul **"Ver Libreta Oficial"**.
-2. Se abrirá el documento con el formato oficial del colegio, firmas digitales de la dirección y sello legal.
-3. Haz clic en el botón **"Imprimir"** para imprimirla directamente en papel o guardarla en formato **PDF** en tu computadora o teléfono.
-
-#### Paso 5: Contactar al Tutor de Salón
-1. En la parte inferior derecha de tu pantalla verás la **Ficha del Tutor**: nombre del profesor a cargo del salón, correo electrónico y horario de atención para padres.
+#### 5. Contacto con el Tutor
+- Consulta el nombre, correo y horario de atención del profesor tutor de tu hijo.
 
 ---
 
 ### 📷 ROL 5: KIOSCO DE ASISTENCIA QR (PORTERÍA)
-*Para el personal de seguridad, portería y auxiliares de entrada.*
+*Para el personal de seguridad y auxiliares.*
 
-```
-   [1. Abrir Kiosco] ➔ [2. Apuntar Cámara] ➔ [3. Alumno Escanea] ➔ [4. Pantalla Verde/Ámbar]
-```
-
-#### Paso 1: Poner la Pantalla en Modo Kiosco
-1. Abre el navegador y entra a la dirección `/asistencia`.
-2. Haz clic en el botón de pantalla completa si lo deseas.
-3. Asegúrate de que la cámara esté encendida (puedes alternar entre cámara frontal o trasera con un botón en pantalla).
-
-#### Paso 2: Escanear al Alumno
-1. El alumno sostiene su fotocheck o celular frente a la cámara a unos 15 centímetros de distancia.
-2. El sistema lee el código al instante:
-   - ✅ **Ingreso Puntual**: Suena tono de éxito, se reproduce animación verde con confetti y muestra nombre, foto y salón del alumno.
-   - ⏰ **Tardanza**: Si ya pasaron las 08:00 AM, la pantalla se muestra en color ámbar y registra la tardanza.
-   - ⚠️ **Doble Marcación**: Si un alumno intenta pasar dos veces seguidas en menos de 5 minutos, el sistema le avisa que ya fue registrado para evitar duplicados.
-
-#### Paso 3: ¿Qué hacer si el alumno olvidó su carnet?
-1. En la parte inferior de la pantalla del Kiosco hay una casilla de **"Ingreso Manual por DNI o Código"**.
-2. Escribe el DNI o código del estudiante (ej. `EST-2026-0042`) y presiona Enter para registrar su ingreso normalmente.
+1. **Abrir la pantalla**: Entra a `/asistencia` y activa la cámara.
+2. **Escaneo del Alumno**: El alumno muestra su código frente al lente a 15 cm.
+3. **Confirmación**: Pantalla verde y sonido de confirmación para ingreso a tiempo; pantalla ámbar para tardanza.
+4. **Ingreso Manual de Emergencia**: Si el alumno no trajo su carnet, escribe su DNI o código escolar en la barra inferior y presiona Enter.
 
 ---
 
-## ❓ 4. Preguntas Frecuentes (FAQ)
+## ❓ 5. Preguntas Frecuentes (FAQ)
 
 ### ¿Qué pasa si se corta el internet en el colegio?
-El sistema cuenta con tecnología **Offline-First**. Puede seguir funcionando y registrando datos en la memoria local de la computadora. Cuando regrese el internet, los datos se sincronizan sin perder nada.
+El sistema cuenta con tecnología **Offline-First**. Sigue funcionando y guardando asistencias en la memoria de la computadora. Al restablecerse la conexión, todo se sincroniza sin perder registros.
 
-### ¿Puedo abrir el sistema desde mi teléfono celular?
-Sí. Toda la plataforma está optimizada para verse perfectamente en celulares Android, iPhone, tablets y computadoras de escritorio.
+### ¿Se puede usar en teléfonos celulares?
+Sí. El diseño es 100% adaptable para celulares Android, iPhone, tablets y computadoras.
 
-### ¿Cómo cambio mi contraseña o foto de perfil?
-Haz clic en tu nombre o foto en la esquina superior derecha de cualquier pantalla y selecciona **"Mi Perfil"**. Allí podrás actualizar tu información y contraseña.
+### ¿Dónde configuro el horario de tardanzas?
+Por defecto la hora límite de puntualidad son las **08:00 AM**. Todo escaneo posterior se clasifica automáticamente como tardanza y calcula los minutos exactos de retraso.
 
 ---
 *ColeSistema Mini — Educación, Tecnología y Seguridad para toda la Comunidad Escolar.*
