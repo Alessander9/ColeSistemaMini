@@ -23,10 +23,16 @@ export async function loginWithCredentials(emailOrUsername: string, password: st
 
     const matchedUser = userList.find(u => 
       u.email?.toLowerCase() === cleanInput || 
+      u.username?.toLowerCase() === cleanInput ||
       u.dni === cleanInput
     );
 
     if (matchedUser) {
+      // Si el usuario tiene contraseña personalizada asignada, validarla (o permitir demo password para mocks)
+      if (matchedUser.password && password && matchedUser.password !== password && password !== 'Colegio2026!' && password !== 'admin123' && password !== '123456') {
+        return { user: null, error: 'Contraseña incorrecta. Verifica tus credenciales.' };
+      }
+
       if (typeof document !== 'undefined') {
         document.cookie = `cole_user_role=${matchedUser.rol}; path=/; max-age=604800; SameSite=Lax`;
         document.cookie = `cole_access_token=jwt-local-active; path=/; max-age=604800; SameSite=Lax`;
@@ -34,7 +40,7 @@ export async function loginWithCredentials(emailOrUsername: string, password: st
       return { user: matchedUser, error: null };
     }
 
-    return { user: null, error: 'Usuario no encontrado. Verifica tu correo o DNI.' };
+    return { user: null, error: 'Usuario no encontrado. Verifica tu correo, usuario o DNI.' };
   }
 
   const supabase = createClient();

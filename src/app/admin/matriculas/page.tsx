@@ -33,12 +33,14 @@ import {
   Copy,
   ExternalLink,
   Building2,
-  Lock
+  Lock,
+  Download
 } from 'lucide-react';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
+import { downloadEnrollmentFichaPdf } from '@/lib/pdf/generateEnrollmentFichaPdf';
 
 function MatriculasContent() {
-  const { enrollments, addStudent, sections, gradeLevels, students, showToast } = useApp();
+  const { enrollments, addStudent, sections, gradeLevels, students, showToast, brandingConfig } = useApp();
   const searchParams = useSearchParams();
 
   // Selected Enrollment for QR Modal
@@ -75,12 +77,21 @@ function MatriculasContent() {
     certificadoEstudios: true,
     dniEscaneado: true,
     fichaMedica: true,
+    // Credenciales
+    studentUsername: '',
+    studentPassword: '',
+    parentPassword: '',
   });
+
+  const [showPassStudent, setShowPassStudent] = useState(false);
+  const [showPassParent, setShowPassParent] = useState(false);
 
   const [generatedResult, setGeneratedResult] = useState<{
     student: Student | null;
+    enrollment: Enrollment | null;
     credentials: { username: string; password: string; email: string } | null;
-  }>({ student: null, credentials: null });
+    parentCredentials: { username: string; password: string; email: string } | null;
+  }>({ student: null, enrollment: null, credentials: null, parentCredentials: null });
 
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
@@ -114,7 +125,78 @@ function MatriculasContent() {
     [gradeLevels, wizardData.nivel]
   );
 
-  const handleNextStep = () => {
+  const handleGenerateWizardPasswords = () => {
+    const cleanFirst = (wizardData.nombres.trim().split(' ')[0] || 'Est').normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const cleanLast = (wizardData.apellidos.trim().split(' ')[0] || 'Cole').normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const dniPart = wizardData.dni.trim().slice(-4) || '2026';
+    const sPass = `Est${cleanFirst[0].toUpperCase()}${cleanLast.slice(0, 3)}${dniPart}!`;
+    const pPass = `Apo${wizardData.telefonoApoderado.slice(-4) || dniPart}!`;
+    setWizardData(prev => ({
+      ...prev,
+      studentPassword: sPass,
+      parentPassword: pPass,
+    }));
+    showToast('Contraseñas seguras sugeridas generadas.', 'info', 'Contraseñas');
+  };
+
+  const handleDownloadFicha = async (customResult?: {
+    student: Student | null;
+    enrollment: Enrollment | null;
+    credentials: any;
+    parentCredentials: any;
+  }) => {
+    const targetStudent = customResult?.student || generatedResult.student;
+    const targetEnrollment = customResult?.enrollment || generatedResult.enrollment;
+    if (!targetStudent) return;
+
+    try {
+      showToast('Generando Ficha Oficial de Matrícula en PDF...', 'info', 'PDF');
+      await downloadEnrollmentFichaPdf({
+        student: targetStudent,
+        enrollment: targetEnrollment,
+        section: sections.find(s => s.id === wizardData.seccionId) || targetEnrollment?.seccion,
+        credentials: customResult?.credentials || generatedResult.credentials,
+        parentCredentials: customResult?.parentCredentials || generatedResult.parentCredentials,
+        parentName: wizardData.nombreApoderado || targetStudent.nombre_apoderado,
+        parentDni: wizardData.dniApoderado,
+        parentPhone: wizardData.telefonoApoderado || targetStudent.telefono_apoderado,
+        parentEmail: wizardData.emailApoderado || targetStudent.email_apoderado,
+        parentRelationship: wizardData.parentesco,
+        brandingConfig,
+      });
+      showToast('Ficha de Matrícula descargada con éxito.', 'success', 'PDF Descargado');
+    } catch (err) {
+      console.error('Error al generar PDF de matrícula:', err);
+      showToast('Error al generar la ficha en PDF.', 'error');
+    }
+  };
+
+  const handleDownloadExistingEnrollmentPdf = async (enr: Enrollment) => {
+    if (!enr.estudiante) return;
+    try {
+      showToast('Generando Ficha de Matrícula en PDF...', 'info', 'PDF');
+      await downloadEnrollmentFichaPdf({
+        student: enr.estudiante,
+        enrollment: enr,
+        section: enr.seccion,
+        credentials: {
+          username: enr.estudiante.profile?.username || enr.estudiante.profile?.dni || enr.estudiante.codigo_estudiante,
+          password: enr.estudiante.profile?.password || `Est${enr.estudiante.profile?.dni || '2026'}!`,
+          email: enr.estudiante.profile?.email,
+        },
+        parentName: enr.estudiante.nombre_apoderado,
+        parentPhone: enr.estudiante.telefono_apoderado,
+        parentEmail: enr.estudiante.email_apoderado,
+        brandingConfig,
+      });
+      showToast('Ficha de Matrícula descargada con éxito.', 'success', 'Descarga Completa');
+    } catch (err) {
+      console.error('Error al generar PDF:', err);
+      showToast('Error al generar la ficha en PDF.', 'error');
+    }
+  };
+
+  const handleNextStep = async () => {
     if (currentStep === 1) {
       if (!wizardData.nombres || !wizardData.apellidos || !wizardData.dni) {
         showToast('Por favor completa los nombres, apellidos y DNI', 'error');
@@ -137,16 +219,46 @@ function MatriculasContent() {
         seccionId: wizardData.seccionId || 'sec-3pri-a',
         nombreApoderado: wizardData.nombreApoderado,
         telefonoApoderado: wizardData.telefonoApoderado,
+        dniApoderado: wizardData.dniApoderado || undefined,
+        emailApoderado: wizardData.emailApoderado || undefined,
+        parentesco: wizardData.parentesco,
+        username: wizardData.studentUsername || undefined,
+        password: wizardData.studentPassword || undefined,
+        parentPassword: wizardData.parentPassword || undefined,
         genero: wizardData.genero,
         avatar_url: wizardData.avatar_url,
       });
 
-      setGeneratedResult({
+      const resultPayload = {
         student: res.student,
+        enrollment: res.enrollment,
         credentials: res.credentials,
-      });
+        parentCredentials: res.parentCredentials || null,
+      };
+
+      setGeneratedResult(resultPayload);
       setCurrentStep(6);
-      showToast('¡Matrícula 2026 completada con éxito!', 'success', 'Matrícula Creada');
+
+      // ── DESCARGA AUTOMÁTICA DE FICHA PDF ──
+      try {
+        await downloadEnrollmentFichaPdf({
+          student: res.student,
+          enrollment: res.enrollment,
+          section: sections.find(s => s.id === wizardData.seccionId),
+          credentials: res.credentials,
+          parentCredentials: res.parentCredentials,
+          parentName: wizardData.nombreApoderado,
+          parentDni: wizardData.dniApoderado,
+          parentPhone: wizardData.telefonoApoderado,
+          parentEmail: wizardData.emailApoderado,
+          parentRelationship: wizardData.parentesco,
+          brandingConfig,
+        });
+      } catch (err) {
+        console.warn('Error en auto-descarga de PDF:', err);
+      }
+
+      showToast('¡Matrícula 2026 registrada y Ficha PDF descargada automáticamente!', 'success', 'Matrícula Completada');
       return;
     }
     setCurrentStep(prev => prev + 1);
@@ -178,8 +290,11 @@ function MatriculasContent() {
       certificadoEstudios: true,
       dniEscaneado: true,
       fichaMedica: true,
+      studentUsername: '',
+      studentPassword: '',
+      parentPassword: '',
     });
-    setGeneratedResult({ student: null, credentials: null });
+    setGeneratedResult({ student: null, enrollment: null, credentials: null, parentCredentials: null });
     setIsWizardOpen(false);
   };
 
@@ -337,7 +452,16 @@ function MatriculasContent() {
     {
       header: 'Acciones',
       cell: (enr) => (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => handleDownloadExistingEnrollmentPdf(enr)}
+            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-900 transition-all cursor-pointer active:scale-95"
+            title="Descargar Ficha Oficial de Matrícula y Constancia (PDF)"
+          >
+            <FileText className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+            <span>Ficha PDF</span>
+          </button>
           {enr.estudiante && (
             <button
               type="button"
@@ -352,7 +476,7 @@ function MatriculasContent() {
           {enr.estudiante_id && (
             <Link
               href={`/admin/estudiantes/${enr.estudiante_id}`}
-              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-all cursor-pointer active:scale-95"
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all cursor-pointer active:scale-95"
               title="Ver Perfil Completo del Estudiante"
             >
               Perfil
@@ -669,14 +793,15 @@ function MatriculasContent() {
                 </div>
               )}
 
-              {/* PASO 5: CONFIRMACIÓN */}
+              {/* PASO 5: CONFIRMACIÓN Y CREDENCIALES */}
               {currentStep === 5 && (
                 <div className="space-y-4 animate-in fade-in duration-200">
                   <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                     <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                    Paso 5: Resumen y Confirmación de Matrícula
+                    Paso 5: Resumen, Credenciales y Confirmación de Matrícula
                   </h3>
 
+                  {/* Resumen */}
                   <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-2 text-xs">
                     <div className="flex justify-between">
                       <span className="text-slate-400">Estudiante:</span>
@@ -695,13 +820,88 @@ function MatriculasContent() {
                       <span className="font-bold">{wizardData.nombreApoderado} ({wizardData.telefonoApoderado})</span>
                     </div>
                   </div>
+
+                  {/* Configuración de Acceso y Contraseñas */}
+                  <div className="p-4 rounded-2xl bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/50 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <KeyRound className="w-4 h-4 text-indigo-600" />
+                        <span className="font-bold text-xs text-indigo-950 dark:text-indigo-200">
+                          Credenciales de Acceso a la Plataforma Web
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleGenerateWizardPasswords}
+                        className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 flex items-center gap-1 bg-white dark:bg-slate-800 px-2.5 py-1 rounded-lg border border-indigo-200 dark:border-indigo-800 shadow-2xs cursor-pointer"
+                      >
+                        <Sparkles className="w-3 h-3" />
+                        Generar Contraseñas
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                      {/* Contraseña Estudiante */}
+                      <div className="p-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-[11px] text-slate-700 dark:text-slate-300">🔑 Clave Alumno</span>
+                          <span className="text-[10px] text-slate-400 font-mono">Rol: Estudiante</span>
+                        </div>
+                        <div className="relative">
+                          <input
+                            type={showPassStudent ? 'text' : 'password'}
+                            value={wizardData.studentPassword}
+                            onChange={(e) => setWizardData(prev => ({ ...prev, studentPassword: e.target.value }))}
+                            placeholder="Dejar vacío para autogenerar"
+                            className="w-full px-2.5 py-1.5 pr-8 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono text-[11px] text-slate-900 dark:text-white outline-none focus:ring-1 focus:ring-indigo-500"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassStudent(!showPassStudent)}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                          >
+                            {showPassStudent ? '🙈' : '👁️'}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Contraseña Apoderado */}
+                      <div className="p-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-[11px] text-slate-700 dark:text-slate-300">🔑 Clave Apoderado</span>
+                          <span className="text-[10px] text-slate-400 font-mono">Rol: Apoderado</span>
+                        </div>
+                        <div className="relative">
+                          <input
+                            type={showPassParent ? 'text' : 'password'}
+                            value={wizardData.parentPassword}
+                            onChange={(e) => setWizardData(prev => ({ ...prev, parentPassword: e.target.value }))}
+                            placeholder="Dejar vacío para autogenerar"
+                            className="w-full px-2.5 py-1.5 pr-8 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono text-[11px] text-slate-900 dark:text-white outline-none focus:ring-1 focus:ring-indigo-500"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassParent(!showPassParent)}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                          >
+                            {showPassParent ? '🙈' : '👁️'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                      <FileText className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                      <span>Al confirmar, el sistema <strong>descargará automáticamente la Ficha Oficial en PDF</strong> con los accesos y el código QR.</span>
+                    </p>
+                  </div>
                 </div>
               )}
 
               {/* PASO 6: ÉXITO */}
               {currentStep === 6 && (
                 <div className="text-center py-4 space-y-4 animate-in zoom-in-95 duration-200">
-                  <div className="w-14 h-14 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto text-2xl">
+                  <div className="w-14 h-14 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto text-2xl font-black">
                     ✓
                   </div>
                   <div>
@@ -709,42 +909,106 @@ function MatriculasContent() {
                       ¡Matrícula 2026 Registrada Exitosamente!
                     </h3>
                     <p className="text-xs text-slate-500 max-w-md mx-auto mt-1">
-                      Se generaron las credenciales oficiales y el carnet escolar con código QR para el control de asistencia.
+                      Se descargó la Ficha Oficial en PDF y se habilitaron los accesos a la plataforma para el estudiante y el apoderado.
                     </p>
                   </div>
 
-                  {generatedResult.credentials && (
-                    <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 text-left border border-slate-200 dark:border-slate-700 text-xs space-y-2 max-w-md mx-auto font-mono">
-                      <div className="flex justify-between items-center">
-                        <span className="text-slate-400">Usuario:</span>
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-indigo-600">{generatedResult.credentials.username}</span>
-                          <button
-                            type="button"
-                            onClick={() => copyToClipboard(generatedResult.credentials!.username, 'user')}
-                            className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-400"
-                            title="Copiar usuario"
-                          >
-                            <Copy className="w-3.5 h-3.5" />
-                          </button>
+                  {/* Botón destacado de Descarga de Ficha PDF */}
+                  <div className="flex justify-center">
+                    <button
+                      type="button"
+                      onClick={() => handleDownloadFicha()}
+                      className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white font-black text-xs shadow-lg shadow-indigo-600/25 active:scale-95 transition-all cursor-pointer"
+                    >
+                      <Download className="w-4 h-4" />
+                      <span>📄 Descargar Ficha Oficial de Matrícula (PDF)</span>
+                    </button>
+                  </div>
+
+                  {/* Credenciales Estudiante y Apoderado */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left max-w-lg mx-auto">
+                    {generatedResult.credentials && (
+                      <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs space-y-2 font-mono">
+                        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-1.5">
+                          <span className="font-bold text-[11px] font-sans text-indigo-600 dark:text-indigo-400">🎓 Cuenta Alumno</span>
+                          <span className="text-[10px] bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 px-1.5 py-0.2 rounded font-sans">Estudiante</span>
+                        </div>
+                        <div className="flex justify-between items-center text-[11px]">
+                          <span className="text-slate-400 font-sans">Usuario:</span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-bold text-slate-800 dark:text-slate-200">{generatedResult.credentials.username}</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigator.clipboard.writeText(generatedResult.credentials!.username);
+                                showToast('Usuario copiado', 'info');
+                              }}
+                              className="p-1 text-slate-400 hover:text-slate-600"
+                            >
+                              <Copy className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center text-[11px]">
+                          <span className="text-slate-400 font-sans">Clave:</span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-bold text-indigo-600 dark:text-indigo-400">{generatedResult.credentials.password}</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigator.clipboard.writeText(generatedResult.credentials!.password);
+                                showToast('Contraseña copiada', 'info');
+                              }}
+                              className="p-1 text-slate-400 hover:text-slate-600"
+                            >
+                              <Copy className="w-3 h-3" />
+                            </button>
+                          </div>
                         </div>
                       </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-slate-400">Contraseña:</span>
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-slate-800 dark:text-slate-100">{generatedResult.credentials.password}</span>
-                          <button
-                            type="button"
-                            onClick={() => copyToClipboard(generatedResult.credentials!.password, 'pass')}
-                            className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-400"
-                            title="Copiar contraseña"
-                          >
-                            <Copy className="w-3.5 h-3.5" />
-                          </button>
+                    )}
+
+                    {generatedResult.parentCredentials && (
+                      <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs space-y-2 font-mono">
+                        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-1.5">
+                          <span className="font-bold text-[11px] font-sans text-amber-600 dark:text-amber-400">👨‍👩‍👧 Cuenta Apoderado</span>
+                          <span className="text-[10px] bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 px-1.5 py-0.2 rounded font-sans">Apoderado</span>
+                        </div>
+                        <div className="flex justify-between items-center text-[11px]">
+                          <span className="text-slate-400 font-sans">Usuario:</span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-bold text-slate-800 dark:text-slate-200">{generatedResult.parentCredentials.username}</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigator.clipboard.writeText(generatedResult.parentCredentials!.username);
+                                showToast('Usuario de apoderado copiado', 'info');
+                              }}
+                              className="p-1 text-slate-400 hover:text-slate-600"
+                            >
+                              <Copy className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center text-[11px]">
+                          <span className="text-slate-400 font-sans">Clave:</span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-bold text-amber-600 dark:text-amber-400">{generatedResult.parentCredentials.password}</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigator.clipboard.writeText(generatedResult.parentCredentials!.password);
+                                showToast('Contraseña de apoderado copiada', 'info');
+                              }}
+                              className="p-1 text-slate-400 hover:text-slate-600"
+                            >
+                              <Copy className="w-3 h-3" />
+                            </button>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
 
                   {/* Carnet QR Card Render */}
                   {generatedResult.student && (
@@ -949,25 +1213,33 @@ function MatriculasContent() {
               </div>
 
               {/* 3. Bottom Action Buttons */}
-              <div className="grid grid-cols-2 gap-2.5 pt-0.5">
+              <div className="grid grid-cols-3 gap-1.5 pt-0.5">
+                <button
+                  type="button"
+                  onClick={() => handleDownloadExistingEnrollmentPdf(enr)}
+                  className="w-full flex items-center justify-center gap-1 py-2 px-2 rounded-xl font-bold text-[11px] text-indigo-700 dark:text-indigo-300 bg-indigo-50/80 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/40 border border-indigo-200/80 dark:border-indigo-800 transition-all active:scale-95 cursor-pointer shadow-2xs"
+                  title="Descargar Ficha Oficial en PDF"
+                >
+                  <FileText className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                  <span>Ficha PDF</span>
+                </button>
                 {enr.estudiante && (
                   <button
                     type="button"
                     onClick={() => setSelectedEnrollmentForQr(enr)}
-                    className="w-full flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl font-bold text-xs text-blue-700 dark:text-blue-300 bg-blue-50/70 hover:bg-blue-100 dark:bg-blue-950/40 dark:hover:bg-blue-900/40 border border-blue-200/80 dark:border-blue-800 transition-all active:scale-95 cursor-pointer shadow-sm"
+                    className="w-full flex items-center justify-center gap-1 py-2 px-2 rounded-xl font-bold text-[11px] text-blue-700 dark:text-blue-300 bg-blue-50/70 hover:bg-blue-100 dark:bg-blue-950/40 dark:hover:bg-blue-900/40 border border-blue-200/80 dark:border-blue-800 transition-all active:scale-95 cursor-pointer shadow-2xs"
                   >
-                    <QrCode className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                    <span>Carnet QR</span>
+                    <QrCode className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                    <span>QR</span>
                   </button>
                 )}
-                
                 {enr.estudiante_id && (
                   <Link
                     href={`/admin/estudiantes/${enr.estudiante_id}`}
-                    className="w-full flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl font-bold text-xs text-white bg-indigo-600 hover:bg-indigo-700 transition-all active:scale-95 shadow-md shadow-indigo-600/20 cursor-pointer text-center"
+                    className="w-full flex items-center justify-center gap-1 py-2 px-2 rounded-xl font-bold text-[11px] text-white bg-indigo-600 hover:bg-indigo-700 transition-all active:scale-95 shadow-md shadow-indigo-600/20 cursor-pointer text-center"
                   >
-                    <User className="w-4 h-4" />
-                    <span>Perfil 360°</span>
+                    <User className="w-3.5 h-3.5" />
+                    <span>Perfil</span>
                   </Link>
                 )}
               </div>

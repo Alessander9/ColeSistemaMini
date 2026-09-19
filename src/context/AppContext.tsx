@@ -102,6 +102,8 @@ interface AppContextType {
     dni: string;
     rol: UserRole;
     email?: string;
+    username?: string;
+    password?: string;
     telefono?: string;
     especialidad?: string;
     cargo?: string;
@@ -254,9 +256,21 @@ interface AppContextType {
     seccionId: string;
     nombreApoderado: string;
     telefonoApoderado: string;
+    dniApoderado?: string;
+    emailApoderado?: string;
+    parentesco?: string;
+    username?: string;
+    password?: string;
+    email?: string;
+    parentPassword?: string;
     genero?: string;
     avatar_url?: string;
-  }) => { student: Student; credentials: { username: string; password: string; email: string } };
+  }) => { 
+    student: Student; 
+    enrollment: Enrollment;
+    credentials: { username: string; password: string; email: string };
+    parentCredentials?: { username: string; password: string; email: string };
+  };
 
   updateStudent: (studentId: string, updatedData: Partial<{
     nombres: string;
@@ -764,6 +778,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     dni: string;
     rol: UserRole;
     email?: string;
+    username?: string;
+    password?: string;
     telefono?: string;
     especialidad?: string;
     cargo?: string;
@@ -773,9 +789,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const cleanFirst = data.nombres.trim().split(' ')[0].toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     const cleanLast = data.apellidos.trim().split(' ')[0].toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     const autoEmail = data.email?.trim() || `${cleanFirst[0]}${cleanLast}@colegio.edu.pe`;
-    const autoUsername = `${cleanFirst[0]}${cleanLast}${data.dni.slice(-4)}`;
+    const autoUsername = data.username?.trim() || `${cleanFirst[0]}${cleanLast}${data.dni.slice(-4)}`;
     const rolePrefix = data.rol === 'admin' ? 'Adm' : data.rol === 'docente' ? 'Doc' : data.rol === 'estudiante' ? 'Est' : data.rol === 'apoderado' ? 'Apo' : 'Ast';
-    const autoPassword = `${rolePrefix}${cleanFirst[0].toUpperCase()}${cleanLast.slice(0, 3)}${data.dni.slice(-4)}!`;
+    const finalPassword = data.password?.trim() || `${rolePrefix}${cleanFirst[0].toUpperCase()}${cleanLast.slice(0, 3)}${data.dni.slice(-4)}!`;
 
     const newUser: UserProfile = {
       id: `user-${data.rol}-${Date.now()}`,
@@ -784,6 +800,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       apellidos: data.apellidos,
       dni: data.dni,
       email: autoEmail,
+      username: autoUsername,
+      password: finalPassword,
       telefono: data.telefono,
       especialidad: data.especialidad,
       cargo: data.cargo,
@@ -791,7 +809,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       activo: data.activo !== undefined ? data.activo : true,
     };
 
-    setUsers(prev => [newUser, ...prev]);
+    setUsers(prev => {
+      const nextUsers = [newUser, ...prev];
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('colegio_users', JSON.stringify(nextUsers));
+        } catch { /* ignore */ }
+      }
+      return nextUsers;
+    });
 
     // Registrar en auditoría
     const auditEntry: AuditLogEntry = {
@@ -818,7 +844,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       user: newUser,
       credentials: {
         username: autoUsername,
-        password: autoPassword,
+        password: finalPassword,
         email: autoEmail,
       }
     };
@@ -1160,6 +1186,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     seccionId: string;
     nombreApoderado: string;
     telefonoApoderado: string;
+    dniApoderado?: string;
+    emailApoderado?: string;
+    parentesco?: string;
+    username?: string;
+    password?: string;
+    email?: string;
+    parentPassword?: string;
     genero?: string;
     avatar_url?: string;
   }) => {
@@ -1170,10 +1203,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const cleanLast = data.apellidos.trim().split(' ')[0].normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
     const tokenQr = `QR-${studentCode}-${cleanFirst}-${cleanLast}`;
 
-    // ── Auto-generate credentials ──────────────────────────────
-    const password = generateStudentPassword(data.nombres, data.apellidos, data.fechaNacimiento);
-    const email    = generateStudentEmail(data.nombres, data.apellidos);
-    const username = generateStudentUsername(data.apellidos, data.dni);
+    // ── Credentials generation or custom ──────────────────────────────
+    const password = data.password?.trim() || generateStudentPassword(data.nombres, data.apellidos, data.fechaNacimiento);
+    const email    = data.email?.trim() || generateStudentEmail(data.nombres, data.apellidos);
+    const username = data.username?.trim() || generateStudentUsername(data.apellidos, data.dni);
+
+    // Apoderado credentials
+    const parentUsername = data.dniApoderado?.trim() || data.emailApoderado?.trim() || `apo${data.telefonoApoderado?.slice(-4) || data.dni.slice(-4)}`;
+    const parentEmail = data.emailApoderado?.trim() || `${parentUsername.toLowerCase()}@apoderado.colegio.edu.pe`;
+    const parentPassword = data.parentPassword?.trim() || `Apo${data.telefonoApoderado?.slice(-4) || data.dni.slice(-4)}!`;
     // ──────────────────────────────────────────────────────────
 
     const newProfile: UserProfile = {
@@ -1183,6 +1221,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       apellidos: data.apellidos,
       dni: data.dni,
       email,
+      username,
+      password,
       telefono: data.telefonoApoderado,
       avatar_url: data.avatar_url || `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80`,
       activo: true,
@@ -1196,8 +1236,28 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       genero: data.genero || 'No especificado',
       nombre_apoderado: data.nombreApoderado,
       telefono_apoderado: data.telefonoApoderado,
+      email_apoderado: data.emailApoderado,
+      dni: data.dni,
+      nombres: data.nombres,
+      apellidos: data.apellidos,
       token_qr: tokenQr,
       profile: newProfile,
+    };
+
+    // Crear o vincular perfil de apoderado
+    const parentUserId = `user-apoderado-${Date.now()}`;
+    const parentProfile: UserProfile = {
+      id: parentUserId,
+      rol: 'apoderado',
+      nombres: data.nombreApoderado || 'Apoderado',
+      apellidos: data.apellidos.split(' ')[0] || '',
+      dni: data.dniApoderado || `${data.dni.slice(0, 4)}9999`,
+      email: parentEmail,
+      username: parentUsername,
+      password: parentPassword,
+      telefono: data.telefonoApoderado,
+      avatar_url: `https://ui-avatars.com/api/?name=${encodeURIComponent(data.nombreApoderado || 'Apoderado')}&background=10b981&color=fff`,
+      activo: true,
     };
 
     const targetSection = MOCK_SECTIONS.find(s => s.id === data.seccionId) || MOCK_SECTIONS[0];
@@ -1216,6 +1276,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     setStudents(prev => [newStudent, ...prev]);
     setEnrollments(prev => [newEnrollment, ...prev]);
+    setUsers(prev => [newProfile, parentProfile, ...prev]);
 
     // Persistencia inmediata síncrona en localStorage para evitar pérdida al navegar
     if (typeof window !== 'undefined') {
@@ -1224,6 +1285,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         localStorage.setItem('colegio_students', JSON.stringify([newStudent, ...currentSavedStudents]));
         const currentSavedEnrollments = JSON.parse(localStorage.getItem('colegio_enrollments') || '[]');
         localStorage.setItem('colegio_enrollments', JSON.stringify([newEnrollment, ...currentSavedEnrollments]));
+        const currentSavedUsers = JSON.parse(localStorage.getItem('colegio_users') || '[]');
+        localStorage.setItem('colegio_users', JSON.stringify([newProfile, parentProfile, ...currentSavedUsers]));
       } catch (err) {
         console.warn('[Storage] Error al persistir inmediatamente:', err);
       }
@@ -1245,7 +1308,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       'Matrícula Exitosa'
     );
 
-    return { student: newStudent, credentials: { username, password, email } };
+    return { 
+      student: newStudent, 
+      enrollment: newEnrollment,
+      credentials: { username, password, email },
+      parentCredentials: { username: parentUsername, password: parentPassword, email: parentEmail }
+    };
   };
 
   const updateStudent = (studentId: string, updatedData: Partial<{

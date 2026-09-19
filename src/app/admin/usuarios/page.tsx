@@ -63,6 +63,7 @@ export default function GestionUsuariosPage() {
   } | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [showPasswordCreate, setShowPasswordCreate] = useState(false);
 
   // Formulario de creación
   const [formData, setFormData] = useState({
@@ -71,6 +72,8 @@ export default function GestionUsuariosPage() {
     dni: '',
     rol: 'docente' as UserRole,
     email: '',
+    username: '',
+    password: '',
     telefono: '',
     especialidad: '',
     cargo: '',
@@ -176,6 +179,8 @@ export default function GestionUsuariosPage() {
       dni: formData.dni.trim(),
       rol: formData.rol,
       email: formData.email.trim() || undefined,
+      username: formData.username.trim() || undefined,
+      password: formData.password.trim() || undefined,
       telefono: formData.telefono.trim() || undefined,
       especialidad: formData.especialidad.trim() || undefined,
       cargo: formData.cargo.trim() || undefined,
@@ -192,11 +197,23 @@ export default function GestionUsuariosPage() {
       dni: '',
       rol: 'docente',
       email: '',
+      username: '',
+      password: '',
       telefono: '',
       especialidad: '',
       cargo: '',
       activo: true,
     });
+  };
+
+  const generateAutoPassword = () => {
+    const rolePrefix = formData.rol === 'admin' ? 'Adm' : formData.rol === 'docente' ? 'Doc' : formData.rol === 'estudiante' ? 'Est' : formData.rol === 'apoderado' ? 'Apo' : 'Ast';
+    const cleanFirst = (formData.nombres.trim().split(' ')[0] || 'User').normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const cleanLast = (formData.apellidos.trim().split(' ')[0] || 'Cole').normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const dniPart = formData.dni.trim().slice(-4) || '2026';
+    const gen = `${rolePrefix}${cleanFirst[0].toUpperCase()}${cleanLast.slice(0, 3)}${dniPart}!`;
+    setFormData(prev => ({ ...prev, password: gen }));
+    showToast('Contraseña segura sugerida generada.', 'info', 'Contraseña');
   };
 
   // Copiar al portapapeles
@@ -770,6 +787,65 @@ export default function GestionUsuariosPage() {
                 </div>
               )}
 
+            </div>
+          </div>
+
+          {/* Paso 3: Acceso a la Plataforma y Contraseña */}
+          <div className="space-y-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+            <div className="flex items-center justify-between">
+              <label className="block font-black text-slate-900 dark:text-white uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                <KeyRound className="w-3.5 h-3.5 text-indigo-600" />
+                <span>3. Credenciales de Acceso a la Plataforma</span>
+              </label>
+              <button
+                type="button"
+                onClick={generateAutoPassword}
+                className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 flex items-center gap-1 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded-md border border-indigo-200 dark:border-indigo-800/60 cursor-pointer"
+              >
+                <Sparkles className="w-3 h-3" />
+                <span>Generar Contraseña</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 rounded-2xl bg-indigo-50/40 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/40">
+              {/* Usuario sugerido / personalizado */}
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Nombre de Usuario (Login)
+                </label>
+                <input
+                  type="text"
+                  value={formData.username}
+                  onChange={(e) => setFormData(prev => ({ ...prev, username: e.target.value }))}
+                  placeholder="Dejar vacío para autogenerar"
+                  className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono text-xs text-slate-900 dark:text-white focus:outline-hidden"
+                />
+              </div>
+
+              {/* Contraseña */}
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
+                  <span>Contraseña de Acceso</span>
+                  <span className="text-[10px] text-slate-400 font-normal">Opcional (se autogenera)</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPasswordCreate ? 'text' : 'password'}
+                    value={formData.password}
+                    onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                    placeholder="Ej. DocCarlos4455!"
+                    className="w-full px-3 py-2 pr-9 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono text-xs text-slate-900 dark:text-white focus:outline-hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPasswordCreate(!showPasswordCreate)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                    title={showPasswordCreate ? 'Ocultar contraseña' : 'Ver contraseña'}
+                  >
+                    {showPasswordCreate ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
 
