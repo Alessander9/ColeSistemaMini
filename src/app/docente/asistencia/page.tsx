@@ -33,9 +33,17 @@ export default function DocenteAsistenciaPage() {
     showToast 
   } = useApp();
 
-  const teacherSections = getTeacherSections(currentUser.id);
+  const teacherSections = useMemo(() => {
+    const fromContext = getTeacherSections(currentUser.id);
+    if (fromContext && fromContext.length > 0) return fromContext;
+
+    // Fallback con aulas designadas de muestra
+    const defaultSec = enrollments.find(e => e.seccion_id === 'sec-3pri-a')?.seccion;
+    return defaultSec ? [{ seccion: defaultSec, cursos: [] }] : [];
+  }, [getTeacherSections, currentUser.id, enrollments]);
+
   const [selectedSectionId, setSelectedSectionId] = useState<string>(
-    teacherSections[0]?.seccion.id || enrollments[0]?.seccion_id || 'sec-3pri-a'
+    teacherSections[0]?.seccion.id || 'sec-3pri-a'
   );
 
   const [viewMode, setViewMode] = useState<'lista' | 'qr'>('lista');
@@ -43,14 +51,16 @@ export default function DocenteAsistenciaPage() {
   const [isSavedFeedback, setIsSavedFeedback] = useState(false);
   const [isClosed, setIsClosed] = useState(false);
 
-  const activeSectionInfo = teacherSections.find(ts => ts.seccion.id === selectedSectionId)?.seccion 
-    || enrollments.find(e => e.seccion_id === selectedSectionId)?.seccion;
+  const activeSectionInfo = useMemo(() => {
+    return teacherSections.find(ts => ts.seccion.id === selectedSectionId)?.seccion 
+      || enrollments.find(e => e.seccion_id === selectedSectionId)?.seccion;
+  }, [teacherSections, selectedSectionId, enrollments]);
 
   const filteredEnrollments = useMemo(() => {
     return enrollments.filter(e => e.seccion_id === selectedSectionId && e.estado === 'activo');
   }, [enrollments, selectedSectionId]);
 
-  const activeEnrollments = filteredEnrollments.length > 0 ? filteredEnrollments : enrollments.slice(0, 8);
+  const activeEnrollments = filteredEnrollments;
   const todayStr = new Date().toISOString().split('T')[0];
 
   // Local exception map for ultra-fast modification
@@ -230,7 +240,12 @@ export default function DocenteAsistenciaPage() {
           />
         </div>
 
-        {displayedEnrollments.map((enr) => {
+        {displayedEnrollments.length === 0 ? (
+          <div className="p-8 text-center text-xs text-slate-400">
+            No se encontraron estudiantes matriculados en esta sección asignada.
+          </div>
+        ) : (
+          displayedEnrollments.map((enr) => {
           const st = getStudentStatus(enr.id);
           const student = enr.estudiante;
           const fullName = `${student?.profile?.apellidos || ''}, ${student?.profile?.nombres || ''}`;
@@ -315,7 +330,7 @@ export default function DocenteAsistenciaPage() {
               </div>
             </div>
           );
-        })}
+        }))}
         </div>
       )}
 

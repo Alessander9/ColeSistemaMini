@@ -42,6 +42,7 @@ interface DataTableProps<T> {
   title?: string;
   actions?: React.ReactNode;
   isLoading?: boolean;
+  gridClassName?: string;
 }
 
 export function DataTable<T extends { id: string | number }>({
@@ -58,6 +59,7 @@ export function DataTable<T extends { id: string | number }>({
   title,
   actions,
   isLoading = false,
+  gridClassName = 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3',
 }: DataTableProps<T>) {
   const [search, setSearch] = useState('');
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
@@ -271,7 +273,7 @@ export function DataTable<T extends { id: string | number }>({
           </div>
         ) : (
           /* Card / Grid View */
-          <div className="p-4 sm:p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className={`p-4 sm:p-6 grid ${gridClassName} gap-4 sm:gap-5`}>
             {pagedData.map((item) => (
               <div 
                 key={item.id} 

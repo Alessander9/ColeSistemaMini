@@ -257,7 +257,7 @@ export default function SectionHubDashboardPage() {
           {/* Right Action Shortcuts */}
           <div className="flex flex-wrap items-center gap-2.5 shrink-0">
             <Link
-              href="/admin/matriculas"
+              href={`/admin/matriculas?nuevo=true&seccionId=${currentSection?.id || ''}&gradoId=${currentGrade?.id || ''}&nivel=${nivel}`}
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-lg shadow-purple-600/30 transition-all active:scale-95"
             >
               <UserPlus className="w-4 h-4" />
@@ -435,7 +435,7 @@ export default function SectionHubDashboardPage() {
             </div>
 
             <Link
-              href="/admin/matriculas"
+              href={`/admin/matriculas?nuevo=true&seccionId=${currentSection?.id || ''}&gradoId=${currentGrade?.id || ''}&nivel=${nivel}`}
               className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-black shadow-md shadow-purple-600/25 transition-all self-start sm:self-auto active:scale-95"
             >
               <UserPlus className="w-3.5 h-3.5" />
@@ -456,7 +456,7 @@ export default function SectionHubDashboardPage() {
               </p>
               <div className="pt-2">
                 <Link
-                  href="/admin/matriculas"
+                  href={`/admin/matriculas?nuevo=true&seccionId=${currentSection?.id || ''}&gradoId=${currentGrade?.id || ''}&nivel=${nivel}`}
                   className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-black shadow-md shadow-purple-600/20 transition-all"
                 >
                   <UserPlus className="w-4 h-4" />

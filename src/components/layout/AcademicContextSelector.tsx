@@ -46,20 +46,23 @@ export function AcademicContextSelector() {
     { id: 'secundaria', label: '🎓 Nivel Secundaria', tag: '1°–5° Año', color: 'bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-500/20' },
   ];
 
-  const currentLevelConfig = levels.find(l => l.id === academicContext.nivel) || levels[0];
+  const safeGradeLevels = gradeLevels || [];
+  const safeSections = sections || [];
 
-  const filteredGrades = academicContext.nivel === 'todos' 
-    ? gradeLevels 
-    : gradeLevels.filter(g => g.nivel === academicContext.nivel);
+  const currentLevelConfig = levels.find(l => l.id === academicContext?.nivel) || levels[0];
 
-  const selectedGrade = gradeLevels.find(g => g.id === academicContext.gradoId);
-  const selectedSection = sections.find(s => s.id === academicContext.seccionId);
+  const filteredGrades = (academicContext?.nivel === 'todos' || !academicContext?.nivel)
+    ? safeGradeLevels 
+    : safeGradeLevels.filter(g => g.nivel === academicContext.nivel);
+
+  const selectedGrade = safeGradeLevels.find(g => g.id === academicContext?.gradoId);
+  const selectedSection = safeSections.find(s => s.id === academicContext?.seccionId);
 
   const availableSections = selectedGrade
-    ? sections.filter(s => s.grado_id === selectedGrade.id)
+    ? safeSections.filter(s => s.grado_id === selectedGrade.id)
     : [];
 
-  const hasCustomFilter = academicContext.nivel !== 'todos' || !!academicContext.gradoId || !!academicContext.seccionId;
+  const hasCustomFilter = academicContext?.nivel !== 'todos' || !!academicContext?.gradoId || !!academicContext?.seccionId;
 
   return (
     <div className="relative" ref={containerRef}>

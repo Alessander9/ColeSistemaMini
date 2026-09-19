@@ -29,6 +29,7 @@ import {
   HelpCircle,
   LucideIcon,
   HeartHandshake,
+  Palette,
   X
 } from 'lucide-react';
 
@@ -52,11 +53,20 @@ interface SidebarProps {
 
 export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
   const pathname = usePathname();
-  const { currentUser, gradeLevels, sections, isSidebarCollapsed } = useApp();
+  const { currentUser, gradeLevels, sections, isSidebarCollapsed, getTeacherSections, brandingConfig } = useApp();
 
   const [isInicialOpen, setIsInicialOpen] = useState(false);
   const [isPrimariaOpen, setIsPrimariaOpen] = useState(true);
   const [isSecundariaOpen, setIsSecundariaOpen] = useState(false);
+  const [isTeacherAulasOpen, setIsTeacherAulasOpen] = useState(true);
+
+  const teacherSections = React.useMemo(() => {
+    if (currentUser?.rol !== 'docente') return [];
+    const fromContext = getTeacherSections(currentUser.id);
+    if (fromContext && fromContext.length > 0) return fromContext;
+    const defaultSec = sections.find(s => s.id === 'sec-3pri-a') || sections[0];
+    return defaultSec ? [{ seccion: defaultSec, cursos: [] }] : [];
+  }, [currentUser, getTeacherSections, sections]);
 
   const handleLinkClick = () => {
     if (isMobileDrawer && onClose) {
@@ -93,9 +103,11 @@ export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
       ]
     },
     {
-      section: 'EVALUACIÓN',
+      section: 'EVALUACIÓN & LMS',
       items: [
         { href: '/admin/notas-salon', label: 'Consolidado de Calificaciones', icon: Award, badge: 'CNEB' },
+        { href: '/admin/tareas', label: 'Tareas & Actividades', icon: FileText },
+        { href: '/admin/evaluaciones', label: 'Evaluaciones & Exámenes', icon: CheckSquare },
       ]
     },
     {
@@ -105,29 +117,34 @@ export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
       ]
     },
     {
-      section: 'LMS & AULA VIRTUAL',
-      items: [
-        { href: '/docente/tareas', label: 'Tareas & Actividades', icon: FileText },
-        { href: '/docente/evaluaciones', label: 'Evaluaciones Programadas', icon: CheckSquare },
-      ]
-    },
-    {
       section: 'REPORTES & ANALÍTICA',
       items: [
         { href: '/admin/reportes', label: 'Reportes & Actas Oficiales', icon: BarChart3 },
       ]
     },
     {
+      section: 'SEGURIDAD & ROLES',
+      items: [
+        { href: '/admin/usuarios', label: 'Gestión de Usuarios & Roles', icon: ShieldCheck, badge: 'RBAC' },
+      ]
+    },
+    {
       section: 'AUDITORÍA & ALERTAS',
       items: [
-        { href: '/admin', label: 'Centro de Alertas & Logs', icon: Bell, badge: 'KPIs' },
+        { href: '/admin/alertas', label: 'Centro de Alertas & Logs', icon: Bell, badge: 'KPIs' },
+      ]
+    },
+    {
+      section: 'CONFIGURACIÓN & MARCA',
+      items: [
+        { href: '/admin/branding', label: 'Branding & SEO Institucional', icon: Palette, badge: 'Marca & SEO', badgeColor: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400' },
       ]
     }
   ];
 
   const docenteNav: NavSection[] = [
     {
-      section: 'INICIO',
+      section: 'PANEL DOCENTE',
       items: [
         { href: '/docente', label: 'Mi Panel Diario', icon: LayoutDashboard },
         { href: '/docente/asistencia', label: 'Pase de Asistencia Rápido', icon: QrCode, badge: '● Live', badgeColor: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
@@ -137,14 +154,14 @@ export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
       section: 'GESTIÓN PEDAGÓGICA',
       items: [
         { href: '/docente/horario', label: 'Mi Horario Semanal', icon: Calendar },
-        { href: '/docente/notas', label: 'Registro de Notas (Spreadsheet)', icon: Award, badge: '4 Bim' },
+        { href: '/docente/notas', label: 'Registro de Calificaciones', icon: Award, badge: 'CNEB' },
       ]
     },
     {
-      section: 'LMS & TAREAS',
+      section: 'LMS & AULA VIRTUAL',
       items: [
-        { href: '/docente/tareas', label: 'Tareas & Entregas', icon: FileText },
-        { href: '/docente/evaluaciones', label: 'Exámenes & Prácticas', icon: CheckSquare },
+        { href: '/docente/tareas', label: 'Tareas & Actividades', icon: FileText },
+        { href: '/docente/evaluaciones', label: 'Evaluaciones Programadas', icon: CheckSquare },
       ]
     }
   ];
@@ -191,7 +208,7 @@ export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
       items: [
         { href: '/estudiante/libreta-notas', label: 'Libreta de Notas del Hijo', icon: Award },
         { href: '/estudiante/asistencias', label: 'Asistencia y Puntualidad', icon: Clock },
-        { href: '/estudiante/tareas', label: 'Tareas y Deberes', icon: FileText },
+        { href: '/apoderado/tareas', label: 'Tareas y Deberes', icon: FileText, badge: 'LMS' },
       ]
     }
   ];
@@ -219,6 +236,18 @@ export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
 
   const isDesktopCollapsed = !isMobileDrawer && isSidebarCollapsed;
 
+  const sidebarStyleClasses = React.useMemo(() => {
+    const style = brandingConfig?.sidebarStyle || 'dark';
+    if (style === 'gradient') {
+      return 'bg-gradient-to-b from-slate-900 via-indigo-950 to-slate-950 text-slate-100 border-r border-indigo-500/20';
+    }
+    if (style === 'glass') {
+      return 'bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-r border-slate-200/70 dark:border-slate-800 shadow-xl';
+    }
+    // dark (default)
+    return 'bg-white dark:bg-slate-900 border-r border-slate-200/80 dark:border-slate-800';
+  }, [brandingConfig?.sidebarStyle]);
+
   return (
     <aside 
       style={
@@ -232,8 +261,8 @@ export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
       }
       className={
         isMobileDrawer 
-          ? 'flex flex-col h-full w-full bg-white dark:bg-slate-900 select-none' 
-          : 'hidden md:flex flex-col h-full bg-white dark:bg-slate-900 border-r border-slate-200/80 dark:border-slate-800 select-none shrink-0 overflow-hidden'
+          ? `flex flex-col h-full w-full select-none ${sidebarStyleClasses}` 
+          : `hidden md:flex flex-col h-full select-none shrink-0 overflow-hidden ${sidebarStyleClasses}`
       }
     >
       {/* Header Institucional */}
@@ -243,18 +272,31 @@ export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
         <Link 
           href={currentUser?.rol ? `/${currentUser.rol}` : '/login'}
           className="flex items-center gap-3 min-w-0 overflow-hidden group"
-          title="ColeSistemaMini"
+          title={brandingConfig?.nombreInstitucion || "ColeSistemaMini"}
         >
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-600 to-indigo-800 flex items-center justify-center text-white shadow-md shadow-indigo-500/20 font-black text-lg shrink-0 group-hover:scale-105 transition-transform">
-            CS
-          </div>
+          {brandingConfig?.logoUrl ? (
+            <img 
+              src={brandingConfig.logoUrl} 
+              alt={brandingConfig.nombreInstitucion || 'Logo'} 
+              className="w-10 h-10 rounded-xl object-contain bg-white border border-slate-200/80 dark:border-slate-700 shadow-md shrink-0 group-hover:scale-105 transition-transform p-0.5" 
+            />
+          ) : (
+            <div 
+              style={{
+                background: `linear-gradient(135deg, ${brandingConfig?.primaryColor || '#4f46e5'} 0%, ${brandingConfig?.accentColor || '#3b82f6'} 100%)`
+              }}
+              className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-md font-black text-base shrink-0 group-hover:scale-105 transition-transform"
+            >
+              {brandingConfig?.siglas || 'CS'}
+            </div>
+          )}
           {!isDesktopCollapsed && (
             <div className="min-w-0 overflow-hidden whitespace-nowrap animate-in fade-in duration-200">
               <h2 className="text-sm font-bold text-slate-900 dark:text-white leading-tight truncate">
-                ColeSistemaMini
+                {brandingConfig?.nombreInstitucion || 'ColeSistemaMini'}
               </h2>
               <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 truncate">
-                SaaS EdTech Multi-Nivel
+                {brandingConfig?.slogan || 'SaaS EdTech Multi-Nivel'}
               </p>
             </div>
           )}
@@ -467,6 +509,56 @@ export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
             </div>
           </div>
         )}
+
+        {/* Mis Aulas Designadas (Solo Docente, visible en modo expandido) */}
+        {currentUser?.rol === 'docente' && !isDesktopCollapsed && teacherSections.length > 0 && (
+          <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 space-y-2 animate-in fade-in duration-200">
+            <div className="flex items-center justify-between px-3">
+              <h3 className="text-[10px] font-bold tracking-wider uppercase text-slate-400 dark:text-slate-500 whitespace-nowrap">
+                MIS AULAS DESIGNADAS
+              </h3>
+              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800/60">
+                {teacherSections.length}
+              </span>
+            </div>
+
+            <div className="rounded-2xl border border-slate-100 dark:border-slate-800 overflow-hidden bg-slate-50/50 dark:bg-slate-800/20 p-2 space-y-1.5">
+              {teacherSections.map((ts) => (
+                <div
+                  key={ts.seccion.id}
+                  className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-700 transition-all text-xs"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-slate-800 dark:text-white text-[11px]">
+                      {ts.seccion.grado?.nombre} &quot;{ts.seccion.letra}&quot;
+                    </span>
+                    <span className="text-[9px] font-semibold text-slate-400 uppercase">
+                      {ts.seccion.grado?.nivel}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between mt-1.5 pt-1.5 border-t border-slate-100 dark:border-slate-800 text-[10px]">
+                    <Link
+                      href="/docente/asistencia"
+                      onClick={handleLinkClick}
+                      className="font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
+                    >
+                      Asistencia
+                    </Link>
+                    <span className="text-slate-300 dark:text-slate-700">•</span>
+                    <Link
+                      href="/docente/notas"
+                      onClick={handleLinkClick}
+                      className="font-bold text-blue-600 dark:text-blue-400 hover:underline"
+                    >
+                      Calificar
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Footer Info */}
@@ -474,16 +566,24 @@ export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
         isDesktopCollapsed ? 'p-2 flex flex-col items-center justify-center' : 'p-3.5'
       }`}>
         {!isDesktopCollapsed ? (
-          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap animate-in fade-in duration-200">
-            <span className="font-semibold">Año Escolar 2026</span>
-            <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-              II Bimestre
-            </span>
+          <div className="space-y-1">
+            <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap animate-in fade-in duration-200">
+              <span className="font-semibold">Año Escolar 2026</span>
+              <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                II Bimestre
+              </span>
+            </div>
+            {currentUser?.rol === 'docente' && (
+              <div className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold flex items-center gap-1 pt-0.5">
+                <ShieldCheck className="w-3 h-3" />
+                <span>Perfil Pedagógico Scoped</span>
+              </div>
+            )}
           </div>
         ) : (
           <div 
             className="text-[10px] font-bold text-slate-400 text-center py-1 cursor-default"
-            title="Año Escolar 2026 – II Bimestre"
+            title="Año Escolar 2026 – II Bimestre (Rol Docente)"
           >
             2026
           </div>

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { MOCK_STUDENTS, MOCK_USERS } from '../lib/mock-data';
+import { TEST_STUDENTS, TEST_USERS } from './test-fixtures';
 
 describe('Universal Persistence & Multi-Role Data Flow', () => {
   beforeEach(() => {
@@ -8,21 +8,21 @@ describe('Universal Persistence & Multi-Role Data Flow', () => {
 
   it('persists students and retrieved them seamlessly', () => {
     const key = 'colegio_students';
-    localStorage.setItem(key, JSON.stringify(MOCK_STUDENTS));
+    localStorage.setItem(key, JSON.stringify(TEST_STUDENTS));
 
     const stored = JSON.parse(localStorage.getItem(key) || '[]');
-    expect(stored.length).toBe(MOCK_STUDENTS.length);
-    expect(stored[0].codigo_estudiante).toBe(MOCK_STUDENTS[0].codigo_estudiante);
+    expect(stored.length).toBe(TEST_STUDENTS.length);
+    expect(stored[0].codigo_estudiante).toBe(TEST_STUDENTS[0].codigo_estudiante);
   });
 
   it('handles role switching and persistence of current user', () => {
-    const teacherUser = MOCK_USERS.find(u => u.rol === 'docente');
+    const teacherUser = TEST_USERS.find(u => u.rol === 'docente');
     expect(teacherUser).toBeDefined();
 
     localStorage.setItem('colegio_current_user', JSON.stringify(teacherUser));
     const loaded = JSON.parse(localStorage.getItem('colegio_current_user') || '{}');
     expect(loaded.rol).toBe('docente');
-    expect(loaded.nombres).toBe(teacherUser?.nombres);
+    expect(loaded.nombre).toBe(teacherUser?.nombre);
   });
 
   it('restores all data to defaults when reset is invoked', () => {

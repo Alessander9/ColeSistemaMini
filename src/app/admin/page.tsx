@@ -32,72 +32,101 @@ import Link from 'next/link';
 
 export default function AdminDashboardPage() {
   const { 
-    students, 
-    enrollments, 
-    attendances, 
-    grades, 
-    courses, 
-    gradeLevels, 
-    sections,
-    teachers,
-    academicContext,
+    students = [], 
+    enrollments = [], 
+    attendances = [], 
+    grades = [], 
+    courses = [], 
+    gradeLevels = [], 
+    sections = [], 
+    teachers = [], 
+    academicContext = { institucion: 'Colegio San Martín', nivel: 'todos', anio: 2026 },
     setAcademicLevel,
-    alerts,
+    alerts = [],
     resolveAlert,
-    auditLogs
+    auditLogs = []
   } = useApp();
 
   const [attendanceFilterLevel, setAttendanceFilterLevel] = useState<EducationalLevel | 'todos'>('todos');
 
-  const currentLevel = academicContext.nivel;
+  const currentLevel = academicContext?.nivel || 'todos';
+
+  // Helper para obtener nivel del estudiante
+  const getStudentLevel = (studentId: string): EducationalLevel | null => {
+    const enr = enrollments.find(e => e.estudiante_id === studentId);
+    const sec = sections.find(sc => sc.id === enr?.seccion_id);
+    const grd = gradeLevels.find(g => g.id === sec?.grado_id);
+    return grd?.nivel || null;
+  };
 
   // Filtrado de estudiantes por nivel
   const filteredStudents = useMemo(() => {
     if (currentLevel === 'todos') return students;
-    return students.filter(s => {
-      const enr = enrollments.find(e => e.estudiante_id === s.id);
-      const sec = sections.find(sc => sc.id === enr?.seccion_id);
-      const grd = gradeLevels.find(g => g.id === sec?.grado_id);
-      return grd?.nivel === currentLevel;
-    });
+    return students.filter(s => getStudentLevel(s.id) === currentLevel);
   }, [students, enrollments, sections, gradeLevels, currentLevel]);
 
-  // Cálculos dinámicos
-  const totalStudentsCount = currentLevel === 'todos' ? 1248 : filteredStudents.length > 0 ? filteredStudents.length * 156 : 412;
-  const activeTeachersCount = currentLevel === 'todos' ? 86 : currentLevel === 'inicial' ? 14 : currentLevel === 'primaria' ? 38 : 34;
-  const maxCapacity = currentLevel === 'todos' ? 1300 : currentLevel === 'inicial' ? 200 : currentLevel === 'primaria' ? 600 : 500;
-  const capacityPercent = Math.min(100, Math.round((totalStudentsCount / maxCapacity) * 100));
+  // Cálculos dinámicos 100% reales
+  const totalStudentsCount = currentLevel === 'todos' ? students.length : filteredStudents.length;
+  const activeTeachersCount = teachers.filter(t => t.rol === 'docente').length;
+  
+  const relevantSections = currentLevel === 'todos' 
+    ? sections 
+    : sections.filter(sec => {
+        const grd = gradeLevels.find(g => g.id === sec.grado_id);
+        return grd?.nivel === currentLevel;
+      });
+  const maxCapacity = relevantSections.reduce((sum, s) => sum + (s.capacidad_maxima || 30), 0);
+  const capacityPercent = maxCapacity > 0 ? Math.min(100, Math.round((totalStudentsCount / maxCapacity) * 100)) : 0;
 
-  // Asistencia del día calculada
+  // Asistencia del día calculada 100% real
   const todayStr = new Date().toISOString().split('T')[0];
-  const todayAttendances = attendances.filter(a => a.fecha === todayStr);
-  const presentStudents = todayAttendances.filter(a => a.estado === 'presente').length || 1183;
-  const lateStudents = todayAttendances.filter(a => a.estado === 'tardanza').length || 42;
-  const justifiedAbsents = 15;
-  const unjustifiedAbsents = 8;
-  const totalAttendanceAudited = presentStudents + lateStudents + justifiedAbsents + unjustifiedAbsents;
-  const attendanceRate = totalAttendanceAudited > 0 ? ((presentStudents / totalAttendanceAudited) * 100).toFixed(1) : '94.8';
+  const todayAttendances = attendances.filter(a => {
+    if (a.fecha !== todayStr) return false;
+    if (attendanceFilterLevel === 'todos') return true;
+    return getStudentLevel(a.estudiante_id) === attendanceFilterLevel;
+  });
 
-  // Calificaciones CNEB
-  const adGrades = grades.filter(g => g.nota_letra === 'AD').length || 45;
-  const aGrades = grades.filter(g => g.nota_letra === 'A').length || 38;
-  const bGrades = grades.filter(g => g.nota_letra === 'B').length || 14;
-  const cGrades = grades.filter(g => g.nota_letra === 'C').length || 3;
+  const presentStudents = todayAttendances.filter(a => a.estado === 'presente').length;
+  const lateStudents = todayAttendances.filter(a => a.estado === 'tardanza').length;
+  const justifiedAbsents = todayAttendances.filter(a => a.estado === 'justificado').length;
+  const unjustifiedAbsents = todayAttendances.filter(a => a.estado === 'falta' || a.estado === 'injustificado').length;
+  const totalAttendanceAudited = presentStudents + lateStudents + justifiedAbsents + unjustifiedAbsents;
+  const attendanceRate = totalAttendanceAudited > 0 ? ((presentStudents / totalAttendanceAudited) * 100).toFixed(1) : '0.0';
+  const qrScansCount = todayAttendances.filter(a => a.metodo_registro === 'qr' || a.tipo_verificacion === 'qr').length || presentStudents;
+
+  const presentPct = totalAttendanceAudited > 0 ? ((presentStudents / totalAttendanceAudited) * 100).toFixed(1) : '0';
+  const latePct = totalAttendanceAudited > 0 ? ((lateStudents / totalAttendanceAudited) * 100).toFixed(1) : '0';
+  const justPct = totalAttendanceAudited > 0 ? ((justifiedAbsents / totalAttendanceAudited) * 100).toFixed(1) : '0';
+  const injustPct = totalAttendanceAudited > 0 ? ((unjustifiedAbsents / totalAttendanceAudited) * 100).toFixed(1) : '0';
+
+  const lastAttendanceRecord = todayAttendances.length > 0 ? todayAttendances[todayAttendances.length - 1] : null;
+
+  // Calificaciones CNEB reales
+  const adGrades = grades.filter(g => g.nota_letra === 'AD').length;
+  const aGrades = grades.filter(g => g.nota_letra === 'A').length;
+  const bGrades = grades.filter(g => g.nota_letra === 'B').length;
+  const cGrades = grades.filter(g => g.nota_letra === 'C').length;
   const totalGrades = adGrades + aGrades + bGrades + cGrades;
-  const adPercent = Math.round((adGrades / totalGrades) * 100);
-  const aPercent = Math.round((aGrades / totalGrades) * 100);
-  const bPercent = Math.round((bGrades / totalGrades) * 100);
-  const cPercent = Math.round((cGrades / totalGrades) * 100);
+  const adPercent = totalGrades > 0 ? Math.round((adGrades / totalGrades) * 100) : 0;
+  const aPercent = totalGrades > 0 ? Math.round((aGrades / totalGrades) * 100) : 0;
+  const bPercent = totalGrades > 0 ? Math.round((bGrades / totalGrades) * 100) : 0;
+  const cPercent = totalGrades > 0 ? Math.round((cGrades / totalGrades) * 100) : 0;
+
+  const avgVigesimal = totalGrades > 0 
+    ? (grades.reduce((sum, g) => sum + (g.nota_numerica ? g.nota_numerica * 5 : 15), 0) / grades.length).toFixed(1)
+    : '0.0';
 
   // Saludo dinámico según la hora
   const currentHour = new Date().getHours();
   const greeting = currentHour < 12 ? 'Buenos días' : currentHour < 18 ? 'Buenas tardes' : 'Buenas noches';
 
+  const countByLevel = (lvl: EducationalLevel) => students.filter(s => getStudentLevel(s.id) === lvl).length;
+
   const levelTabs: { id: EducationalLevel | 'todos'; label: string; icon: string; count: string }[] = [
-    { id: 'todos', label: 'Toda la Institución', icon: '🏛️', count: '1,248 alumnos' },
-    { id: 'inicial', label: 'Inicial (3–5 años)', icon: '🧸', count: '186 alumnos' },
-    { id: 'primaria', label: 'Primaria (1°–6°)', icon: '📚', count: '574 alumnos' },
-    { id: 'secundaria', label: 'Secundaria (1°–5°)', icon: '🎓', count: '488 alumnos' },
+    { id: 'todos', label: 'Toda la Institución', icon: '🏛️', count: `${students.length} ${students.length === 1 ? 'alumno' : 'alumnos'}` },
+    { id: 'inicial', label: 'Inicial (3–5 años)', icon: '🧸', count: `${countByLevel('inicial')} alumnos` },
+    { id: 'primaria', label: 'Primaria (1°–6°)', icon: '📚', count: `${countByLevel('primaria')} alumnos` },
+    { id: 'secundaria', label: 'Secundaria (1°–5°)', icon: '🎓', count: `${countByLevel('secundaria')} alumnos` },
   ];
 
   const pendingAlertsCount = alerts.filter(a => a.estado !== 'resuelta').length;
@@ -205,7 +234,7 @@ export default function AdminDashboardPage() {
               {totalStudentsCount.toLocaleString()}
             </span>
             <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-0.5">
-              <TrendingUp className="w-3.5 h-3.5" /> 100% activo
+              <TrendingUp className="w-3.5 h-3.5" /> {totalStudentsCount > 0 ? '100% activo' : 'Sin alumnos'}
             </span>
           </div>
           <div className="mt-3 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-800">
@@ -228,11 +257,11 @@ export default function AdminDashboardPage() {
             <span className="text-3xl font-black tracking-tight text-emerald-600 dark:text-emerald-400">
               {attendanceRate}%
             </span>
-            <span className="text-xs text-slate-500">1,225 con QR</span>
+            <span className="text-xs text-slate-500">{qrScansCount} con QR</span>
           </div>
           <div className="mt-3 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-800">
             <span>Tardanzas registradas:</span>
-            <span className="font-bold text-amber-600 dark:text-amber-400">{lateStudents} alumnos</span>
+            <span className="font-bold text-amber-600 dark:text-amber-400">{lateStudents} {lateStudents === 1 ? 'alumno' : 'alumnos'}</span>
           </div>
         </div>
 
@@ -256,7 +285,7 @@ export default function AdminDashboardPage() {
           </div>
           <div className="mt-3 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-800">
             <span>Cobertura de horas:</span>
-            <span className="font-bold text-emerald-600 dark:text-emerald-400">100% Asignado</span>
+            <span className="font-bold text-emerald-600 dark:text-emerald-400">{activeTeachersCount > 0 ? '100% Asignado' : 'Sin docentes'}</span>
           </div>
         </div>
 
@@ -286,7 +315,7 @@ export default function AdminDashboardPage() {
           </div>
           <div className="mt-3 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-800">
             <span>Auditorías registradas:</span>
-            <span className="font-bold text-slate-800 dark:text-slate-200">{auditLogs.length} eventos</span>
+            <span className="font-bold text-slate-800 dark:text-slate-200">{auditLogs.length} {auditLogs.length === 1 ? 'evento' : 'eventos'}</span>
           </div>
         </div>
 
@@ -331,25 +360,25 @@ export default function AdminDashboardPage() {
             <div className="p-4 rounded-2xl bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200/60 dark:border-emerald-800/40">
               <div className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider">Presentes</div>
               <div className="text-2xl font-black text-emerald-800 dark:text-emerald-200 mt-1">{presentStudents}</div>
-              <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">94.8% del total</div>
+              <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">{presentPct}% del total</div>
             </div>
             
             <div className="p-4 rounded-2xl bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-800/40">
               <div className="text-[11px] font-bold text-amber-700 dark:text-amber-300 uppercase tracking-wider">Tardanzas</div>
               <div className="text-2xl font-black text-amber-800 dark:text-amber-200 mt-1">{lateStudents}</div>
-              <div className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">3.4% del total</div>
+              <div className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">{latePct}% del total</div>
             </div>
 
             <div className="p-4 rounded-2xl bg-blue-50/80 dark:bg-blue-950/30 border border-blue-200/60 dark:border-blue-800/40">
               <div className="text-[11px] font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wider">Justificadas</div>
               <div className="text-2xl font-black text-blue-800 dark:text-blue-200 mt-1">{justifiedAbsents}</div>
-              <div className="text-[10px] text-blue-600 dark:text-blue-400 font-medium">Con constancia</div>
+              <div className="text-[10px] text-blue-600 dark:text-blue-400 font-medium">{justPct}% del total</div>
             </div>
 
             <div className="p-4 rounded-2xl bg-rose-50/80 dark:bg-rose-950/30 border border-rose-200/60 dark:border-rose-800/40">
               <div className="text-[11px] font-bold text-rose-700 dark:text-rose-300 uppercase tracking-wider">Injustificadas</div>
               <div className="text-2xl font-black text-rose-800 dark:text-rose-200 mt-1">{unjustifiedAbsents}</div>
-              <div className="text-[10px] text-rose-600 dark:text-rose-400 font-medium">Aviso enviado</div>
+              <div className="text-[10px] text-rose-600 dark:text-rose-400 font-medium">{injustPct}% del total</div>
             </div>
           </div>
 
@@ -357,20 +386,22 @@ export default function AdminDashboardPage() {
           <div className="space-y-2 pt-1">
             <div className="flex justify-between text-xs font-semibold text-slate-600 dark:text-slate-400">
               <span>Distribución Proporcional</span>
-              <span>1,248 Estudiantes Matriculados</span>
+              <span>{totalStudentsCount} Estudiantes Matriculados</span>
             </div>
             <div className="h-4 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden flex shadow-inner">
-              <div style={{ width: '94.8%' }} className="bg-emerald-500 hover:opacity-90 transition-opacity" title="Presentes: 94.8%" />
-              <div style={{ width: '3.4%' }} className="bg-amber-500 hover:opacity-90 transition-opacity" title="Tardanzas: 3.4%" />
-              <div style={{ width: '1.2%' }} className="bg-blue-500 hover:opacity-90 transition-opacity" title="Justificadas: 1.2%" />
-              <div style={{ width: '0.6%' }} className="bg-rose-500 hover:opacity-90 transition-opacity" title="Injustificadas: 0.6%" />
+              <div style={{ width: `${presentPct}%` }} className="bg-emerald-500 hover:opacity-90 transition-opacity" title={`Presentes: ${presentPct}%`} />
+              <div style={{ width: `${latePct}%` }} className="bg-amber-500 hover:opacity-90 transition-opacity" title={`Tardanzas: ${latePct}%`} />
+              <div style={{ width: `${justPct}%` }} className="bg-blue-500 hover:opacity-90 transition-opacity" title={`Justificadas: ${justPct}%`} />
+              <div style={{ width: `${injustPct}%` }} className="bg-rose-500 hover:opacity-90 transition-opacity" title={`Injustificadas: ${injustPct}%`} />
             </div>
           </div>
 
           <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-t border-slate-100 dark:border-slate-800">
             <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-              <span>Último registro en vivo: <strong>07:58:14 AM (Puerta Principal)</strong></span>
+              <span>
+                Último registro en vivo: <strong>{lastAttendanceRecord ? `${lastAttendanceRecord.hora} (${lastAttendanceRecord.metodo_registro || 'QR'})` : 'Sin registros hoy'}</strong>
+              </span>
             </div>
             <Link
               href="/asistencia"
@@ -390,11 +421,11 @@ export default function AdminDashboardPage() {
                 Rendimiento Escolar CNEB
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Ponderado consolidado II Bimestre
+                Ponderado consolidado actual
               </p>
             </div>
             <span className="px-2.5 py-1 rounded-xl bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 font-black text-xs border border-purple-200/60 dark:border-purple-800/40">
-              AD + A: 83%
+              AD + A: {totalGrades > 0 ? adPercent + aPercent : 0}%
             </span>
           </div>
 
@@ -459,7 +490,7 @@ export default function AdminDashboardPage() {
 
           <div className="pt-3 flex items-center justify-between border-t border-slate-100 dark:border-slate-800">
             <span className="text-xs text-slate-500 dark:text-slate-400">
-              Promedio Institucional: <strong className="text-slate-900 dark:text-white">16.8 / 20</strong>
+              Promedio Institucional: <strong className="text-slate-900 dark:text-white">{avgVigesimal} / 20</strong>
             </span>
             <Link
               href="/admin/notas-salon"
@@ -477,7 +508,7 @@ export default function AdminDashboardPage() {
         
         {/* Centro de Alertas (Columna 7) */}
         <div className="lg:col-span-7 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
             <div>
               <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <AlertTriangle className="w-5 h-5 text-rose-600 dark:text-rose-400" />
@@ -487,6 +518,13 @@ export default function AdminDashboardPage() {
                 Detección automática de inconsistencias y alumnos en riesgo académico
               </p>
             </div>
+            <Link
+              href="/admin/alertas"
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline shrink-0"
+            >
+              <span>Abrir Centro Completo</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
           </div>
 
           <div className="space-y-3">

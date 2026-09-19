@@ -31,9 +31,18 @@ import {
   LMSModule,
   LMSStudentProgress,
   SystemAlert,
-  AuditLogEntry
+  AuditLogEntry,
+  SystemBrandingConfig
 } from '@/types';
 import { ToastContainer } from '@/components/ui/ToastContainer';
+import { 
+  getStoredBranding, 
+  saveStoredBranding, 
+  resetStoredBranding, 
+  applyBrandingToDOM, 
+  DEFAULT_BRANDING_CONFIG 
+} from '@/lib/services/brandingService';
+import { sendBrevoAttendanceEmail } from '@/lib/services/brevoService';
 import { 
   MOCK_USERS, 
   MOCK_STUDENTS, 
@@ -86,6 +95,23 @@ interface AppContextType {
   showToast: (mensaje: string, tipo?: 'success' | 'error' | 'info' | 'warning', titulo?: string, duracionMs?: number) => void;
   removeToast: (id: string) => void;
 
+  users: UserProfile[];
+  addUser: (data: {
+    nombres: string;
+    apellidos: string;
+    dni: string;
+    rol: UserRole;
+    email?: string;
+    telefono?: string;
+    especialidad?: string;
+    cargo?: string;
+    avatar_url?: string;
+    activo?: boolean;
+  }) => { user: UserProfile; credentials: { username: string; password: string; email: string } };
+  updateUserRole: (userId: string, newRole: UserRole) => void;
+  toggleUserStatus: (userId: string) => void;
+  deleteUser: (userId: string) => void;
+
   students: Student[];
   teachers: UserProfile[];
   enrollments: Enrollment[];
@@ -126,6 +152,11 @@ interface AppContextType {
   setIsSidebarCollapsed: (collapsed: boolean) => void;
   toggleSidebar: () => void;
   setSidebarCollapsedState: (collapsed: boolean) => void;
+
+  // ── Branding & Personalización Institucional (Logo, Nombre, Colores, SEO, Robots) ──
+  brandingConfig: SystemBrandingConfig;
+  updateBrandingConfig: (newConfig: Partial<SystemBrandingConfig>) => void;
+  resetBrandingConfig: () => void;
 
   // ── Asistencia Rápida Docente ──
   saveClassAttendanceQuickly: (
@@ -227,6 +258,26 @@ interface AppContextType {
     avatar_url?: string;
   }) => { student: Student; credentials: { username: string; password: string; email: string } };
 
+  updateStudent: (studentId: string, updatedData: Partial<{
+    nombres: string;
+    apellidos: string;
+    dni: string;
+    fechaNacimiento: string;
+    seccionId: string;
+    nombreApoderado: string;
+    telefonoApoderado: string;
+    genero: string;
+    avatar_url: string;
+  }>) => void;
+
+  deleteStudent: (studentId: string) => void;
+
+  toggleStudentStatus: (studentId: string) => void;
+
+  updateTeacher: (teacherId: string, updatedData: Partial<UserProfile>) => void;
+  deleteTeacher: (teacherId: string) => void;
+  toggleTeacherStatus: (teacherId: string) => void;
+
   tasks: TaskAssignment[];
   addTask: (task: {
     cursoId: string;
@@ -235,6 +286,7 @@ interface AppContextType {
     descripcion: string;
     fechaLimite: string;
     competenciaId?: string;
+    archivoUrl?: string;
   }) => TaskAssignment;
 
   submissions: TaskSubmission[];
@@ -276,14 +328,54 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
+const STORAGE_VERSION_KEY = 'colegio_storage_clean_v5';
+
+function ensureLegacyMockDataPurged() {
+  if (typeof window === 'undefined') return;
+  try {
+    const version = localStorage.getItem(STORAGE_VERSION_KEY);
+    if (!version) {
+      // Limpiar todas las claves que contenían datos mock antiguos en el navegador
+      const legacyKeys = [
+        'colegio_users',
+        'colegio_current_user',
+        'colegio_students',
+        'colegio_enrollments',
+        'colegio_attendances',
+        'colegio_grades',
+        'colegio_tasks',
+        'colegio_submissions',
+        'colegio_exams',
+        'colegio_notifications',
+        'colegio_section_courses',
+        'colegio_schedule_slots',
+        'colegio_class_sessions',
+        'colegio_children',
+        'colegio_parents',
+        'colegio_lms_modules',
+        'colegio_alerts',
+        'colegio_audit_logs',
+      ];
+      legacyKeys.forEach(k => localStorage.removeItem(k));
+      localStorage.setItem(STORAGE_VERSION_KEY, '5.0.0');
+    }
+  } catch (err) {
+    console.warn('[Storage] Error al purgar datos mock antiguos:', err);
+  }
+}
+
+// Ejecutar purga de datos mock legados inmediatamente
+ensureLegacyMockDataPurged();
+
 function getInitialData<T>(key: string, fallback: T): T {
   if (typeof window === 'undefined') return fallback;
   try {
     const saved = localStorage.getItem(key);
-    if (saved) {
+    if (saved !== null) {
+      if (typeof fallback === 'string') return saved as unknown as T;
+      if (typeof fallback === 'boolean') return (saved === 'true') as unknown as T;
       const parsed = JSON.parse(saved);
-      if (Array.isArray(fallback) && Array.isArray(parsed)) return parsed as T;
-      if (typeof fallback === 'object' && parsed !== null && !Array.isArray(fallback) && !Array.isArray(parsed)) return parsed as T;
+      if (parsed !== null && parsed !== undefined) return parsed as T;
     }
   } catch (err) {
     console.warn(`[Storage] Fallo al parsear ${key}`, err);
@@ -291,88 +383,83 @@ function getInitialData<T>(key: string, fallback: T): T {
   return fallback;
 }
 
+function getInitialUser(): UserProfile {
+  if (typeof window === 'undefined') return MOCK_USERS[0];
+  try {
+    const saved = localStorage.getItem('colegio_current_user');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (parsed && parsed.id && parsed.rol) {
+        if (typeof document !== 'undefined') {
+          document.cookie = `cole_user_role=${parsed.rol}; path=/; max-age=604800; SameSite=Lax`;
+          document.cookie = `cole_access_token=jwt-active-session; path=/; max-age=604800; SameSite=Lax`;
+        }
+        return parsed;
+      }
+    }
+    // Cookie fallback
+    if (typeof document !== 'undefined') {
+      const cookieMatch = document.cookie.match(/cole_user_role=([^;]+)/);
+      if (cookieMatch && cookieMatch[1]) {
+        const cookieRole = cookieMatch[1].trim() as UserRole;
+        const userForRole = MOCK_USERS.find(u => u.rol === cookieRole);
+        if (userForRole) {
+          localStorage.setItem('colegio_current_user', JSON.stringify(userForRole));
+          return userForRole;
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('[Storage] Error al inicializar usuario:', err);
+  }
+  return MOCK_USERS[0];
+}
+
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const [users, setUsers] = useState<UserProfile[]>(MOCK_USERS);
-  const [currentUser, setCurrentUser] = useState<UserProfile>(MOCK_USERS[0]);
-  const [students, setStudents] = useState<Student[]>(MOCK_STUDENTS);
-  const [enrollments, setEnrollments] = useState<Enrollment[]>(MOCK_ENROLLMENTS);
-  const [attendances, setAttendances] = useState<AttendanceRecord[]>(MOCK_ATTENDANCES);
-  const [grades, setGrades] = useState<GradeRecord[]>(MOCK_GRADE_RECORDS);
-  const [tasks, setTasks] = useState<TaskAssignment[]>(MOCK_TASKS);
-  const [submissions, setSubmissions] = useState<TaskSubmission[]>(MOCK_SUBMISSIONS);
-  const [exams, setExams] = useState<EvaluationExam[]>(MOCK_EXAMS);
-  const [notifications, setNotifications] = useState<AppNotification[]>(MOCK_NOTIFICATIONS);
-  const [sectionCourses, setSectionCourses] = useState<SectionCourseAssignment[]>(MOCK_SECTION_COURSES);
-  const [scheduleSlots, setScheduleSlots] = useState<ScheduleSlot[]>(MOCK_SCHEDULE_SLOTS);
-  const [classSessions, setClassSessions] = useState<ClassSessionLog[]>(MOCK_CLASS_SESSIONS);
-  const [academicContext, setAcademicContextState] = useState<AcademicContextState>({
+  const [users, setUsers] = useState<UserProfile[]>(() => getInitialData('colegio_users', MOCK_USERS));
+  const [currentUser, setCurrentUser] = useState<UserProfile>(() => getInitialUser());
+  const [students, setStudents] = useState<Student[]>(() => getInitialData('colegio_students', MOCK_STUDENTS));
+  const [enrollments, setEnrollments] = useState<Enrollment[]>(() => getInitialData('colegio_enrollments', MOCK_ENROLLMENTS));
+  const [attendances, setAttendances] = useState<AttendanceRecord[]>(() => getInitialData('colegio_attendances', MOCK_ATTENDANCES));
+  const [grades, setGrades] = useState<GradeRecord[]>(() => getInitialData('colegio_grades', MOCK_GRADE_RECORDS));
+  const [tasks, setTasks] = useState<TaskAssignment[]>(() => getInitialData('colegio_tasks', MOCK_TASKS));
+  const [submissions, setSubmissions] = useState<TaskSubmission[]>(() => getInitialData('colegio_submissions', MOCK_SUBMISSIONS));
+  const [exams, setExams] = useState<EvaluationExam[]>(() => getInitialData('colegio_exams', MOCK_EXAMS));
+  const [notifications, setNotifications] = useState<AppNotification[]>(() => getInitialData('colegio_notifications', MOCK_NOTIFICATIONS));
+  const [sectionCourses, setSectionCourses] = useState<SectionCourseAssignment[]>(() => getInitialData('colegio_section_courses', MOCK_SECTION_COURSES));
+  const [scheduleSlots, setScheduleSlots] = useState<ScheduleSlot[]>(() => getInitialData('colegio_schedule_slots', MOCK_SCHEDULE_SLOTS));
+  const [classSessions, setClassSessions] = useState<ClassSessionLog[]>(() => getInitialData('colegio_class_sessions', MOCK_CLASS_SESSIONS));
+  const [academicContext, setAcademicContextState] = useState<AcademicContextState>(() => getInitialData('colegio_academic_context', {
     institucion: 'Institución Educativa San José',
     anio: 2026,
     nivel: 'todos',
-  });
-  const [childrenList, setChildrenList] = useState<ChildProfile[]>(MOCK_CHILDREN);
-  const [selectedChildId, setSelectedChildId] = useState<string>('child-1');
-  const [parentsList, setParentsList] = useState<ParentProfile[]>(MOCK_PARENTS);
-  const [lmsModules, setLmsModules] = useState<LMSModule[]>(MOCK_LMS_MODULES);
-  const [lmsProgress, setLmsProgress] = useState<LMSStudentProgress[]>([]);
-  const [alerts, setAlerts] = useState<SystemAlert[]>(MOCK_SYSTEM_ALERTS);
-  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>(MOCK_AUDIT_LOGS);
+  }));
+  const [childrenList, setChildrenList] = useState<ChildProfile[]>(() => getInitialData('colegio_children', MOCK_CHILDREN));
+  const [selectedChildId, setSelectedChildId] = useState<string>(() => getInitialData('colegio_selected_child_id', 'child-1'));
+  const [parentsList, setParentsList] = useState<ParentProfile[]>(() => getInitialData('colegio_parents', MOCK_PARENTS));
+  const [lmsModules, setLmsModules] = useState<LMSModule[]>(() => getInitialData('colegio_lms_modules', MOCK_LMS_MODULES));
+  const [lmsProgress, setLmsProgress] = useState<LMSStudentProgress[]>(() => getInitialData('colegio_lms_progress', []));
+  const [alerts, setAlerts] = useState<SystemAlert[]>(() => getInitialData('colegio_alerts', MOCK_SYSTEM_ALERTS));
+  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>(() => getInitialData('colegio_audit_logs', MOCK_AUDIT_LOGS));
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
-  const [onboardingCompleted, setOnboardingCompleted] = useState<boolean>(true);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
+  const [onboardingCompleted, setOnboardingCompleted] = useState<boolean>(() => getInitialData('colegio_onboarding', true));
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => getInitialData('colegio_sidebar_collapsed', false));
+  const [brandingConfig, setBrandingConfig] = useState<SystemBrandingConfig>(() => getInitialData('cole_system_branding_config_v1', DEFAULT_BRANDING_CONFIG));
+  const isHydratedRef = React.useRef(true);
 
-  // Hidratación segura post-montaje para evitar errores de mismatch SSR (React #418, #425)
+  // Hidratación y sincronización de DOM y cookies post-montaje
   useEffect(() => {
     if (typeof window === 'undefined') return;
     try {
-      const u = localStorage.getItem('colegio_users');
-      if (u) setUsers(JSON.parse(u));
-      const cu = localStorage.getItem('colegio_current_user');
-      if (cu) setCurrentUser(JSON.parse(cu));
-      const st = localStorage.getItem('colegio_students');
-      if (st) setStudents(JSON.parse(st));
-      const en = localStorage.getItem('colegio_enrollments');
-      if (en) setEnrollments(JSON.parse(en));
-      const att = localStorage.getItem('colegio_attendances');
-      if (att) setAttendances(JSON.parse(att));
-      const gr = localStorage.getItem('colegio_grades');
-      if (gr) setGrades(JSON.parse(gr));
-      const tk = localStorage.getItem('colegio_tasks');
-      if (tk) setTasks(JSON.parse(tk));
-      const sub = localStorage.getItem('colegio_submissions');
-      if (sub) setSubmissions(JSON.parse(sub));
-      const ex = localStorage.getItem('colegio_exams');
-      if (ex) setExams(JSON.parse(ex));
-      const notif = localStorage.getItem('colegio_notifications');
-      if (notif) setNotifications(JSON.parse(notif));
-      const sc = localStorage.getItem('colegio_section_courses');
-      if (sc) setSectionCourses(JSON.parse(sc));
-      const slots = localStorage.getItem('colegio_schedule_slots');
-      if (slots) setScheduleSlots(JSON.parse(slots));
-      const cs = localStorage.getItem('colegio_class_sessions');
-      if (cs) setClassSessions(JSON.parse(cs));
-      const ctx = localStorage.getItem('colegio_academic_context');
-      if (ctx) setAcademicContextState(JSON.parse(ctx));
-      const ch = localStorage.getItem('colegio_children');
-      if (ch) setChildrenList(JSON.parse(ch));
-      const pr = localStorage.getItem('colegio_parents');
-      if (pr) setParentsList(JSON.parse(pr));
-      const lmsM = localStorage.getItem('colegio_lms_modules');
-      if (lmsM) setLmsModules(JSON.parse(lmsM));
-      const lmsP = localStorage.getItem('colegio_lms_progress');
-      if (lmsP) setLmsProgress(JSON.parse(lmsP));
-      const al = localStorage.getItem('colegio_alerts');
-      if (al) setAlerts(JSON.parse(al));
-      const alog = localStorage.getItem('colegio_audit_logs');
-      if (alog) setAuditLogs(JSON.parse(alog));
-      const onb = localStorage.getItem('colegio_onboarding');
-      if (onb !== null) setOnboardingCompleted(JSON.parse(onb));
-      const scoll = localStorage.getItem('colegio_sidebar_collapsed');
-      if (scoll !== null) setIsSidebarCollapsed(scoll === 'true');
+      if (currentUser && currentUser.rol && typeof document !== 'undefined') {
+        document.cookie = `cole_user_role=${currentUser.rol}; path=/; max-age=604800; SameSite=Lax`;
+        document.cookie = `cole_access_token=jwt-active-session; path=/; max-age=604800; SameSite=Lax`;
+      }
+      applyBrandingToDOM(brandingConfig || DEFAULT_BRANDING_CONFIG);
     } catch (err) {
-      console.warn('[Storage] Error hidratando estado local:', err);
+      console.warn('[Storage] Error sincronizando estado inicial:', err);
     }
-  }, []);
+  }, [currentUser, brandingConfig]);
 
   const toggleSidebar = useCallback(() => {
     setIsSidebarCollapsed(prev => {
@@ -387,6 +474,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return next;
     });
   }, []);
+
+
 
   const setSidebarCollapsedState = useCallback((collapsed: boolean) => {
     setIsSidebarCollapsed(collapsed);
@@ -480,9 +569,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Sincronización automática a localStorage cuando cambian los datos
+  const handleSetCurrentUser = useCallback((user: UserProfile) => {
+    setCurrentUser(user);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('colegio_current_user', JSON.stringify(user));
+      } catch {
+        /* ignore */
+      }
+      if (typeof document !== 'undefined' && user?.rol) {
+        document.cookie = `cole_user_role=${user.rol}; path=/; max-age=604800; SameSite=Lax`;
+        document.cookie = `cole_access_token=jwt-active-session; path=/; max-age=604800; SameSite=Lax`;
+      }
+    }
+  }, []);
+
+  // Sincronización automática a localStorage cuando cambian los datos (solo post-hidratación)
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined' || !isHydratedRef.current) return;
     try {
       localStorage.setItem('colegio_users', JSON.stringify(users));
       localStorage.setItem('colegio_current_user', JSON.stringify(currentUser));
@@ -497,6 +601,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem('colegio_section_courses', JSON.stringify(sectionCourses));
       localStorage.setItem('colegio_schedule_slots', JSON.stringify(scheduleSlots));
       localStorage.setItem('colegio_class_sessions', JSON.stringify(classSessions));
+      localStorage.setItem('colegio_academic_context', JSON.stringify(academicContext));
+      localStorage.setItem('colegio_children', JSON.stringify(childrenList));
+      localStorage.setItem('colegio_selected_child_id', selectedChildId);
+      localStorage.setItem('colegio_parents', JSON.stringify(parentsList));
+      localStorage.setItem('colegio_lms_modules', JSON.stringify(lmsModules));
+      localStorage.setItem('colegio_lms_progress', JSON.stringify(lmsProgress));
+      localStorage.setItem('colegio_alerts', JSON.stringify(alerts));
+      localStorage.setItem('colegio_audit_logs', JSON.stringify(auditLogs));
     } catch (err) {
       console.warn('[Storage] Error al guardar estados en localStorage', err);
     }
@@ -514,6 +626,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     sectionCourses,
     scheduleSlots,
     classSessions,
+    academicContext,
+    childrenList,
+    selectedChildId,
+    parentsList,
+    lmsModules,
+    lmsProgress,
+    alerts,
+    auditLogs,
   ]);
 
   const resetToDemoData = () => {
@@ -570,6 +690,26 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }, duracionMs);
   }, [removeToast]);
 
+  const updateBrandingConfig = useCallback((newConfig: Partial<SystemBrandingConfig>) => {
+    setBrandingConfig((prev) => {
+      const updated: SystemBrandingConfig = {
+        ...prev,
+        ...newConfig,
+        updatedAt: new Date().toISOString(),
+      };
+      saveStoredBranding(updated);
+      applyBrandingToDOM(updated);
+      return updated;
+    });
+  }, []);
+
+  const resetBrandingConfig = useCallback(() => {
+    const reset = resetStoredBranding();
+    setBrandingConfig(reset);
+    applyBrandingToDOM(reset);
+    showToast('Branding restablecido a los valores por defecto', 'info', 'Configuración Reiniciada');
+  }, [showToast]);
+
   const teachers = useMemo(() => users.filter(u => u.rol === 'docente'), [users]);
 
   const addTeacher = (data: {
@@ -618,11 +758,96 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
   };
 
-  const switchRole = (_targetRole: UserRole) => {
-    // Bloqueo de seguridad: No se permite cambiar de rol arbitrariamente desde los dashboards.
-    // Para ingresar con otro rol, se debe cerrar sesión e iniciar con las credenciales correspondientes.
-    console.warn('[Security RBAC] El cambio directo de rol está bloqueado. Debe autenticarse formalmente.');
+  const addUser = (data: {
+    nombres: string;
+    apellidos: string;
+    dni: string;
+    rol: UserRole;
+    email?: string;
+    telefono?: string;
+    especialidad?: string;
+    cargo?: string;
+    avatar_url?: string;
+    activo?: boolean;
+  }) => {
+    const cleanFirst = data.nombres.trim().split(' ')[0].toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const cleanLast = data.apellidos.trim().split(' ')[0].toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const autoEmail = data.email?.trim() || `${cleanFirst[0]}${cleanLast}@colegio.edu.pe`;
+    const autoUsername = `${cleanFirst[0]}${cleanLast}${data.dni.slice(-4)}`;
+    const rolePrefix = data.rol === 'admin' ? 'Adm' : data.rol === 'docente' ? 'Doc' : data.rol === 'estudiante' ? 'Est' : data.rol === 'apoderado' ? 'Apo' : 'Ast';
+    const autoPassword = `${rolePrefix}${cleanFirst[0].toUpperCase()}${cleanLast.slice(0, 3)}${data.dni.slice(-4)}!`;
+
+    const newUser: UserProfile = {
+      id: `user-${data.rol}-${Date.now()}`,
+      rol: data.rol,
+      nombres: data.nombres,
+      apellidos: data.apellidos,
+      dni: data.dni,
+      email: autoEmail,
+      telefono: data.telefono,
+      especialidad: data.especialidad,
+      cargo: data.cargo,
+      avatar_url: data.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(data.nombres + ' ' + data.apellidos)}&background=6366f1&color=fff&size=150`,
+      activo: data.activo !== undefined ? data.activo : true,
+    };
+
+    setUsers(prev => [newUser, ...prev]);
+
+    // Registrar en auditoría
+    const auditEntry: AuditLogEntry = {
+      id: `log-${Date.now()}`,
+      usuario_id: currentUser.id,
+      usuario_nombre: `${currentUser.nombres} ${currentUser.apellidos}`,
+      rol: currentUser.rol,
+      accion: 'CREAR_USUARIO',
+      modulo: 'Usuarios & RBAC',
+      detalle: `Creó usuario ${data.nombres} ${data.apellidos} con rol "${data.rol.toUpperCase()}"`,
+      valor_nuevo: `ID: ${newUser.id} | Rol: ${data.rol}`,
+      timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
+      ip: '192.168.1.45',
+    };
+    setAuditLogs(prev => [auditEntry, ...prev]);
+
+    showToast(
+      `Usuario ${data.nombres} ${data.apellidos} (${data.rol.toUpperCase()}) creado exitosamente.`,
+      'success',
+      'Usuario Creado'
+    );
+
+    return {
+      user: newUser,
+      credentials: {
+        username: autoUsername,
+        password: autoPassword,
+        email: autoEmail,
+      }
+    };
   };
+
+  const updateUserRole = useCallback((userId: string, newRole: UserRole) => {
+    setUsers(prev => prev.map(u => u.id === userId ? { ...u, rol: newRole } : u));
+    showToast(`Rol actualizado a "${newRole.toUpperCase()}".`, 'success', 'Rol Actualizado');
+  }, [showToast]);
+
+  const toggleUserStatus = useCallback((userId: string) => {
+    setUsers(prev => prev.map(u => u.id === userId ? { ...u, activo: !u.activo } : u));
+    showToast('Estado del usuario actualizado.', 'success');
+  }, [showToast]);
+
+  const deleteUser = useCallback((userId: string) => {
+    setUsers(prev => prev.filter(u => u.id !== userId));
+    showToast('Usuario eliminado del sistema.', 'info');
+  }, [showToast]);
+
+  const switchRole = useCallback((targetRole: UserRole) => {
+    const targetUser = users.find(u => u.rol === targetRole && u.activo) || 
+                       MOCK_USERS.find(u => u.rol === targetRole) ||
+                       users.find(u => u.rol === targetRole);
+    if (targetUser) {
+      handleSetCurrentUser(targetUser);
+      showToast(`Sesión cambiada a perfil: ${targetUser.nombres} (${targetRole.toUpperCase()})`, 'info', 'Perfil Actualizado');
+    }
+  }, [users, handleSetCurrentUser, showToast]);
 
   const addNotification = (notif: Omit<AppNotification, 'id' | 'created_at' | 'leido'>) => {
     const newNotif: AppNotification = {
@@ -808,6 +1033,32 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         observacion,
         registradoPorId: currentUser.id,
       }).catch(() => {});
+
+      // Dispatch Brevo Email to Parent/Guardian if enabled
+      if (brandingConfig?.brevoActivarEnvioAsistencia !== false) {
+        const student = targetEnrollment.estudiante;
+        const parent = parentsList.find(p => p.hijos_ids?.includes(targetEnrollment!.estudiante_id));
+        const parentEmail = student?.email_apoderado || parent?.email || student?.profile?.email || 'apoderado@gmail.com';
+        const parentName = student?.nombre_apoderado || (parent ? `${parent.nombres} ${parent.apellidos}` : 'Padre de Familia');
+        const gradeSection = targetEnrollment.seccion?.grado?.nombre 
+          ? `${targetEnrollment.seccion.grado.nombre} - "${targetEnrollment.seccion.letra}"`
+          : targetEnrollment.seccion?.letra || '';
+
+        sendBrevoAttendanceEmail({
+          parentEmail,
+          parentName,
+          studentName,
+          studentCode: student?.codigo_estudiante,
+          gradeSection,
+          avatarUrl: student?.profile?.avatar_url,
+          fecha: todayStr,
+          horaRegistro: currentTimeStr,
+          estado: status,
+          metodo,
+          observacion,
+          branding: brandingConfig,
+        }).catch(() => {});
+      }
 
       // Notify student
       addNotification({
@@ -997,6 +1248,86 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return { student: newStudent, credentials: { username, password, email } };
   };
 
+  const updateStudent = (studentId: string, updatedData: Partial<{
+    nombres: string;
+    apellidos: string;
+    dni: string;
+    fechaNacimiento: string;
+    seccionId: string;
+    nombreApoderado: string;
+    telefonoApoderado: string;
+    genero: string;
+    avatar_url: string;
+  }>) => {
+    setStudents(prev => prev.map(s => {
+      if (s.id !== studentId) return s;
+      const updatedProfile = {
+        ...(s.profile || {}),
+        ...(updatedData.nombres ? { nombres: updatedData.nombres } : {}),
+        ...(updatedData.apellidos ? { apellidos: updatedData.apellidos } : {}),
+        ...(updatedData.dni ? { dni: updatedData.dni } : {}),
+        ...(updatedData.avatar_url ? { avatar_url: updatedData.avatar_url } : {}),
+      } as UserProfile;
+
+      return {
+        ...s,
+        fecha_nacimiento: updatedData.fechaNacimiento || s.fecha_nacimiento,
+        genero: updatedData.genero || s.genero,
+        nombre_apoderado: updatedData.nombreApoderado !== undefined ? updatedData.nombreApoderado : s.nombre_apoderado,
+        telefono_apoderado: updatedData.telefonoApoderado !== undefined ? updatedData.telefonoApoderado : s.telefono_apoderado,
+        profile: updatedProfile,
+      };
+    }));
+
+    if (updatedData.seccionId) {
+      const targetSec = MOCK_SECTIONS.find(sec => sec.id === updatedData.seccionId);
+      if (targetSec) {
+        setEnrollments(prev => prev.map(enr => {
+          if (enr.estudiante_id !== studentId) return enr;
+          return {
+            ...enr,
+            seccion_id: targetSec.id,
+            seccion: targetSec,
+          };
+        }));
+      }
+    }
+
+    showToast('Datos del estudiante actualizados correctamente.', 'success', 'Actualización Exitosa');
+  };
+
+  const deleteStudent = (studentId: string) => {
+    setStudents(prev => prev.filter(s => s.id !== studentId));
+    setEnrollments(prev => prev.filter(e => e.estudiante_id !== studentId));
+    showToast('Estudiante y matrícula eliminados.', 'info', 'Estudiante Eliminado');
+  };
+
+  const toggleStudentStatus = (studentId: string) => {
+    let newStatus: 'activo' | 'retirado' = 'activo';
+    setEnrollments(prev => prev.map(enr => {
+      if (enr.estudiante_id !== studentId) return enr;
+      newStatus = enr.estado === 'activo' ? 'retirado' : 'activo';
+      return {
+        ...enr,
+        estado: newStatus,
+      };
+    }));
+
+    setStudents(prev => prev.map(s => {
+      if (s.id !== studentId) return s;
+      return {
+        ...s,
+        profile: s.profile ? { ...s.profile, activo: newStatus === 'activo' } : undefined,
+      };
+    }));
+
+    showToast(
+      `Estado del estudiante cambiado a ${newStatus === 'activo' ? 'Activo' : 'Inactivo'}.`,
+      'info',
+      'Estado Actualizado'
+    );
+  };
+
   const addTask = (data: {
     cursoId: string;
     seccionId: string;
@@ -1004,6 +1335,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     descripcion: string;
     fechaLimite: string;
     competenciaId?: string;
+    archivoUrl?: string;
   }) => {
     const course = MOCK_COURSES.find(c => c.id === data.cursoId);
     const newTask: TaskAssignment = {
@@ -1015,6 +1347,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       titulo: data.titulo,
       descripcion: data.descripcion,
       fecha_limite: data.fechaLimite,
+      archivo_url: data.archivoUrl,
       created_at: new Date().toISOString(),
       curso: course,
     };
@@ -1599,7 +1932,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const contextValue = useMemo<AppContextType>(() => ({
     currentUser,
-    setCurrentUser,
+    setCurrentUser: handleSetCurrentUser,
     switchRole,
     academicContext,
     setAcademicContext,
@@ -1609,6 +1942,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     toasts,
     showToast,
     removeToast,
+    users,
+    addUser,
+    updateUserRole,
+    toggleUserStatus,
+    deleteUser,
     students,
     enrollments,
     courses: MOCK_COURSES,
@@ -1617,6 +1955,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     evaluationPeriods: MOCK_EVALUATION_PERIODS,
     teachers,
     addTeacher,
+    updateTeacher: (teacherId: string, updatedData: Partial<UserProfile>) => {
+      setUsers(prev => prev.map(u => u.id === teacherId ? { ...u, ...updatedData } : u));
+      showToast('Docente actualizado con éxito', 'success');
+    },
+    deleteTeacher: (teacherId: string) => {
+      setUsers(prev => prev.filter(u => u.id !== teacherId));
+      setSectionCourses(prev => prev.filter(sc => sc.docente_id !== teacherId));
+      showToast('Docente eliminado de la plana docente', 'info');
+    },
+    toggleTeacherStatus: (teacherId: string) => {
+      setUsers(prev => prev.map(u => u.id === teacherId ? { ...u, activo: !u.activo } : u));
+      showToast('Estado del docente actualizado', 'success');
+    },
     sectionCourses,
     assignCourseToSection,
     removeSectionCourse,
@@ -1638,6 +1989,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     grades,
     updateGrade,
     addStudent,
+    updateStudent,
+    deleteStudent,
+    toggleStudentStatus,
     tasks,
     addTask,
     submissions,
@@ -1728,6 +2082,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     notifications,
     markNotificationRead,
     unreadCount,
+    brandingConfig,
+    updateBrandingConfig,
+    resetBrandingConfig,
     isLoading,
     refreshData,
     logout,
@@ -1761,6 +2118,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     isSidebarCollapsed,
     toggleSidebar,
     setSidebarCollapsedState,
+    brandingConfig,
+    updateBrandingConfig,
+    resetBrandingConfig,
     notifications,
     unreadCount,
     isLoading,

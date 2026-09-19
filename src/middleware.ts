@@ -1,5 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { updateSession } from '@/lib/supabase/middleware';
+import { checkAdaptiveRateLimit, getClientIp } from '@/lib/security/rateLimiter';
+import { logSecurityEvent } from '@/lib/security/securityLogger';
 
 // Rutas públicas que no requieren autenticación
 const PUBLIC_PATHS = [
@@ -15,15 +17,72 @@ const PUBLIC_PATHS = [
   '/icon-192.svg',
   '/icon-512.svg',
   '/login-illustration.jpg',
+  '/banerprimaria.jpg',
+  '/banersecundaria.jpg',
+  '/primariaBanner.png',
+  '/secundariaBaner.png',
+  '/inicial_banner.png',
+  '/estudiantesTodosBanner.jpg',
+  '/estudiantesTodosBanner.png',
+  '/robots.txt',
+  '/sitemap.xml',
+  '/api/branding',
+  '/api/notifications/brevo',
+  '/api/notifications/resend',
 ];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const clientIp = getClientIp(request.headers);
 
-  // 1. Omitir verificación en assets estáticos y llamadas internas de Next.js
+  // 1. Adaptive Rate Limiting & Anti-DDoS / Anti-Bruteforce
+  if (pathname === '/login' || pathname.startsWith('/api/')) {
+    const isLogin = pathname === '/login';
+    const rateLimit = checkAdaptiveRateLimit(`ip_${clientIp}_${isLogin ? 'auth' : 'api'}`, {
+      maxRequests: isLogin ? 30 : 120, // Límite estándar por minuto
+      windowMs: 60000,
+      burstLimit: isLogin ? 8 : 25,    // Límite en ráfaga (5 seg)
+      burstWindowMs: 5000,
+      maxViolationsBeforeJail: 3,
+      jailDurationMs: 900000,         // 15 minutos en cuarentena
+    });
+
+    if (!rateLimit.allowed) {
+      logSecurityEvent({
+        type: rateLimit.isJailed ? 'ip_jailed' : 'rate_limit_violation',
+        ip: clientIp,
+        path: pathname,
+        details: `Razón: ${rateLimit.reason} - Reset en: ${Math.ceil(rateLimit.resetTimeMs / 1000)}s`,
+        severity: rateLimit.isJailed ? 'high' : 'medium',
+      });
+
+      const statusCode = rateLimit.isJailed ? 403 : 429;
+      return new NextResponse(
+        JSON.stringify({
+          error: rateLimit.isJailed
+            ? 'IP temporalmente suspendida por actividad sospechosa repetida.'
+            : 'Demasiadas solicitudes. Por favor espera un momento.',
+          retryAfterSec: Math.ceil(rateLimit.resetTimeMs / 1000),
+          isJailed: rateLimit.isJailed,
+        }),
+        {
+          status: statusCode,
+          headers: {
+            'Content-Type': 'application/json',
+            'Retry-After': String(Math.ceil(rateLimit.resetTimeMs / 1000)),
+            'X-Frame-Options': 'SAMEORIGIN',
+            'X-Content-Type-Options': 'nosniff',
+          },
+        }
+      );
+    }
+  }
+
+  // 2. Omitir verificación en assets estáticos, imágenes y llamadas internas de Next.js
   if (
     pathname.startsWith('/_next') ||
     pathname.startsWith('/api/auth') ||
+    /\.(jpg|jpeg|png|webp|svg|ico|gif|avif|json|js|css|woff2?|ttf|eot)$/i.test(pathname) ||
     PUBLIC_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`))
   ) {
     // Si el usuario ya está autenticado e intenta ir a /login, redirigir a su panel
@@ -101,8 +160,9 @@ export const config = {
      * Coincidir con todas las rutas excepto:
      * - _next/static (archivos estáticos)
      * - _next/image (optimización de imágenes)
-     * - favicon.ico (icono del navegador)
+     * - favicon.ico, sitemap.xml, robots.txt
+     * - archivos con extensiones estáticas (.jpg, .png, .css, etc.)
      */
-    '/((?!_next/static|_next/image|favicon.ico).*)',
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif|ico|json|js|css|woff2?|ttf|eot)$).*)',
   ],
 };

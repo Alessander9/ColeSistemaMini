@@ -100,6 +100,8 @@ function PwaInstallBanner() {
 
 import { CommandPalette } from '@/components/layout/CommandPalette';
 
+import { WhatsAppFloatingButton } from '@/components/ui/WhatsAppFloatingButton';
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Inner shell (needs AppProvider context for toasts)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -133,6 +135,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
         toasts={toasts}
         onRemove={removeToast}
       />
+      <WhatsAppFloatingButton />
       <PwaInstallBanner />
     </>
   );

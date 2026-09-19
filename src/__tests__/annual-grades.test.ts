@@ -63,6 +63,25 @@ describe('Cálculo Oficial Anual de Calificaciones (4 Bimestres - MINEDU / CNEB)
   });
 
   it('calcula la Libreta Final Consolidada y determina PROMOVIDO cuando todos los cursos están aprobados', () => {
+    const sampleGrades: GradeRecord[] = [];
+    MOCK_COURSES.forEach((course) => {
+      course.competencias?.forEach((comp) => {
+        MOCK_EVALUATION_PERIODS.forEach((period) => {
+          sampleGrades.push({
+            id: `gr-${course.id}-${comp.id}-${period.id}`,
+            matricula_id: 'enr-1',
+            curso_id: course.id,
+            competencia_id: comp.id,
+            periodo_evaluacion_id: period.id,
+            nota_letra: 'AD',
+            nota_numerica: 4,
+            conclusiones_descriptivas: 'Excelente desempeño.',
+            created_at: '2026-03-15',
+          });
+        });
+      });
+    });
+
     const reportCard = calculateStudentAnnualReportCard({
       enrollmentId: 'enr-1',
       studentId: 'student-1',
@@ -73,7 +92,7 @@ describe('Cálculo Oficial Anual de Calificaciones (4 Bimestres - MINEDU / CNEB)
       sectionLetter: 'A',
       academicYear: 2026,
       courses: MOCK_COURSES,
-      grades: MOCK_GRADE_RECORDS,
+      grades: sampleGrades,
       evaluationPeriodIds: MOCK_EVALUATION_PERIODS.map((p) => ({ id: p.id, numero_periodo: p.numero_periodo })),
       attendancePercentage: 99,
       conductGrade: 'AD',
@@ -83,7 +102,6 @@ describe('Cálculo Oficial Anual de Calificaciones (4 Bimestres - MINEDU / CNEB)
     expect(reportCard.finalAcademicStatus).toBe('PROMOVIDO');
     expect(reportCard.statusLabel).toContain('PROMOVIDO');
     expect(reportCard.attendancePercentage).toBe(99);
-
     expect(reportCard.conductGrade).toBe('AD');
   });
 });

@@ -4,7 +4,7 @@ import { UserRole } from '../types';
 describe('Role-Based Access Control & Middleware Rules', () => {
   const roleRoutes: Record<UserRole, { allowed: string[]; forbidden: string[] }> = {
     admin: {
-      allowed: ['/admin', '/admin/academico', '/admin/docentes', '/admin/estudiantes', '/admin/horarios', '/admin/matriculas', '/admin/notas-salon', '/admin/reportes'],
+      allowed: ['/admin', '/admin/academico', '/admin/branding', '/admin/docentes', '/admin/estudiantes', '/admin/horarios', '/admin/matriculas', '/admin/notas-salon', '/admin/reportes'],
       forbidden: [],
     },
     docente: {

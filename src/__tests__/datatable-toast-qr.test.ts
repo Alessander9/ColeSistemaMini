@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { MOCK_STUDENTS, MOCK_COURSES } from '../lib/mock-data';
+import { TEST_STUDENTS } from './test-fixtures';
 
 describe('DataTable Pagination & Filters', () => {
   it('correctly calculates pagination for items per page = 10', () => {
@@ -20,14 +20,14 @@ describe('DataTable Pagination & Filters', () => {
 
   it('filters students by grade level and text query', () => {
     const query = 'silva';
-    const matches = MOCK_STUDENTS.filter(s =>
-      `${s.profile?.nombres} ${s.profile?.apellidos} ${s.codigo_estudiante}`
+    const matches = TEST_STUDENTS.filter(s =>
+      `${s.nombres} ${s.apellidos} ${s.codigo_estudiante}`
         .toLowerCase()
         .includes(query)
     );
 
     expect(matches.length).toBeGreaterThan(0);
-    expect(matches[0].profile?.apellidos.toLowerCase()).toContain('silva');
+    expect(matches[0].apellidos.toLowerCase()).toContain('silva');
   });
 
   it('validates CNEB competency grading scale consistency', () => {

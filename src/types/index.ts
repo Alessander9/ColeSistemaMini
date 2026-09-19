@@ -83,12 +83,16 @@ export interface Section {
   capacidad_maxima: number;
   tutor_id?: string;
   grado?: GradeLevel;
+  aula?: string;
 }
 
 export interface Student {
   id: string;
   profile_id: string;
   codigo_estudiante: string;
+  nombres?: string;
+  apellidos?: string;
+  dni?: string;
   fecha_nacimiento?: string;
   genero?: string;
   direccion?: string;
@@ -146,6 +150,9 @@ export interface AttendanceRecord {
   hora_registro: string;
   estado: AttendanceStatus;
   metodo: AttendanceMethod;
+  tipo_registro?: 'ingreso' | 'salida' | 'inasistencia';
+  dispositivo?: string;
+  ubicacion?: string;
   observacion?: string;
   registrado_por?: string;
   matricula?: Enrollment;
@@ -211,11 +218,20 @@ export interface EvaluationExam {
   competencia_id?: string;
   titulo: string;
   tipo: 'examen' | 'practica' | 'bimestral' | 'actividad' | 'proyecto';
+  descripcion?: string;
   fecha_programada: string;
   hora_inicio?: string;
   duracion_minutos: number;
   ponderacion: number;
   instrucciones?: string;
+  archivo_adjunto?: string;
+  rubrica_criterios?: {
+    criterio: string;
+    nivelAD?: string;
+    nivelA?: string;
+    nivelB?: string;
+    nivelC?: string;
+  }[];
   estado?: 'borrador' | 'programada' | 'activa' | 'finalizada' | 'calificada';
   curso?: Course;
   competencia?: Competency;
@@ -367,3 +383,112 @@ export interface OnboardingStep {
   descripcion: string;
   completado: boolean;
 }
+
+export interface SitemapUrlEntry {
+  url: string;
+  changefreq: 'always' | 'hourly' | 'daily' | 'weekly' | 'monthly' | 'yearly' | 'never';
+  priority: number;
+  lastmod?: string;
+}
+
+export interface SystemBrandingConfig {
+  nombreInstitucion: string;
+  siglas: string;
+  slogan: string;
+  descripcion: string;
+  logoUrl: string;
+  faviconUrl: string;
+  primaryColor: string;
+  secondaryColor: string;
+  accentColor: string;
+  themePreset: string;
+  borderRadius: string;
+  fontFamily: string;
+  metaTitle: string;
+  metaDescription: string;
+  metaKeywords: string;
+  ogImageUrl: string;
+  canonicalUrl: string;
+  twitterHandle: string;
+  contactoEmail: string;
+  telefono: string;
+  direccion: string;
+  allowRobotsIndex: boolean;
+  allowRobotsFollow: boolean;
+  disallowedPaths: string[];
+  customRobotsTxt: string;
+  sitemapIncludedPaths: SitemapUrlEntry[];
+  
+  // ── Documentos Oficiales & Sello Digital ──
+  codigoModular: string;
+  ugel: string;
+  dre: string;
+  ruc: string;
+  directorNombre: string;
+  directorFirmaUrl: string;
+  mostrarMembreteEnPdf: boolean;
+  watermarkUrl: string;
+  watermarkOpacity: number;
+  documentSecurityFooterText: string;
+
+  // ── Diseñador de Carnet Escolar QR ──
+  carnetColorBorde: string;
+  carnetFondoUrl: string;
+  carnetOrientacion: 'vertical' | 'horizontal';
+  carnetFranjaNivelColor: string;
+  carnetReversoNormas: string;
+  carnetReversoEmergencia: string;
+  carnetReversoTelefono: string;
+  carnetSelloHolografico: boolean;
+
+  // ── UI Global & Estilos del Sistema ──
+  borderRadiusMode: 'sharp' | 'modern' | 'rounded';
+  sidebarStyle: 'dark' | 'gradient' | 'glass';
+  defaultTheme: 'system' | 'light' | 'dark';
+  splashScreenActivo: boolean;
+  splashScreenTexto: string;
+
+  // ── Diplomas & Certificados de Honor ──
+  diplomaBordeEstilo: 'oro_clasico' | 'azul_imperial' | 'moderno_geometrico';
+  diplomaFirmaDirector: boolean;
+  diplomaFirmaTutor: boolean;
+  diplomaTextoPredeterminado: string;
+
+  // ── Sonido Institucional del Kiosco QR ──
+  kioskSoundPreset: 'bell' | 'chime' | 'arpeggio' | 'voice';
+
+  // ── Pantalla de Login & White-Label ──
+  loginBannerUrl: string;
+  loginBienvenidaTitulo: string;
+  loginBienvenidaMensaje: string;
+  mostrarPoweredBy: boolean;
+  whiteLabelFooterTexto: string;
+
+  // ── PWA & Canales de Soporte (WhatsApp / Analytics) ──
+  pwaShortName: string;
+  pwaThemeColor: string;
+  whatsappSoporteNumero: string;
+  whatsappSoporteMensaje: string;
+  mostrarWhatsappFlotante: boolean;
+  googleAnalyticsId: string;
+  metaPixelId: string;
+
+  // ── BREVO (Exclusivo: Asistencias Diarias en Tiempo Real) ──
+  brevoApiKey: string;
+  brevoSenderEmail: string;
+  brevoSenderName: string;
+  brevoActivarEnvioAsistencia: boolean;
+  brevoPlantillaAsunto: string;
+
+  // ── RESEND (Exclusivo: Libretas Bimestrales, Matrícula & Tesorería) ──
+  resendApiKey: string;
+  resendSenderEmail: string;
+  resendSenderName: string;
+  resendPlantillaLibretaAsunto: string;
+  resendPlantillaBienvenidaAsunto: string;
+  resendPlantillaPensionAsunto: string;
+
+  updatedAt?: string;
+}
+
+

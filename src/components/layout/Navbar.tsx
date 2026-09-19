@@ -22,7 +22,7 @@ interface NavbarProps {
 }
 
 export function Navbar({ onOpenMobileMenu }: NavbarProps) {
-  const { currentUser, toggleCommandPalette, isSidebarCollapsed, toggleSidebar } = useApp();
+  const { currentUser, toggleCommandPalette, isSidebarCollapsed, toggleSidebar, brandingConfig } = useApp();
   const [isQrOpen, setIsQrOpen] = useState(false);
 
   // Permiso para escanear asistencia QR: Solo Admin, Docente y Asistencia (Portero)
@@ -70,17 +70,29 @@ export function Navbar({ onOpenMobileMenu }: NavbarProps) {
             </button>
 
             <Link href={homeHref} className="flex items-center gap-2.5 group shrink-0" title="Ir a mi Dashboard">
-              <div className="relative w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-600 via-blue-600 to-emerald-500 flex items-center justify-center shadow-lg shadow-blue-500/25 group-hover:shadow-blue-500/40 transition-shadow">
-                <GraduationCap className="w-5 h-5 text-white" />
-                <div className="absolute inset-0 rounded-xl ring-2 ring-white/20" />
-              </div>
-              <div>
-                <div className="text-sm font-black tracking-tight text-slate-900 dark:text-white">
-                  Cole<span className="text-emerald-500">Sistema</span>
-                  <span className="text-slate-400 font-semibold text-xs ml-1 hidden xs:inline">Mini</span>
+              {brandingConfig?.logoUrl ? (
+                <img 
+                  src={brandingConfig.logoUrl} 
+                  alt={brandingConfig.nombreInstitucion || 'Logo'} 
+                  className="w-9 h-9 rounded-xl object-contain bg-white border border-slate-200/80 dark:border-slate-700 shadow-md shrink-0 group-hover:scale-105 transition-transform p-0.5" 
+                />
+              ) : (
+                <div 
+                  style={{
+                    background: `linear-gradient(135deg, ${brandingConfig?.primaryColor || '#4f46e5'} 0%, ${brandingConfig?.accentColor || '#3b82f6'} 50%, ${brandingConfig?.secondaryColor || '#10b981'} 100%)`
+                  }}
+                  className="relative w-9 h-9 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/25 group-hover:shadow-blue-500/40 transition-shadow text-white font-black text-sm"
+                >
+                  {brandingConfig?.siglas || 'CS'}
+                  <div className="absolute inset-0 rounded-xl ring-2 ring-white/20" />
                 </div>
-                <div className="text-[10px] text-slate-400 font-medium -mt-0.5 hidden sm:block">
-                  SaaS Educativo & Asistencia QR
+              )}
+              <div className="max-w-[200px] sm:max-w-xs">
+                <div className="text-sm font-black tracking-tight text-slate-900 dark:text-white truncate">
+                  {brandingConfig?.nombreInstitucion || 'ColeSistema Mini'}
+                </div>
+                <div className="text-[10px] text-slate-400 font-medium -mt-0.5 hidden sm:block truncate">
+                  {brandingConfig?.slogan || 'SaaS Educativo & Asistencia QR'}
                 </div>
               </div>
             </Link>

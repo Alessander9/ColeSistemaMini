@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, Suspense } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { DataTable, Column, FilterChip } from '@/components/ui/DataTable';
@@ -17,6 +18,7 @@ import {
   KeyRound,
   Mail,
   User,
+  Users,
   Calendar,
   Phone,
   Printer,
@@ -35,8 +37,9 @@ import {
 } from 'lucide-react';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 
-export default function AdminMatriculasPage() {
+function MatriculasContent() {
   const { enrollments, addStudent, sections, gradeLevels, students, showToast } = useApp();
+  const searchParams = useSearchParams();
 
   // Selected Enrollment for QR Modal
   const [selectedEnrollmentForQr, setSelectedEnrollmentForQr] = useState<Enrollment | null>(null);
@@ -80,6 +83,25 @@ export default function AdminMatriculasPage() {
   }>({ student: null, credentials: null });
 
   const [copiedField, setCopiedField] = useState<string | null>(null);
+
+  // Auto-open wizard and pre-fill fields when query params are present
+  useEffect(() => {
+    const isNuevo = searchParams.get('nuevo') === 'true';
+    const paramSeccionId = searchParams.get('seccionId');
+    const paramGradoId = searchParams.get('gradoId');
+    const paramNivel = searchParams.get('nivel') as 'inicial' | 'primaria' | 'secundaria' | null;
+
+    if (isNuevo || paramSeccionId || paramGradoId) {
+      setIsWizardOpen(true);
+      setCurrentStep(1);
+      setWizardData(prev => ({
+        ...prev,
+        ...(paramNivel ? { nivel: paramNivel } : {}),
+        ...(paramGradoId ? { gradoId: paramGradoId } : {}),
+        ...(paramSeccionId ? { seccionId: paramSeccionId } : {}),
+      }));
+    }
+  }, [searchParams]);
 
   // Available sections for chosen grade in wizard
   const availableSections = useMemo(
@@ -787,6 +809,7 @@ export default function AdminMatriculasPage() {
         onFilterChange={setActiveFilter}
         searchPlaceholder="Buscar por estudiante, DNI, código, nivel, grado, aula o apoderado..."
         itemsPerPage={10}
+        gridClassName="grid-cols-1 md:grid-cols-2 2xl:grid-cols-3"
         searchFilter={(enr, q) => {
           const student = enr.estudiante;
           const profile = student?.profile;
@@ -819,90 +842,132 @@ export default function AdminMatriculasPage() {
           const nivel = enr.seccion?.grado?.nivel;
 
           return (
-            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-4.5 flex flex-col justify-between h-full shadow-sm hover:shadow-md hover:border-indigo-200 dark:hover:border-indigo-800 transition-all group">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 sm:p-4.5 flex flex-col justify-between h-full shadow-sm hover:shadow-lg hover:border-indigo-200 dark:hover:border-indigo-800 transition-all duration-200 group">
               <div>
-                {/* Header: Avatar, Name, Code & DNI */}
-                <div className="flex items-start justify-between gap-3 mb-3">
-                  <div className="flex items-center gap-3">
+                {/* 1. Header: Avatar, Name, Code & DNI */}
+                <div className="flex items-start justify-between gap-2.5">
+                  <div className="flex items-center gap-3 min-w-0">
                     <img
                       src={avatarUrl}
                       alt={fullName}
-                      className="w-11 h-11 rounded-2xl object-cover border border-slate-200 dark:border-slate-700 group-hover:scale-105 transition-transform shrink-0"
+                      className="w-12 h-12 rounded-full object-cover ring-2 ring-blue-100 dark:ring-blue-900/40 shadow-sm shrink-0"
                     />
                     <div className="min-w-0">
-                      <h4 className="font-extrabold text-slate-800 dark:text-white text-sm leading-tight truncate">
+                      <h4 className="font-extrabold text-slate-900 dark:text-white text-sm sm:text-base leading-tight tracking-tight truncate">
                         {fullName}
                       </h4>
-                      <span className="text-[11px] font-mono font-bold text-slate-400">
-                        {student?.codigo_estudiante || 'EST-2026'}
-                      </span>
+                      <p className="text-[11px] font-mono font-bold text-slate-400 mt-0.5">
+                        {student?.codigo_estudiante || 'EST-2026-001'}
+                      </p>
                     </div>
                   </div>
+
                   {student?.profile?.dni && (
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-md font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 shrink-0">
-                      DNI {student.profile.dni}
-                    </span>
+                    <div className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[11px] font-mono font-bold shrink-0 self-start border border-slate-200/60 dark:border-slate-700">
+                      <span className="text-[9px] text-slate-400 uppercase font-sans font-extrabold">DNI</span>
+                      <span>{student.profile.dni}</span>
+                    </div>
                   )}
                 </div>
 
-                {/* Academic Level & Section Details */}
-                <div className="space-y-2 text-xs text-slate-600 dark:text-slate-400 mb-4 bg-slate-50/80 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
-                  <div className="flex justify-between items-center">
-                    <span className="text-[11px] text-slate-400">Nivel y Grado:</span>
-                    <div className="flex items-center gap-1.5">
-                      <span className={`px-1.5 py-0.2 rounded text-[9px] font-bold uppercase border ${getLevelBadgeClass(nivel)}`}>
-                        {nivel}
-                      </span>
-                      <span className="font-bold text-slate-800 dark:text-slate-200 text-xs">
-                        {enr.seccion?.grado?.nombre}
-                      </span>
+                {/* 2. Middle 2x2 Info Container - Compact with no dead space */}
+                <div className="my-3 rounded-xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/80 p-3">
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-2.5">
+                    
+                    {/* Top-Left: Nivel y Grado */}
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+                        <GraduationCap className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[10px] text-slate-400 font-medium leading-none">Nivel y Grado:</p>
+                        <div className="flex items-center gap-1.5 flex-wrap mt-1 min-w-0">
+                          <span
+                            className={`px-1.5 py-0.2 rounded text-[9px] font-black uppercase tracking-wider border shrink-0 ${
+                              nivel === 'inicial'
+                                ? 'bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800'
+                                : nivel === 'primaria'
+                                ? 'bg-blue-50 text-blue-700 border-blue-300 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-800'
+                                : 'bg-purple-50 text-purple-700 border-purple-300 dark:bg-purple-950/60 dark:text-purple-300 dark:border-purple-800'
+                            }`}
+                          >
+                            {nivel || 'Primaria'}
+                          </span>
+                          <span className="font-bold text-slate-900 dark:text-white text-xs truncate">
+                            {enr.seccion?.grado?.nombre || 'Grado'}
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="flex justify-between items-center">
-                    <span className="text-[11px] text-slate-400">Sección:</span>
-                    <span className="font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded-md text-[11px]">
-                      Aula &quot;{enr.seccion?.letra || 'A'}&quot;
-                    </span>
-                  </div>
-
-                  <div className="flex justify-between items-center">
-                    <span className="text-[11px] text-slate-400">Apoderado:</span>
-                    <span className="font-medium text-slate-700 dark:text-slate-200 truncate max-w-[140px]">
-                      {student?.nombre_apoderado || 'No registrado'}
-                    </span>
-                  </div>
-
-                  {student?.telefono_apoderado && (
-                    <div className="flex justify-between items-center">
-                      <span className="text-[11px] text-slate-400">Contacto:</span>
-                      <span className="text-slate-500 dark:text-slate-400 font-mono text-[11px] flex items-center gap-1">
-                        <Phone className="w-3 h-3 text-slate-400" />
-                        {student.telefono_apoderado}
-                      </span>
+                    {/* Top-Right: Sección */}
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+                        <Users className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[10px] text-slate-400 font-medium leading-none">Sección:</p>
+                        <div className="mt-1">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-lg bg-purple-100/80 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200/80 dark:border-purple-800 font-extrabold text-[11px]">
+                            Aula &quot;{enr.seccion?.letra || 'A'}&quot;
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                  )}
+
+                    {/* Horizontal Divider across 2 columns */}
+                    <div className="col-span-2 border-t border-slate-200/60 dark:border-slate-700/50 -my-0.5" />
+
+                    {/* Bottom-Left: Apoderado */}
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                        <User className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[10px] text-slate-400 font-medium leading-none">Apoderado:</p>
+                        <p className="font-bold text-slate-900 dark:text-white text-xs truncate mt-1">
+                          {student?.nombre_apoderado || 'No registrado'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Bottom-Right: Contacto */}
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-8 h-8 rounded-xl bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0">
+                        <Phone className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[10px] text-slate-400 font-medium leading-none">Contacto:</p>
+                        <p className="font-bold text-slate-900 dark:text-white text-xs font-mono tracking-wider mt-1 truncate">
+                          {student?.telefono_apoderado || '-'}
+                        </p>
+                      </div>
+                    </div>
+
+                  </div>
                 </div>
               </div>
 
-              {/* Bottom Actions */}
-              <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center gap-2">
+              {/* 3. Bottom Action Buttons */}
+              <div className="grid grid-cols-2 gap-2.5 pt-0.5">
                 {enr.estudiante && (
                   <button
                     type="button"
                     onClick={() => setSelectedEnrollmentForQr(enr)}
-                    className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all active:scale-95 cursor-pointer"
+                    className="w-full flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl font-bold text-xs text-blue-700 dark:text-blue-300 bg-blue-50/70 hover:bg-blue-100 dark:bg-blue-950/40 dark:hover:bg-blue-900/40 border border-blue-200/80 dark:border-blue-800 transition-all active:scale-95 cursor-pointer shadow-sm"
                   >
-                    <QrCode className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                    Carnet QR
+                    <QrCode className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                    <span>Carnet QR</span>
                   </button>
                 )}
+                
                 {enr.estudiante_id && (
                   <Link
                     href={`/admin/estudiantes/${enr.estudiante_id}`}
-                    className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-all active:scale-95 cursor-pointer text-center"
+                    className="w-full flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl font-bold text-xs text-white bg-indigo-600 hover:bg-indigo-700 transition-all active:scale-95 shadow-md shadow-indigo-600/20 cursor-pointer text-center"
                   >
-                    Perfil 360°
+                    <User className="w-4 h-4" />
+                    <span>Perfil 360°</span>
                   </Link>
                 )}
               </div>
@@ -930,5 +995,20 @@ export default function AdminMatriculasPage() {
       )}
 
     </div>
+  );
+}
+
+export default function AdminMatriculasPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="p-12 text-center text-slate-400 font-bold flex flex-col items-center justify-center gap-3">
+          <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+          <span>Cargando sistema de matrículas...</span>
+        </div>
+      }
+    >
+      <MatriculasContent />
+    </Suspense>
   );
 }

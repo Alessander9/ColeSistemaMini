@@ -6,7 +6,22 @@ export async function loginWithCredentials(emailOrUsername: string, password: st
   // 1. Si Supabase no está configurado con credenciales reales, autenticar localmente contra base de datos interna
   if (!isSupabaseConfigured()) {
     const cleanInput = emailOrUsername.trim().toLowerCase();
-    const matchedUser = MOCK_USERS.find(u => 
+    let userList: UserProfile[] = MOCK_USERS;
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('colegio_users');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            userList = parsed;
+          }
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+
+    const matchedUser = userList.find(u => 
       u.email?.toLowerCase() === cleanInput || 
       u.dni === cleanInput
     );
@@ -19,7 +34,7 @@ export async function loginWithCredentials(emailOrUsername: string, password: st
       return { user: matchedUser, error: null };
     }
 
-    return { user: null, error: 'Usuario no encontrado en la base de datos local.' };
+    return { user: null, error: 'Usuario no encontrado. Verifica tu correo o DNI.' };
   }
 
   const supabase = createClient();

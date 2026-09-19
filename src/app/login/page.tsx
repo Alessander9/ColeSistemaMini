@@ -33,7 +33,7 @@ import { loginWithCredentials } from '@/lib/services/authService';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { setCurrentUser } = useApp();
+  const { setCurrentUser, brandingConfig } = useApp();
 
   const [email, setEmail] = useState('admin@colegio.edu.pe');
   const [password, setPassword] = useState('admin123');
@@ -42,68 +42,9 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
-  const demoAccounts = [
-    {
-      user: MOCK_USERS.find(u => u.rol === 'admin') || MOCK_USERS[0],
-      roleLabel: 'Administrador',
-      subtitle: 'Dirección & Gestión',
-      defaultPass: 'admin123',
-      destRoute: '/admin',
-      icon: ShieldCheck,
-      color: 'text-purple-600 dark:text-purple-400',
-      activeBg: 'bg-purple-600 text-white border-purple-600 shadow-md shadow-purple-500/20',
-      tagColor: 'bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300',
-    },
-    {
-      user: MOCK_USERS.find(u => u.rol === 'docente') || MOCK_USERS[1],
-      roleLabel: 'Docente',
-      subtitle: 'Notas & Asistencia',
-      defaultPass: 'profesor123',
-      destRoute: '/docente',
-      icon: BookOpen,
-      color: 'text-blue-600 dark:text-blue-400',
-      activeBg: 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-500/20',
-      tagColor: 'bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300',
-    },
-    {
-      user: MOCK_USERS.find(u => u.rol === 'estudiante') || MOCK_USERS[8],
-      roleLabel: 'Estudiante',
-      subtitle: 'Carnet QR & Libreta',
-      defaultPass: 'alumno123',
-      destRoute: '/estudiante',
-      icon: User,
-      color: 'text-emerald-600 dark:text-emerald-400',
-      activeBg: 'bg-emerald-600 text-white border-emerald-600 shadow-md shadow-emerald-500/20',
-      tagColor: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300',
-    },
-    {
-      user: MOCK_USERS.find(u => u.rol === 'apoderado') || MOCK_USERS[0],
-      roleLabel: 'Apoderado',
-      subtitle: 'Familia & Hijos',
-      defaultPass: '123456',
-      destRoute: '/apoderado',
-      icon: Users,
-      color: 'text-pink-600 dark:text-pink-400',
-      activeBg: 'bg-pink-600 text-white border-pink-600 shadow-md shadow-pink-500/20',
-      tagColor: 'bg-pink-100 text-pink-700 dark:bg-pink-950/60 dark:text-pink-300',
-    },
-    {
-      user: MOCK_USERS.find(u => u.rol === 'asistencia') || MOCK_USERS[1],
-      roleLabel: 'Portería / QR',
-      subtitle: 'Control en Puerta',
-      defaultPass: 'porteria123',
-      destRoute: '/asistencia',
-      icon: QrCode,
-      color: 'text-amber-600 dark:text-amber-400',
-      activeBg: 'bg-amber-600 text-white border-amber-600 shadow-md shadow-amber-500/20',
-      tagColor: 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300',
-    },
-  ];
-
-  const handleSelectAccount = (acc: typeof demoAccounts[0]) => {
-    setSelectedUser(acc.user);
-    setEmail(acc.user.email || '');
-    setPassword(acc.defaultPass);
+  const handleAutoFillAdmin = () => {
+    setEmail('admin@colegio.edu.pe');
+    setPassword('admin123');
     setErrorMessage('');
   };
 
@@ -138,11 +79,9 @@ export default function LoginPage() {
 
   const features = [
     { icon: QrCode, label: 'Asistencia QR', desc: 'Registro instantáneo con cámara' },
-    { icon: Award, label: 'Notas AD–A–B–C', desc: 'Sistema por competencias' },
-    { icon: ClipboardCheck, label: 'Portal completo', desc: 'Admin, Docente y Alumno' },
+    { icon: Award, label: 'Notas AD–A–B–C', desc: 'Sistema por competencias CNEB' },
+    { icon: ClipboardCheck, label: 'Portales Adaptados', desc: 'Admin, Docente, Alumno y Familia' },
   ];
-
-  const activeDemo = demoAccounts.find(d => d.user.id === selectedUser.id) || demoAccounts[0];
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-slate-100 via-violet-50/30 to-indigo-50/40 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 p-3 sm:p-6 md:p-8 relative overflow-x-hidden">
@@ -183,10 +122,10 @@ export default function LoginPage() {
 
           <div className="relative z-10">
             <h2 className="text-xl font-extrabold text-white leading-tight">
-              Bienvenido de nuevo 👋
+              Bienvenido al Sistema 👋
             </h2>
             <p className="text-xs text-violet-100/90 mt-0.5">
-              Selecciona tu tipo de cuenta o escribe tus credenciales.
+              Ingresa con tu correo institucional o DNI asignado.
             </p>
           </div>
         </div>
@@ -203,14 +142,22 @@ export default function LoginPage() {
           {/* Logo */}
           <div className="relative z-10">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-lg border border-white/20">
-                <GraduationCap className="w-6 h-6 text-white" />
-              </div>
+              {brandingConfig?.logoUrl ? (
+                <img 
+                  src={brandingConfig.logoUrl} 
+                  alt={brandingConfig.nombreInstitucion || 'Logo'} 
+                  className="w-12 h-12 rounded-2xl object-contain bg-white/90 p-1 shadow-lg border border-white/30"
+                />
+              ) : (
+                <div className="w-11 h-11 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-lg border border-white/20 font-black text-white text-lg">
+                  {brandingConfig?.siglas || 'CS'}
+                </div>
+              )}
               <div>
                 <span className="text-white font-black text-xl tracking-tight block">
-                  ColeSistema<span className="text-emerald-300">Mini</span>
+                  {brandingConfig?.nombreInstitucion || 'ColeSistema Mini'}
                 </span>
-                <span className="text-xs text-violet-200">Educación & Tecnología</span>
+                <span className="text-xs text-violet-200">{brandingConfig?.slogan || 'Educación & Tecnología'}</span>
               </div>
             </div>
           </div>
@@ -219,26 +166,22 @@ export default function LoginPage() {
           <div className="relative z-10 space-y-3 my-4">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md border border-white/20 text-xs font-semibold text-emerald-300">
               <Sparkles className="w-3.5 h-3.5" />
-              Plataforma Integral 2026
+              {brandingConfig?.siglas || 'Colegio'} 2026
             </div>
-            <h2 className="text-white font-black text-3xl leading-tight">
-              GESTIÓN ESCOLAR
-              <span className="block text-emerald-300">INTELIGENTE.</span>
+            <h2 className="text-white font-black text-2xl lg:text-3xl leading-tight">
+              {brandingConfig?.loginBienvenidaTitulo || 'GESTIÓN ESCOLAR INTELIGENTE.'}
             </h2>
-            <p className="text-violet-200 text-sm leading-relaxed">
-              Control de asistencia QR, calificaciones CNEB (AD–A–B–C), horarios interactivos y portales adaptados para cada rol.
+            <p className="text-violet-200 text-xs sm:text-sm leading-relaxed">
+              {brandingConfig?.loginBienvenidaMensaje || 'Control de asistencia QR, calificaciones CNEB (AD–A–B–C), horarios interactivos y portales adaptados para cada rol.'}
             </p>
           </div>
 
           {/* Illustration */}
           <div className="relative z-10 flex justify-center my-2">
-            <Image
-              src="/login-illustration.jpg"
+            <img
+              src={brandingConfig?.loginBannerUrl || "/login-illustration.jpg"}
               alt="Educación digital y escolar"
-              width={340}
-              height={240}
-              className="object-contain drop-shadow-2xl rounded-2xl border border-white/15"
-              priority
+              className="max-h-56 w-auto object-contain drop-shadow-2xl rounded-2xl border border-white/15"
             />
           </div>
 
@@ -269,60 +212,28 @@ export default function LoginPage() {
                 Iniciar Sesión
               </h1>
               <p className="text-sm text-slate-500 dark:text-slate-400">
-                Selecciona tu perfil de prueba o escribe tus credenciales.
+                Ingresa con tu cuenta institucional asignada.
               </p>
             </div>
 
-            {/* Role Quick Selector (2x2 grid on mobile, 4 columns on desktop) */}
-            <div className="space-y-2.5">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] sm:text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                  <User className="w-3.5 h-3.5" />
-                  Seleccionar Perfil Demo (1-Click)
-                </span>
-                <span className="text-[10px] text-violet-600 dark:text-violet-400 font-semibold">
-                  Acceso Rápido
-                </span>
+            {/* Quick Helper Button for Administrator Initial Access */}
+            <div className="p-3.5 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200/70 dark:border-indigo-800/50 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                  <ShieldCheck className="w-4 h-4" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-indigo-950 dark:text-indigo-200">Acceso Administrador</p>
+                  <p className="text-[11px] text-indigo-700/80 dark:text-indigo-300/70">admin@colegio.edu.pe</p>
+                </div>
               </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {demoAccounts.map((acc) => {
-                  const isSelected = selectedUser.id === acc.user.id;
-                  const Icon = acc.icon;
-                  return (
-                    <button
-                      key={acc.user.id}
-                      type="button"
-                      onClick={() => handleSelectAccount(acc)}
-                      className={`relative flex flex-col items-center justify-center text-center p-2.5 sm:p-3 rounded-2xl border-2 transition-all duration-200 cursor-pointer select-none active:scale-95 min-h-[72px] sm:min-h-[82px] ${
-                        isSelected
-                          ? `${acc.activeBg}`
-                          : 'border-slate-200 dark:border-slate-700/80 bg-slate-50/80 dark:bg-slate-800/60 text-slate-700 dark:text-slate-300 hover:border-violet-300 dark:hover:border-slate-600'
-                      }`}
-                    >
-                      <div className={`w-8 h-8 rounded-xl flex items-center justify-center mb-1 transition-colors ${
-                        isSelected ? 'bg-white/20 text-white' : 'bg-white dark:bg-slate-700 shadow-sm ' + acc.color
-                      }`}>
-                        <Icon className="w-4 h-4" />
-                      </div>
-                      
-                      <span className="text-xs font-bold leading-tight line-clamp-1">
-                        {acc.roleLabel}
-                      </span>
-                      
-                      <span className={`text-[9px] leading-tight line-clamp-1 mt-0.5 ${
-                        isSelected ? 'text-white/80' : 'text-slate-500 dark:text-slate-400'
-                      }`}>
-                        {acc.subtitle}
-                      </span>
-
-                      {isSelected && (
-                        <div className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-emerald-400 ring-2 ring-white/50" />
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
+              <button
+                type="button"
+                onClick={handleAutoFillAdmin}
+                className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-slate-700 text-xs font-bold hover:bg-indigo-50 transition-colors shadow-xs cursor-pointer active:scale-95"
+              >
+                Autocompletar
+              </button>
             </div>
 
             {/* Form */}
@@ -350,18 +261,9 @@ export default function LoginPage() {
 
               {/* Password field */}
               <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
                     Contraseña
                   </label>
-                  <button 
-                    type="button" 
-                    onClick={() => setPassword(activeDemo.defaultPass)}
-                    className="text-[11px] font-semibold text-violet-600 dark:text-violet-400 hover:underline"
-                  >
-                    Restablecer pass demo
-                  </button>
-                </div>
                 
                 <div className="relative flex items-center">
                   <div className="absolute left-3.5 text-slate-400 dark:text-slate-500 pointer-events-none">
@@ -420,6 +322,7 @@ export default function LoginPage() {
                       {selectedUser.rol === 'admin' && 'Dashboard Director / Administrador'}
                       {selectedUser.rol === 'docente' && 'Panel Docente & Asistencia'}
                       {selectedUser.rol === 'estudiante' && 'Portal Alumno & Carnet QR'}
+                      {selectedUser.rol === 'apoderado' && 'Portal Familia & Seguimiento de Hijos'}
                       {selectedUser.rol === 'asistencia' && 'Terminal Portería Móvil QR'}
                     </span>
                   </div>
@@ -448,16 +351,24 @@ export default function LoginPage() {
               </button>
             </form>
 
-            {/* Mobile Footer / Security Note */}
-            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-400 dark:text-slate-500">
-              <div className="flex items-center gap-1">
-                <Shield className="w-3 h-3 text-emerald-500" />
-                <span>Acceso Seguro SSL</span>
+            {/* Mobile Footer / Security Note & White-Label */}
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1.5">
+              <div className="flex items-center justify-between text-[11px] text-slate-400 dark:text-slate-500">
+                <div className="flex items-center gap-1">
+                  <Shield className="w-3 h-3 text-emerald-500" />
+                  <span>Acceso Seguro SSL</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Smartphone className="w-3 h-3 text-violet-500" />
+                  <span>{brandingConfig?.pwaShortName || 'App Móvil & PWA'}</span>
+                </div>
               </div>
-              <div className="flex items-center gap-1">
-                <Smartphone className="w-3 h-3 text-violet-500" />
-                <span>100% Móvil & PWA</span>
-              </div>
+              <p className="text-[10px] text-center text-slate-400 dark:text-slate-500 pt-1">
+                {brandingConfig?.whiteLabelFooterTexto || `© 2026 ${brandingConfig?.nombreInstitucion || 'ColeSistema'}.`}
+                {brandingConfig?.mostrarPoweredBy !== false && (
+                  <span className="opacity-70 ml-1">• EdTech Suite</span>
+                )}
+              </p>
             </div>
 
           </div>

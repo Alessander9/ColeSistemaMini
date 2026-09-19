@@ -351,32 +351,64 @@ ALTER TABLE public.notificaciones ENABLE ROW LEVEL SECURITY;
 
 -- Políticas RLS
 CREATE POLICY "Permitir lectura autenticada en profiles" ON public.profiles FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Admin gestiona perfiles" ON public.profiles FOR ALL TO authenticated USING (
+    (SELECT rol FROM public.profiles WHERE id = auth.uid()) = 'admin'
+);
+
 CREATE POLICY "Lectura general de catalogos" ON public.cursos FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Lectura general de competencias" ON public.competencias FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Lectura general de periodos" ON public.periodos_academicos FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Lectura general de periodos evaluacion" ON public.periodos_evaluacion FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Lectura general de grados" ON public.grados FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Lectura general de secciones" ON public.secciones FOR SELECT TO authenticated USING (true);
+
+CREATE POLICY "Lectura de estudiantes" ON public.estudiantes FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Admin gestiona estudiantes" ON public.estudiantes FOR ALL TO authenticated USING (
+    (SELECT rol FROM public.profiles WHERE id = auth.uid()) = 'admin'
+);
+
+CREATE POLICY "Lectura de matriculas" ON public.matriculas FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Admin gestiona matriculas" ON public.matriculas FOR ALL TO authenticated USING (
+    (SELECT rol FROM public.profiles WHERE id = auth.uid()) = 'admin'
+);
+
+CREATE POLICY "Lectura de calificaciones" ON public.calificaciones FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Docentes y Admin registran calificaciones" ON public.calificaciones FOR ALL TO authenticated USING (
+    (SELECT rol FROM public.profiles WHERE id = auth.uid()) IN ('admin', 'docente')
+);
+
 CREATE POLICY "Lectura general de horarios" ON public.horarios FOR SELECT TO authenticated USING (true);
 CREATE POLICY "Admin gestiona horarios" ON public.horarios FOR ALL TO authenticated USING (
     (SELECT rol FROM public.profiles WHERE id = auth.uid()) = 'admin'
 );
+
 CREATE POLICY "Lectura general de sesiones" ON public.sesiones_clase FOR SELECT TO authenticated USING (true);
 CREATE POLICY "Docentes y Admin registran sesiones" ON public.sesiones_clase FOR ALL TO authenticated USING (
     (SELECT rol FROM public.profiles WHERE id = auth.uid()) IN ('admin', 'docente')
 );
+
 CREATE POLICY "Lectura de asistencias" ON public.asistencias FOR SELECT TO authenticated USING (true);
 CREATE POLICY "Registro de asistencias" ON public.asistencias FOR INSERT TO authenticated WITH CHECK (
     (SELECT rol FROM public.profiles WHERE id = auth.uid()) IN ('admin', 'docente', 'asistencia')
 );
+
 CREATE POLICY "Lectura de tareas" ON public.tareas FOR SELECT TO authenticated USING (true);
 CREATE POLICY "Docentes y Admin gestionan tareas" ON public.tareas FOR ALL TO authenticated USING (
     (SELECT rol FROM public.profiles WHERE id = auth.uid()) IN ('admin', 'docente')
 );
+
 CREATE POLICY "Lectura de entregas" ON public.entregas_tareas FOR SELECT TO authenticated USING (true);
 CREATE POLICY "Estudiantes entregan tareas" ON public.entregas_tareas FOR INSERT TO authenticated WITH CHECK (true);
 CREATE POLICY "Docentes califican entregas" ON public.entregas_tareas FOR UPDATE TO authenticated USING (
     (SELECT rol FROM public.profiles WHERE id = auth.uid()) IN ('admin', 'docente')
 );
+
 CREATE POLICY "Lectura de evaluaciones" ON public.evaluaciones FOR SELECT TO authenticated USING (true);
 CREATE POLICY "Gestion de evaluaciones por docente" ON public.evaluaciones FOR ALL TO authenticated USING (
     (SELECT rol FROM public.profiles WHERE id = auth.uid()) IN ('admin', 'docente')
 );
+
 CREATE POLICY "Gestion de notificaciones propias" ON public.notificaciones FOR ALL TO authenticated USING (
     user_id = auth.uid() OR (SELECT rol FROM public.profiles WHERE id = auth.uid()) = 'admin'
 );
+
