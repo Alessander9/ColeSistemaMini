@@ -1284,7 +1284,7 @@ export default function AdminBrandingPage() {
 
                 <div className="relative z-10 py-4 text-center">
                   <p className="font-extrabold text-xs">INFORME DE PROGRESO DEL ESTUDIANTE</p>
-                  <p className="text-[10px] text-slate-500 mt-1">Estudiante: Mateo Alejandro Torres (5to Sec - "A")</p>
+                  <p className="text-[10px] text-slate-500 mt-1">Estudiante: Mateo Alejandro Torres (5to Sec - &quot;A&quot;)</p>
                 </div>
 
                 {/* Sello y pie de página de seguridad */}
@@ -1363,7 +1363,7 @@ export default function AdminBrandingPage() {
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Sello Holográfico Digital Animado</label>
                   <div className="flex items-center justify-between p-2 rounded-xl border bg-slate-50 dark:bg-slate-800">
-                    <span className="text-xs text-slate-700 dark:text-slate-300">Distintivo "Matriculado 2026"</span>
+                    <span className="text-xs text-slate-700 dark:text-slate-300">Distintivo &quot;Matriculado 2026&quot;</span>
                     <input
                       type="checkbox"
                       checked={formData.carnetSelloHolografico !== false}
@@ -1470,7 +1470,7 @@ export default function AdminBrandingPage() {
                         </div>
                         <div className="flex-1 min-w-0 space-y-0.5">
                           <h4 className="font-black text-[11px] text-slate-900 leading-tight truncate">MATEO ALEJANDRO TORRES</h4>
-                          <p className="text-[9px] text-slate-500 font-bold uppercase">5TO SECUNDARIA - "A"</p>
+                          <p className="text-[9px] text-slate-500 font-bold uppercase">5TO SECUNDARIA - &quot;A&quot;</p>
                           <p className="text-[8px] text-indigo-600 font-mono font-bold">CÓD: EST-2026-0042</p>
                           <p className="text-[8px] text-slate-400">DNI: 74829104</p>
                         </div>
@@ -1527,7 +1527,7 @@ export default function AdminBrandingPage() {
                         </div>
                         <div>
                           <h4 className="font-black text-xs">MATEO ALEJANDRO TORRES</h4>
-                          <p className="text-[10px] text-slate-500 font-bold">5TO SECUNDARIA - "A"</p>
+                          <p className="text-[10px] text-slate-500 font-bold">5TO SECUNDARIA - &quot;A&quot;</p>
                           <p className="text-[9px] text-indigo-600 font-mono font-bold">CÓD: EST-2026-0042</p>
                         </div>
 
@@ -2072,7 +2072,7 @@ export default function AdminBrandingPage() {
 
                   {selectedResendTemplate === 'bienvenida_matricula' && (
                     <div className="space-y-2">
-                      <p className="text-slate-600">Matrícula confirmada para <strong>Mateo Alejandro Torres</strong> en 5to Sec "A".</p>
+                      <p className="text-slate-600">Matrícula confirmada para <strong>Mateo Alejandro Torres</strong> en 5to Sec &quot;A&quot;.</p>
                       <div className="p-2 bg-slate-50 border rounded text-[11px] font-mono">
                         👤 Usuario: 74829104<br />
                         🏷️ Código: EST-2026-0042
@@ -2121,7 +2121,7 @@ export default function AdminBrandingPage() {
 
               <div className="space-y-3 pt-3 border-t">
                 <div className="flex items-center justify-between p-3 rounded-xl bg-purple-50 border border-purple-200">
-                  <span className="text-xs font-bold text-purple-900">Mostrar "Powered by ColeSistema"</span>
+                  <span className="text-xs font-bold text-purple-900">Mostrar &quot;Powered by ColeSistema&quot;</span>
                   <input type="checkbox" checked={formData.mostrarPoweredBy} onChange={(e) => handleChange('mostrarPoweredBy', e.target.checked)} className="w-4 h-4 rounded text-purple-600" />
                 </div>
                 <div className="space-y-1">

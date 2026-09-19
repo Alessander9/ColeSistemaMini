@@ -45,6 +45,8 @@ export default function EstudianteLibretaNotasPage() {
     users,
     students, 
     enrollments, 
+    sections,
+    gradeLevels,
     courses, 
     grades, 
     evaluationPeriods, 
@@ -63,23 +65,28 @@ export default function EstudianteLibretaNotasPage() {
     if (childrenList && childrenList.length > 0) {
       return childrenList;
     }
-    return students.map((s, idx) => ({
-      id: `child-${idx + 1}`,
-      estudiante_id: s.id,
-      nombre: s.nombres,
-      apellidos: s.apellidos,
-      nivel: s.seccion?.grado?.nivel || 'primaria',
-      grado_nombre: s.seccion?.grado?.nombre || 'Grado',
-      seccion_letra: s.seccion?.letra || 'A',
-      avatar_url: s.avatar_url || 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150',
-      promedio_letra: 'AD',
-      asistencia_porcentaje: 100,
-      tareas_pendientes: 0,
-      tutor_nombre: 'Docente Tutor',
-      tutor_email: 'tutor@colegio.edu.pe',
-      tutor_avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'
-    }));
-  }, [childrenList, students]);
+    return students.map((s, idx) => {
+      const enr = enrollments.find(e => e.estudiante_id === s.id);
+      const sec = sections.find(sc => sc.id === enr?.seccion_id);
+      const grd = gradeLevels.find(g => g.id === sec?.grado_id);
+      return {
+        id: `child-${idx + 1}`,
+        estudiante_id: s.id,
+        nombre: s.nombres || '',
+        apellidos: s.apellidos || '',
+        nivel: grd?.nivel || 'primaria',
+        grado_nombre: grd?.nombre || 'Grado',
+        seccion_letra: sec?.letra || 'A',
+        avatar_url: s.profile?.avatar_url || 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150',
+        promedio_letra: 'AD' as const,
+        asistencia_porcentaje: 100,
+        tareas_pendientes: 0,
+        tutor_nombre: 'Docente Tutor',
+        tutor_email: 'tutor@colegio.edu.pe',
+        tutor_avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'
+      };
+    });
+  }, [childrenList, students, enrollments, sections, gradeLevels]);
 
   // Estudiante/Hijo activo
   const activeChild = useMemo(() => {
@@ -103,8 +110,8 @@ export default function EstudianteLibretaNotasPage() {
       nombres: activeStudent?.nombres || activeChild?.nombre || 'Estudiante',
       apellidos: activeStudent?.apellidos || activeChild?.apellidos || '',
       dni: activeStudent?.dni || '',
-      avatar_url: activeStudent?.avatar_url || activeChild?.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
-      email: activeStudent?.email || `${(activeStudent?.nombres || 'estudiante').toLowerCase().split(' ')[0]}@colegio.edu.pe`,
+      avatar_url: activeStudent?.profile?.avatar_url || activeChild?.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
+      email: activeStudent?.profile?.email || `${(activeStudent?.nombres || 'estudiante').toLowerCase().split(' ')[0]}@colegio.edu.pe`,
       rol: 'estudiante' as const,
       activo: true
     };

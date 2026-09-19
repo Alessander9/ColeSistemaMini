@@ -100,7 +100,18 @@ export default function ApoderadoDashboardPage() {
   const [justifyDetails, setJustifyDetails] = useState('');
 
   // Identificar hijo seleccionado actualmente
-  const currentChild = selectedChild || childrenList[0];
+  const currentChild = selectedChild || childrenList[0] || {
+    id: 'child-1',
+    estudiante_id: 'est-1',
+    nombre: 'Estudiante',
+    apellidos: '',
+    nivel: 'primaria' as const,
+    grado_nombre: '3° de Primaria',
+    seccion_letra: 'A',
+    asistencia_porcentaje: 100,
+    tareas_pendientes: 0,
+    promedio_letra: 'AD' as const,
+  };
 
   // Estudiante y matrícula correspondientes al hijo seleccionado
   const activeStudent = useMemo(() => {
@@ -981,7 +992,7 @@ export default function ApoderadoDashboardPage() {
                 <div className="space-y-1 min-w-0">
                   <span className="text-[10px] uppercase font-black tracking-wider text-emerald-400 block">Identificador Oficial</span>
                   <span className="font-mono text-xs font-black text-white block">{activeStudent?.codigo_estudiante || 'EST-2026-001'}</span>
-                  <span className="text-[11px] text-slate-300 block truncate">{currentChild.nombre} {currentChild.apellidos}</span>
+                  <span className="text-[11px] text-slate-300 block truncate">{currentChild?.nombre} {currentChild?.apellidos}</span>
                 </div>
               </div>
 
@@ -998,12 +1009,12 @@ export default function ApoderadoDashboardPage() {
             <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-full bg-blue-600 text-white flex items-center justify-center font-black text-sm shrink-0 shadow-md">
-                  {currentTutor.nombres[0]}{currentTutor.apellidos[0]}
+                  {currentTutor?.nombres?.[0] || 'D'}{currentTutor?.apellidos?.[0] || 'T'}
                 </div>
                 <div>
                   <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider block">Tutor de Salón</span>
                   <h4 className="font-black text-sm text-slate-900 dark:text-white">
-                    Prof. {currentTutor.nombres} {currentTutor.apellidos}
+                    Prof. {currentTutor?.nombres || 'Docente'} {currentTutor?.apellidos || 'Tutor'}
                   </h4>
                   <span className="text-[11px] text-slate-400 font-medium block">
                     Horario de Atención: Lun a Vie 8:00 AM - 1:00 PM
@@ -1117,9 +1128,9 @@ export default function ApoderadoDashboardPage() {
                 </div>
                 <div>
                   <h3 className="text-lg font-black text-slate-900 dark:text-white">
-                    Libreta Oficial de Calificaciones • {currentChild.nombre} {currentChild.apellidos}
+                    Libreta Oficial de Calificaciones • {currentChild?.nombre} {currentChild?.apellidos}
                   </h3>
-                  <p className="text-xs text-slate-500">{currentChild.grado_nombre} • Sección &quot;{currentChild.seccion_letra}&quot;</p>
+                  <p className="text-xs text-slate-500">{currentChild?.grado_nombre} • Sección &quot;{currentChild?.seccion_letra}&quot;</p>
                 </div>
               </div>
 
@@ -1158,7 +1169,7 @@ export default function ApoderadoDashboardPage() {
                 </div>
                 <div>
                   <h3 className="text-lg font-black text-slate-900 dark:text-white">
-                    Malla Horaria Semanal ({currentChild.grado_nombre} &quot;{currentChild.seccion_letra}&quot;)
+                    Malla Horaria Semanal ({currentChild?.grado_nombre} &quot;{currentChild?.seccion_letra}&quot;)
                   </h3>
                   <p className="text-xs text-slate-500">Distribución de horas de Lunes a Viernes • Turno Mañana</p>
                 </div>
@@ -1240,7 +1251,7 @@ export default function ApoderadoDashboardPage() {
                   <QrCode className="w-4 h-4" />
                 </div>
                 <h3 className="font-black text-base text-slate-900 dark:text-white">
-                  Carnet QR • {currentChild.nombre}
+                  Carnet QR • {currentChild?.nombre}
                 </h3>
               </div>
               <button

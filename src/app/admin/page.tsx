@@ -83,16 +83,18 @@ export default function AdminDashboardPage() {
   const todayAttendances = attendances.filter(a => {
     if (a.fecha !== todayStr) return false;
     if (attendanceFilterLevel === 'todos') return true;
-    return getStudentLevel(a.estudiante_id) === attendanceFilterLevel;
+    const enr = enrollments.find(e => e.id === a.matricula_id);
+    const studentId = enr?.estudiante_id;
+    return (studentId ? getStudentLevel(studentId) : null) === attendanceFilterLevel;
   });
 
   const presentStudents = todayAttendances.filter(a => a.estado === 'presente').length;
   const lateStudents = todayAttendances.filter(a => a.estado === 'tardanza').length;
   const justifiedAbsents = todayAttendances.filter(a => a.estado === 'justificado').length;
-  const unjustifiedAbsents = todayAttendances.filter(a => a.estado === 'falta' || a.estado === 'injustificado').length;
+  const unjustifiedAbsents = todayAttendances.filter(a => a.estado === 'falta').length;
   const totalAttendanceAudited = presentStudents + lateStudents + justifiedAbsents + unjustifiedAbsents;
   const attendanceRate = totalAttendanceAudited > 0 ? ((presentStudents / totalAttendanceAudited) * 100).toFixed(1) : '0.0';
-  const qrScansCount = todayAttendances.filter(a => a.metodo_registro === 'qr' || a.tipo_verificacion === 'qr').length || presentStudents;
+  const qrScansCount = todayAttendances.filter(a => a.metodo === 'qr').length || presentStudents;
 
   const presentPct = totalAttendanceAudited > 0 ? ((presentStudents / totalAttendanceAudited) * 100).toFixed(1) : '0';
   const latePct = totalAttendanceAudited > 0 ? ((lateStudents / totalAttendanceAudited) * 100).toFixed(1) : '0';
@@ -400,7 +402,7 @@ export default function AdminDashboardPage() {
             <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
               <span>
-                Último registro en vivo: <strong>{lastAttendanceRecord ? `${lastAttendanceRecord.hora} (${lastAttendanceRecord.metodo_registro || 'QR'})` : 'Sin registros hoy'}</strong>
+                Último registro en vivo: <strong>{lastAttendanceRecord ? `${lastAttendanceRecord.hora_registro} (${lastAttendanceRecord.metodo || 'QR'})` : 'Sin registros hoy'}</strong>
               </span>
             </div>
             <Link

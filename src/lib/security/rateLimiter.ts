@@ -15,15 +15,15 @@ const rateLimitStore = new Map<string, RateLimitRecord>();
 if (typeof setInterval !== 'undefined') {
   setInterval(() => {
     const now = Date.now();
-    for (const [key, record] of rateLimitStore.entries()) {
+    rateLimitStore.forEach((record, key) => {
       if (record.jailedUntil && record.jailedUntil > now) {
-        continue; // Mantener en cuarentena
+        return; // Mantener en cuarentena
       }
       record.timestamps = record.timestamps.filter(t => now - t < 600000);
       if (record.timestamps.length === 0 && (!record.jailedUntil || record.jailedUntil <= now)) {
         rateLimitStore.delete(key);
       }
-    }
+    });
   }, 180000); // Cada 3 minutos
 }
 

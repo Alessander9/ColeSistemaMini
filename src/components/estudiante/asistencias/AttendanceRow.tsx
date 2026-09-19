@@ -108,7 +108,7 @@ export function AttendanceCardItem({ record, onViewDetail }: AttendanceRowProps)
 
       {record.observacion && record.observacion !== '—' && (
         <p className="text-[11px] text-slate-500 dark:text-slate-400 italic">
-          "{record.observacion}"
+          &quot;{record.observacion}&quot;
         </p>
       )}
 

@@ -121,6 +121,7 @@ export interface Course {
   nombre: string;
   codigo: string;
   nivel: EducationalLevel;
+  color?: string;
   color_hex?: string;
   competencias?: Competency[];
 }
@@ -141,6 +142,7 @@ export interface EvaluationPeriod {
   fecha_inicio: string;
   fecha_fin: string;
   cerrado: boolean;
+  activo?: boolean;
 }
 
 export interface AttendanceRecord {

@@ -72,11 +72,11 @@ export default function DocenteTareasPage() {
   // Scoped assignments: Admins have full access to all sections/courses; teachers have their assigned classes or all classes
   const teacherSections = useMemo(() => {
     if (currentUser?.rol === 'admin') {
-      return sections.map(s => ({ seccion: s, cursos }));
+      return sections.map(s => ({ seccion: s, cursos: courses }));
     }
     const fromContext = getTeacherSections(currentUser.id);
     if (fromContext && fromContext.length > 0) return fromContext;
-    return sections.map(s => ({ seccion: s, cursos }));
+    return sections.map(s => ({ seccion: s, cursos: courses }));
   }, [getTeacherSections, currentUser?.id, currentUser?.rol, sections, courses]);
 
   const teacherCourses = useMemo(() => {
