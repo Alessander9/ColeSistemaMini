@@ -906,7 +906,7 @@ export default function ApoderadoDashboardPage() {
                     <h4 className="font-black text-sm text-slate-900 dark:text-white">
                       Clases de Hoy ({todaySlots.length} Bloques)
                     </h4>
-                    <p className="text-[11px] text-slate-400 font-medium">Turno Mañana • Salón &quot;{currentChild.seccion_letra}&quot;</p>
+                    <p className="text-[11px] text-slate-400 font-medium">Turno Mañana • Salón &quot;{currentChild?.seccion_letra || 'A'}&quot;</p>
                   </div>
                 </div>
 
