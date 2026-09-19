@@ -81,11 +81,17 @@ export function TareasEscolaresView({ isApoderado = false }: TareasEscolaresView
   // Multi-child selection for Apoderado role
   const childrenList = useMemo(() => {
     if (isApoderado) {
-      return students.filter(s =>
-        s.nombre_apoderado?.toLowerCase().includes('jorge silva') ||
-        s.email_apoderado?.toLowerCase() === currentUser?.email?.toLowerCase() ||
-        ['student-1', 'student-2', 'student-3'].includes(s.id)
-      );
+      if (currentUser?.rol === 'admin') return students;
+      const email = currentUser?.email?.toLowerCase().trim();
+      const phone = currentUser?.telefono?.trim();
+      const name = `${currentUser?.nombres || ''} ${currentUser?.apellidos || ''}`.toLowerCase().trim();
+      const matched = students.filter(s => {
+        const matchEmail = s.email_apoderado && email && s.email_apoderado.toLowerCase().trim() === email;
+        const matchPhone = s.telefono_apoderado && phone && s.telefono_apoderado.trim() === phone;
+        const matchName = s.nombre_apoderado && name && (s.nombre_apoderado.toLowerCase().includes(name) || name.includes(s.nombre_apoderado.toLowerCase()));
+        return matchEmail || matchPhone || matchName;
+      });
+      return matched.length > 0 ? matched : students;
     }
     return [];
   }, [isApoderado, students, currentUser]);
@@ -94,8 +100,8 @@ export function TareasEscolaresView({ isApoderado = false }: TareasEscolaresView
     if (isApoderado && childrenList.length > 0) {
       return childrenList[0].id;
     }
-    const studentUser = students.find(s => s.profile_id === currentUser.id);
-    return studentUser?.id || students[0]?.id || 'student-1';
+    const studentUser = students.find(s => s.profile_id === currentUser.id || s.id === currentUser.id);
+    return studentUser?.id || '';
   });
 
   // Keep selected child in sync if childrenList changes
@@ -107,13 +113,14 @@ export function TareasEscolaresView({ isApoderado = false }: TareasEscolaresView
 
   const activeStudent = useMemo(() => {
     if (isApoderado) {
-      return students.find(s => s.id === selectedChildId) || students[0];
+      return childrenList.find(s => s.id === selectedChildId) || childrenList[0] || null;
     }
-    return students.find(s => s.profile_id === currentUser.id) || students[0];
-  }, [isApoderado, selectedChildId, students, currentUser]);
+    return students.find(s => s.profile_id === currentUser.id || s.id === currentUser.id) || null;
+  }, [isApoderado, selectedChildId, childrenList, students, currentUser]);
 
   const activeEnrollment = useMemo(() => {
-    return enrollments.find(e => e.estudiante_id === activeStudent?.id) || enrollments[0];
+    if (!activeStudent?.id) return null;
+    return enrollments.find(e => e.estudiante_id === activeStudent.id) || null;
   }, [enrollments, activeStudent]);
 
   // State

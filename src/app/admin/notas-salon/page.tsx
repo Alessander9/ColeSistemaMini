@@ -222,23 +222,31 @@ export default function NotasSalonPage() {
   const handleOpenStudentReport = (student: Student, section?: Section) => {
     const enr = enrollments.find(e => e.estudiante_id === student.id);
     if (!enr) return;
-    const targetSection = section || enr.seccion || sections[0];
+    const targetSection = section || enr.seccion;
+    const tutorId = targetSection?.tutor_id;
+    const tutor = teachers.find(t => t.id === tutorId);
+    const tutorName = tutor ? `${tutor.nombres} ${tutor.apellidos}` : 'No asignado';
+    const studentAtts = attendances.filter(a => a.matricula_id === enr.id);
+    const attPct = studentAtts.length > 0 ? Math.round((studentAtts.filter(a => a.estado === 'presente').length / studentAtts.length) * 100) : 0;
+
     const card = calculateStudentAnnualReportCard({
       enrollmentId: enr.id,
       studentId: student.id,
-      studentName: `${student.profile?.apellidos || ''}, ${student.profile?.nombres || ''}`,
-      studentDni: student.profile?.dni || '',
-      studentCode: student.codigo_estudiante || '',
-      gradeLevelName: targetSection?.grado?.nombre || '3° de Primaria',
-      sectionLetter: targetSection?.letra || 'A',
+      studentName: `${student.profile?.apellidos || student.apellidos || ''}, ${student.profile?.nombres || student.nombres || ''}`.trim() || 'Estudiante',
+      studentDni: student.profile?.dni || student.dni || '—',
+      studentCode: student.codigo_estudiante || '—',
+      gradeLevelName: targetSection?.grado?.nombre || 'Sin aula asignada',
+      sectionLetter: targetSection?.letra || '-',
       academicYear: selectedYear,
+      tutorName,
+      attendancePercentage: attPct,
       courses,
       grades: gradeRecords,
       evaluationPeriodIds: [
-        { id: 'eval-bim-1', numero_periodo: 1 },
-        { id: 'eval-bim-2', numero_periodo: 2 },
-        { id: 'eval-bim-3', numero_periodo: 3 },
-        { id: 'eval-bim-4', numero_periodo: 4 },
+        { id: 'eval-b1', numero_periodo: 1 },
+        { id: 'eval-b2', numero_periodo: 2 },
+        { id: 'eval-b3', numero_periodo: 3 },
+        { id: 'eval-b4', numero_periodo: 4 },
       ],
     });
     setSelectedReportCard(card);

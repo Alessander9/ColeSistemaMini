@@ -1121,7 +1121,7 @@ function MatriculasContent() {
                         {fullName}
                       </h4>
                       <p className="text-[11px] font-mono font-bold text-slate-400 mt-0.5">
-                        {student?.codigo_estudiante || 'EST-2026-001'}
+                        {student?.codigo_estudiante || 'Sin código'}
                       </p>
                     </div>
                   </div>

@@ -49,6 +49,8 @@ export default function EstudianteLibretaNotasPage() {
     gradeLevels,
     courses, 
     grades, 
+    attendances,
+    teachers,
     evaluationPeriods, 
     currentUser, 
     childrenList, 
@@ -69,24 +71,30 @@ export default function EstudianteLibretaNotasPage() {
       const enr = enrollments.find(e => e.estudiante_id === s.id);
       const sec = sections.find(sc => sc.id === enr?.seccion_id);
       const grd = gradeLevels.find(g => g.id === sec?.grado_id);
+      const studentAtts = enr ? attendances.filter(a => a.matricula_id === enr.id) : [];
+      const attPct = studentAtts.length > 0 ? Math.round((studentAtts.filter(a => a.estado === 'presente').length / studentAtts.length) * 100) : 0;
+      const studentGrds = enr ? grades.filter(g => g.matricula_id === enr.id).map(g => g.nota_letra) : [];
+      const { averageLetter } = calculateAverage(studentGrds);
+      const tutor = teachers.find(t => t.id === sec?.tutor_id);
+
       return {
-        id: `child-${idx + 1}`,
+        id: s.id,
         estudiante_id: s.id,
-        nombre: s.nombres || '',
-        apellidos: s.apellidos || '',
+        nombre: s.profile?.nombres || s.nombres || '',
+        apellidos: s.profile?.apellidos || s.apellidos || '',
         nivel: grd?.nivel || 'primaria',
-        grado_nombre: grd?.nombre || 'Grado',
-        seccion_letra: sec?.letra || 'A',
-        avatar_url: s.profile?.avatar_url || 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150',
-        promedio_letra: 'AD' as const,
-        asistencia_porcentaje: 100,
+        grado_nombre: grd?.nombre || 'Grado no asignado',
+        seccion_letra: sec?.letra || '-',
+        avatar_url: s.profile?.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
+        promedio_letra: (averageLetter || '—') as any,
+        asistencia_porcentaje: attPct,
         tareas_pendientes: 0,
-        tutor_nombre: 'Docente Tutor',
-        tutor_email: 'tutor@colegio.edu.pe',
-        tutor_avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'
+        tutor_nombre: tutor ? `${tutor.nombres} ${tutor.apellidos}` : 'No asignado',
+        tutor_email: tutor?.email || '',
+        tutor_avatar: tutor?.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'
       };
     });
-  }, [childrenList, students, enrollments, sections, gradeLevels]);
+  }, [childrenList, students, enrollments, sections, gradeLevels, attendances, grades, teachers]);
 
   // Estudiante/Hijo activo
   const activeChild = useMemo(() => {
@@ -98,27 +106,19 @@ export default function EstudianteLibretaNotasPage() {
 
   const activeStudent = useMemo(() => {
     if (activeChild) {
-      return students.find(s => s.id === activeChild.estudiante_id) || students.find(s => s.id === activeChild.id) || students[0];
+      return students.find(s => s.id === activeChild.estudiante_id) || students.find(s => s.id === activeChild.id) || null;
     }
-    return students.find(s => s.profile_id === currentUser.id) || students[0];
+    return students.find(s => s.profile_id === currentUser.id || s.id === currentUser.id) || null;
   }, [activeChild, students, currentUser.id]);
 
   const studentProfile = useMemo(() => {
     if (!activeStudent) return null;
-    return activeStudent?.profile || (users || []).find(u => u.id === activeStudent?.profile_id) || {
-      id: activeStudent?.id || 'est-1',
-      nombres: activeStudent?.nombres || activeChild?.nombre || 'Estudiante',
-      apellidos: activeStudent?.apellidos || activeChild?.apellidos || '',
-      dni: activeStudent?.dni || '',
-      avatar_url: activeStudent?.profile?.avatar_url || activeChild?.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
-      email: activeStudent?.profile?.email || `${(activeStudent?.nombres || 'estudiante').toLowerCase().split(' ')[0]}@colegio.edu.pe`,
-      rol: 'estudiante' as const,
-      activo: true
-    };
-  }, [activeStudent, activeChild, users]);
+    return activeStudent?.profile || (users || []).find(u => u.id === activeStudent?.profile_id) || null;
+  }, [activeStudent, users]);
 
   const activeEnrollment = useMemo(() => {
-    return enrollments.find(e => e.estudiante_id === activeStudent?.id) || enrollments[0];
+    if (!activeStudent?.id) return null;
+    return enrollments.find(e => e.estudiante_id === activeStudent.id) || null;
   }, [enrollments, activeStudent?.id]);
 
   // Estados de navegación y filtros
@@ -130,32 +130,53 @@ export default function EstudianteLibretaNotasPage() {
 
   // Notas calculadas del estudiante activo
   const studentGradesAll = useMemo(() => {
-    return grades.filter(g => g.matricula_id === activeEnrollment?.id).map(g => g.nota_letra);
+    if (!activeEnrollment?.id) return [];
+    return grades.filter(g => g.matricula_id === activeEnrollment.id).map(g => g.nota_letra);
   }, [grades, activeEnrollment?.id]);
 
   const { averageLetter, averageScore } = useMemo(() => {
     return calculateAverage(studentGradesAll);
   }, [studentGradesAll]);
 
+  // Asistencia real del estudiante activo
+  const studentAttendances = useMemo(() => {
+    if (!activeEnrollment?.id) return [];
+    return attendances.filter(a => a.matricula_id === activeEnrollment.id);
+  }, [attendances, activeEnrollment?.id]);
+
+  const realAttendancePercentage = useMemo(() => {
+    if (studentAttendances.length === 0) return 0;
+    const presents = studentAttendances.filter(a => a.estado === 'presente').length;
+    return Math.round((presents / studentAttendances.length) * 100);
+  }, [studentAttendances]);
+
+  // Tutor del estudiante
+  const activeTutor = useMemo(() => {
+    const tutorId = activeEnrollment?.seccion?.tutor_id;
+    return teachers.find(t => t.id === tutorId) || null;
+  }, [activeEnrollment, teachers]);
+
+  const tutorDisplayName = activeTutor ? `${activeTutor.nombres} ${activeTutor.apellidos}` : 'No asignado';
+
   // Consolidado Anual para reporte oficial
   const annualReportCard = useMemo(() => {
     return calculateStudentAnnualReportCard({
-      enrollmentId: activeEnrollment?.id || 'enr-1',
-      studentId: activeStudent?.id || 'student-1',
-      studentName: `${studentProfile?.apellidos || ''}, ${studentProfile?.nombres || ''}`,
-      studentDni: studentProfile?.dni || '44556677',
-      studentCode: activeStudent?.codigo_estudiante || 'EST-2026-001',
-      gradeLevelName: activeEnrollment?.seccion?.grado?.nombre || activeChild?.grado_nombre || '3° de Primaria',
-      sectionLetter: activeEnrollment?.seccion?.letra || activeChild?.seccion_letra || 'A',
+      enrollmentId: activeEnrollment?.id || '',
+      studentId: activeStudent?.id || '',
+      studentName: studentProfile ? `${studentProfile.apellidos}, ${studentProfile.nombres}` : `${activeStudent?.apellidos || ''}, ${activeStudent?.nombres || ''}`.trim() || 'Estudiante',
+      studentDni: studentProfile?.dni || activeStudent?.dni || '—',
+      studentCode: activeStudent?.codigo_estudiante || '—',
+      gradeLevelName: activeEnrollment?.seccion?.grado?.nombre || activeChild?.grado_nombre || 'Sin grado asignado',
+      sectionLetter: activeEnrollment?.seccion?.letra || activeChild?.seccion_letra || '-',
       academicYear: 2026,
-      tutorName: 'Lic. Carlos Alberto Mendoza Rojas',
+      tutorName: tutorDisplayName,
       courses,
       grades,
       evaluationPeriodIds: evaluationPeriods.map(p => ({ id: p.id, numero_periodo: p.numero_periodo })),
-      attendancePercentage: activeChild?.asistencia_porcentaje || 98,
-      conductGrade: 'AD',
+      attendancePercentage: realAttendancePercentage,
+      conductGrade: studentGradesAll.length > 0 ? (averageLetter || 'A') : undefined,
     });
-  }, [activeEnrollment, activeStudent, studentProfile, activeChild, courses, grades, evaluationPeriods]);
+  }, [activeEnrollment, activeStudent, studentProfile, activeChild, tutorDisplayName, courses, grades, evaluationPeriods, realAttendancePercentage, studentGradesAll, averageLetter]);
 
   // Cursos analizados con sus promedios
   const analyzedCourses = useMemo(() => {
@@ -458,15 +479,15 @@ export default function EstudianteLibretaNotasPage() {
             </div>
 
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
-              <span>Código: <strong className="font-mono text-slate-700 dark:text-slate-300">{activeStudent?.codigo_estudiante || 'EST-2026-001'}</strong></span>
+              <span>Código: <strong className="font-mono text-slate-700 dark:text-slate-300">{activeStudent?.codigo_estudiante || '—'}</strong></span>
               <span>•</span>
-              <span>DNI: <strong className="font-mono text-slate-700 dark:text-slate-300">{studentProfile?.dni || '78945612'}</strong></span>
+              <span>DNI: <strong className="font-mono text-slate-700 dark:text-slate-300">{studentProfile?.dni || activeStudent?.dni || '—'}</strong></span>
               <span>•</span>
-              <span>Salón: <strong className="text-indigo-600 dark:text-indigo-400">{activeEnrollment?.seccion?.grado?.nombre} &quot;{activeEnrollment?.seccion?.letra}&quot;</strong></span>
+              <span>Salón: <strong className="text-indigo-600 dark:text-indigo-400">{activeEnrollment?.seccion?.grado?.nombre ? `${activeEnrollment.seccion.grado.nombre} "${activeEnrollment.seccion.letra}"` : 'Sin aula asignada'}</strong></span>
             </div>
 
             <p className="text-[11px] text-slate-400 font-medium">
-              Tutor(a): <strong className="text-slate-700 dark:text-slate-300">Lic. Carlos Alberto Mendoza Rojas</strong>
+              Tutor(a): <strong className="text-slate-700 dark:text-slate-300">{tutorDisplayName}</strong>
             </p>
           </div>
         </div>

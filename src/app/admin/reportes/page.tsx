@@ -11,7 +11,7 @@ import { GradeLetter } from '@/types';
 import { Download, FileSpreadsheet, Printer, FileText, Eye, Award, GraduationCap, ArrowRight } from 'lucide-react';
 
 export default function AdminReportesPage() {
-  const { enrollments, grades, courses, evaluationPeriods, students } = useApp();
+  const { enrollments, grades, attendances, teachers, courses, evaluationPeriods, students } = useApp();
   const [selectedReportCard, setSelectedReportCard] = useState<StudentAnnualReportCard | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeFilter, setActiveFilter] = useState<string>('todos');
@@ -19,7 +19,7 @@ export default function AdminReportesPage() {
   const reportData = useMemo(() => {
     return enrollments.map((enr) => {
       const student = students.find(s => s.id === enr.estudiante_id) || enr.estudiante;
-      const studentName = `${student?.profile?.apellidos || ''}, ${student?.profile?.nombres || ''}`.trim() || 'Estudiante';
+      const studentName = `${student?.profile?.apellidos || student?.apellidos || ''}, ${student?.profile?.nombres || student?.nombres || ''}`.trim() || 'Estudiante';
       
       // Calculate student's overall average across all courses
       const studentGrades = grades.filter(g => g.matricula_id === enr.id).map(g => g.nota_letra);
@@ -32,7 +32,7 @@ export default function AdminReportesPage() {
         student,
         codigo: student?.codigo_estudiante || '',
         nombre: studentName,
-        gradoSeccion: `${enr.seccion?.grado?.nombre || ''} "${enr.seccion?.letra || ''}"`,
+        gradoSeccion: enr.seccion?.grado?.nombre ? `${enr.seccion.grado.nombre} "${enr.seccion.letra}"` : 'Sin aula',
         promedioLetra: averageLetter,
         promedioNumerico: averageScore,
         estadoPromocion: status,
@@ -63,21 +63,28 @@ export default function AdminReportesPage() {
   }, [reportData, activeFilter]);
 
   const handleOpenReportCard = (row: typeof reportData[0]) => {
+    const studentAtts = attendances.filter(a => a.matricula_id === row.id);
+    const attPct = studentAtts.length > 0 ? Math.round((studentAtts.filter(a => a.estado === 'presente').length / studentAtts.length) * 100) : 0;
+    const tutorId = row.enrollment?.seccion?.tutor_id;
+    const tutor = teachers.find(t => t.id === tutorId);
+    const tutorName = tutor ? `${tutor.nombres} ${tutor.apellidos}` : 'No asignado';
+    const conduct = row.promedioLetra || '—';
+
     const card = calculateStudentAnnualReportCard({
       enrollmentId: row.id,
       studentId: row.student?.id || '',
       studentName: row.nombre,
-      studentDni: row.student?.profile?.dni || '44556677',
-      studentCode: row.codigo,
-      gradeLevelName: row.enrollment?.seccion?.grado?.nombre || '3° de Primaria',
-      sectionLetter: row.enrollment?.seccion?.letra || 'A',
+      studentDni: row.student?.profile?.dni || row.student?.dni || '—',
+      studentCode: row.codigo || '—',
+      gradeLevelName: row.enrollment?.seccion?.grado?.nombre || 'Sin aula asignada',
+      sectionLetter: row.enrollment?.seccion?.letra || '-',
       academicYear: 2026,
-      tutorName: 'Lic. Carlos Alberto Mendoza Rojas',
+      tutorName,
       courses,
       grades,
       evaluationPeriodIds: evaluationPeriods.map(p => ({ id: p.id, numero_periodo: p.numero_periodo })),
-      attendancePercentage: 98,
-      conductGrade: 'AD',
+      attendancePercentage: attPct,
+      conductGrade: row.promedioLetra || undefined,
     });
 
     setSelectedReportCard(card);

@@ -42,9 +42,10 @@ export function QrCard({
     window.print();
   };
 
-  const fullName = `${student.profile?.apellidos}, ${student.profile?.nombres}`;
-  const gradoNombre = section?.grado?.nombre || '3° de Primaria';
-  const seccionLetra = section?.letra || 'A';
+  const fullName = `${student.profile?.apellidos || student.apellidos || ''}, ${student.profile?.nombres || student.nombres || ''}`.trim() || 'Estudiante';
+  const gradoNombre = section?.grado?.nombre || 'Grado sin asignar';
+  const seccionLetra = section?.letra || '-';
+  const dni = student.profile?.dni || student.dni || '—';
 
   return (
     <div className="w-full flex flex-col items-center gap-4">
@@ -92,7 +93,7 @@ export function QrCard({
             <h4 className="font-extrabold text-sm text-white leading-tight truncate">{fullName}</h4>
             <div className="mt-1.5 flex flex-wrap gap-1.5 text-[11px]">
               <span className="bg-slate-800 text-slate-300 px-2 py-0.5 rounded-md font-mono border border-slate-700">
-                DNI: {student.profile?.dni}
+                DNI: {dni}
               </span>
               <span className="bg-emerald-950/60 text-emerald-300 px-2 py-0.5 rounded-md font-semibold border border-emerald-800/60">
                 {gradoNombre} &quot;{seccionLetra}&quot;

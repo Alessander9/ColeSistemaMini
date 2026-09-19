@@ -69,6 +69,7 @@ const TIME_BLOCKS = [
 
 export default function ApoderadoDashboardPage() {
   const { 
+    currentUser,
     childrenList, 
     selectedChildId, 
     setSelectedChildId, 
@@ -99,32 +100,76 @@ export default function ApoderadoDashboardPage() {
   const [justifyReason, setJustifyReason] = useState('Salud / Cita médica');
   const [justifyDetails, setJustifyDetails] = useState('');
 
+  // Lista de hijos/estudiantes disponibles
+  const dynamicChildrenList = useMemo(() => {
+    if (childrenList && childrenList.length > 0) return childrenList;
+    if (!students || students.length === 0) return [];
+    
+    let studentMatches = students;
+    if (currentUser && currentUser.rol === 'apoderado') {
+      const email = currentUser.email?.toLowerCase().trim();
+      const phone = currentUser.telefono?.trim();
+      const name = `${currentUser.nombres || ''} ${currentUser.apellidos || ''}`.toLowerCase().trim();
+      const filtered = students.filter(s => {
+        const matchEmail = s.email_apoderado && email && s.email_apoderado.toLowerCase().trim() === email;
+        const matchPhone = s.telefono_apoderado && phone && s.telefono_apoderado.trim() === phone;
+        const matchName = s.nombre_apoderado && name && (s.nombre_apoderado.toLowerCase().includes(name) || name.includes(s.nombre_apoderado.toLowerCase()));
+        return matchEmail || matchPhone || matchName;
+      });
+      if (filtered.length > 0) {
+        studentMatches = filtered;
+      }
+    }
+
+    return studentMatches.map((s) => {
+      const enr = enrollments.find(e => e.estudiante_id === s.id);
+      const sec = enr?.seccion;
+      const grd = sec?.grado;
+      const studentAtts = enr ? attendances.filter(a => a.matricula_id === enr.id) : [];
+      const attPct = studentAtts.length > 0 ? Math.round((studentAtts.filter(a => a.estado === 'presente').length / studentAtts.length) * 100) : 0;
+      const studentGrds = enr ? grades.filter(g => g.matricula_id === enr.id).map(g => g.nota_letra) : [];
+      const { averageLetter } = calculateAverage(studentGrds);
+      const tutor = teachers.find(t => t.id === sec?.tutor_id);
+
+      return {
+        id: s.id,
+        estudiante_id: s.id,
+        nombre: s.profile?.nombres || s.nombres || '',
+        apellidos: s.profile?.apellidos || s.apellidos || '',
+        nivel: grd?.nivel || 'primaria',
+        grado_nombre: grd?.nombre || 'Grado sin asignar',
+        seccion_letra: sec?.letra || '-',
+        avatar_url: s.profile?.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
+        promedio_letra: (averageLetter || '—') as any,
+        asistencia_porcentaje: attPct,
+        tareas_pendientes: 0,
+        tutor_nombre: tutor ? `${tutor.nombres} ${tutor.apellidos}` : 'No asignado',
+        tutor_email: tutor?.email || '',
+        tutor_avatar: tutor?.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'
+      };
+    });
+  }, [childrenList, students, enrollments, attendances, grades, teachers, currentUser]);
+
   // Identificar hijo seleccionado actualmente
-  const currentChild = selectedChild || childrenList[0] || {
-    id: 'child-1',
-    estudiante_id: 'est-1',
-    nombre: 'Estudiante',
-    apellidos: '',
-    nivel: 'primaria' as const,
-    grado_nombre: '3° de Primaria',
-    seccion_letra: 'A',
-    asistencia_porcentaje: 100,
-    tareas_pendientes: 0,
-    promedio_letra: 'AD' as const,
-  };
+  const currentChild = useMemo(() => {
+    if (dynamicChildrenList.length === 0) return null;
+    return dynamicChildrenList.find(c => c.id === selectedChildId || c.estudiante_id === selectedChildId) || dynamicChildrenList[0];
+  }, [dynamicChildrenList, selectedChildId]);
 
   // Estudiante y matrícula correspondientes al hijo seleccionado
   const activeStudent = useMemo(() => {
-    return students.find(s => s.id === currentChild?.estudiante_id) || students[0];
+    if (!currentChild) return null;
+    return students.find(s => s.id === currentChild.estudiante_id || s.id === currentChild.id) || null;
   }, [students, currentChild]);
 
   const activeEnrollment = useMemo(() => {
-    return enrollments.find(e => e.estudiante_id === activeStudent?.id) || enrollments[0];
+    if (!activeStudent?.id) return null;
+    return enrollments.find(e => e.estudiante_id === activeStudent.id) || null;
   }, [enrollments, activeStudent]);
 
-  const studentSectionId = activeEnrollment?.seccion_id || 'sec-3pri-a';
+  const studentSectionId = activeEnrollment?.seccion_id || '';
 
-  // Calificaciones del hijo
+  // Calificaciones del hijo 100% reales
   const studentGrades = useMemo(() => {
     if (!activeEnrollment?.id) return [];
     return grades.filter(g => g.matricula_id === activeEnrollment.id);
@@ -142,26 +187,6 @@ export default function ApoderadoDashboardPage() {
     return calculateAnnualStatus(studentGradeLetters);
   }, [studentGradeLetters]);
 
-  // Consolidado Anual del ReportCard
-  const annualReportCard = useMemo(() => {
-    return calculateStudentAnnualReportCard({
-      enrollmentId: activeEnrollment?.id || 'enr-1',
-      studentId: activeStudent?.id || 'student-1',
-      studentName: `${activeStudent?.apellidos || currentChild?.apellidos}, ${activeStudent?.nombres || currentChild?.nombre}`,
-      studentDni: activeStudent?.dni || '44556677',
-      studentCode: activeStudent?.codigo_estudiante || 'EST-2026-001',
-      gradeLevelName: activeEnrollment?.seccion?.grado?.nombre || currentChild?.grado_nombre || '3° de Primaria',
-      sectionLetter: activeEnrollment?.seccion?.letra || currentChild?.seccion_letra || 'A',
-      academicYear: 2026,
-      tutorName: 'Lic. Carlos Alberto Mendoza Rojas',
-      courses,
-      grades: studentGrades,
-      evaluationPeriodIds: evaluationPeriods.map(p => ({ id: p.id, numero_periodo: p.numero_periodo })),
-      attendancePercentage: currentChild?.asistencia_porcentaje || 98,
-      conductGrade: 'AD',
-    });
-  }, [activeEnrollment, activeStudent, currentChild, courses, studentGrades, evaluationPeriods]);
-
   // Asistencias del hijo 100% reales
   const studentAttendances = useMemo(() => {
     if (!activeEnrollment?.id) return [];
@@ -174,18 +199,49 @@ export default function ApoderadoDashboardPage() {
   const faltaAttendances = studentAttendances.filter(a => a.estado === 'falta').length;
   const attendanceRate = totalAttendances > 0 ? Math.round((presentAttendances / totalAttendances) * 100) : 0;
 
+  // Tutor del salón
+  const currentTutor = useMemo(() => {
+    const tutorId = activeEnrollment?.seccion?.tutor_id;
+    return teachers.find(t => t.id === tutorId) || null;
+  }, [activeEnrollment, teachers]);
+
+  const tutorDisplayName = currentTutor ? `${currentTutor.nombres} ${currentTutor.apellidos}` : 'No asignado';
+
+  // Consolidado Anual del ReportCard
+  const annualReportCard = useMemo(() => {
+    return calculateStudentAnnualReportCard({
+      enrollmentId: activeEnrollment?.id || '',
+      studentId: activeStudent?.id || '',
+      studentName: `${activeStudent?.apellidos || currentChild?.apellidos || ''}, ${activeStudent?.nombres || currentChild?.nombre || ''}`.trim() || 'Estudiante',
+      studentDni: activeStudent?.profile?.dni || activeStudent?.dni || '—',
+      studentCode: activeStudent?.codigo_estudiante || '—',
+      gradeLevelName: activeEnrollment?.seccion?.grado?.nombre || currentChild?.grado_nombre || 'Sin aula asignada',
+      sectionLetter: activeEnrollment?.seccion?.letra || currentChild?.seccion_letra || '-',
+      academicYear: 2026,
+      tutorName: tutorDisplayName,
+      courses,
+      grades: studentGrades,
+      evaluationPeriodIds: evaluationPeriods.map(p => ({ id: p.id, numero_periodo: p.numero_periodo })),
+      attendancePercentage: attendanceRate,
+      conductGrade: studentGradeLetters.length > 0 ? (averageLetter || 'A') : undefined,
+    });
+  }, [activeEnrollment, activeStudent, currentChild, tutorDisplayName, courses, studentGrades, evaluationPeriods, attendanceRate, studentGradeLetters, averageLetter]);
+
   // Tareas de la sección del hijo
   const studentTasks = useMemo(() => {
+    if (!studentSectionId) return [];
     return tasks.filter(t => t.seccion_id === studentSectionId);
   }, [tasks, studentSectionId]);
 
   // Exámenes de la sección del hijo
   const studentExams = useMemo(() => {
+    if (!studentSectionId) return [];
     return exams.filter(e => e.seccion_id === studentSectionId);
   }, [exams, studentSectionId]);
 
   // Horario semanal de la sección del hijo
   const studentSchedule = useMemo(() => {
+    if (!studentSectionId) return [];
     return scheduleSlots.filter(s => s.seccion_id === studentSectionId);
   }, [scheduleSlots, studentSectionId]);
 
@@ -195,17 +251,6 @@ export default function ApoderadoDashboardPage() {
     const valid = studentSchedule.filter(s => s.dia === todayDay || s.dia === 'lunes');
     return valid.sort((a, b) => a.hora_inicio.localeCompare(b.hora_inicio));
   }, [studentSchedule, todayDay]);
-
-  // Tutor del salón
-  const currentTutor = useMemo(() => {
-    return teachers[0] || {
-      nombres: 'Carlos Alberto',
-      apellidos: 'Mendoza Rojas',
-      email: 'cmendoza@colegio.edu.pe',
-      telefono: '998877665',
-      especialidad: 'Matemática y Ciencias'
-    };
-  }, [teachers]);
 
   // Saludo dinámico según la hora
   const currentHour = new Date().getHours();
@@ -225,24 +270,26 @@ export default function ApoderadoDashboardPage() {
 
   // Navegación secuencial de hijos
   const handleSelectPrevChild = () => {
-    const currentIndex = childrenList.findIndex(c => c.id === (selectedChildId || childrenList[0].id));
-    const prevIndex = (currentIndex - 1 + childrenList.length) % childrenList.length;
-    setSelectedChildId(childrenList[prevIndex].id);
-    showToast(`Viendo a ${childrenList[prevIndex].nombre} ${childrenList[prevIndex].apellidos}`, 'info', 'Estudiante Activo');
+    if (dynamicChildrenList.length === 0) return;
+    const currentIndex = dynamicChildrenList.findIndex(c => c.id === (selectedChildId || dynamicChildrenList[0].id));
+    const prevIndex = (currentIndex - 1 + dynamicChildrenList.length) % dynamicChildrenList.length;
+    setSelectedChildId(dynamicChildrenList[prevIndex].id);
+    showToast(`Viendo a ${dynamicChildrenList[prevIndex].nombre} ${dynamicChildrenList[prevIndex].apellidos}`, 'info', 'Estudiante Activo');
   };
 
   const handleSelectNextChild = () => {
-    const currentIndex = childrenList.findIndex(c => c.id === (selectedChildId || childrenList[0].id));
-    const nextIndex = (currentIndex + 1) % childrenList.length;
-    setSelectedChildId(childrenList[nextIndex].id);
-    showToast(`Viendo a ${childrenList[nextIndex].nombre} ${childrenList[nextIndex].apellidos}`, 'info', 'Estudiante Activo');
+    if (dynamicChildrenList.length === 0) return;
+    const currentIndex = dynamicChildrenList.findIndex(c => c.id === (selectedChildId || dynamicChildrenList[0].id));
+    const nextIndex = (currentIndex + 1) % dynamicChildrenList.length;
+    setSelectedChildId(dynamicChildrenList[nextIndex].id);
+    showToast(`Viendo a ${dynamicChildrenList[nextIndex].nombre} ${dynamicChildrenList[nextIndex].apellidos}`, 'info', 'Estudiante Activo');
   };
 
   // Métricas completas y reales por cada hijo del apoderado
   const enrichedChildren = useMemo(() => {
-    return childrenList.map((child, idx) => {
-      const childStudent = students.find(s => s.id === child.estudiante_id);
-      const childEnrollment = enrollments.find(e => e.estudiante_id === child.estudiante_id);
+    return dynamicChildrenList.map((child) => {
+      const childStudent = students.find(s => s.id === child.estudiante_id || s.id === child.id);
+      const childEnrollment = enrollments.find(e => e.estudiante_id === child.estudiante_id || e.estudiante_id === child.id);
       const secId = childEnrollment?.seccion_id;
       
       // Tareas de la sección
@@ -264,7 +311,7 @@ export default function ApoderadoDashboardPage() {
       const presentAtt = childAttendances.filter(a => a.estado === 'presente').length;
       const attPct = totalAtt > 0 ? Math.round((presentAtt / totalAtt) * 100) : (child.asistencia_porcentaje || 0);
 
-      const isSelected = child.id === (selectedChildId || childrenList[0]?.id);
+      const isSelected = child.id === (selectedChildId || dynamicChildrenList[0]?.id);
 
       return {
         ...child,
@@ -277,7 +324,7 @@ export default function ApoderadoDashboardPage() {
         isSelected,
       };
     });
-  }, [childrenList, selectedChildId, students, enrollments, tasks, submissions, grades, attendances]);
+  }, [dynamicChildrenList, selectedChildId, students, enrollments, tasks, submissions, grades, attendances]);
 
   return (
     <div className="space-y-8 max-w-[1500px] mx-auto pb-20 animate-fade-in">
@@ -679,7 +726,7 @@ export default function ApoderadoDashboardPage() {
                 </span>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
-                Sección &quot;{currentChild?.seccion_letra || 'A'}&quot; • Código: {activeStudent?.codigo_estudiante || 'EST-2026-001'} • Tutor: Prof. {currentTutor?.nombres || 'Docente'} {currentTutor?.apellidos || 'Tutor'}
+                Sección &quot;{currentChild?.seccion_letra || '-'}&quot; • Código: {activeStudent?.codigo_estudiante || '—'} • Tutor: {tutorDisplayName}
               </p>
             </div>
           </div>
@@ -991,7 +1038,7 @@ export default function ApoderadoDashboardPage() {
                 </div>
                 <div className="space-y-1 min-w-0">
                   <span className="text-[10px] uppercase font-black tracking-wider text-emerald-400 block">Identificador Oficial</span>
-                  <span className="font-mono text-xs font-black text-white block">{activeStudent?.codigo_estudiante || 'EST-2026-001'}</span>
+                  <span className="font-mono text-xs font-black text-white block">{activeStudent?.codigo_estudiante || '—'}</span>
                   <span className="text-[11px] text-slate-300 block truncate">{currentChild?.nombre} {currentChild?.apellidos}</span>
                 </div>
               </div>
@@ -1014,29 +1061,43 @@ export default function ApoderadoDashboardPage() {
                 <div>
                   <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider block">Tutor de Salón</span>
                   <h4 className="font-black text-sm text-slate-900 dark:text-white">
-                    Prof. {currentTutor?.nombres || 'Docente'} {currentTutor?.apellidos || 'Tutor'}
+                    {currentTutor ? `Prof. ${currentTutor.nombres} ${currentTutor.apellidos}` : 'Docente Tutor por asignar'}
                   </h4>
                   <span className="text-[11px] text-slate-400 font-medium block">
-                    Horario de Atención: Lun a Vie 8:00 AM - 1:00 PM
+                    {currentTutor ? 'Horario de Atención: Lun a Vie 8:00 AM - 1:00 PM' : 'Contacto institucional'}
                   </span>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                <a
-                  href={`tel:${currentTutor.telefono || '998877665'}`}
-                  className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center justify-center gap-1.5 border border-slate-200 dark:border-slate-700"
-                >
-                  <Phone className="w-3.5 h-3.5 text-blue-600" />
-                  <span>Llamar</span>
-                </a>
-                <a
-                  href={`mailto:${currentTutor.email || 'tutoria@colegio.edu.pe'}`}
-                  className="p-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-blue-600/20"
-                >
-                  <Mail className="w-3.5 h-3.5" />
-                  <span>Enviar Correo</span>
-                </a>
+                {currentTutor?.telefono ? (
+                  <a
+                    href={`tel:${currentTutor.telefono}`}
+                    className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center justify-center gap-1.5 border border-slate-200 dark:border-slate-700"
+                  >
+                    <Phone className="w-3.5 h-3.5 text-blue-600" />
+                    <span>Llamar</span>
+                  </a>
+                ) : (
+                  <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-400 font-medium text-xs flex items-center justify-center gap-1.5 border border-slate-200 dark:border-slate-700">
+                    <Phone className="w-3.5 h-3.5 text-slate-400" />
+                    <span>Sin teléfono</span>
+                  </div>
+                )}
+                {currentTutor?.email ? (
+                  <a
+                    href={`mailto:${currentTutor.email}`}
+                    className="p-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-blue-600/20"
+                  >
+                    <Mail className="w-3.5 h-3.5" />
+                    <span>Enviar Correo</span>
+                  </a>
+                ) : (
+                  <div className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 font-medium text-xs flex items-center justify-center gap-1.5">
+                    <Mail className="w-3.5 h-3.5 text-slate-400" />
+                    <span>Sin correo</span>
+                  </div>
+                )}
               </div>
             </div>
 

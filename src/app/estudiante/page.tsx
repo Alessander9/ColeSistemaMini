@@ -51,19 +51,21 @@ export default function EstudianteDashboardPage() {
 
   // Identify active student
   const activeStudent = useMemo(() => {
-    if (!currentUser?.id) return students[0] || null;
-    return students.find(s => s.profile_id === currentUser.id) || students[0] || null;
+    if (!currentUser?.id) return null;
+    return students.find(s => s.profile_id === currentUser.id || s.id === currentUser.id) || (currentUser.rol === 'estudiante' ? null : students[0] || null);
   }, [students, currentUser]);
 
   const activeEnrollment = useMemo(() => {
-    return enrollments.find(e => e.estudiante_id === activeStudent?.id) || enrollments[0];
+    if (!activeStudent?.id) return null;
+    return enrollments.find(e => e.estudiante_id === activeStudent.id) || null;
   }, [enrollments, activeStudent]);
 
-  const studentSectionId = activeEnrollment?.seccion_id || 'sec-3pri-a';
+  const studentSectionId = activeEnrollment?.seccion_id || '';
 
-  // Grades calculation
+  // Grades calculation 100% real
   const myGrades = useMemo(() => {
-    return grades.filter(g => g.matricula_id === activeEnrollment?.id);
+    if (!activeEnrollment?.id) return [];
+    return grades.filter(g => g.matricula_id === activeEnrollment.id);
   }, [grades, activeEnrollment]);
 
   const studentGradeLetters = myGrades.map(g => g.nota_letra);
@@ -72,25 +74,29 @@ export default function EstudianteDashboardPage() {
 
   // Attendance calculation 100% real
   const myAttendances = useMemo(() => {
-    return attendances.filter(a => a.matricula_id === activeEnrollment?.id);
+    if (!activeEnrollment?.id) return [];
+    return attendances.filter(a => a.matricula_id === activeEnrollment.id);
   }, [attendances, activeEnrollment]);
 
   const attendanceCount = myAttendances.length;
   const presentCount = myAttendances.filter(a => a.estado === 'presente').length;
   const attendanceRate = attendanceCount > 0 ? Math.round((presentCount / attendanceCount) * 100) : 0;
 
-  // Tasks & submissions
+  // Tasks & submissions 100% real
   const myTasks = useMemo(() => {
+    if (!studentSectionId) return [];
     return tasks.filter(t => t.seccion_id === studentSectionId);
   }, [tasks, studentSectionId]);
 
   const pendingTasks = useMemo(() => {
-    return myTasks.filter(t => !submissions.some(s => s.tarea_id === t.id && s.matricula_id === activeEnrollment?.id));
+    if (!activeEnrollment?.id) return myTasks;
+    return myTasks.filter(t => !submissions.some(s => s.tarea_id === t.id && s.matricula_id === activeEnrollment.id));
   }, [myTasks, submissions, activeEnrollment]);
 
-  // Today's schedule
+  // Today's schedule 100% real
   const todayDay = new Date().toLocaleDateString('es-PE', { weekday: 'long' }).toLowerCase() as any;
   const mySchedule = useMemo(() => {
+    if (!studentSectionId) return [];
     return scheduleSlots.filter(s => s.seccion_id === studentSectionId);
   }, [scheduleSlots, studentSectionId]);
 
@@ -100,8 +106,7 @@ export default function EstudianteDashboardPage() {
   }, [mySchedule, todayDay]);
 
   const studentName = activeStudent?.profile?.nombres?.split(' ')[0] || currentUser?.nombres?.split(' ')[0] || 'Estudiante';
-  const gradeName = activeEnrollment?.seccion?.grado?.nombre || 'Grado sin asignar';
-  const sectionLetter = activeEnrollment?.seccion?.letra || '-';
+  const gradeName = activeEnrollment?.seccion?.grado?.nombre ? `${activeEnrollment.seccion.grado.nombre} "${activeEnrollment.seccion.letra}"` : 'Sin aula asignada';
   const studentCode = activeStudent?.codigo_estudiante || 'Sin código';
 
   // Dynamic greeting by hour
@@ -161,7 +166,7 @@ export default function EstudianteDashboardPage() {
               {/* Grado y Sección */}
               <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-amber-950/60 border border-amber-500/30 text-xs font-bold text-amber-200 backdrop-blur-sm shadow-xs">
                 <Users className="w-3.5 h-3.5 text-amber-400" />
-                <span>Sección: <strong className="text-white">{gradeName} &quot;{sectionLetter}&quot;</strong></span>
+                <span>Aula / Sección: <strong className="text-white">{gradeName}</strong></span>
               </div>
 
               {/* Código de Estudiante */}
