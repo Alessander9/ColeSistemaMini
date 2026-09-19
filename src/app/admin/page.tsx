@@ -26,7 +26,12 @@ import {
   Calendar,
   Filter,
   Flame,
-  Search
+  Search,
+  BookOpen,
+  School,
+  ChevronDown,
+  ChevronUp,
+  SlidersHorizontal
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -40,6 +45,7 @@ export default function AdminDashboardPage() {
     gradeLevels = [], 
     sections = [], 
     teachers = [], 
+    scheduleSlots = [],
     academicContext = { institucion: 'Colegio San Martín', nivel: 'todos', anio: 2026 },
     setAcademicLevel,
     alerts = [],
@@ -47,17 +53,18 @@ export default function AdminDashboardPage() {
     auditLogs = []
   } = useApp();
 
+  const [isSetupWizardOpen, setIsSetupWizardOpen] = useState(true);
   const [attendanceFilterLevel, setAttendanceFilterLevel] = useState<EducationalLevel | 'todos'>('todos');
 
   const currentLevel = academicContext?.nivel || 'todos';
 
   // Helper para obtener nivel del estudiante
-  const getStudentLevel = (studentId: string): EducationalLevel | null => {
+  const getStudentLevel = React.useCallback((studentId: string): EducationalLevel | null => {
     const enr = enrollments.find(e => e.estudiante_id === studentId);
     const sec = sections.find(sc => sc.id === enr?.seccion_id);
     const grd = gradeLevels.find(g => g.id === sec?.grado_id);
     return grd?.nivel || null;
-  };
+  }, [enrollments, sections, gradeLevels]);
 
   // Filtrado de estudiantes por nivel
   const filteredStudents = useMemo(() => {
@@ -217,6 +224,165 @@ export default function AdminDashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* ── ASISTENTE GUIADO DE PUESTA EN MARCHA (5 PASOS SECUENCIALES) ── */}
+      {(() => {
+        const step1Ready = courses.length > 0;
+        const step2Ready = sections.length > 0;
+        const step3Ready = activeTeachersCount > 0;
+        const step4Ready = scheduleSlots.length > 0;
+        const step5Ready = enrollments.length > 0;
+
+        const completedCount = [step1Ready, step2Ready, step3Ready, step4Ready, step5Ready].filter(Boolean).length;
+        const setupPercent = Math.round((completedCount / 5) * 100);
+
+        const steps = [
+          {
+            num: 1,
+            title: '1. Cursos & Materias',
+            desc: step1Ready ? `${courses.length} asignaturas configuradas` : 'Definir asignaturas y competencias',
+            href: '/admin/academico',
+            ready: step1Ready,
+            icon: BookOpen,
+          },
+          {
+            num: 2,
+            title: '2. Grados & Secciones',
+            desc: step2Ready ? `${sections.length} aulas activas (${maxCapacity} vacantes)` : 'Crear aulas y vacantes por nivel',
+            href: '/admin/academico',
+            ready: step2Ready,
+            icon: School,
+          },
+          {
+            num: 3,
+            title: '3. Plana Docente',
+            desc: step3Ready ? `${activeTeachersCount} docentes registrados` : 'Registrar profesores y tutores',
+            href: '/admin/docentes',
+            ready: step3Ready,
+            icon: GraduationCap,
+          },
+          {
+            num: 4,
+            title: '4. Horarios por Aula',
+            desc: step4Ready ? `${scheduleSlots.length} bloques programados` : 'Distribuir horario sin cruces',
+            href: '/admin/horarios',
+            ready: step4Ready,
+            icon: Calendar,
+          },
+          {
+            num: 5,
+            title: '5. Matrícula & Fichas PDF',
+            desc: step5Ready ? `${enrollments.length} alumnos matriculados` : 'Matricular alumnos y emitir carnets QR',
+            href: '/admin/matriculas',
+            ready: step5Ready,
+            icon: UserPlus,
+          },
+        ];
+
+        return (
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-600 to-blue-600 text-white flex items-center justify-center font-black shadow-md shadow-indigo-500/20 shrink-0">
+                  <Sparkles className="w-5 h-5 text-amber-300" />
+                </div>
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="text-base font-black tracking-tight text-slate-900 dark:text-white">
+                      Guía de Configuración y Puesta en Marcha
+                    </h3>
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase ${
+                      setupPercent === 100 
+                        ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800' 
+                        : 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-800'
+                    }`}>
+                      {setupPercent}% Completado ({completedCount}/5 Pasos)
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    Secuencia recomendada: <strong>Cursos ➔ Aulas ➔ Docentes ➔ Horarios ➔ Matrícula de Alumnos</strong>
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 self-end sm:self-auto">
+                <button
+                  type="button"
+                  onClick={() => setIsSetupWizardOpen(!isSetupWizardOpen)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold transition-all cursor-pointer"
+                >
+                  {isSetupWizardOpen ? (
+                    <>
+                      <span>Minimizar Guía</span>
+                      <ChevronUp className="w-3.5 h-3.5" />
+                    </>
+                  ) : (
+                    <>
+                      <span>Ver 5 Pasos</span>
+                      <ChevronDown className="w-3.5 h-3.5" />
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Barra de Progreso Global */}
+            <div className="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-gradient-to-r from-indigo-500 via-blue-500 to-emerald-500 rounded-full transition-all duration-500" 
+                style={{ width: `${setupPercent}%` }} 
+              />
+            </div>
+
+            {/* Grid de 5 Pasos Interactivos */}
+            {isSetupWizardOpen && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 pt-2">
+                {steps.map((step) => {
+                  const Icon = step.icon;
+                  return (
+                    <Link
+                      key={step.num}
+                      href={step.href}
+                      className={`p-4 rounded-2xl border transition-all flex flex-col justify-between group hover:scale-[1.02] hover:shadow-md cursor-pointer ${
+                        step.ready
+                          ? 'bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-200/80 dark:border-emerald-800/40'
+                          : 'bg-slate-50/70 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700 hover:border-indigo-300'
+                      }`}
+                    >
+                      <div>
+                        <div className="flex items-center justify-between mb-2.5">
+                          <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-black text-xs ${
+                            step.ready
+                              ? 'bg-emerald-500 text-white shadow-xs'
+                              : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200'
+                          }`}>
+                            {step.ready ? <Check className="w-4 h-4" /> : step.num}
+                          </div>
+                          <Icon className={`w-4 h-4 ${step.ready ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`} />
+                        </div>
+
+                        <h4 className="font-extrabold text-xs text-slate-900 dark:text-white leading-tight group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                          {step.title}
+                        </h4>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 leading-snug">
+                          {step.desc}
+                        </p>
+                      </div>
+
+                      <div className="mt-3 pt-2.5 border-t border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between text-[11px] font-bold">
+                        <span className={step.ready ? 'text-emerald-600 dark:text-emerald-400' : 'text-indigo-600 dark:text-indigo-400'}>
+                          {step.ready ? '✓ Configurado' : '● Configurar'}
+                        </span>
+                        <ArrowRight className="w-3 h-3 text-slate-400 group-hover:translate-x-1 transition-transform" />
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* ── 2. KPIS ESTRATÉGICOS CON JERARQUÍA VISUAL ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

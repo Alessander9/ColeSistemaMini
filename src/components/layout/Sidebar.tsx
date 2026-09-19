@@ -74,7 +74,7 @@ export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
     }
   };
 
-  // 10 Secciones Estructuradas para Administrador
+  // Secciones Estructuradas para Administrador (Flujo Guiado Paso a Paso + Operación Diaria)
   const adminNav: NavSection[] = [
     {
       section: 'INICIO',
@@ -83,60 +83,31 @@ export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
       ]
     },
     {
-      section: 'ACADÉMICO',
+      section: 'CONFIGURACIÓN INICIAL (PASO A PASO)',
       items: [
-        { href: '/admin/academico', label: 'Estructura & Niveles', icon: School, badge: '3 Niveles' },
-        { href: '/admin/horarios', label: 'Malla de Horarios', icon: Calendar, badge: 'Anti-cruce' },
-      ]
-    },
-    {
-      section: 'ESTUDIANTES',
-      items: [
+        { href: '/admin/academico', label: '1. Cursos & Materias', icon: BookOpen, badge: 'Paso 1' },
+        { href: '/admin/academico', label: '2. Grados & Secciones', icon: School, badge: 'Paso 2' },
+        { href: '/admin/docentes', label: '3. Plana Docente', icon: GraduationCap, badge: 'Paso 3' },
+        { href: '/admin/horarios', label: '4. Horarios por Aula', icon: Calendar, badge: 'Paso 4' },
+        { href: '/admin/matriculas', label: '5. Matrículas & Fichas PDF', icon: UserPlus, badge: 'Paso 5', badgeColor: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold' },
         { href: '/admin/estudiantes', label: 'Directorio Estudiantil', icon: Users },
-        { href: '/admin/matriculas', label: 'Matrículas (Wizard)', icon: UserPlus, badge: '2026' },
       ]
     },
     {
-      section: 'DOCENTES',
+      section: 'OPERACIÓN & ASISTENCIA DIARIA',
       items: [
-        { href: '/admin/docentes', label: 'Plana Docente & Tutorías', icon: GraduationCap },
-      ]
-    },
-    {
-      section: 'EVALUACIÓN & LMS',
-      items: [
+        { href: '/asistencia', label: 'Terminal Kiosco QR', icon: QrCode, badge: '● Live', badgeColor: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
         { href: '/admin/notas-salon', label: 'Consolidado de Calificaciones', icon: Award, badge: 'CNEB' },
         { href: '/admin/tareas', label: 'Tareas & Actividades', icon: FileText },
         { href: '/admin/evaluaciones', label: 'Evaluaciones & Exámenes', icon: CheckSquare },
       ]
     },
     {
-      section: 'ASISTENCIA & QR',
-      items: [
-        { href: '/asistencia', label: 'Terminal Kiosco QR', icon: QrCode, badge: '● Live', badgeColor: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
-      ]
-    },
-    {
-      section: 'REPORTES & ANALÍTICA',
+      section: 'SUPERVISIÓN, SEGURIDAD & MARCA',
       items: [
         { href: '/admin/reportes', label: 'Reportes & Actas Oficiales', icon: BarChart3 },
-      ]
-    },
-    {
-      section: 'SEGURIDAD & ROLES',
-      items: [
         { href: '/admin/usuarios', label: 'Gestión de Usuarios & Roles', icon: ShieldCheck, badge: 'RBAC' },
-      ]
-    },
-    {
-      section: 'AUDITORÍA & ALERTAS',
-      items: [
         { href: '/admin/alertas', label: 'Centro de Alertas & Logs', icon: Bell, badge: 'KPIs' },
-      ]
-    },
-    {
-      section: 'CONFIGURACIÓN & MARCA',
-      items: [
         { href: '/admin/branding', label: 'Branding & SEO Institucional', icon: Palette, badge: 'Marca & SEO', badgeColor: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400' },
       ]
     }
