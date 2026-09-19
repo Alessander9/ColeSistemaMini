@@ -273,7 +273,7 @@ export default function AdminHorariosPage() {
   const [selectedGradeNum, setSelectedGradeNum] = useState<number>(3);
   const [selectedSectionId, setSelectedSectionId] = useState<string>('sec-3pri-a');
   const [activeTab, setActiveTab] = useState<'horario' | 'asignacion' | 'profesores'>('horario');
-  const [selectedTeacherId, setSelectedTeacherId] = useState<string>('user-docente-1');
+  const [selectedTeacherId, setSelectedTeacherId] = useState<string>('');
   const [selectedMobileDay, setSelectedMobileDay] = useState<DayOfWeek>('lunes');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isCopiedToast, setIsCopiedToast] = useState(false);

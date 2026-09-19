@@ -342,14 +342,14 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-const STORAGE_VERSION_KEY = 'colegio_storage_clean_v5';
+const STORAGE_VERSION_KEY = 'colegio_storage_clean_v6';
 
 function ensureLegacyMockDataPurged() {
   if (typeof window === 'undefined') return;
   try {
     const version = localStorage.getItem(STORAGE_VERSION_KEY);
     if (!version) {
-      // Limpiar todas las claves que contenían datos mock antiguos en el navegador
+      // Limpiar todas las claves para dejar la base de datos completamente limpia
       const legacyKeys = [
         'colegio_users',
         'colegio_current_user',
@@ -369,9 +369,10 @@ function ensureLegacyMockDataPurged() {
         'colegio_lms_modules',
         'colegio_alerts',
         'colegio_audit_logs',
+        'colegio_storage_clean_v5',
       ];
       legacyKeys.forEach(k => localStorage.removeItem(k));
-      localStorage.setItem(STORAGE_VERSION_KEY, '5.0.0');
+      localStorage.setItem(STORAGE_VERSION_KEY, '6.0.0');
     }
   } catch (err) {
     console.warn('[Storage] Error al purgar datos mock antiguos:', err);
