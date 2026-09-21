@@ -29,8 +29,11 @@ import {
   HelpCircle,
   LucideIcon,
   HeartHandshake,
+  DollarSign,
   Palette,
-  X
+  X,
+  Megaphone,
+  CalendarDays
 } from 'lucide-react';
 
 interface NavItem {
@@ -100,6 +103,10 @@ export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
         { href: '/admin/notas-salon', label: 'Consolidado de Calificaciones', icon: Award, badge: 'CNEB' },
         { href: '/admin/tareas', label: 'Tareas & Actividades', icon: FileText },
         { href: '/admin/evaluaciones', label: 'Evaluaciones & Exámenes', icon: CheckSquare },
+        { href: '/admin/comunicados', label: 'Comunicados & Circulares', icon: Megaphone, badge: 'Avisos', badgeColor: 'bg-blue-500/15 text-blue-600 dark:text-blue-400 font-bold' },
+        { href: '/admin/calendario', label: 'Calendario Escolar', icon: CalendarDays, badge: 'MINEDU' },
+        // [DESACTIVADO: El colegio no gestiona pagos ni pensiones]
+        // { href: '/admin/tesoreria', label: 'Tesorería & Pensiones', icon: DollarSign, badge: 'Finanzas', badgeColor: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold' },
       ]
     },
     {
@@ -129,11 +136,12 @@ export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
       ]
     },
     {
-      section: 'GESTIÓN PEDAGÓGICA',
+      section: 'GESTIÓN PEDAGÓGICA & TUTORÍA',
       items: [
         { href: '/docente/notas', label: '3. Calificaciones CNEB', icon: Award, badge: 'CNEB' },
         { href: '/docente/tareas', label: '4. Tareas & Actividades', icon: FileText },
         { href: '/docente/evaluaciones', label: '5. Evaluaciones & Exámenes', icon: CheckSquare },
+        { href: '/docente/tutoria', label: '6. Tutoría & Bienestar', icon: HeartHandshake, badge: 'Tutor', badgeColor: 'bg-rose-500/15 text-rose-600 dark:text-rose-400 font-bold' },
       ]
     }
   ];

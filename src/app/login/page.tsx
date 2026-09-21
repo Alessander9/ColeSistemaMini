@@ -35,9 +35,21 @@ export default function LoginPage() {
   const router = useRouter();
   const { setCurrentUser, brandingConfig } = useApp();
 
-  const [email, setEmail] = useState('admin@colegio.edu.pe');
+  const [email, setEmail] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('saved_login_email');
+      if (saved) return saved;
+    }
+    return 'admin@colegio.edu.pe';
+  });
   const [password, setPassword] = useState('admin123');
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberEmail, setRememberEmail] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('saved_login_email') !== null;
+    }
+    return true;
+  });
   const [selectedUser, setSelectedUser] = useState(MOCK_USERS[0]);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -59,6 +71,14 @@ export default function LoginPage() {
       setIsLoading(false);
       setErrorMessage(error || 'Credenciales inválidas. Por favor verifica tus datos.');
       return;
+    }
+
+    if (typeof window !== 'undefined') {
+      if (rememberEmail) {
+        localStorage.setItem('saved_login_email', email.trim());
+      } else {
+        localStorage.removeItem('saved_login_email');
+      }
     }
 
     setCurrentUser(user);
@@ -293,12 +313,13 @@ export default function LoginPage() {
                 <label className="flex items-center gap-2 text-slate-600 dark:text-slate-400 cursor-pointer select-none">
                   <input 
                     type="checkbox" 
-                    defaultChecked 
+                    checked={rememberEmail}
+                    onChange={(e) => setRememberEmail(e.target.checked)}
                     className="w-4 h-4 accent-violet-600 rounded cursor-pointer" 
                   />
-                  <span className="font-medium">Mantener sesión iniciada</span>
+                  <span className="font-medium">Recordar mi correo</span>
                 </label>
-                <span className="text-[11px] text-slate-400">v2.0 WebApp</span>
+                <span className="text-[11px] text-slate-400">ColeSistema Mini</span>
               </div>
 
               {/* Error box */}

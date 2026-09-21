@@ -50,12 +50,24 @@ export default function Estudiante360Page() {
     courses,
     evaluationPeriods,
     brandingConfig,
-    showToast
+    behaviorLogs,
+    addBehaviorLog,
+    updateEnrollmentDocuments,
+    showToast,
+    payments
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<
-    'resumen' | 'academico' | 'notas' | 'asistencia' | 'tareas' | 'evaluaciones' | 'lms' | 'matricula' | 'documentos' | 'apoderados' | 'historial'
+    'resumen' | 'academico' | 'notas' | 'asistencia' | 'conducta' | 'tareas' | 'evaluaciones' | 'matricula' | 'documentos' | 'apoderados' | 'historial' | 'finanzas'
   >('resumen');
+
+  // Behavior log form state
+  const [newLogData, setNewLogData] = useState({
+    titulo: '',
+    tipo: 'merito' as 'merito' | 'demerito' | 'observacion' | 'citacion',
+    descripcion: '',
+    visibleApoderado: true,
+  });
 
   const student = useMemo(() => {
     return students.find(s => s.id === studentId || s.profile_id === studentId) || students[0];
@@ -123,6 +135,11 @@ export default function Estudiante360Page() {
     return faltas + bajasNotas;
   }, [studentAttendances, studentGrades]);
 
+  const studentPayments = useMemo(() => {
+    if (!student?.id) return [];
+    return payments.filter(p => p.estudiante_id === student.id || p.matricula_id === enrollment?.id);
+  }, [payments, student, enrollment]);
+
   const handleDownloadFicha = async () => {
     if (!student) return;
     try {
@@ -153,12 +170,15 @@ export default function Estudiante360Page() {
     { id: 'academico', label: 'Académico' },
     { id: 'notas', label: 'Notas' },
     { id: 'asistencia', label: 'Asistencia' },
+    { id: 'conducta', label: 'Conducta / Anecdotario' },
     { id: 'tareas', label: 'Tareas' },
     { id: 'evaluaciones', label: 'Evaluaciones' },
     { id: 'matricula', label: 'Matrícula' },
     { id: 'documentos', label: 'Documentos' },
     { id: 'apoderados', label: 'Apoderados' },
     { id: 'historial', label: 'Historial' },
+    // [DESACTIVADO: El colegio no gestiona pagos ni pensiones]
+    // { id: 'finanzas', label: 'Finanzas & Pensiones' },
   ] as const;
 
   return (
@@ -466,26 +486,22 @@ export default function Estudiante360Page() {
         {/* TAB 4: ASISTENCIA */}
         {activeTab === 'asistencia' && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                Historial de Asistencia y Puntualidad
-              </h3>
-              <span className="text-xs text-slate-500 font-medium">
-                Total Registros: <strong>{studentAttendances.length}</strong>
-              </span>
-            </div>
-
+            <h3 className="text-base font-bold text-slate-900 dark:text-white">
+              Historial de Asistencias y Puntualidad
+            </h3>
             {studentAttendances.length > 0 ? (
               <div className="space-y-2">
                 {studentAttendances.map((att) => (
-                  <div key={att.id} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
+                  <div key={att.id} className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
                     <div>
-                      <span className="font-bold text-slate-800 dark:text-slate-200">Fecha: {att.fecha}</span>
-                      <span className="text-slate-400 ml-2 font-mono">Hora: {att.hora_registro}</span>
+                      <p className="font-bold text-slate-800 dark:text-slate-200">Fecha: {att.fecha}</p>
+                      <p className="text-[11px] text-slate-500">{att.observacion || 'Sin observaciones'}</p>
                     </div>
-                    <span className={`px-2 py-0.5 rounded font-bold uppercase text-[10px] ${
+                    <span className={`px-2.5 py-1 rounded-lg font-bold text-[10px] uppercase ${
                       att.estado === 'presente' ? 'bg-emerald-100 text-emerald-700' :
-                      att.estado === 'tardanza' ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700'
+                      att.estado === 'tardanza' ? 'bg-amber-100 text-amber-700' :
+                      att.estado === 'justificado' ? 'bg-blue-100 text-blue-700' :
+                      'bg-rose-100 text-rose-700'
                     }`}>
                       {att.estado}
                     </span>
@@ -494,7 +510,7 @@ export default function Estudiante360Page() {
               </div>
             ) : (
               <div className="p-8 text-center bg-slate-50/60 dark:bg-slate-800/30 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-2">
-                <Calendar className="w-8 h-8 mx-auto text-slate-400" />
+                <Clock className="w-8 h-8 mx-auto text-slate-400" />
                 <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
                   Sin asistencias registradas todavía
                 </p>
@@ -503,6 +519,140 @@ export default function Estudiante360Page() {
                 </p>
               </div>
             )}
+          </div>
+        )}
+
+        {/* TAB: CONDUCTA / ANECDOTARIO */}
+        {activeTab === 'conducta' && (
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                  Cuaderno de Control & Anecdotario Conductual
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Registro pedagógico de méritos, felicitaciones, deméritos y compromisos familiares.
+                </p>
+              </div>
+            </div>
+
+            {/* Form to add behavior entry */}
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-3">
+              <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">
+                + Registrar Nueva Anotación Conductual
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <input
+                  type="text"
+                  placeholder="Título (Ej. Felicitación por liderazgo)"
+                  value={newLogData.titulo}
+                  onChange={(e) => setNewLogData(prev => ({ ...prev, titulo: e.target.value }))}
+                  className="px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs text-slate-800 dark:text-white"
+                />
+                <select
+                  value={newLogData.tipo}
+                  onChange={(e) => setNewLogData(prev => ({ ...prev, tipo: e.target.value as any }))}
+                  className="px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs text-slate-800 dark:text-white"
+                >
+                  <option value="merito">⭐ Mérito / Felicitación</option>
+                  <option value="demerito">⚠️ Demérito / Falta</option>
+                  <option value="observacion">📝 Observación Pedagógica</option>
+                  <option value="citacion">📅 Citación a Apoderado</option>
+                </select>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="visApoderado"
+                    checked={newLogData.visibleApoderado}
+                    onChange={(e) => setNewLogData(prev => ({ ...prev, visibleApoderado: e.target.checked }))}
+                    className="rounded text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <label htmlFor="visApoderado" className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                    Visible para apoderado
+                  </label>
+                </div>
+              </div>
+              <textarea
+                rows={2}
+                placeholder="Detalle de la anotación conductual..."
+                value={newLogData.descripcion}
+                onChange={(e) => setNewLogData(prev => ({ ...prev, descripcion: e.target.value }))}
+                className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs text-slate-800 dark:text-white"
+              />
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!newLogData.titulo.trim() || !newLogData.descripcion.trim()) {
+                      showToast('Completa el título y detalle de la anotación', 'warning');
+                      return;
+                    }
+                    if (enrollment?.id) {
+                      addBehaviorLog({
+                        matricula_id: enrollment.id,
+                        fecha: new Date().toISOString().split('T')[0],
+                        tipo: newLogData.tipo,
+                        titulo: newLogData.titulo.trim(),
+                        descripcion: newLogData.descripcion.trim(),
+                        visible_apoderado: newLogData.visibleApoderado,
+                        autor_nombre: 'Dirección Académica',
+                      });
+                      setNewLogData({
+                        titulo: '',
+                        tipo: 'merito',
+                        descripcion: '',
+                        visibleApoderado: true,
+                      });
+                    }
+                  }}
+                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-xs cursor-pointer"
+                >
+                  Guardar Anotación
+                </button>
+              </div>
+            </div>
+
+            {/* List of entries */}
+            <div className="space-y-2">
+              {behaviorLogs.filter(b => b.matricula_id === enrollment?.id).length > 0 ? (
+                behaviorLogs.filter(b => b.matricula_id === enrollment?.id).map((log) => (
+                  <div key={log.id} className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs flex items-start justify-between gap-3 text-xs">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${
+                          log.tipo === 'merito' ? 'bg-emerald-100 text-emerald-800' :
+                          log.tipo === 'demerito' ? 'bg-rose-100 text-rose-800' :
+                          log.tipo === 'citacion' ? 'bg-purple-100 text-purple-800' :
+                          'bg-blue-100 text-blue-800'
+                        }`}>
+                          {log.tipo}
+                        </span>
+                        <h4 className="font-bold text-slate-900 dark:text-white">{log.titulo}</h4>
+                        {log.visible_apoderado && (
+                          <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.2 rounded">
+                            Visible al apoderado
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-slate-600 dark:text-slate-300 mt-1">{log.descripcion}</p>
+                      <div className="text-[10px] text-slate-400 mt-2">
+                        Registrado el {log.fecha} por {log.autor_nombre || 'Docente'}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="p-8 text-center bg-slate-50/60 dark:bg-slate-800/30 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-2">
+                  <ShieldCheck className="w-8 h-8 mx-auto text-slate-400" />
+                  <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Sin anotaciones conductuales registradas
+                  </p>
+                  <p className="text-[11px] text-slate-500">
+                    El estudiante mantiene un expediente intachable.
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -622,22 +772,57 @@ export default function Estudiante360Page() {
         {/* TAB 8: DOCUMENTOS */}
         {activeTab === 'documentos' && (
           <div className="space-y-4">
-            <h3 className="text-base font-bold text-slate-900 dark:text-white">
-              Documentos Requeridos y Entregados
-            </h3>
-            <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                  Checklist de Documentos de Matrícula
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Verificación física y digital del expediente del estudiante.
+                </p>
+              </div>
+            </div>
+            <div className="space-y-2.5">
               {[
-                { name: 'Certificado Oficial de Estudios del Grado Anterior', status: 'Conforme' },
-                { name: 'Copia Simple de DNI del Estudiante y Apoderado', status: 'Conforme' },
-                { name: 'Ficha Médica y Cartilla de Vacunación', status: 'Conforme' },
-              ].map((doc, idx) => (
-                <div key={idx} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
-                  <span className="font-bold text-slate-800 dark:text-slate-200">{doc.name}</span>
-                  <span className="px-2 py-0.5 rounded font-bold text-[10px] bg-emerald-100 text-emerald-700 flex items-center gap-1">
-                    <CheckCircle2 className="w-3 h-3" /> {doc.status}
-                  </span>
-                </div>
-              ))}
+                { id: 'doc_dni_est', name: 'Copia Simple de DNI del Estudiante', required: true },
+                { id: 'doc_dni_apod', name: 'Copia Simple de DNI del Padre / Apoderado', required: true },
+                { id: 'doc_partida', name: 'Partida de Nacimiento Original / Copia Legalizada', required: true },
+                { id: 'doc_cert_estudios', name: 'Certificado Oficial de Estudios del Grado Anterior', required: true },
+                { id: 'doc_vacunas', name: 'Cartilla de Vacunación / Ficha Médica de Salud', required: false },
+                { id: 'doc_ficha_firmada', name: 'Ficha Única de Matrícula Firmada y Huella Dactilar', required: true },
+              ].map((doc) => {
+                const currentDocs: string[] = enrollment?.documentos_entregados || ['doc_dni_est', 'doc_dni_apod', 'doc_cert_estudios'];
+                const isChecked = currentDocs.includes(doc.id);
+                return (
+                  <div key={doc.id} className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        id={doc.id}
+                        checked={isChecked}
+                        onChange={(e) => {
+                          if (enrollment?.id) {
+                            const nextDocs = e.target.checked
+                              ? [...currentDocs, doc.id]
+                              : currentDocs.filter((d: string) => d !== doc.id);
+                            updateEnrollmentDocuments(enrollment.id, nextDocs);
+                          }
+                        }}
+                        className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                      />
+                      <label htmlFor={doc.id} className="font-bold text-slate-800 dark:text-slate-200 cursor-pointer">
+                        {doc.name}
+                        {doc.required && <span className="text-rose-500 ml-1">*</span>}
+                      </label>
+                    </div>
+                    <span className={`px-2.5 py-0.5 rounded font-bold text-[10px] ${
+                      isChecked ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                    }`}>
+                      {isChecked ? '✓ Conforme / Entregado' : 'Pendiente'}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
@@ -689,6 +874,8 @@ export default function Estudiante360Page() {
             </div>
           </div>
         )}
+
+        {/* [DESACTIVADO: Finanzas & Pensiones no requeridas en esta institución] */}
 
       </div>
 

@@ -4,28 +4,24 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { GradeMatrixTable } from '@/components/notas/GradeMatrixTable';
-import { Award, BookOpen, Layers, Lock, ShieldCheck, AlertCircle, Sparkles } from 'lucide-react';
+import { Award, BookOpen, Layers, Lock, ShieldCheck, AlertCircle, Sparkles, FileDown } from 'lucide-react';
+import { generateRegistroAuxiliarPdf } from '@/lib/pdf/registroAuxiliarPdfGenerator';
 
 export default function DocenteNotasPage() {
-  const { courses, evaluationPeriods, sections, currentUser, getTeacherSections } = useApp();
+  const { courses, evaluationPeriods, sections, currentUser, getTeacherSections, students, enrollments, brandingConfig } = useApp();
 
   // Obtener salones y cursos asignados estrictamente a este docente
   const teacherSections = useMemo(() => {
-    const fromContext = getTeacherSections(currentUser.id);
-    if (fromContext && fromContext.length > 0) return fromContext;
-
-    // Fallback de demostración si no hay asignaciones cargadas
-    const defaultSec = sections.find(s => s.id === 'sec-3pri-a') || sections[0];
-    const defaultCourse = courses.find(c => c.id === 'course-mat') || courses[0];
-    return defaultSec ? [{ seccion: defaultSec, cursos: defaultCourse ? [defaultCourse] : [] }] : [];
-  }, [getTeacherSections, currentUser.id, sections, courses]);
+    // Obtener secciones y cursos reales asignados al docente
+    return currentUser?.id ? (getTeacherSections(currentUser.id) || []) : [];
+  }, [getTeacherSections, currentUser]);
 
   const availableSections = useMemo(() => {
     return teacherSections.map(ts => ts.seccion);
   }, [teacherSections]);
 
   const [selectedSectionId, setSelectedSectionId] = useState<string>(
-    availableSections[0]?.id || 'sec-3pri-a'
+    availableSections[0]?.id || ''
   );
 
   const [selectedPeriodId, setSelectedPeriodId] = useState<string>(
@@ -59,6 +55,20 @@ export default function DocenteNotasPage() {
   const activeCourse = availableCourses.find(c => c.id === selectedCourseId) || availableCourses[0];
   const activePeriod = evaluationPeriods.find(p => p.id === selectedPeriodId) || evaluationPeriods[0];
 
+  const handleDownloadRegistroAuxiliar = () => {
+    if (!activeSection) return;
+    const doc = generateRegistroAuxiliarPdf({
+      section: activeSection,
+      course: activeCourse,
+      teacherName: currentUser ? `${currentUser.nombres} ${currentUser.apellidos}` : 'Docente',
+      periodName: activePeriod?.nombre || 'I BIMESTRE',
+      students,
+      enrollments,
+      brandingConfig,
+    });
+    doc.save(`Registro_Auxiliar_${activeSection.grado?.nombre || 'Grado'}_${activeSection.letra}_${activeCourse?.nombre || 'Curso'}.pdf`);
+  };
+
   return (
     <div className="space-y-6 max-w-6xl mx-auto animate-in fade-in-50 pb-12">
       <PageHeader
@@ -66,9 +76,21 @@ export default function DocenteNotasPage() {
         description="Ingresa y modifica las notas de tus alumnos por competencias. Visualización restringida a tus salones y materias asignadas."
         badge={activeSection ? `${activeSection.grado?.nombre || ''} "${activeSection.letra}"` : 'Sin Asignación'}
       >
-        <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 text-xs font-bold shadow-xs">
-          <ShieldCheck className="w-4 h-4 text-indigo-600" />
-          <span>Acceso Docente Restringido</span>
+        <div className="flex items-center gap-2">
+          {activeSection && (
+            <button
+              onClick={handleDownloadRegistroAuxiliar}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold transition-colors cursor-pointer border border-slate-700 shadow-xs"
+              title="Descargar plantilla PDF para toma de notas físicas"
+            >
+              <FileDown className="w-4 h-4 text-emerald-400" />
+              <span>Registro Físico (PDF)</span>
+            </button>
+          )}
+          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 text-xs font-bold shadow-xs">
+            <ShieldCheck className="w-4 h-4 text-indigo-600" />
+            <span>Acceso Docente</span>
+          </div>
         </div>
       </PageHeader>
 

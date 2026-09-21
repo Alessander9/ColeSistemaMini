@@ -11,6 +11,7 @@ import {
   AttendanceStatus, 
   UserRole, 
   Course, 
+  Competency,
   Section, 
   GradeLevel, 
   EvaluationPeriod, 
@@ -32,7 +33,15 @@ import {
   LMSStudentProgress,
   SystemAlert,
   AuditLogEntry,
-  SystemBrandingConfig
+  SystemBrandingConfig,
+  EnrollmentDocument,
+  BehaviorLogEntry,
+  PaymentRecord,
+  Announcement,
+  SchoolCalendarEvent,
+  SubsanacionRecord,
+  JustificationRequest,
+  StaffAttendanceRecord
 } from '@/types';
 import { ToastContainer } from '@/components/ui/ToastContainer';
 import { 
@@ -65,8 +74,14 @@ import {
   MOCK_PARENTS,
   MOCK_LMS_MODULES,
   MOCK_SYSTEM_ALERTS,
-  MOCK_AUDIT_LOGS
+  MOCK_AUDIT_LOGS,
+  MOCK_PAYMENTS,
+  MOCK_BEHAVIOR_LOGS,
+  MOCK_ANNOUNCEMENTS,
+  MOCK_CALENDAR_EVENTS,
+  MOCK_SUBSANACIONES
 } from '@/lib/mock-data';
+import { getOfficialCnebCoursesAndCompetencies } from '@/lib/cneb/officialCurriculum';
 import * as academicService from '@/lib/services/academicService';
 import * as attendanceService from '@/lib/services/attendanceService';
 import * as scheduleService from '@/lib/services/scheduleService';
@@ -118,9 +133,54 @@ interface AppContextType {
   teachers: UserProfile[];
   enrollments: Enrollment[];
   courses: Course[];
+  addCourse: (data: {
+    nombre: string;
+    codigo: string;
+    nivel: EducationalLevel;
+    color?: string;
+    color_hex?: string;
+    area_curricular?: string;
+    horas_semanales_sugeridas?: number;
+    descripcion?: string;
+    competencias?: { codigo: string; descripcion: string }[];
+    assignTo?: { docenteId: string; seccionId: string; horasSemanales?: number; aulaDefecto?: string }[];
+  }) => Course;
+  updateCourse: (
+    courseId: string,
+    data: Omit<Partial<Course>, 'competencias'> & { competencias?: { codigo: string; descripcion: string; id?: string }[] }
+  ) => void;
+  deleteCourse: (courseId: string) => void;
+  preloadOfficialCnebCurriculum: (level?: EducationalLevel) => { addedCourses: number; addedCompetencies: number };
+  
+  // ── Secciones y Aulas ──
   sections: Section[];
+  addSection: (data: { gradoId: string; letra: string; capacidadMaxima?: number; aula?: string; tutorId?: string }) => Section;
+  updateSection: (sectionId: string, data: Partial<Section>) => void;
+  deleteSection: (sectionId: string) => void;
+  assignSectionTutor: (sectionId: string, docenteId?: string) => void;
   gradeLevels: GradeLevel[];
+
+  // ── Periodos de Evaluación y Cierre ──
   evaluationPeriods: EvaluationPeriod[];
+  updateEvaluationPeriod: (periodId: string, data: Partial<EvaluationPeriod>) => void;
+  toggleClosePeriod: (periodId: string) => void;
+
+  // ── Anecdotario Conductual ──
+  behaviorLogs: BehaviorLogEntry[];
+  addBehaviorLog: (log: Omit<BehaviorLogEntry, 'id' | 'created_at'>) => BehaviorLogEntry;
+  deleteBehaviorLog: (id: string) => void;
+
+  // ── Tesorería y Pensiones ──
+  payments: PaymentRecord[];
+  addPayment: (payment: Omit<PaymentRecord, 'id' | 'created_at'>) => PaymentRecord;
+  updatePaymentStatus: (paymentId: string, estado: 'pendiente' | 'pagado' | 'vencido' | 'anulado', extra?: { metodo_pago?: PaymentRecord['metodo_pago']; numero_operacion?: string; fecha_pago?: string }) => void;
+  generateMonthlyFeeRecords: (mes: string, fechaVencimiento: string, montos?: number | { inicial?: number; primaria?: number; secundaria?: number }) => number;
+
+  // ── Promoción Masiva y Matrícula ──
+  promoteStudentsMassive: (params: { originSectionId: string; targetSectionId: string; targetPeriodId: string; studentIds: string[] }) => { promotedCount: number };
+  updateEnrollmentDocuments: (enrollmentId: string, docs: string[]) => void;
+  justifyAttendance: (attendanceId: string, motivo: string, observacion?: string) => void;
+
   // ── Portal de Apoderados ──
   childrenList: ChildProfile[];
   selectedChildId: string;
@@ -337,6 +397,34 @@ interface AppContextType {
   markNotificationRead: (id: string) => void;
   unreadCount: number;
 
+  // ── Comunicados Institucionales ──
+  announcements: Announcement[];
+  addAnnouncement: (announcement: Omit<Announcement, 'id' | 'creado_en'>) => Announcement;
+  deleteAnnouncement: (id: string) => void;
+  markAnnouncementRead: (id: string, userId: string) => void;
+  confirmAnnouncement: (id: string, userId: string) => void;
+
+  // ── Calendario Escolar Institucional & MINEDU ──
+  calendarEvents: SchoolCalendarEvent[];
+  addCalendarEvent: (event: Omit<SchoolCalendarEvent, 'id'>) => SchoolCalendarEvent;
+  deleteCalendarEvent: (id: string) => void;
+  updateCalendarEvent: (id: string, data: Partial<SchoolCalendarEvent>) => void;
+
+  // ── Recuperación Pedagógica / Subsanación CNEB ──
+  subsanaciones: SubsanacionRecord[];
+  registerSubsanacion: (data: Omit<SubsanacionRecord, 'id'>) => SubsanacionRecord;
+  updateSubsanacion: (id: string, data: Partial<SubsanacionRecord>) => void;
+
+  // ── Justificaciones de Inasistencia / Tardanzas ──
+  justificationRequests: JustificationRequest[];
+  requestJustification: (data: Omit<JustificationRequest, 'id' | 'created_at' | 'estado'>) => JustificationRequest;
+  approveJustification: (id: string, respuesta?: string) => void;
+  rejectJustification: (id: string, motivoRechazo: string) => void;
+
+  // ── Asistencia de Personal Docente y Administrativo ──
+  staffAttendances: StaffAttendanceRecord[];
+  recordStaffAttendance: (params: { userId: string; tipo: 'entrada' | 'salida'; metodo?: 'qr' | 'manual' }) => { success: boolean; message: string; record?: StaffAttendanceRecord };
+
   resetToDemoData: () => void;
 }
 
@@ -441,6 +529,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [submissions, setSubmissions] = useState<TaskSubmission[]>(() => getInitialData('colegio_submissions', MOCK_SUBMISSIONS));
   const [exams, setExams] = useState<EvaluationExam[]>(() => getInitialData('colegio_exams', MOCK_EXAMS));
   const [notifications, setNotifications] = useState<AppNotification[]>(() => getInitialData('colegio_notifications', MOCK_NOTIFICATIONS));
+  const [courses, setCourses] = useState<Course[]>(() => getInitialData('colegio_courses', MOCK_COURSES));
   const [sectionCourses, setSectionCourses] = useState<SectionCourseAssignment[]>(() => getInitialData('colegio_section_courses', MOCK_SECTION_COURSES));
   const [scheduleSlots, setScheduleSlots] = useState<ScheduleSlot[]>(() => getInitialData('colegio_schedule_slots', MOCK_SCHEDULE_SLOTS));
   const [classSessions, setClassSessions] = useState<ClassSessionLog[]>(() => getInitialData('colegio_class_sessions', MOCK_CLASS_SESSIONS));
@@ -456,11 +545,36 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [lmsProgress, setLmsProgress] = useState<LMSStudentProgress[]>(() => getInitialData('colegio_lms_progress', []));
   const [alerts, setAlerts] = useState<SystemAlert[]>(() => getInitialData('colegio_alerts', MOCK_SYSTEM_ALERTS));
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>(() => getInitialData('colegio_audit_logs', MOCK_AUDIT_LOGS));
+  const [sections, setSections] = useState<Section[]>(() => getInitialData('colegio_sections', MOCK_SECTIONS));
+  const [evaluationPeriods, setEvaluationPeriods] = useState<EvaluationPeriod[]>(() => getInitialData('colegio_evaluation_periods', MOCK_EVALUATION_PERIODS));
+  const [behaviorLogs, setBehaviorLogs] = useState<BehaviorLogEntry[]>(() => getInitialData('colegio_behavior_logs', MOCK_BEHAVIOR_LOGS));
+  const [payments, setPayments] = useState<PaymentRecord[]>(() => getInitialData('colegio_payments', MOCK_PAYMENTS));
+  const [announcements, setAnnouncements] = useState<Announcement[]>(() => getInitialData('colegio_announcements', MOCK_ANNOUNCEMENTS));
+  const [calendarEvents, setCalendarEvents] = useState<SchoolCalendarEvent[]>(() => getInitialData('colegio_calendar_events', MOCK_CALENDAR_EVENTS));
+  const [subsanaciones, setSubsanaciones] = useState<SubsanacionRecord[]>(() => getInitialData('colegio_subsanaciones', MOCK_SUBSANACIONES));
+  const [justificationRequests, setJustificationRequests] = useState<JustificationRequest[]>(() => getInitialData('colegio_justifications', []));
+  const [staffAttendances, setStaffAttendances] = useState<StaffAttendanceRecord[]>(() => getInitialData('colegio_staff_attendances', []));
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [onboardingCompleted, setOnboardingCompleted] = useState<boolean>(() => getInitialData('colegio_onboarding', true));
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => getInitialData('colegio_sidebar_collapsed', false));
   const [brandingConfig, setBrandingConfig] = useState<SystemBrandingConfig>(() => getInitialData('cole_system_branding_config_v1', DEFAULT_BRANDING_CONFIG));
   const isHydratedRef = React.useRef(true);
+
+  // Sincronización a localStorage de entidades operativas
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem('colegio_announcements', JSON.stringify(announcements));
+      localStorage.setItem('colegio_calendar_events', JSON.stringify(calendarEvents));
+      localStorage.setItem('colegio_subsanaciones', JSON.stringify(subsanaciones));
+      localStorage.setItem('colegio_justifications', JSON.stringify(justificationRequests));
+      localStorage.setItem('colegio_staff_attendances', JSON.stringify(staffAttendances));
+      localStorage.setItem('colegio_payments', JSON.stringify(payments));
+      localStorage.setItem('colegio_behavior_logs', JSON.stringify(behaviorLogs));
+    } catch (err) {
+      console.warn('[Storage] Error sincronizando entidades operativas:', err);
+    }
+  }, [announcements, calendarEvents, subsanaciones, justificationRequests, staffAttendances, payments, behaviorLogs]);
 
   // Hidratación y sincronización de DOM y cookies post-montaje
   useEffect(() => {
@@ -517,6 +631,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         loadedTasks,
         loadedSubmissions,
         loadedExams,
+        loadedCourses,
         loadedSectionCourses,
         loadedSlots,
         loadedSessions,
@@ -528,6 +643,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         tasksService.fetchTasks(),
         tasksService.fetchSubmissions(),
         tasksService.fetchExams(),
+        academicService.fetchCourses(),
         scheduleService.fetchSectionCourses(),
         scheduleService.fetchScheduleSlots(),
         scheduleService.fetchClassSessions(),
@@ -559,6 +675,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (loadedTasks && loadedTasks.length > 0) setTasks(loadedTasks);
       if (loadedSubmissions && loadedSubmissions.length > 0) setSubmissions(loadedSubmissions);
       if (loadedExams && loadedExams.length > 0) setExams(loadedExams);
+      if (loadedCourses && loadedCourses.length > 0) setCourses(loadedCourses);
       if (loadedSectionCourses && loadedSectionCourses.length > 0) setSectionCourses(loadedSectionCourses);
       if (loadedSlots && loadedSlots.length > 0) setScheduleSlots(loadedSlots);
       if (loadedSessions && loadedSessions.length > 0) setClassSessions(loadedSessions);
@@ -613,6 +730,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem('colegio_submissions', JSON.stringify(submissions));
       localStorage.setItem('colegio_exams', JSON.stringify(exams));
       localStorage.setItem('colegio_notifications', JSON.stringify(notifications));
+      localStorage.setItem('colegio_courses', JSON.stringify(courses));
       localStorage.setItem('colegio_section_courses', JSON.stringify(sectionCourses));
       localStorage.setItem('colegio_schedule_slots', JSON.stringify(scheduleSlots));
       localStorage.setItem('colegio_class_sessions', JSON.stringify(classSessions));
@@ -624,6 +742,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem('colegio_lms_progress', JSON.stringify(lmsProgress));
       localStorage.setItem('colegio_alerts', JSON.stringify(alerts));
       localStorage.setItem('colegio_audit_logs', JSON.stringify(auditLogs));
+      localStorage.setItem('colegio_sections', JSON.stringify(sections));
+      localStorage.setItem('colegio_evaluation_periods', JSON.stringify(evaluationPeriods));
+      localStorage.setItem('colegio_behavior_logs', JSON.stringify(behaviorLogs));
+      localStorage.setItem('colegio_payments', JSON.stringify(payments));
     } catch (err) {
       console.warn('[Storage] Error al guardar estados en localStorage', err);
     }
@@ -638,6 +760,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     submissions,
     exams,
     notifications,
+    courses,
     sectionCourses,
     scheduleSlots,
     classSessions,
@@ -649,6 +772,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     lmsProgress,
     alerts,
     auditLogs,
+    sections,
+    evaluationPeriods,
+    behaviorLogs,
+    payments,
   ]);
 
   const resetToDemoData = () => {
@@ -1702,6 +1829,104 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     showToast('Asignación de materia eliminada.', 'info', 'Asignación Removida');
   };
 
+  // ── Gestión Integral de Cursos & Materias ──
+  const addCourse = useCallback((data: {
+    nombre: string;
+    codigo: string;
+    nivel: EducationalLevel;
+    color?: string;
+    color_hex?: string;
+    area_curricular?: string;
+    horas_semanales_sugeridas?: number;
+    descripcion?: string;
+    competencias?: { codigo: string; descripcion: string }[];
+    assignTo?: { docenteId: string; seccionId: string; horasSemanales?: number; aulaDefecto?: string }[];
+  }): Course => {
+    const courseId = `course-${data.codigo.toLowerCase().replace(/[^a-z0-9]/g, '')}-${Date.now()}`;
+    const hex = data.color_hex || data.color || '#4f46e5';
+    
+    const createdCompetencias: Competency[] = (data.competencias || []).map((c, idx) => ({
+      id: `comp-${courseId}-${idx + 1}`,
+      curso_id: courseId,
+      codigo: c.codigo || `C${idx + 1}`,
+      descripcion: c.descripcion,
+      orden: idx + 1,
+    }));
+
+    const newCourse: Course = {
+      id: courseId,
+      nombre: data.nombre.trim(),
+      codigo: data.codigo.trim().toUpperCase(),
+      nivel: data.nivel,
+      color: hex,
+      color_hex: hex,
+      area_curricular: data.area_curricular || 'General',
+      horas_semanales_sugeridas: data.horas_semanales_sugeridas || 4,
+      descripcion: data.descripcion || '',
+      activo: true,
+      created_at: new Date().toISOString(),
+      competencias: createdCompetencias,
+    };
+
+    setCourses(prev => [...prev, newCourse]);
+    academicService.createCourseInDb(data);
+
+    // Asignaciones directas si fueron seleccionadas en el formulario
+    if (data.assignTo && data.assignTo.length > 0) {
+      data.assignTo.forEach(item => {
+        if (item.docenteId && item.seccionId) {
+          assignCourseToSection({
+            seccionId: item.seccionId,
+            cursoId: newCourse.id,
+            docenteId: item.docenteId,
+            horasSemanales: item.horasSemanales || newCourse.horas_semanales_sugeridas || 4,
+            aulaDefecto: item.aulaDefecto,
+          });
+        }
+      });
+    }
+
+    showToast(`Curso "${newCourse.nombre}" registrado exitosamente`, 'success', '✓ Asignatura Registrada');
+    return newCourse;
+  }, [assignCourseToSection, showToast]);
+
+  const updateCourse = useCallback((
+    courseId: string,
+    data: Omit<Partial<Course>, 'competencias'> & { competencias?: { codigo: string; descripcion: string; id?: string }[] }
+  ) => {
+    setCourses(prev => prev.map(c => {
+      if (c.id !== courseId) return c;
+      let updatedCompetencias: Competency[] = c.competencias || [];
+      if (data.competencias) {
+        updatedCompetencias = data.competencias.map((comp, idx) => ({
+          id: comp.id || `comp-${courseId}-${idx + 1}-${Date.now()}`,
+          curso_id: courseId,
+          codigo: comp.codigo || `C${idx + 1}`,
+          descripcion: comp.descripcion,
+          orden: idx + 1,
+        }));
+      }
+      return {
+        ...c,
+        ...data,
+        competencias: updatedCompetencias,
+      };
+    }));
+
+    academicService.updateCourseInDb(courseId, data);
+    showToast('Curso y competencias actualizados correctamente', 'success');
+  }, [showToast]);
+
+  const deleteCourse = useCallback((courseId: string) => {
+    const courseToDelete = courses.find(c => c.id === courseId);
+    setCourses(prev => prev.filter(c => c.id !== courseId));
+    setSectionCourses(prev => prev.filter(sc => sc.curso_id !== courseId));
+    setScheduleSlots(prev => prev.filter(s => s.curso_id !== courseId));
+    
+    academicService.deleteCourseFromDb(courseId);
+    showToast(`Curso "${courseToDelete?.nombre || ''}" eliminado`, 'info');
+  }, [courses, showToast]);
+
   const updateSectionCourseTeacher = (assignmentId: string, newDocenteId: string) => {
     const targetDocente = users.find(u => u.id === newDocenteId) || teachers.find(t => t.id === newDocenteId) || MOCK_USERS.find(u => u.id === newDocenteId);
     const targetAssignment = sectionCourses.find(sc => sc.id === assignmentId);
@@ -1999,6 +2224,258 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return childrenList.find(c => c.id === selectedChildId) || childrenList[0];
   }, [childrenList, selectedChildId]);
 
+  // ── Currículo CNEB Oficial ──
+  const preloadOfficialCnebCurriculum = useCallback((level?: EducationalLevel) => {
+    const { courses: cnebCourses } = getOfficialCnebCoursesAndCompetencies(level);
+    let addedCourses = 0;
+    let addedCompetencies = 0;
+
+    setCourses(prev => {
+      const existingCodes = new Set(prev.map(c => c.codigo.toUpperCase()));
+      const newOnes = cnebCourses.filter(c => !existingCodes.has(c.codigo.toUpperCase()));
+      addedCourses = newOnes.length;
+      addedCompetencies = newOnes.reduce((acc, c) => acc + (c.competencias?.length || 0), 0);
+      return [...prev, ...newOnes];
+    });
+
+    showToast(
+      `CNEB Precargado: ${addedCourses} cursos y ${addedCompetencies} competencias añadidas`,
+      'success',
+      'Currículo MINEDU Oficial'
+    );
+
+    return { addedCourses, addedCompetencies };
+  }, [showToast]);
+
+  // ── Gestión de Secciones y Aulas ──
+  const addSection = useCallback((data: { gradoId: string; letra: string; capacidadMaxima?: number; aula?: string; tutorId?: string }) => {
+    const grado = MOCK_GRADES.find(g => g.id === data.gradoId);
+    const newSection: Section = {
+      id: `sec-${Date.now()}`,
+      grado_id: data.gradoId,
+      letra: data.letra.trim().toUpperCase(),
+      capacidad_maxima: data.capacidadMaxima || 30,
+      aula: data.aula || 'Aula Principal',
+      tutor_id: data.tutorId,
+      grado,
+    };
+    setSections(prev => [...prev, newSection]);
+    showToast(`Sección ${grado?.nombre || ''} "${newSection.letra}" creada`, 'success', 'Sección Creada');
+    return newSection;
+  }, [showToast]);
+
+  const updateSection = useCallback((sectionId: string, data: Partial<Section>) => {
+    setSections(prev => prev.map(s => {
+      if (s.id !== sectionId) return s;
+      const updated = { ...s, ...data };
+      if (data.grado_id) {
+        updated.grado = MOCK_GRADES.find(g => g.id === data.grado_id) || s.grado;
+      }
+      return updated;
+    }));
+    showToast('Sección actualizada con éxito', 'success');
+  }, [showToast]);
+
+  const deleteSection = useCallback((sectionId: string) => {
+    setSections(prev => prev.filter(s => s.id !== sectionId));
+    setSectionCourses(prev => prev.filter(sc => sc.seccion_id !== sectionId));
+    setScheduleSlots(prev => prev.filter(sl => sl.seccion_id !== sectionId));
+    showToast('Sección eliminada del sistema', 'info');
+  }, [showToast]);
+
+  const assignSectionTutor = useCallback((seccionId: string, docenteId?: string) => {
+    setSections(prev => prev.map(s => s.id === seccionId ? { ...s, tutor_id: docenteId } : s));
+    const targetDocente = users.find(u => u.id === docenteId) || teachers.find(t => t.id === docenteId);
+    showToast(
+      docenteId ? `Tutor asignado: ${targetDocente?.nombres || 'Docente'}` : 'Tutor removido de la sección',
+      'success',
+      'Tutoría Asignada'
+    );
+  }, [users, teachers, showToast]);
+
+  // ── Periodos Académicos y Cierre de Bimestres ──
+  const updateEvaluationPeriod = useCallback((periodId: string, data: Partial<EvaluationPeriod>) => {
+    setEvaluationPeriods(prev => prev.map(p => p.id === periodId ? { ...p, ...data } : p));
+    showToast('Periodo académico actualizado', 'success');
+  }, [showToast]);
+
+  const toggleClosePeriod = useCallback((periodId: string) => {
+    setEvaluationPeriods(prev => prev.map(p => {
+      if (p.id !== periodId) return p;
+      const nextClosed = !p.cerrado;
+      showToast(
+        nextClosed ? `Periodo "${p.nombre}" CERRADO para edición de notas` : `Periodo "${p.nombre}" ABIERTO`,
+        nextClosed ? 'warning' : 'success',
+        'Estado del Periodo'
+      );
+      return { ...p, cerrado: nextClosed };
+    }));
+  }, [showToast]);
+
+  // ── Justificación de Inasistencias ──
+  const justifyAttendance = useCallback((attendanceId: string, motivo: string, observacion?: string) => {
+    setAttendances(prev => prev.map(a => {
+      if (a.id !== attendanceId) return a;
+      return {
+        ...a,
+        estado: 'justificado',
+        observacion: `[Justificado - ${motivo}] ${observacion || a.observacion || ''}`.trim()
+      };
+    }));
+    showToast('Inasistencia justificada correctamente', 'success', 'Falta Justificada');
+  }, [showToast]);
+
+  // ── Anecdotario Conductual / Cuaderno de Control ──
+  const addBehaviorLog = useCallback((logData: Omit<BehaviorLogEntry, 'id' | 'created_at'>) => {
+    const newEntry: BehaviorLogEntry = {
+      id: `beh-${Date.now()}`,
+      ...logData,
+      created_at: new Date().toISOString(),
+    };
+    setBehaviorLogs(prev => [newEntry, ...prev]);
+
+    if (logData.visible_apoderado) {
+      const enr = enrollments.find(e => e.id === logData.matricula_id);
+      if (enr?.estudiante?.profile_id) {
+        addNotification({
+          user_id: enr.estudiante.profile_id,
+          tipo: 'comunicado',
+          titulo: `Anotación en Cuaderno de Control: ${logData.titulo}`,
+          mensaje: logData.descripcion,
+          url_redireccion: '/estudiante'
+        });
+      }
+    }
+
+    showToast(`Anotación conductual (${logData.tipo}) registrada`, 'success', 'Cuaderno de Control');
+    return newEntry;
+  }, [enrollments, showToast]);
+
+  const deleteBehaviorLog = useCallback((id: string) => {
+    setBehaviorLogs(prev => prev.filter(b => b.id !== id));
+    showToast('Anotación eliminada', 'info');
+  }, [showToast]);
+
+  // ── Tesorería y Pensiones ──
+  const addPayment = useCallback((paymentData: Omit<PaymentRecord, 'id' | 'created_at'>) => {
+    const newPayment: PaymentRecord = {
+      id: `pay-${Date.now()}`,
+      ...paymentData,
+      created_at: new Date().toISOString(),
+    };
+    setPayments(prev => [newPayment, ...prev]);
+    showToast(`Pago registrado: ${paymentData.concepto} (S/ ${paymentData.total})`, 'success', 'Tesorería');
+    return newPayment;
+  }, [showToast]);
+
+  const updatePaymentStatus = useCallback((
+    paymentId: string,
+    estado: 'pendiente' | 'pagado' | 'vencido' | 'anulado',
+    extra?: { metodo_pago?: PaymentRecord['metodo_pago']; numero_operacion?: string; fecha_pago?: string }
+  ) => {
+    setPayments(prev => prev.map(p => {
+      if (p.id !== paymentId) return p;
+      return {
+        ...p,
+        estado,
+        ...(extra?.metodo_pago ? { metodo_pago: extra.metodo_pago } : {}),
+        ...(extra?.numero_operacion ? { numero_operacion: extra.numero_operacion } : {}),
+        fecha_pago: estado === 'pagado' ? (extra?.fecha_pago || new Date().toISOString().split('T')[0]) : p.fecha_pago,
+      };
+    }));
+    showToast(`Estado de cobro actualizado a "${estado.toUpperCase()}"`, 'info', 'Tesorería');
+  }, [showToast]);
+
+  const generateMonthlyFeeRecords = useCallback((
+    mes: string,
+    fechaVencimiento: string,
+    montos?: number | { inicial?: number; primaria?: number; secundaria?: number }
+  ) => {
+    const activeEnrollments = enrollments.filter(e => e.estado === 'activo');
+    let createdCount = 0;
+    const newRecords: PaymentRecord[] = [];
+
+    activeEnrollments.forEach(enr => {
+      const alreadyExists = payments.some(p => p.matricula_id === enr.id && p.mes === mes);
+      if (!alreadyExists) {
+        let feeAmount = 350;
+        if (typeof montos === 'number') {
+          feeAmount = montos;
+        } else if (montos && typeof montos === 'object') {
+          const nivel = enr.seccion?.grado?.nivel || 'primaria';
+          if (nivel === 'inicial') feeAmount = montos.inicial || 300;
+          else if (nivel === 'secundaria') feeAmount = montos.secundaria || 400;
+          else feeAmount = montos.primaria || 350;
+        }
+
+        newRecords.push({
+          id: `pay-${mes.toLowerCase()}-${enr.id}`,
+          matricula_id: enr.id,
+          estudiante_id: enr.estudiante_id,
+          mes,
+          concepto: `Pensión ${mes} 2026`,
+          monto: feeAmount,
+          mora: 0,
+          total: feeAmount,
+          fecha_vencimiento: fechaVencimiento,
+          estado: 'pendiente',
+          created_at: new Date().toISOString(),
+          estudiante: enr.estudiante,
+          matricula: enr,
+        });
+        createdCount++;
+      }
+    });
+
+    if (newRecords.length > 0) {
+      setPayments(prev => [...newRecords, ...prev]);
+    }
+    showToast(`Se generaron ${createdCount} órdenes de pensión para ${mes}`, 'success', 'Emisión Masiva de Pensiones');
+    return createdCount;
+  }, [enrollments, payments, showToast]);
+
+  // ── Promoción Escolar Masiva ──
+  const promoteStudentsMassive = useCallback((params: {
+    originSectionId: string;
+    targetSectionId: string;
+    targetPeriodId: string;
+    studentIds: string[];
+  }) => {
+    const targetSection = sections.find(s => s.id === params.targetSectionId) || MOCK_SECTIONS.find(s => s.id === params.targetSectionId);
+    let promotedCount = 0;
+
+    const newEnrollments: Enrollment[] = [];
+
+    params.studentIds.forEach(studentId => {
+      const student = students.find(s => s.id === studentId);
+      if (!student) return;
+
+      const newEnr: Enrollment = {
+        id: `enr-prom-${Date.now()}-${studentId}`,
+        estudiante_id: studentId,
+        periodo_id: params.targetPeriodId,
+        seccion_id: params.targetSectionId,
+        fecha_matricula: new Date().toISOString().split('T')[0],
+        estado: 'activo',
+        observaciones: `Promoción escolar desde sección anterior`,
+        estudiante: student,
+        seccion: targetSection,
+      };
+      newEnrollments.push(newEnr);
+      promotedCount++;
+    });
+
+    setEnrollments(prev => [...newEnrollments, ...prev]);
+    showToast(`Promoción escolar completada: ${promotedCount} alumnos promovidos`, 'success', '🎓 Promoción Masiva');
+    return { promotedCount };
+  }, [sections, students, showToast]);
+
+  // ── Checklist Documentos de Matrícula ──
+  const updateEnrollmentDocuments = useCallback((enrollmentId: string, docs: string[]) => {
+    setEnrollments(prev => prev.map(e => e.id === enrollmentId ? { ...e, documentos_entregados: docs } : e));
+    showToast('Checklist de documentos actualizado', 'success', 'Matrícula');
+  }, [showToast]);
+
   const contextValue = useMemo<AppContextType>(() => ({
     currentUser,
     setCurrentUser: handleSetCurrentUser,
@@ -2018,10 +2495,30 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     deleteUser,
     students,
     enrollments,
-    courses: MOCK_COURSES,
-    sections: MOCK_SECTIONS,
+    courses,
+    addCourse,
+    updateCourse,
+    deleteCourse,
+    preloadOfficialCnebCurriculum,
+    sections,
+    addSection,
+    updateSection,
+    deleteSection,
+    assignSectionTutor,
     gradeLevels: MOCK_GRADES,
-    evaluationPeriods: MOCK_EVALUATION_PERIODS,
+    evaluationPeriods,
+    updateEvaluationPeriod,
+    toggleClosePeriod,
+    behaviorLogs,
+    addBehaviorLog,
+    deleteBehaviorLog,
+    payments,
+    addPayment,
+    updatePaymentStatus,
+    generateMonthlyFeeRecords,
+    promoteStudentsMassive,
+    updateEnrollmentDocuments,
+    justifyAttendance,
     teachers,
     addTeacher,
     updateTeacher: (teacherId: string, updatedData: Partial<UserProfile>) => {
@@ -2151,6 +2648,149 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     notifications,
     markNotificationRead,
     unreadCount,
+    // ── Comunicados Institucionales ──
+    announcements,
+    addAnnouncement: (announcementData: Omit<Announcement, 'id' | 'creado_en'>) => {
+      const newAnn: Announcement = {
+        id: `ann-${Date.now()}`,
+        ...announcementData,
+        creado_en: new Date().toISOString(),
+      };
+      setAnnouncements(prev => [newAnn, ...prev]);
+      showToast('Comunicado publicado exitosamente', 'success', '📢 Comunicado Emitido');
+      return newAnn;
+    },
+    deleteAnnouncement: (id: string) => {
+      setAnnouncements(prev => prev.filter(a => a.id !== id));
+      showToast('Comunicado eliminado', 'info');
+    },
+    markAnnouncementRead: (id: string, userId: string) => {
+      setAnnouncements(prev => prev.map(a => {
+        if (a.id === id) {
+          const leidoPor = a.leido_por || [];
+          if (!leidoPor.includes(userId)) {
+            return { ...a, leido_por: [...leidoPor, userId] };
+          }
+        }
+        return a;
+      }));
+    },
+    confirmAnnouncement: (id: string, userId: string) => {
+      setAnnouncements(prev => prev.map(a => {
+        if (a.id === id) {
+          const confirmadoPor = a.confirmado_por || [];
+          if (!confirmadoPor.includes(userId)) {
+            return { ...a, confirmado_por: [...confirmadoPor, userId] };
+          }
+        }
+        return a;
+      }));
+      showToast('Confirmación registrada con éxito', 'success', '✓ Confirmado');
+    },
+    // ── Calendario Escolar Institucional & MINEDU ──
+    calendarEvents,
+    addCalendarEvent: (eventData: Omit<SchoolCalendarEvent, 'id'>) => {
+      const newEvent: SchoolCalendarEvent = {
+        id: `cal-${Date.now()}`,
+        ...eventData,
+      };
+      setCalendarEvents(prev => [...prev, newEvent]);
+      showToast('Evento agregado al calendario escolar', 'success', '📅 Calendario Actualizado');
+      return newEvent;
+    },
+    deleteCalendarEvent: (id: string) => {
+      setCalendarEvents(prev => prev.filter(e => e.id !== id));
+      showToast('Evento eliminado del calendario', 'info');
+    },
+    updateCalendarEvent: (id: string, data: Partial<SchoolCalendarEvent>) => {
+      setCalendarEvents(prev => prev.map(e => e.id === id ? { ...e, ...data } : e));
+      showToast('Evento del calendario actualizado', 'success');
+    },
+    // ── Recuperación Pedagógica / Subsanación CNEB ──
+    subsanaciones,
+    registerSubsanacion: (data: Omit<SubsanacionRecord, 'id'>) => {
+      const newSub: SubsanacionRecord = {
+        id: `sub-${Date.now()}`,
+        ...data,
+      };
+      setSubsanaciones(prev => [newSub, ...prev]);
+      showToast('Registro de subsanación pedagógica guardado', 'success', '📝 Subsanación CNEB');
+      return newSub;
+    },
+    updateSubsanacion: (id: string, data: Partial<SubsanacionRecord>) => {
+      setSubsanaciones(prev => prev.map(s => s.id === id ? { ...s, ...data } : s));
+      showToast('Acta de subsanación actualizada', 'success');
+    },
+    // ── Justificaciones de Inasistencia / Tardanzas ──
+    justificationRequests,
+    requestJustification: (data: Omit<JustificationRequest, 'id' | 'created_at' | 'estado'>) => {
+      const newReq: JustificationRequest = {
+        ...data,
+        id: `justif-${Date.now()}`,
+        estado: 'pendiente',
+        created_at: new Date().toISOString(),
+      };
+      setJustificationRequests(prev => [newReq, ...prev]);
+      showToast('Solicitud de justificación enviada al tutor/coordinación', 'success', 'Enviado');
+      return newReq;
+    },
+    approveJustification: (id: string, respuesta?: string) => {
+      setJustificationRequests(prev => prev.map(req => {
+        if (req.id !== id) return req;
+        return { ...req, estado: 'aprobada', respuesta_colegio: respuesta, revisado_por: currentUser.nombres };
+      }));
+      const targetReq = justificationRequests.find(r => r.id === id);
+      if (targetReq) {
+        setAttendances(prev => prev.map(att => {
+          if (att.matricula_id === targetReq.matricula_id && att.fecha === targetReq.fecha) {
+            return { ...att, estado: 'justificado', observacion: `Justificada por apoderado: ${targetReq.motivo}` };
+          }
+          return att;
+        }));
+      }
+      showToast('Justificación aprobada y asistencia regularizada a Justificado', 'success', 'Aprobado');
+    },
+    rejectJustification: (id: string, motivoRechazo: string) => {
+      setJustificationRequests(prev => prev.map(req => {
+        if (req.id !== id) return req;
+        return { ...req, estado: 'rechazada', respuesta_colegio: motivoRechazo, revisado_por: currentUser.nombres };
+      }));
+      showToast('Solicitud de justificación rechazada', 'warning', 'Rechazado');
+    },
+
+    // ── Asistencia de Personal Docente y Administrativo ──
+    staffAttendances,
+    recordStaffAttendance: (params: { userId: string; tipo: 'entrada' | 'salida'; metodo?: 'qr' | 'manual' }) => {
+      const targetUser = users.find(u => u.id === params.userId);
+      const now = new Date();
+      const fecha = now.toISOString().split('T')[0];
+      const hora = now.toTimeString().split(' ')[0].substring(0, 5);
+      
+      let estado: 'puntual' | 'tardanza' = 'puntual';
+      if (params.tipo === 'entrada') {
+        const [h, m] = hora.split(':').map(Number);
+        if (h > 7 || (h === 7 && m > 45)) {
+          estado = 'tardanza';
+        }
+      }
+
+      const record: StaffAttendanceRecord = {
+        id: `staff-att-${Date.now()}`,
+        user_id: params.userId,
+        fecha,
+        hora_ingreso: params.tipo === 'entrada' ? hora : undefined,
+        hora_salida: params.tipo === 'salida' ? hora : undefined,
+        tipo: params.tipo,
+        estado,
+        metodo: params.metodo || 'qr',
+        creado_en: now.toISOString(),
+      };
+
+      setStaffAttendances(prev => [record, ...prev]);
+      const teacherName = targetUser ? `${targetUser.nombres} ${targetUser.apellidos}` : 'Docente';
+      return { success: true, message: `Asistencia de personal registrada: ${teacherName} (${estado})`, record };
+    },
+
     brandingConfig,
     updateBrandingConfig,
     resetBrandingConfig,
@@ -2193,6 +2833,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     notifications,
     unreadCount,
     isLoading,
+    sections,
+    evaluationPeriods,
+    behaviorLogs,
+    payments,
+    announcements,
+    calendarEvents,
+    subsanaciones,
+    justificationRequests,
+    staffAttendances,
   ]);
 
   return (

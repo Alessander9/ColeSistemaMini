@@ -31,6 +31,9 @@ export interface ChildProfile {
   asistencia_porcentaje: number;
   tareas_pendientes: number;
   proximas_evaluaciones?: number;
+  tutor_nombre?: string;
+  tutor_email?: string;
+  tutor_avatar?: string;
 }
 
 export interface ParentProfile {
@@ -105,6 +108,14 @@ export interface Student {
   profile?: UserProfile;
 }
 
+export interface EnrollmentDocument {
+  id: string;
+  nombre: string;
+  entregado: boolean;
+  fecha_entrega?: string;
+  archivo_url?: string;
+}
+
 export interface Enrollment {
   id: string;
   estudiante_id: string;
@@ -113,6 +124,7 @@ export interface Enrollment {
   fecha_matricula: string;
   estado: 'activo' | 'retirado' | 'trasladado';
   observaciones?: string;
+  documentos_entregados?: string[];
   estudiante?: Student;
   seccion?: Section;
   periodo?: AcademicPeriod;
@@ -125,6 +137,11 @@ export interface Course {
   nivel: EducationalLevel;
   color?: string;
   color_hex?: string;
+  area_curricular?: string;
+  horas_semanales_sugeridas?: number;
+  descripcion?: string;
+  activo?: boolean;
+  created_at?: string;
   competencias?: Competency[];
 }
 
@@ -495,4 +512,169 @@ export interface SystemBrandingConfig {
   updatedAt?: string;
 }
 
+// -------------------------------------------------------------
+// ANECDOTARIO / CUADERNO DE CONTROL CONDUCTUAL
+// -------------------------------------------------------------
+
+export interface BehaviorLogEntry {
+  id: string;
+  matricula_id: string;
+  estudiante_id?: string;
+  fecha: string;
+  tipo: 'merito' | 'demerito' | 'felicitacion' | 'observacion' | 'citacion';
+  titulo: string;
+  descripcion: string;
+  docente_id?: string;
+  docente_nombre?: string;
+  autor_nombre?: string;
+  visible_apoderado: boolean;
+  created_at?: string;
+}
+
+// -------------------------------------------------------------
+// TESORERÍA, PENSIONES Y PAGOS
+// -------------------------------------------------------------
+
+export interface PaymentRecord {
+  id: string;
+  matricula_id: string;
+  estudiante_id: string;
+  mes: string; // "Marzo", "Abril", etc.
+  concepto: string; // "Pensión Marzo", "Matrícula 2025"
+  monto: number;
+  mora: number;
+  total: number;
+  fecha_vencimiento: string;
+  fecha_pago?: string;
+  metodo_pago?: 'efectivo' | 'transferencia' | 'yape' | 'plin' | 'tarjeta';
+  numero_operacion?: string;
+  estado: 'pendiente' | 'pagado' | 'vencido' | 'anulado';
+  comprobante_url?: string;
+  created_at: string;
+  estudiante?: Student;
+  matricula?: Enrollment;
+}
+
+export interface FeeSchedule {
+  id: string;
+  periodo_id: string;
+  nivel: EducationalLevel;
+  concepto: string;
+  monto_base: number;
+  fecha_vencimiento: string;
+}
+
+// -------------------------------------------------------------
+// COMUNICADOS Y CIRCULARES INSTITUCIONALES (MINEDU / UGEL)
+// -------------------------------------------------------------
+
+export interface Announcement {
+  id: string;
+  titulo: string;
+  contenido: string;
+  remitente_nombre: string;
+  remitente_rol: UserRole;
+  destinatarios_rol?: UserRole | 'todos';
+  nivel_destinatario: EducationalLevel | 'todos';
+  nivel?: EducationalLevel | 'todos';
+  tipo?: 'comunicado' | 'citacion' | 'urgente';
+  grado_id?: string;
+  seccion_id?: string;
+  fecha_publicacion: string;
+  fecha_expiracion?: string;
+  es_urgente: boolean;
+  categoria: 'general' | 'academico' | 'urgente' | 'evento' | 'administrativo' | 'citacion';
+  requiere_confirmacion?: boolean;
+  confirmado_por?: string[]; // user_ids que han confirmado asistencia/recepción
+  canales?: ('sistema' | 'email' | 'whatsapp')[];
+  fecha_citacion?: string;
+  hora_citacion?: string;
+  lugar_citacion?: string;
+  enlace_reunion?: string;
+  adjuntos?: string[];
+  leido_por?: string[]; // user_ids que han leído
+  creado_en: string;
+}
+
+// -------------------------------------------------------------
+// CALENDARIO ESCOLAR INSTITUCIONAL / MINEDU
+// -------------------------------------------------------------
+
+export type CalendarEventType = 
+  | 'inicio_bimestre'
+  | 'fin_bimestre'
+  | 'evaluaciones'
+  | 'vacaciones'
+  | 'feriado'
+  | 'capacitacion'
+  | 'actividad_cultural'
+  | 'reunion_apoderados';
+
+export interface SchoolCalendarEvent {
+  id: string;
+  titulo: string;
+  descripcion?: string;
+  fecha_inicio: string;
+  fecha_fin: string;
+  tipo: CalendarEventType;
+  nivel: EducationalLevel | 'todos';
+  es_laborable: boolean;
+  color?: string;
+}
+
+// -------------------------------------------------------------
+// RECUPERACIÓN PEDAGÓGICA Y SUBSANACIÓN (CNEB)
+// -------------------------------------------------------------
+
+export interface SubsanacionRecord {
+  id: string;
+  matricula_id: string;
+  estudiante_id: string;
+  curso_id: string;
+  periodo_id: string;
+  nota_original: GradeLetter;
+  nota_subsanacion?: GradeLetter;
+  fecha_evaluacion: string;
+  docente_evaluador_id?: string;
+  observaciones?: string;
+  estado: 'pendiente' | 'aprobado' | 'desaprobado';
+}
+
+// -------------------------------------------------------------
+// JUSTIFICACIONES DE INASISTENCIA / TARDANZA (FAMILIA ↔ TUTOR)
+// -------------------------------------------------------------
+
+export interface JustificationRequest {
+  id: string;
+  matricula_id: string;
+  estudiante_id: string;
+  apoderado_id?: string;
+  apoderado_nombre?: string;
+  fecha: string;
+  tipo: 'falta' | 'tardanza';
+  motivo: string;
+  documento_url?: string;
+  estado: 'pendiente' | 'aprobada' | 'rechazada';
+  respuesta_colegio?: string;
+  revisado_por?: string;
+  created_at: string;
+}
+
+// -------------------------------------------------------------
+// CONTROL DE ASISTENCIA DE PERSONAL DOCENTE Y ADMINISTRATIVO
+// -------------------------------------------------------------
+
+export interface StaffAttendanceRecord {
+  id: string;
+  user_id: string;
+  fecha: string;
+  hora_ingreso?: string;
+  hora_salida?: string;
+  tipo: 'entrada' | 'salida';
+  estado: 'puntual' | 'tardanza' | 'falta' | 'justificado';
+  metodo: 'qr' | 'manual';
+  creado_en: string;
+}
+
+export * from './sesiones';
 

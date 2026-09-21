@@ -247,7 +247,7 @@ export function TareasEscolaresView({ isApoderado = false }: TareasEscolaresView
   // Helper for human-friendly deadline calculation
   const getDeadlineInfo = (dateString: string) => {
     const target = new Date(dateString);
-    const baseDate = new Date('2026-09-18T00:00:00');
+    const baseDate = new Date();
     const targetDay = new Date(target.getFullYear(), target.getMonth(), target.getDate());
     const baseDay = new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate());
 
@@ -479,19 +479,23 @@ export function TareasEscolaresView({ isApoderado = false }: TareasEscolaresView
     setCompressionResult(null);
   };
 
-  // Calendar dates with active tasks in September 2026
+  // Calendar dates with active tasks
   const calendarTaskDates = useMemo(() => {
     const map = new Map<number, { count: number; hasToday: boolean; hasPending: boolean; hasSubmitted: boolean; hasGraded: boolean; dateStr: string }>();
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
+    const todayDate = now.getDate();
 
     studentMetrics.studentTasks.forEach((t) => {
       const d = new Date(t.fecha_limite);
-      if (d.getFullYear() === 2026 && d.getMonth() === 8) { // September 2026
+      if (d.getFullYear() === currentYear && d.getMonth() === currentMonth) {
         const day = d.getDate();
         const dateStr = t.fecha_limite.split('T')[0];
         const sub = submissions.find(s => s.tarea_id === t.id && s.matricula_id === activeEnrollment?.id);
         const isGraded = !!sub?.calificacion_letra;
         const isSubmitted = !!sub;
-        const isToday = day === 18;
+        const isToday = day === todayDate;
 
         const current = map.get(day) || {
           count: 0,

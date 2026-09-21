@@ -34,10 +34,12 @@ import {
   ExternalLink,
   Building2,
   Lock,
-  Download
+  Download,
+  CreditCard
 } from 'lucide-react';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { downloadEnrollmentFichaPdf } from '@/lib/pdf/generateEnrollmentFichaPdf';
+import { generateBatchQrCardsPdf } from '@/lib/pdf/batchQrCardsPdfGenerator';
 
 function MatriculasContent() {
   const { enrollments, addStudent, sections, gradeLevels, students, showToast, brandingConfig } = useApp();
@@ -51,6 +53,9 @@ function MatriculasContent() {
 
   // Wizard State (Steps 1 to 6)
   const [isWizardOpen, setIsWizardOpen] = useState(false);
+  const [isBatchImportOpen, setIsBatchImportOpen] = useState(false);
+  const [batchCsvText, setBatchCsvText] = useState('');
+  const [isProcessingBatch, setIsProcessingBatch] = useState(false);
   const [currentStep, setCurrentStep] = useState<number>(1);
 
   const [wizardData, setWizardData] = useState({
@@ -202,6 +207,11 @@ function MatriculasContent() {
         showToast('Por favor completa los nombres, apellidos y DNI', 'error');
         return;
       }
+      const existingStudent = students.find(s => s.dni === wizardData.dni.trim());
+      if (existingStudent) {
+        showToast(`Ya existe un alumno registrado con el DNI ${wizardData.dni}: ${existingStudent.nombres} ${existingStudent.apellidos}`, 'error', 'DNI Duplicado');
+        return;
+      }
     }
     if (currentStep === 3) {
       if (!wizardData.nombreApoderado || !wizardData.telefonoApoderado) {
@@ -216,7 +226,7 @@ function MatriculasContent() {
         apellidos: wizardData.apellidos,
         dni: wizardData.dni,
         fechaNacimiento: wizardData.fechaNacimiento,
-        seccionId: wizardData.seccionId || 'sec-3pri-a',
+        seccionId: wizardData.seccionId || sections[0]?.id || '',
         nombreApoderado: wizardData.nombreApoderado,
         telefonoApoderado: wizardData.telefonoApoderado,
         dniApoderado: wizardData.dniApoderado || undefined,
@@ -497,16 +507,55 @@ function MatriculasContent() {
         description="Proceso de admisión, asignación de vacantes por nivel (Inicial, Primaria, Secundaria) y emisión de credenciales oficiales."
         badge={`${enrollments.length} Matrículas Activas`}
       >
-        <button
-          onClick={() => {
-            setIsWizardOpen(true);
-            setCurrentStep(1);
-          }}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-600/20 transition-all active:scale-95 cursor-pointer"
-        >
-          <UserPlus className="w-4 h-4" />
-          + Nueva Matrícula (Wizard)
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={async () => {
+              const activeEnrs = enrollments.filter(e => e.estado === 'activo');
+              if (activeEnrs.length === 0) {
+                showToast('No hay matrículas activas registradas', 'warning');
+                return;
+              }
+              const items = activeEnrs.map(enr => ({
+                student: enr.estudiante || students.find(s => s.id === enr.estudiante_id)!,
+                enrollment: enr,
+                section: enr.seccion || sections.find(s => s.id === enr.seccion_id),
+              })).filter(item => Boolean(item.student));
+
+              const doc = await generateBatchQrCardsPdf({
+                items,
+                brandingConfig,
+                sectionName: 'TODAS LAS SECCIONES',
+              });
+              doc.save('Planilla_Carnets_Escolares_2026.pdf');
+              showToast('Planilla de carnets generada con éxito (8 por página A4)', 'success', '📇 Carnets Escolares');
+            }}
+            className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs border border-slate-200 dark:border-slate-700 transition-all active:scale-95 cursor-pointer"
+            title="Descargar PDF con todos los carnets QR en planilla A4 listos para imprimir"
+          >
+            <CreditCard className="w-4 h-4 text-indigo-500" />
+            <span>Imprimir Carnets (Planilla A4)</span>
+          </button>
+
+          <button
+            onClick={() => setIsBatchImportOpen(true)}
+            className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 font-bold text-xs border border-emerald-200/80 dark:border-emerald-800 transition-all active:scale-95 cursor-pointer"
+            title="Importar lote masivo de estudiantes desde Excel o CSV"
+          >
+            <Upload className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            <span>Importar CSV / Excel</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setIsWizardOpen(true);
+              setCurrentStep(1);
+            }}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-600/20 transition-all active:scale-95 cursor-pointer"
+          >
+            <UserPlus className="w-4 h-4" />
+            + Nueva Matrícula (Wizard)
+          </button>
+        </div>
       </PageHeader>
 
       {/* WIZARD MODAL */}
@@ -1247,6 +1296,118 @@ function MatriculasContent() {
           );
         }}
       />
+
+      {/* Batch Import CSV/Excel Modal */}
+      {isBatchImportOpen && (
+        <Modal
+          isOpen={isBatchImportOpen}
+          onClose={() => setIsBatchImportOpen(false)}
+          title="📥 Importación Masiva de Estudiantes (Excel / CSV)"
+          maxWidth="2xl"
+        >
+          <div className="space-y-4 text-xs">
+            <p className="text-slate-600 dark:text-slate-300">
+              Pega los datos de tu archivo Excel o CSV para matricular estudiantes en lote automáticamente. Las credenciales de acceso y carnets QR se generarán de forma instantánea.
+            </p>
+
+            <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+              <div>
+                <p className="font-bold text-slate-800 dark:text-white">Plantilla Oficial de Matrícula</p>
+                <p className="text-[11px] text-slate-400">Columnas: DNI; Nombres; Apellidos; Nivel; Grado; Seccion; NombreApoderado; Telefono</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  const sampleCsv = `DNI;Nombres;Apellidos;Nivel;Grado;Seccion;NombreApoderado;Telefono;EmailApoderado\n74839201;Carlos Alberto;Mendoza Quispe;primaria;3ro;A;Alberto Mendoza;987654321;apoderado1@gmail.com\n74839202;Lucia Fernanda;Ramos Vega;primaria;3ro;A;Fernanda Vega;987654322;apoderado2@gmail.com`;
+                  const blob = new Blob(['\uFEFF' + sampleCsv], { type: 'text/csv;charset=utf-8;' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = 'Plantilla_Matricula_Masiva_2026.csv';
+                  a.click();
+                  URL.revokeObjectURL(url);
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 font-bold hover:bg-indigo-100 transition-colors"
+              >
+                <Download className="w-3.5 h-3.5" />
+                Descargar Plantilla
+              </button>
+            </div>
+
+            <div>
+              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                Pega el contenido CSV o datos copiados de Excel:
+              </label>
+              <textarea
+                rows={6}
+                placeholder="DNI;Nombres;Apellidos;Nivel;Grado;Seccion;NombreApoderado;Telefono;EmailApoderado&#10;74839201;Carlos Alberto;Mendoza Quispe;primaria;3ro;A;Alberto Mendoza;987654321;apoderado1@gmail.com"
+                value={batchCsvText}
+                onChange={(e) => setBatchCsvText(e.target.value)}
+                className="w-full font-mono text-[11px] p-3 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setIsBatchImportOpen(false)}
+                className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-100"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={!batchCsvText.trim() || isProcessingBatch}
+                onClick={async () => {
+                  setIsProcessingBatch(true);
+                  const lines = batchCsvText.trim().split('\n').filter(l => l.trim().length > 0);
+                  const dataLines = lines[0].toLowerCase().includes('dni') ? lines.slice(1) : lines;
+                  
+                  let successCount = 0;
+                  const defaultSecId = sections[0]?.id || 'sec-3pri-a';
+
+                  for (const line of dataLines) {
+                    const delimiter = line.includes(';') ? ';' : ',';
+                    const parts = line.split(delimiter).map(p => p.trim().replace(/^"|"$/g, ''));
+                    if (parts.length >= 3) {
+                      const dni = parts[0] || `7${Math.floor(1000000 + Math.random() * 9000000)}`;
+                      const nombres = parts[1] || 'Estudiante';
+                      const apellidos = parts[2] || 'Nuevo';
+                      const secId = sections.find(s => parts[5] && s.letra.toLowerCase() === parts[5].toLowerCase())?.id || defaultSecId;
+                      const nombreApod = parts[6] || `Apoderado de ${nombres}`;
+                      const telApod = parts[7] || '999888777';
+                      const emailApod = parts[8] || 'apoderado@gmail.com';
+
+                      addStudent({
+                        nombres,
+                        apellidos,
+                        dni,
+                        fechaNacimiento: '2016-05-15',
+                        genero: 'M',
+                        seccionId: secId,
+                        nombreApoderado: nombreApod,
+                        dniApoderado: '44883322',
+                        telefonoApoderado: telApod,
+                        emailApoderado: emailApod,
+                        parentesco: 'Padre',
+                      });
+                      successCount++;
+                    }
+                  }
+
+                  setIsProcessingBatch(false);
+                  setIsBatchImportOpen(false);
+                  setBatchCsvText('');
+                  showToast(`Se matricularon ${successCount} estudiantes exitosamente con carnets y credenciales generadas`, 'success', '📥 Importación Completada');
+                }}
+                className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-md disabled:opacity-40"
+              >
+                {isProcessingBatch ? 'Procesando...' : 'Procesar e Importar Lote'}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
 
       {/* Carnet QR Modal for Enrolled Student */}
       {selectedEnrollmentForQr && selectedEnrollmentForQr.estudiante && (

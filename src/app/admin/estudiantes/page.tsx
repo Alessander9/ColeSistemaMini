@@ -35,6 +35,7 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
+import { MassPromotionModal } from '@/components/academico/MassPromotionModal';
 
 export default function AdminEstudiantesPage() {
   const {
@@ -70,6 +71,7 @@ export default function AdminEstudiantesPage() {
   // Modals state
   const [selectedStudentForQr, setSelectedStudentForQr] = useState<Student | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isMassPromotionOpen, setIsMassPromotionOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [deletingStudent, setDeletingStudent] = useState<Student | null>(null);
 
@@ -378,17 +380,26 @@ export default function AdminEstudiantesPage() {
             )}
           </button>
 
-          {/* + Nuevo Estudiante Button */}
-          <button
-            type="button"
-            onClick={() => setIsAddModalOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-sm shadow-blue-500/25 transition-all active:scale-95 cursor-pointer whitespace-nowrap"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Nuevo Estudiante</span>
-          </button>
+            <button
+              type="button"
+              onClick={() => setIsMassPromotionOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm shadow-emerald-500/25 transition-all active:scale-95 cursor-pointer whitespace-nowrap"
+            >
+              <GraduationCap className="w-3.5 h-3.5" />
+              <span>🎓 Promoción Masiva</span>
+            </button>
+
+            {/* + Nuevo Estudiante Button */}
+            <button
+              type="button"
+              onClick={() => setIsAddModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-sm shadow-blue-500/25 transition-all active:scale-95 cursor-pointer whitespace-nowrap"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Nuevo Estudiante</span>
+            </button>
+          </div>
         </div>
-      </div>
 
       {/* ── FILTER TABS / PILLS ROW ── */}
       <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 pt-0.5 scrollbar-none">
@@ -1327,6 +1338,12 @@ export default function AdminEstudiantesPage() {
           </div>
         </Modal>
       )}
+
+      {/* ── MODAL DE PROMOCIÓN ESCOLAR MASIVA ── */}
+      <MassPromotionModal
+        isOpen={isMassPromotionOpen}
+        onClose={() => setIsMassPromotionOpen(false)}
+      />
 
     </div>
   );

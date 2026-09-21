@@ -47,25 +47,10 @@ import {
   ChevronDown
 } from 'lucide-react';
 import Link from 'next/link';
-
-const DAYS: { key: DayOfWeek; label: string; short: string }[] = [
-  { key: 'lunes', label: 'Lunes', short: 'LUN' },
-  { key: 'martes', label: 'Martes', short: 'MAR' },
-  { key: 'miercoles', label: 'Miércoles', short: 'MIÉ' },
-  { key: 'jueves', label: 'Jueves', short: 'JUE' },
-  { key: 'viernes', label: 'Viernes', short: 'VIE' },
-];
-
-const TIME_BLOCKS = [
-  { id: 'b1', label: '1° Hora', inicio: '08:00', fin: '08:45' },
-  { id: 'b2', label: '2° Hora', inicio: '08:45', fin: '09:30' },
-  { id: 'b3', label: '3° Hora', inicio: '09:30', fin: '10:15' },
-  { id: 'recreo', label: 'RECREO', inicio: '10:15', fin: '10:45', isBreak: true },
-  { id: 'b4', label: '4° Hora', inicio: '10:45', fin: '11:30' },
-  { id: 'b5', label: '5° Hora', inicio: '11:30', fin: '12:15' },
-  { id: 'b6', label: '6° Hora', inicio: '12:15', fin: '13:00' },
-  { id: 'b7', label: '7° Hora', inicio: '13:00', fin: '13:45' },
-];
+import { generateReportCardPdf } from '@/lib/pdf/reportCardPdfGenerator';
+import { downloadEnrollmentFichaPdf } from '@/lib/pdf/generateEnrollmentFichaPdf';
+import { downloadEnrollmentCertificatePdf } from '@/lib/pdf/certificatePdfGenerator';
+import { TIME_BLOCKS, DAYS } from '@/lib/constants/schedule';
 
 export default function ApoderadoDashboardPage() {
   const { 
@@ -86,7 +71,15 @@ export default function ApoderadoDashboardPage() {
     scheduleSlots,
     teachers,
     brandingConfig,
-    showToast
+    behaviorLogs,
+    requestJustification,
+    justificationRequests,
+    showToast,
+    announcements,
+    markAnnouncementRead,
+    confirmAnnouncement,
+    calendarEvents,
+    sections
   } = useApp();
 
   // Modales de profundización interactiva
@@ -168,6 +161,10 @@ export default function ApoderadoDashboardPage() {
   }, [enrollments, activeStudent]);
 
   const studentSectionId = activeEnrollment?.seccion_id || '';
+
+  const activeSection = useMemo(() => {
+    return activeEnrollment?.seccion || sections.find(s => s.id === studentSectionId) || null;
+  }, [activeEnrollment, sections, studentSectionId]);
 
   // Calificaciones del hijo 100% reales
   const studentGrades = useMemo(() => {
@@ -252,18 +249,117 @@ export default function ApoderadoDashboardPage() {
     return valid.sort((a, b) => a.hora_inicio.localeCompare(b.hora_inicio));
   }, [studentSchedule, todayDay]);
 
+  // Comunicados y citaciones dirigidos específicamente a este estudiante y familia
+  const targetedAnnouncements = useMemo(() => {
+    const childLevel = activeEnrollment?.seccion?.grado?.nivel || currentChild?.nivel;
+    const childGradeId = activeEnrollment?.seccion?.grado_id;
+    const childSecId = activeEnrollment?.seccion_id;
+
+    return announcements.filter(a => {
+      // Rol filter
+      const roleMatch = !a.destinatarios_rol || a.destinatarios_rol === 'todos' || a.destinatarios_rol === 'apoderado';
+      if (!roleMatch) return false;
+
+      // Nivel filter
+      const targetNivel = a.nivel || a.nivel_destinatario;
+      if (targetNivel && targetNivel !== 'todos' && targetNivel !== childLevel) return false;
+
+      // Grado filter
+      if (a.grado_id && childGradeId && a.grado_id !== childGradeId) return false;
+
+      // Sección filter
+      if (a.seccion_id && childSecId && a.seccion_id !== childSecId) return false;
+
+      return true;
+    });
+  }, [announcements, activeEnrollment, currentChild]);
+
   // Saludo dinámico según la hora
   const currentHour = new Date().getHours();
   const greeting = currentHour < 12 ? 'Buenos días' : currentHour < 18 ? 'Buenas tardes' : 'Buenas noches';
 
-  // Manejador de envío de justificación
+  // Descargar Libreta Oficial CNEB en PDF
+  const handleDownloadReportCardPdf = async () => {
+    if (!activeEnrollment || !activeStudent) return;
+    try {
+      const doc = await generateReportCardPdf({
+        student: activeStudent,
+        enrollment: activeEnrollment,
+        courses,
+        grades: studentGrades,
+        evaluationPeriods,
+        brandingConfig,
+        tutorName: tutorDisplayName,
+      });
+      doc.save(`Libreta_Oficial_CNEB_2026_${activeStudent.apellidos || ''}_${activeStudent.nombres || ''}.pdf`);
+      showToast('Libreta Oficial CNEB descargada en PDF', 'success', 'Descarga');
+    } catch (err) {
+      console.error(err);
+      showToast('Error al generar la libreta PDF', 'error');
+    }
+  };
+
+  // Descargar Ficha Oficial de Matrícula en PDF
+  const handleDownloadFichaMatriculaPdf = async () => {
+    if (!activeEnrollment || !activeStudent) return;
+    try {
+      await downloadEnrollmentFichaPdf({
+        student: activeStudent,
+        enrollment: activeEnrollment,
+        section: activeSection,
+        parentName: currentUser ? `${currentUser.nombres} ${currentUser.apellidos}` : activeStudent.nombre_apoderado,
+        parentPhone: activeStudent.telefono_apoderado,
+        parentEmail: activeStudent.email_apoderado,
+        brandingConfig,
+      });
+      showToast('Ficha Oficial de Matrícula descargada', 'success', '📄 Matrícula');
+    } catch (err) {
+      console.error(err);
+      showToast('Error al generar la ficha de matrícula', 'error');
+    }
+  };
+
+  const handleDownloadConstancia = async () => {
+    if (!activeStudent) {
+      showToast('No se encontró el estudiante activo', 'error');
+      return;
+    }
+    try {
+      await downloadEnrollmentCertificatePdf({
+        student: activeStudent,
+        enrollment: activeEnrollment,
+        section: activeEnrollment?.seccion,
+        gradeLevel: activeEnrollment?.seccion?.grado,
+        brandingConfig,
+      });
+      showToast('Constancia Oficial de Matrícula generada y descargada', 'success', '📄 Documento Oficial');
+    } catch (err) {
+      console.error(err);
+      showToast('Error al generar la constancia de matrícula', 'error');
+    }
+  };
+
   const handleSubmitJustification = (e: React.FormEvent) => {
     e.preventDefault();
-    showToast(
-      `Justificación enviada para ${currentChild?.nombre} (${justifyDate}). El tutor la revisará en breve.`,
-      'success',
-      '✓ Justificación Registrada'
-    );
+    if (!activeEnrollment) {
+      showToast('No se encontró la matrícula activa del estudiante seleccionado.', 'error');
+      return;
+    }
+    if (!justifyDetails.trim()) {
+      showToast('Por favor describe el motivo o sustento de la inasistencia.', 'warning');
+      return;
+    }
+
+    requestJustification({
+      matricula_id: activeEnrollment.id,
+      estudiante_id: activeEnrollment.estudiante_id,
+      apoderado_id: currentUser?.id,
+      apoderado_nombre: currentUser ? `${currentUser.nombres} ${currentUser.apellidos}` : 'Apoderado',
+      fecha: justifyDate,
+      tipo: 'falta',
+      motivo: `${justifyReason} — ${justifyDetails.trim()}`,
+    });
+
     setIsJustifyModalOpen(false);
     setJustifyDetails('');
   };
@@ -417,6 +513,32 @@ export default function ApoderadoDashboardPage() {
                 <span>Carnet QR del Estudiante</span>
               </div>
               <ChevronRight className="w-4 h-4 text-white/70 group-hover:translate-x-0.5 transition-transform" />
+            </button>
+
+            <button
+              onClick={() => setIsJustifyModalOpen(true)}
+              className="flex items-center justify-between gap-3 px-5 py-3 rounded-2xl bg-rose-600/30 hover:bg-rose-600/40 border border-rose-500/40 text-rose-200 font-bold text-xs backdrop-blur-md transition-all hover:scale-[1.02] active:scale-98 cursor-pointer group"
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-xl bg-rose-500/20 flex items-center justify-center">
+                  <Clock className="w-4 h-4 text-rose-300" />
+                </div>
+                <span>Justificar Inasistencia / Falta</span>
+              </div>
+              <ChevronRight className="w-4 h-4 text-rose-200/70 group-hover:translate-x-0.5 transition-transform" />
+            </button>
+
+            <button
+              onClick={handleDownloadConstancia}
+              className="flex items-center justify-between gap-3 px-5 py-3 rounded-2xl bg-indigo-600/30 hover:bg-indigo-600/40 border border-indigo-500/40 text-indigo-200 font-bold text-xs backdrop-blur-md transition-all hover:scale-[1.02] active:scale-98 cursor-pointer group"
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-xl bg-indigo-500/20 flex items-center justify-center">
+                  <FileText className="w-4 h-4 text-indigo-300" />
+                </div>
+                <span>Constancia de Matrícula (PDF)</span>
+              </div>
+              <ChevronRight className="w-4 h-4 text-indigo-200/70 group-hover:translate-x-0.5 transition-transform" />
             </button>
 
             {/* Slogan */}
@@ -618,7 +740,7 @@ export default function ApoderadoDashboardPage() {
           </span>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-3">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 pt-3">
           <button
             type="button"
             onClick={() => document.getElementById('asistencia-en-vivo')?.scrollIntoView({ behavior: 'smooth' })}
@@ -670,12 +792,27 @@ export default function ApoderadoDashboardPage() {
           >
             <div className="flex items-center justify-between mb-1.5">
               <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-purple-100 dark:bg-purple-900/60 text-purple-700 dark:text-purple-300">
-                4. Rendimiento
+                4. Notas
               </span>
               <Award className="w-3.5 h-3.5 text-purple-500 group-hover:scale-110 transition-transform" />
             </div>
-            <span className="text-xs font-bold text-slate-900 dark:text-white">Libreta Oficial</span>
-            <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate">Informe y notas PDF</span>
+            <span className="text-xs font-bold text-slate-900 dark:text-white">Libreta CNEB</span>
+            <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate">Informe bimestral</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleDownloadFichaMatriculaPdf}
+            className="group flex flex-col p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 border border-slate-200/60 dark:border-slate-700/60 hover:border-indigo-300 transition-all text-left cursor-pointer"
+          >
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300">
+                5. Matrícula
+              </span>
+              <Download className="w-3.5 h-3.5 text-indigo-500 group-hover:scale-110 transition-transform" />
+            </div>
+            <span className="text-xs font-bold text-slate-900 dark:text-white">Ficha Oficial</span>
+            <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate">Descargar PDF</span>
           </button>
         </div>
       </div>
@@ -1210,44 +1347,129 @@ export default function ApoderadoDashboardPage() {
 
         </div>
 
-        {/* ── 6. SECCIÓN DE COMUNICADOS & AVISOS OFICIALES (ENLACE DIRECTO) ── */}
+        {/* ── 6. SECCIÓN DE COMUNICADOS & CITACIONES OFICIALES (DIRIGIDO A ESTE SALÓN) ── */}
         <div id="comunicados-section" className="bg-white dark:bg-slate-900 p-6 sm:p-7 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-2xl bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-black">
                 <MessageSquare className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="font-black text-base text-slate-900 dark:text-white">
-                  Boletín Informativo &amp; Comunicados Oficiales
+                <h3 className="font-black text-base text-slate-900 dark:text-white flex items-center gap-2">
+                  <span>Boletín Oficial &amp; Citaciones Escolares</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 font-bold border border-indigo-200">
+                    {currentChild?.grado_nombre} &quot;{currentChild?.seccion_letra}&quot;
+                  </span>
                 </h3>
-                <p className="text-xs text-slate-500 font-medium">Avisos oficiales emitidos por la Dirección General y Tutoría de Aula</p>
+                <p className="text-xs text-slate-500 font-medium">Avisos y citaciones oficiales emitidos por Dirección y Tutoría</p>
               </div>
             </div>
             <span className="text-xs text-slate-400 font-medium">Año Lectivo 2026</span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
-            <div className="p-4 rounded-2xl bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-900/40 space-y-1.5">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-black text-amber-900 dark:text-amber-200">Reunión de Padres del I Bimestre</span>
-                <span className="text-[10px] text-amber-700 font-black bg-amber-100 px-2 py-0.5 rounded-md">25 Feb</span>
-              </div>
-              <p className="text-xs text-amber-800 dark:text-amber-300 leading-relaxed font-medium">
-                Se convoca a todos los padres de familia del salón a la entrega del informe de progreso bimestral y evaluación psicopedagógica.
-              </p>
+          {targetedAnnouncements.length === 0 ? (
+            <div className="py-8 text-center text-xs text-slate-400 bg-slate-50/50 dark:bg-slate-800/30 rounded-2xl border border-slate-100 dark:border-slate-800">
+              No hay comunicados o citaciones pendientes para este grado y sección.
             </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+              {targetedAnnouncements.map((ann) => {
+                const isConfirmed = currentUser?.id && ann.confirmado_por?.includes(currentUser.id);
+                const isCitacion = ann.categoria === 'citacion' || ann.tipo === 'citacion';
+                const isUrgente = ann.tipo === 'urgente';
 
-            <div className="p-4 rounded-2xl bg-blue-50/60 dark:bg-blue-950/30 border border-blue-200/60 dark:border-blue-900/40 space-y-1.5">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-black text-blue-900 dark:text-blue-200">Simulacro de Evaluación Censal</span>
-                <span className="text-[10px] text-blue-700 font-black bg-blue-100 px-2 py-0.5 rounded-md">02 Mar</span>
-              </div>
-              <p className="text-xs text-blue-800 dark:text-blue-300 leading-relaxed font-medium">
-                Los estudiantes rendirán una prueba diagnóstica de comprensión lectora y razonamiento matemático.
-              </p>
+                const cardBgClass = isCitacion
+                  ? 'bg-purple-50/60 dark:bg-purple-950/30 border-purple-200/80 dark:border-purple-900/40'
+                  : isUrgente
+                  ? 'bg-rose-50/60 dark:bg-rose-950/30 border-rose-200/80 dark:border-rose-900/40'
+                  : 'bg-blue-50/60 dark:bg-blue-950/30 border-blue-200/80 dark:border-blue-900/40';
+
+                const badgeBgClass = isCitacion
+                  ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/60 dark:text-purple-200'
+                  : isUrgente
+                  ? 'bg-rose-100 text-rose-800 dark:bg-rose-900/60 dark:text-rose-200'
+                  : 'bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-200';
+
+                return (
+                  <div key={ann.id} className={`p-4 sm:p-5 rounded-2xl border ${cardBgClass} space-y-3 flex flex-col justify-between shadow-2xs`}>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className={`text-[10px] font-black uppercase px-2.5 py-0.5 rounded-md ${badgeBgClass}`}>
+                          {isCitacion ? '📅 Citación a Padres' : isUrgente ? '⚠️ Comunicado Urgente' : '📢 Comunicado Oficial'}
+                        </span>
+                        <span className="text-[10px] text-slate-500 font-bold">
+                          {ann.fecha_publicacion || ann.creado_en?.substring(0, 10) || '2026'}
+                        </span>
+                      </div>
+
+                      <h4 className="text-sm font-black text-slate-900 dark:text-white leading-snug">
+                        {ann.titulo}
+                      </h4>
+
+                      <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-line">
+                        {ann.contenido}
+                      </p>
+
+                      {/* Detalles de Citación si aplica */}
+                      {isCitacion && (ann.fecha_citacion || ann.lugar_citacion || ann.enlace_reunion) && (
+                        <div className="p-2.5 rounded-xl bg-white/80 dark:bg-slate-900/80 border border-purple-200/60 dark:border-purple-800/40 space-y-1 text-xs text-purple-950 dark:text-purple-200">
+                          {ann.fecha_citacion && (
+                            <div className="flex items-center gap-1.5 font-bold">
+                              <Calendar className="w-3.5 h-3.5 text-purple-600" />
+                              <span>Fecha: {ann.fecha_citacion} {ann.hora_citacion ? `a las ${ann.hora_citacion}` : ''}</span>
+                            </div>
+                          )}
+                          {ann.lugar_citacion && (
+                            <div className="flex items-center gap-1.5 font-medium text-[11px] text-slate-600 dark:text-slate-400">
+                              <MapPin className="w-3.5 h-3.5 text-slate-500" />
+                              <span>Lugar: {ann.lugar_citacion}</span>
+                            </div>
+                          )}
+                          {ann.enlace_reunion && (
+                            <div className="pt-1">
+                              <a
+                                href={ann.enlace_reunion}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1 text-[11px] font-black text-blue-600 hover:underline"
+                              >
+                                <span>🔗 Unirse a Sala Virtual (Google Meet / Zoom)</span>
+                              </a>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Acciones de Confirmación & Acuse de Recibo */}
+                    <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between gap-2">
+                      <div className="text-[10px] text-slate-500">
+                        {ann.requiere_confirmacion ? 'Requiere confirmación familiar' : 'Aviso informativo'}
+                      </div>
+
+                      {ann.requiere_confirmacion && (
+                        isConfirmed ? (
+                          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-xl bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 text-xs font-black">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>Confirmado por ti</span>
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => confirmAnnouncement(ann.id, currentUser?.id || 'apoderado-user')}
+                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-black text-xs shadow-md shadow-indigo-600/20 cursor-pointer transition-all"
+                          >
+                            <CheckSquare className="w-3.5 h-3.5" />
+                            <span>Confirmar Asistencia</span>
+                          </button>
+                        )
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          </div>
+          )}
         </div>
 
       </div>
@@ -1272,6 +1494,14 @@ export default function ApoderadoDashboardPage() {
               </div>
 
               <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleDownloadReportCardPdf}
+                  className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-black text-xs cursor-pointer flex items-center gap-1.5 shadow-md shadow-purple-600/20"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Descargar PDF CNEB</span>
+                </button>
                 <button
                   onClick={() => window.print()}
                   className="px-4 py-2 rounded-xl bg-slate-900 text-white font-black text-xs hover:bg-slate-800 cursor-pointer flex items-center gap-1.5 shadow-sm"

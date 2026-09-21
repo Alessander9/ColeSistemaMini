@@ -6,6 +6,7 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { GradeBadge } from '@/components/notas/GradeBadge';
 import { AnnualReportCardView } from '@/components/notas/AnnualReportCardView';
 import { calculateAverage, calculateAnnualStatus, calculateStudentAnnualReportCard } from '@/lib/grades/calculations';
+import { generateReportCardPdf } from '@/lib/pdf/reportCardPdfGenerator';
 import { 
   Printer, 
   FileText, 
@@ -251,6 +252,27 @@ export default function EstudianteLibretaNotasPage() {
     }
   };
 
+  const handleDownloadPdf = async () => {
+    if (!activeEnrollment || !activeStudent) return;
+    try {
+      const studentGradesFiltered = grades.filter(g => g.matricula_id === activeEnrollment.id);
+      const doc = await generateReportCardPdf({
+        student: activeStudent,
+        enrollment: activeEnrollment,
+        courses,
+        grades: studentGradesFiltered,
+        evaluationPeriods,
+        brandingConfig,
+        tutorName: activeChild?.tutor_nombre,
+      });
+      doc.save(`Libreta_Oficial_CNEB_${activeStudent.apellidos || ''}_${activeStudent.nombres || ''}.pdf`);
+      showToast('Libreta Oficial CNEB descargada en PDF', 'success', 'Descarga');
+    } catch (err) {
+      console.error(err);
+      showToast('Error al generar la libreta PDF', 'error');
+    }
+  };
+
   return (
     <div className="space-y-6 max-w-5xl mx-auto animate-in fade-in duration-200">
       
@@ -279,6 +301,16 @@ export default function EstudianteLibretaNotasPage() {
         <div className="flex items-center gap-2 self-start sm:self-center">
           <button
             type="button"
+            onClick={handleDownloadPdf}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-black rounded-2xl bg-purple-600 hover:bg-purple-700 text-white shadow-md shadow-purple-600/20 transition-all active:scale-95 cursor-pointer"
+            title="Descargar Libreta Oficial CNEB en PDF vectorizado"
+          >
+            <Download className="w-4 h-4" />
+            <span>Descargar PDF</span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => setShowScaleHelp(!showScaleHelp)}
             className={`inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-2xl border transition-all cursor-pointer ${
               showScaleHelp
@@ -297,7 +329,7 @@ export default function EstudianteLibretaNotasPage() {
             title="Imprimir libreta oficial o guardar en PDF"
           >
             <Printer className="w-4 h-4" />
-            <span>Imprimir / PDF</span>
+            <span>Imprimir</span>
           </button>
         </div>
       </div>

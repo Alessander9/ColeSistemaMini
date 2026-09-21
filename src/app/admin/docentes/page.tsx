@@ -6,6 +6,7 @@ import { useApp } from '@/context/AppContext';
 import { AvatarUploader } from '@/components/ui/AvatarUploader';
 import { DataTable } from '@/components/ui/DataTable';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
+import { CourseFormModal } from '@/components/academico/CourseFormModal';
 import { SectionCourseAssignment, UserProfile } from '@/types';
 import { 
   Users, 
@@ -214,9 +215,8 @@ export default function AdminDocentesPage() {
     email: string;
   } | null>(null);
   const [copied, setCopied] = useState(false);
-
-  // Modal Ficha 360° del Docente (Pop-up)
   const [selectedTeacherForDetail, setSelectedTeacherForDetail] = useState<UserProfile | null>(null);
+  const [isQuickCourseModalOpen, setIsQuickCourseModalOpen] = useState(false);
 
   // Modal Asignar Materia a Salón
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
@@ -1437,10 +1437,20 @@ export default function AdminDocentesPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* Curso / Materia */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
-                    <BookOpen className="w-3.5 h-3.5 text-purple-500" />
-                    Área Curricular / Materia *
-                  </label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                      <BookOpen className="w-3.5 h-3.5 text-purple-500" />
+                      Área Curricular / Materia *
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setIsQuickCourseModalOpen(true)}
+                      className="text-[11px] font-bold text-purple-600 hover:text-purple-700 dark:text-purple-400 flex items-center gap-1 cursor-pointer"
+                    >
+                      <Plus className="w-3 h-3" />
+                      <span>Nuevo Curso</span>
+                    </button>
+                  </div>
                   <SearchableSelect
                     value={selectedCourseId}
                     onChange={(val) => setSelectedCourseId(val)}
@@ -1448,7 +1458,7 @@ export default function AdminDocentesPage() {
                     options={courses.map((c) => ({
                       value: c.id,
                       label: c.nombre,
-                      sublabel: `Código: ${c.codigo}`,
+                      sublabel: `Código: ${c.codigo} • Nivel: ${c.nivel}`,
                     }))}
                     placeholder="Buscar materia..."
                   />
@@ -1678,6 +1688,15 @@ export default function AdminDocentesPage() {
           </div>
         );
       })()}
+
+      {/* ── MODAL: REGISTRO RÁPIDO DE CURSO ── */}
+      <CourseFormModal
+        isOpen={isQuickCourseModalOpen}
+        onClose={() => setIsQuickCourseModalOpen(false)}
+        onSuccess={(newCourse) => {
+          setSelectedCourseId(newCourse.id);
+        }}
+      />
     </div>
   );
 }

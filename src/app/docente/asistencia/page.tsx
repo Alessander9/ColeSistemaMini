@@ -15,9 +15,11 @@ import {
   Check,
   Sparkles,
   ShieldCheck,
-  AlertCircle
+  AlertCircle,
+  FileDown
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { generateRegistroAuxiliarPdf } from '@/lib/pdf/registroAuxiliarPdfGenerator';
 
 import { QrScanner } from '@/components/qr/QrScanner';
 
@@ -30,20 +32,17 @@ export default function DocenteAsistenciaPage() {
     currentUser, 
     getTeacherSections,
     saveClassAttendanceQuickly,
-    showToast 
+    showToast,
+    brandingConfig,
   } = useApp();
 
   const teacherSections = useMemo(() => {
-    const fromContext = getTeacherSections(currentUser.id);
-    if (fromContext && fromContext.length > 0) return fromContext;
-
-    // Fallback con aulas designadas de muestra
-    const defaultSec = enrollments.find(e => e.seccion_id === 'sec-3pri-a')?.seccion;
-    return defaultSec ? [{ seccion: defaultSec, cursos: [] }] : [];
-  }, [getTeacherSections, currentUser.id, enrollments]);
+    // Obtener secciones reales asignadas al docente
+    return currentUser?.id ? (getTeacherSections(currentUser.id) || []) : [];
+  }, [getTeacherSections, currentUser]);
 
   const [selectedSectionId, setSelectedSectionId] = useState<string>(
-    teacherSections[0]?.seccion.id || 'sec-3pri-a'
+    teacherSections[0]?.seccion.id || ''
   );
 
   const [viewMode, setViewMode] = useState<'lista' | 'qr'>('lista');
@@ -158,6 +157,25 @@ export default function DocenteAsistenciaPage() {
             <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/60 px-3 py-1.5 rounded-xl border border-emerald-500/20 animate-fade-in">
               <Check className="w-3.5 h-3.5" /> ✓ Guardado
             </span>
+          )}
+          {activeSectionInfo && (
+            <button
+              onClick={() => {
+                const doc = generateRegistroAuxiliarPdf({
+                  section: activeSectionInfo,
+                  teacherName: currentUser ? `${currentUser.nombres} ${currentUser.apellidos}` : 'Docente',
+                  students,
+                  enrollments,
+                  brandingConfig,
+                });
+                doc.save(`Asistencia_Fisica_${activeSectionInfo.grado?.nombre || 'Grado'}_${activeSectionInfo.letra}.pdf`);
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold transition-colors cursor-pointer border border-slate-200 dark:border-slate-700"
+              title="Descargar registro auxiliar de asistencia física"
+            >
+              <FileDown className="w-4 h-4 text-emerald-500" />
+              <span>Plantilla Física (PDF)</span>
+            </button>
           )}
           <button
             onClick={handleCloseAttendance}

@@ -1,41 +1,143 @@
-# dependencies
+# ==============================================================================
+# 1. DEPENDENCIAS Y GESTORES DE PAQUETES
+# ==============================================================================
 /node_modules
 /.pnp
 .pnp.js
 .yarn/install-state.gz
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
 
-# testing
-/coverage
+# ==============================================================================
+# 2. VARIABLES DE ENTORNO Y SECRETOS (INFORMACIÓN SENSIBLE)
+# ==============================================================================
+.env
+.env*.local
+.env.development
+.env.test
+.env.production
+*.env
+*.env.local
 
-# next.js
+# Permitir explícitamente la plantilla de ejemplo
+!.env.example
+
+# Llaves privadas, certificados y credenciales de seguridad
+*.pem
+*.key
+*.cer
+*.crt
+*.pfx
+*.p12
+*.keystore
+*.jks
+*.pub
+id_rsa*
+id_ed25519*
+*credentials*.json
+*secrets*.json
+service-account*.json
+auth*.json
+
+# ==============================================================================
+# 3. COMPILACIÓN, BUILDS Y FRAMEWORKS (NEXT.JS, TYPESCRIPT, VERCEL)
+# ==============================================================================
 /.next/
 /out/
-
-# production
 /build
+/dist
+*.tsbuildinfo
+next-env.d.ts
+.vercel
+.turbo
 
-# misc
-.DS_Store
-*.pem
+# ==============================================================================
+# 4. PRUEBAS, COVERAGE, LOGS Y SCREENSHOTS
+# ==============================================================================
+/coverage
+.nyc_output/
+*.lcov
+test-results/
+playwright-report/
+cypress/videos/
+cypress/screenshots/
+test_error_screenshot.png
+test_*.png
+*screenshot*.png
 
-# debug & logs
+# Logs de depuración
+*.log
+*.log.*
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+selenium*.log
+chromedriver.log
+geckodriver.log
 
-# local env files
-.env*.local
-.env
+# ==============================================================================
+# 5. PYTHON (SCRIPTS DE AUDITORÍA, TESTS Y GENERACIÓN DE GUÍAS)
+# ==============================================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
 
-# typescript
-*.tsbuildinfo
-next-env.d.ts
+# ==============================================================================
+# 6. BASES DE DATOS LOCALES Y BACKUPS
+# ==============================================================================
+*.sqlite
+*.sqlite3
+*.db
+*.bak
+*.backup
+*.dump
 
-# IDE and tool metadata
+# ==============================================================================
+# 7. IDEs, EDITORES Y METADATOS DEL SISTEMA OPERATIVO
+# ==============================================================================
+# macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# IDEs
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+*.sublime-workspace
+*.sublime-project
+*.swp
+*.swo
+*~
+
+# Herramientas y agentes locales
 .codegraph/
 .atl/
 .kiro/
-*.png
-*.webp
-
-.vercel
+.kilo/
+.gemini/
+.agents/
+.system_generated/

@@ -24,12 +24,56 @@ import {
   UserCheck,
   ArrowRight,
   Palette,
-  HeartHandshake
+  HeartHandshake,
+  Plus,
+  Search,
+  Edit2,
+  Trash2,
+  Clock,
+  Award,
+  Hash,
+  Layers,
+  CheckCircle2,
+  Lock,
+  Unlock,
+  AlertTriangle
 } from 'lucide-react';
+import { CourseFormModal } from '@/components/academico/CourseFormModal';
+import { SectionFormModal } from '@/components/academico/SectionFormModal';
+import { Course, Section } from '@/types';
 
 export default function AdminAcademicoPage() {
-  const { gradeLevels, sections, enrollments, sectionCourses, teachers } = useApp();
+  const { 
+    gradeLevels, 
+    sections, 
+    enrollments, 
+    sectionCourses, 
+    teachers, 
+    courses, 
+    deleteCourse,
+    evaluationPeriods,
+    updateEvaluationPeriod,
+    toggleClosePeriod,
+    preloadOfficialCnebCurriculum,
+    deleteSection,
+    assignSectionTutor
+  } = useApp();
   const [selectedLevel, setSelectedLevel] = useState<'todos' | 'inicial' | 'primaria' | 'secundaria'>('todos');
+  const [activeMainTab, setActiveMainTab] = useState<'grados' | 'cursos' | 'periodos'>('grados');
+  const [courseSearch, setCourseSearch] = useState('');
+  
+  // Modal de Curso
+  const [isCourseModalOpen, setIsCourseModalOpen] = useState(false);
+  const [courseToEdit, setCourseToEdit] = useState<Course | null>(null);
+  const [courseToDelete, setCourseToDelete] = useState<Course | null>(null);
+
+  // Modal de Sección
+  const [isSectionModalOpen, setIsSectionModalOpen] = useState(false);
+  const [sectionToEdit, setSectionToEdit] = useState<Section | null>(null);
+  const [sectionToDelete, setSectionToDelete] = useState<Section | null>(null);
+
+  // Modal de Precarga CNEB
+  const [isCnebPreloadModalOpen, setIsCnebPreloadModalOpen] = useState(false);
 
   const inicialGrades = gradeLevels.filter(g => g.nivel.toLowerCase() === 'inicial');
   const primariaGrades = gradeLevels.filter(g => g.nivel.toLowerCase() === 'primaria');
@@ -389,7 +433,81 @@ export default function AdminAcademicoPage() {
         </div>
       )}
 
-      {/* ── 2. Level Selector Filter Pills (4 Tabs: Todos, Inicial, Primaria, Secundaria) ── */}
+      {/* ── 2. Main Module Navigation Tabs (Grados vs Cursos vs Periodos) + Action CTAs ── */}
+      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-2.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => setActiveMainTab('grados')}
+            className={`px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer ${
+              activeMainTab === 'grados'
+                ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-md'
+                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+            }`}
+          >
+            <School className="w-4 h-4" />
+            <span>1. Aulas & Grados ({sections.length} Salones)</span>
+          </button>
+
+          <button
+            onClick={() => setActiveMainTab('cursos')}
+            className={`px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer ${
+              activeMainTab === 'cursos'
+                ? 'bg-purple-600 text-white shadow-md shadow-purple-600/25'
+                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+            }`}
+          >
+            <BookOpen className="w-4 h-4" />
+            <span>2. Catálogo de Cursos ({courses.length} Asignaturas)</span>
+          </button>
+
+          <button
+            onClick={() => setActiveMainTab('periodos')}
+            className={`px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer ${
+              activeMainTab === 'periodos'
+                ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/25'
+                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+            }`}
+          >
+            <Calendar className="w-4 h-4" />
+            <span>3. Periodos Lectivos ({evaluationPeriods.length} Bimestres)</span>
+          </button>
+        </div>
+
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => setIsCnebPreloadModalOpen(true)}
+            className="px-3.5 py-2.5 rounded-xl text-xs font-black text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-100 border border-amber-200 dark:border-amber-800 transition-all flex items-center gap-1.5 cursor-pointer"
+            title="Precargar el Currículo Nacional de la Educación Básica (MINEDU)"
+          >
+            <Sparkles className="w-4 h-4 text-amber-600" />
+            <span>⚡ Precargar CNEB Oficial</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setSectionToEdit(null);
+              setIsSectionModalOpen(true);
+            }}
+            className="px-4 py-2.5 rounded-xl text-xs font-black text-white bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            <span>+ Crear Salón</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setCourseToEdit(null);
+              setIsCourseModalOpen(true);
+            }}
+            className="px-4 py-2.5 rounded-xl text-xs font-black text-white bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-600 hover:from-purple-700 hover:to-indigo-700 shadow-md shadow-purple-600/25 hover:shadow-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            <span>+ Registrar Curso</span>
+          </button>
+        </div>
+      </div>
+
+      {/* ── 3. Level Selector Filter Pills (4 Tabs: Todos, Inicial, Primaria, Secundaria) ── */}
       <div className="flex items-center gap-3 flex-wrap">
         <button
           onClick={() => setSelectedLevel('todos')}
@@ -436,479 +554,819 @@ export default function AdminAcademicoPage() {
         </button>
       </div>
 
-      {/* ── 3. Nivel Inicial Section Box ── */}
-      {(selectedLevel === 'todos' || selectedLevel === 'inicial') && (
-        <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-7">
-          
-          {/* Header Inicial */}
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 border-b border-slate-100 dark:border-slate-800/80 pb-6">
-            <div className="flex items-start gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-amber-50 dark:bg-amber-950/60 border border-amber-200/80 dark:border-amber-800 flex items-center justify-center text-amber-500 shrink-0 shadow-sm">
-                <Sparkles className="w-8 h-8 text-amber-500" />
-              </div>
-              <div className="space-y-0.5">
-                <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
-                  Nivel Inicial
-                </h2>
-                <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-bold">
-                  Educación Básica Regular (3, 4 y 5 Años)
-                </p>
-                <p className="text-xs text-slate-400">
-                  Descubrimiento, juego, desarrollo motriz y estimulación temprana.
-                </p>
-              </div>
-            </div>
+      {/* ── 4. Vista Condicional: Grados y Aulas vs Catálogo de Cursos ── */}
+      {activeMainTab === 'grados' ? (
+        <div className="space-y-7">
+          {/* ── Nivel Inicial Section Box ── */}
+          {(selectedLevel === 'todos' || selectedLevel === 'inicial') && (
+            <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-7">
+              {/* Header Inicial */}
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 border-b border-slate-100 dark:border-slate-800/80 pb-6">
+                <div className="flex items-start gap-4">
+                  <div className="w-14 h-14 rounded-2xl bg-amber-50 dark:bg-amber-950/60 border border-amber-200/80 dark:border-amber-800 flex items-center justify-center text-amber-500 shrink-0 shadow-sm">
+                    <Sparkles className="w-8 h-8 text-amber-500" />
+                  </div>
+                  <div className="space-y-0.5">
+                    <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+                      Educación Inicial
+                    </h2>
+                    <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium max-w-xl">
+                      Desarrollo integral de la primera infancia (3, 4 y 5 años) a través del juego, estimulación temprana y exploración guiada.
+                    </p>
+                  </div>
+                </div>
 
-            <div className="flex items-center gap-4 self-start lg:self-center">
-              <span className="font-serif italic text-sm text-amber-600 dark:text-amber-400 -rotate-2 hidden xl:block font-bold">
-                Grandes comienzos, pequeños gigantes
-              </span>
-            </div>
-          </div>
-
-          {/* 4 KPI Stats Pills for Inicial */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-            <div className="bg-amber-50/60 dark:bg-amber-950/40 rounded-2xl p-3 px-4 border border-amber-100/80 dark:border-amber-900/40 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/60 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
-                <Users className="w-5 h-5" />
-              </div>
-              <div>
-                <span className="text-base font-black text-slate-900 dark:text-white block leading-tight">{inicialStudentsCount > 0 ? inicialStudentsCount : 120}</span>
-                <span className="text-[11px] font-bold text-slate-500">Estudiantes</span>
-              </div>
-            </div>
-
-            <div className="bg-emerald-50/60 dark:bg-emerald-950/40 rounded-2xl p-3 px-4 border border-emerald-100/80 dark:border-emerald-900/40 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-                <UserCheck className="w-5 h-5" />
-              </div>
-              <div>
-                <span className="text-base font-black text-slate-900 dark:text-white block leading-tight">6</span>
-                <span className="text-[11px] font-bold text-slate-500">Docentes</span>
-              </div>
-            </div>
-
-            <div className="bg-purple-50/60 dark:bg-purple-950/40 rounded-2xl p-3 px-4 border border-purple-100/80 dark:border-purple-900/40 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
-                <BookOpen className="w-5 h-5" />
-              </div>
-              <div>
-                <span className="text-base font-black text-slate-900 dark:text-white block leading-tight">6</span>
-                <span className="text-[11px] font-bold text-slate-500">Áreas</span>
-              </div>
-            </div>
-
-            <div className="bg-rose-50/60 dark:bg-rose-950/40 rounded-2xl p-3 px-4 border border-rose-100/80 dark:border-rose-900/40 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-900/60 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
-                <Monitor className="w-5 h-5" />
-              </div>
-              <div>
-                <span className="text-base font-black text-slate-900 dark:text-white block leading-tight">{inicialSections.length > 0 ? inicialSections.length : 6}</span>
-                <span className="text-[11px] font-bold text-slate-500">Secciones</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Grid de 3 Grados de Inicial */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
-            {inicialGrades.map((grade) => {
-              const gradeSections = sections.filter(s => s.grado_id === grade.id);
-              const numGrado = grade.numero_grado || 1;
-              const meta = inicialMeta[numGrado] || inicialMeta[1];
-              const totalGradeStudents = gradeSections.reduce((acc, sec) => {
-                const count = enrollments.filter(e => e.seccion_id === sec.id).length;
-                return acc + (count > 0 ? count : 20);
-              }, 0);
-
-              return (
-                <div
-                  key={grade.id}
-                  className={`rounded-3xl p-5 border ${meta.theme.cardBg} ${meta.theme.border} shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-4`}
-                >
-                  <div className="space-y-4">
-                    {/* Top Header: Icon + Title + Slogan + Students Badge */}
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-11 h-11 rounded-2xl ${meta.theme.iconBg} flex items-center justify-center shrink-0`}>
-                          {meta.icon}
-                        </div>
-                        <div className="min-w-0">
-                          <h3 className="font-black text-lg text-slate-900 dark:text-white leading-tight">
-                            {grade.nombre}
-                          </h3>
-                          <span className="text-xs text-slate-500 dark:text-slate-400 font-medium block mt-0.5">
-                            {meta.slogan}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className={`flex items-center gap-1 px-2.5 py-1 rounded-xl ${meta.theme.pillBg} ${meta.theme.pillText} font-bold text-xs shrink-0`}>
-                        <Users className="w-3.5 h-3.5" />
-                        <span>{totalGradeStudents} estudiantes</span>
-                      </div>
-                    </div>
-
-                    {/* Section Item Rows */}
-                    <div className="space-y-2.5">
-                      {gradeSections.map((sec) => {
-                        const secStudents = enrollments.filter(e => e.seccion_id === sec.id).length;
-                        const secCourses = sectionCourses.filter(sc => sc.seccion_id === sec.id).length;
-
-                        return (
-                          <Link
-                            key={sec.id}
-                            href={`/admin/secciones/${sec.id}`}
-                            className="p-3 rounded-2xl bg-white dark:bg-slate-800/90 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-100 dark:border-slate-700/60 shadow-sm hover:shadow transition-all flex items-center justify-between group block"
-                          >
-                            <div className="flex items-center gap-3 min-w-0">
-                              <div className={`w-8 h-8 rounded-xl ${meta.theme.itemIconBg} flex items-center justify-center shrink-0`}>
-                                <Users className="w-4 h-4" />
-                              </div>
-                              <div className="min-w-0">
-                                <span className="font-bold text-slate-900 dark:text-white group-hover:text-amber-600 text-xs block">
-                                  Sección {sec.letra}
-                                </span>
-                                <span className="text-[11px] text-slate-400 font-medium">
-                                  {secStudents > 0 ? secStudents : 20} estudiantes &nbsp;|&nbsp; {secCourses > 0 ? secCourses : 6} áreas
-                                </span>
-                              </div>
-                            </div>
-                            <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-amber-600 group-hover:translate-x-0.5 transition-transform shrink-0" />
-                          </Link>
-                        );
-                      })}
+                {/* Stat Badges */}
+                <div className="flex items-center gap-3 self-start lg:self-center flex-wrap">
+                  <div className="px-4 py-2 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 flex items-center gap-2.5">
+                    <School className="w-4 h-4 text-amber-500" />
+                    <div>
+                      <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Aulas Activas</div>
+                      <div className="text-xs font-black text-slate-800 dark:text-slate-200">{inicialSections.length} Secciones</div>
                     </div>
                   </div>
 
-                  {/* Bottom Action Button */}
-                  <Link
-                    href={`/admin/secciones/${gradeSections[0]?.id || ''}`}
-                    className={`w-full py-2.5 rounded-2xl ${meta.theme.btnBg} ${meta.theme.btnText} ${meta.theme.btnHover} font-bold text-xs flex items-center justify-center gap-1.5 transition-colors`}
-                  >
-                    <span>Ver todas las secciones ({gradeSections.length})</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </Link>
+                  <div className="px-4 py-2 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 flex items-center gap-2.5">
+                    <Users className="w-4 h-4 text-amber-500" />
+                    <div>
+                      <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Estudiantes</div>
+                      <div className="text-xs font-black text-slate-800 dark:text-slate-200">{inicialStudentsCount} Niños</div>
+                    </div>
+                  </div>
                 </div>
-              );
-            })}
+              </div>
+
+              {/* 3 Grades Grid for Inicial */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {inicialGrades.map((grade) => {
+                  const gradeSections = sections.filter(s => s.grado_id === grade.id);
+                  const numGrado = grade.numero_grado;
+                  const meta = inicialMeta[numGrado] || inicialMeta[1];
+
+                  return (
+                    <div
+                      key={grade.id}
+                      className={`p-6 rounded-3xl ${meta.theme.cardBg} border ${meta.theme.border} shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-6 group`}
+                    >
+                      <div className="space-y-4">
+                        {/* Top Badge & Number */}
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-10 h-10 rounded-2xl ${meta.theme.iconBg} flex items-center justify-center shrink-0`}>
+                              {meta.icon}
+                            </div>
+                            <div>
+                              <h3 className="font-black text-lg text-slate-900 dark:text-white leading-tight">
+                                {grade.nombre}
+                              </h3>
+                              <span className="text-xs text-slate-500 dark:text-slate-400 font-medium block mt-0.5">
+                                {meta.slogan}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Section Item Rows */}
+                        <div className="space-y-2.5">
+                          {gradeSections.map((sec) => {
+                            const secStudents = enrollments.filter(e => e.seccion_id === sec.id).length;
+                            const secCourses = sectionCourses.filter(sc => sc.seccion_id === sec.id).length;
+
+                            return (
+                              <Link
+                                key={sec.id}
+                                href={`/admin/secciones/${sec.id}`}
+                                className="p-3 rounded-2xl bg-white dark:bg-slate-800/90 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-100 dark:border-slate-700/60 shadow-sm hover:shadow transition-all flex items-center justify-between group block"
+                              >
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <div className={`w-8 h-8 rounded-xl ${meta.theme.itemIconBg} flex items-center justify-center shrink-0`}>
+                                    <Users className="w-4 h-4" />
+                                  </div>
+                                  <div className="min-w-0">
+                                    <span className="font-bold text-slate-900 dark:text-white group-hover:text-amber-600 text-xs block">
+                                      Sección {sec.letra}
+                                    </span>
+                                    <span className="text-[11px] text-slate-400 font-medium">
+                                      {secStudents > 0 ? secStudents : 22} alumnos &nbsp;|&nbsp; {secCourses > 0 ? secCourses : 6} materias
+                                    </span>
+                                  </div>
+                                </div>
+                                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-amber-600 group-hover:translate-x-0.5 transition-transform shrink-0" />
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Bottom Action Button */}
+                      <Link
+                        href={`/admin/secciones/${gradeSections[0]?.id || ''}`}
+                        className={`w-full py-2.5 rounded-2xl ${meta.theme.btnBg} ${meta.theme.btnText} ${meta.theme.btnHover} font-bold text-xs flex items-center justify-center gap-1.5 transition-colors`}
+                      >
+                        <span>Ver todas las secciones ({gradeSections.length})</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </Link>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* ── Nivel Primaria Section Box ── */}
+          {(selectedLevel === 'todos' || selectedLevel === 'primaria') && (
+            <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-7">
+              {/* Header Primaria */}
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 border-b border-slate-100 dark:border-slate-800/80 pb-6">
+                <div className="flex items-start gap-4">
+                  <div className="w-14 h-14 rounded-2xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200/80 dark:border-blue-800 flex items-center justify-center text-blue-600 shrink-0 shadow-sm">
+                    <BookOpen className="w-8 h-8 text-blue-600" />
+                  </div>
+                  <div className="space-y-0.5">
+                    <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+                      Educación Primaria
+                    </h2>
+                    <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium max-w-xl">
+                      Formación integral de 1.° a 6.° grado: competencias fundamentales, pensamiento analítico y valores cívicos.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Stat Badges */}
+                <div className="flex items-center gap-3 self-start lg:self-center flex-wrap">
+                  <div className="px-4 py-2 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 flex items-center gap-2.5">
+                    <School className="w-4 h-4 text-blue-500" />
+                    <div>
+                      <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Aulas Activas</div>
+                      <div className="text-xs font-black text-slate-800 dark:text-slate-200">{primariaSections.length} Secciones</div>
+                    </div>
+                  </div>
+
+                  <div className="px-4 py-2 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 flex items-center gap-2.5">
+                    <Users className="w-4 h-4 text-blue-500" />
+                    <div>
+                      <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Estudiantes</div>
+                      <div className="text-xs font-black text-slate-800 dark:text-slate-200">{primariaStudentsCount} Alumnos</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 6 Grades Grid for Primaria */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {primariaGrades.map((grade) => {
+                  const gradeSections = sections.filter(s => s.grado_id === grade.id);
+                  const numGrado = grade.numero_grado;
+                  const meta = primariaMeta[numGrado] || primariaMeta[1];
+
+                  return (
+                    <div
+                      key={grade.id}
+                      className={`p-6 rounded-3xl ${meta.theme.cardBg} border ${meta.theme.border} shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-6 group`}
+                    >
+                      <div className="space-y-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-10 h-10 rounded-2xl ${meta.theme.iconBg} flex items-center justify-center shrink-0`}>
+                              {meta.icon}
+                            </div>
+                            <div>
+                              <h3 className="font-black text-lg text-slate-900 dark:text-white leading-tight">
+                                {grade.nombre}
+                              </h3>
+                              <span className="text-xs text-slate-500 dark:text-slate-400 font-medium block mt-0.5">
+                                {meta.slogan}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2.5">
+                          {gradeSections.map((sec) => {
+                            const secStudents = enrollments.filter(e => e.seccion_id === sec.id).length;
+                            const secCourses = sectionCourses.filter(sc => sc.seccion_id === sec.id).length;
+
+                            return (
+                              <Link
+                                key={sec.id}
+                                href={`/admin/secciones/${sec.id}`}
+                                className="p-3 rounded-2xl bg-white dark:bg-slate-800/90 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-100 dark:border-slate-700/60 shadow-sm hover:shadow transition-all flex items-center justify-between group block"
+                              >
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <div className={`w-8 h-8 rounded-xl ${meta.theme.itemIconBg} flex items-center justify-center shrink-0`}>
+                                    <Users className="w-4 h-4" />
+                                  </div>
+                                  <div className="min-w-0">
+                                    <span className="font-bold text-slate-900 dark:text-white group-hover:text-blue-600 text-xs block">
+                                      Sección {sec.letra}
+                                    </span>
+                                    <span className="text-[11px] text-slate-400 font-medium">
+                                      {secStudents > 0 ? secStudents : 30} alumnos &nbsp;|&nbsp; {secCourses > 0 ? secCourses : 10} materias
+                                    </span>
+                                  </div>
+                                </div>
+                                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-transform shrink-0" />
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <Link
+                        href={`/admin/secciones/${gradeSections[0]?.id || ''}`}
+                        className={`w-full py-2.5 rounded-2xl ${meta.theme.btnBg} ${meta.theme.btnText} ${meta.theme.btnHover} font-bold text-xs flex items-center justify-center gap-1.5 transition-colors`}
+                      >
+                        <span>Ver todas las secciones ({gradeSections.length})</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </Link>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* ── Nivel Secundaria Section Box ── */}
+          {(selectedLevel === 'todos' || selectedLevel === 'secundaria') && (
+            <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-7">
+              {/* Header Secundaria */}
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 border-b border-slate-100 dark:border-slate-800/80 pb-6">
+                <div className="flex items-start gap-4">
+                  <div className="w-14 h-14 rounded-2xl bg-purple-50 dark:bg-purple-950/60 border border-purple-200/80 dark:border-purple-800 flex items-center justify-center text-purple-600 shrink-0 shadow-sm">
+                    <GraduationCap className="w-8 h-8 text-purple-600" />
+                  </div>
+                  <div className="space-y-0.5">
+                    <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+                      Educación Secundaria
+                    </h2>
+                    <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium max-w-xl">
+                      Preparación académica avanzada de 1.° a 5.° de secundaria con enfoque en ciencias, humanidades y competencias del siglo XXI.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Stat Badges */}
+                <div className="flex items-center gap-3 self-start lg:self-center flex-wrap">
+                  <div className="px-4 py-2 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 flex items-center gap-2.5">
+                    <School className="w-4 h-4 text-purple-500" />
+                    <div>
+                      <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Aulas Activas</div>
+                      <div className="text-xs font-black text-slate-800 dark:text-slate-200">{secundariaSections.length} Secciones</div>
+                    </div>
+                  </div>
+
+                  <div className="px-4 py-2 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 flex items-center gap-2.5">
+                    <Users className="w-4 h-4 text-purple-500" />
+                    <div>
+                      <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Estudiantes</div>
+                      <div className="text-xs font-black text-slate-800 dark:text-slate-200">{secundariaStudentsCount} Alumnos</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 5 Grades Grid for Secundaria */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {secundariaGrades.map((grade) => {
+                  const gradeSections = sections.filter(s => s.grado_id === grade.id);
+                  const numGrado = grade.numero_grado;
+                  const meta = secundariaMeta[numGrado] || secundariaMeta[1];
+
+                  return (
+                    <div
+                      key={grade.id}
+                      className={`p-6 rounded-3xl ${meta.theme.cardBg} border ${meta.theme.border} shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-6 group`}
+                    >
+                      <div className="space-y-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-center gap-3">
+                            <span className={`text-2xl font-black ${meta.numColor} tracking-tight`}>
+                              {numGrado}°
+                            </span>
+                            <div>
+                              <h3 className="font-black text-lg text-slate-900 dark:text-white leading-tight">
+                                Secundaria
+                              </h3>
+                              <span className="text-xs text-slate-500 dark:text-slate-400 font-medium block mt-0.5">
+                                {meta.slogan}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="shrink-0 p-1">
+                            {meta.decorIcon}
+                          </div>
+                        </div>
+
+                        <div className="space-y-2.5">
+                          {gradeSections.map((sec) => {
+                            const secStudents = enrollments.filter(e => e.seccion_id === sec.id).length;
+                            const secCourses = sectionCourses.filter(sc => sc.seccion_id === sec.id).length;
+
+                            return (
+                              <Link
+                                key={sec.id}
+                                href={`/admin/secciones/${sec.id}`}
+                                className="p-3 rounded-2xl bg-white dark:bg-slate-800/90 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-100 dark:border-slate-700/60 shadow-sm hover:shadow transition-all flex items-center justify-between group block"
+                              >
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <div className={`w-8 h-8 rounded-xl ${meta.theme.itemIconBg} flex items-center justify-center shrink-0`}>
+                                    <Users className="w-4 h-4" />
+                                  </div>
+                                  <div className="min-w-0">
+                                    <span className="font-bold text-slate-900 dark:text-white group-hover:text-purple-600 text-xs block">
+                                      Sección {sec.letra}
+                                    </span>
+                                    <span className="text-[11px] text-slate-400 font-medium">
+                                      {secStudents > 0 ? secStudents : 36} estudiantes &nbsp;|&nbsp; {secCourses > 0 ? secCourses : 12} materias
+                                    </span>
+                                  </div>
+                                </div>
+                                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-purple-600 group-hover:translate-x-0.5 transition-transform shrink-0" />
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <Link
+                        href={`/admin/secciones/${gradeSections[0]?.id || ''}`}
+                        className={`w-full py-2.5 rounded-2xl ${meta.theme.btnBg} ${meta.theme.btnText} ${meta.theme.btnHover} font-bold text-xs flex items-center justify-center gap-1.5 transition-colors`}
+                      >
+                        <span>Ver todas las secciones ({gradeSections.length})</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </Link>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        /* ── VISTA: CATÁLOGO DE CURSOS Y MATERIAS ── */
+        <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-6">
+          {/* Header de Cursos */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-6">
+            <div>
+              <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+                <BookOpen className="w-6 h-6 text-purple-600" />
+                Catálogo de Cursos & Asignaturas Escolares
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1 font-medium">
+                Gestiona las materias oficiales, sus competencias CNEB y los profesores asignados por nivel.
+              </p>
+            </div>
+
+            {/* Buscador de Cursos */}
+            <div className="relative w-full md:w-72">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                value={courseSearch}
+                onChange={(e) => setCourseSearch(e.target.value)}
+                placeholder="Buscar por nombre, código o área..."
+                className="w-full pl-9 pr-4 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-purple-500"
+              />
+            </div>
           </div>
 
+          {/* Grid de Cursos */}
+          {(() => {
+            const filtered = courses.filter((c) => {
+              const matchesLvl = selectedLevel === 'todos' || c.nivel === selectedLevel;
+              const matchesQ = 
+                c.nombre.toLowerCase().includes(courseSearch.toLowerCase()) ||
+                c.codigo.toLowerCase().includes(courseSearch.toLowerCase()) ||
+                (c.area_curricular || '').toLowerCase().includes(courseSearch.toLowerCase());
+              return matchesLvl && matchesQ;
+            });
+
+            if (filtered.length === 0) {
+              return (
+                <div className="p-12 text-center rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-dashed border-slate-200 dark:border-slate-700 space-y-3">
+                  <BookOpen className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto" />
+                  <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">No se encontraron cursos</h4>
+                  <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                    {courseSearch ? 'No hay asignaturas que coincidan con la búsqueda.' : 'Aún no hay cursos registrados para este nivel.'}
+                  </p>
+                  <button
+                    onClick={() => {
+                      setCourseToEdit(null);
+                      setIsCourseModalOpen(true);
+                    }}
+                    className="px-4 py-2 text-xs font-bold text-white bg-purple-600 hover:bg-purple-700 rounded-xl shadow transition-all cursor-pointer"
+                  >
+                    + Crear Primer Curso
+                  </button>
+                </div>
+              );
+            }
+
+            return (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                {filtered.map((course) => {
+                  const assignedTeachers = sectionCourses
+                    .filter(sc => sc.curso_id === course.id)
+                    .map(sc => {
+                      const doc = teachers.find(t => t.id === sc.docente_id);
+                      const sec = sections.find(s => s.id === sc.seccion_id);
+                      return { doc, sec, sc };
+                    });
+
+                  const uniqueTeachers = Array.from(
+                    new Set(assignedTeachers.map(a => a.doc?.id).filter(Boolean))
+                  ).map(id => teachers.find(t => t.id === id)).filter(Boolean);
+
+                  const courseColor = course.color_hex || course.color || '#4f46e5';
+
+                  return (
+                    <div
+                      key={course.id}
+                      className="p-5 rounded-3xl bg-slate-50/60 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700/80 hover:border-purple-300 dark:hover:border-purple-700 shadow-xs hover:shadow-md transition-all flex flex-col justify-between space-y-4"
+                    >
+                      {/* Top Bar with Badges */}
+                      <div>
+                        <div className="flex items-center justify-between gap-2 mb-3">
+                          <span 
+                            className="px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider text-white shadow-xs flex items-center gap-1.5"
+                            style={{ backgroundColor: courseColor }}
+                          >
+                            <Hash className="w-3 h-3" />
+                            {course.codigo}
+                          </span>
+
+                          <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider ${
+                            course.nivel === 'inicial'
+                              ? 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300'
+                              : course.nivel === 'primaria'
+                              ? 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300'
+                              : 'bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300'
+                          }`}>
+                            {course.nivel}
+                          </span>
+                        </div>
+
+                        {/* Title & Area */}
+                        <h3 className="font-extrabold text-base text-slate-900 dark:text-white leading-snug">
+                          {course.nombre}
+                        </h3>
+                        <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-500 font-semibold">
+                          <span>{course.area_curricular || 'Área General'}</span>
+                          <span>•</span>
+                          <span className="flex items-center gap-1 text-slate-700 dark:text-slate-300 font-bold">
+                            <Clock className="w-3 h-3 text-purple-500" />
+                            {course.horas_semanales_sugeridas || 4} hrs/sem
+                          </span>
+                        </div>
+
+                        {/* Competencias CNEB */}
+                        <div className="mt-3 pt-3 border-t border-slate-200/60 dark:border-slate-700/60">
+                          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 flex items-center gap-1">
+                            <Award className="w-3 h-3 text-indigo-500" />
+                            {course.competencias?.length || 0} Competencias CNEB
+                          </div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {course.competencias && course.competencias.length > 0 ? (
+                              course.competencias.slice(0, 4).map((comp, cIdx) => (
+                                <span
+                                  key={comp.id || cIdx}
+                                  title={comp.descripcion}
+                                  className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 truncate max-w-[200px]"
+                                >
+                                  {comp.codigo}: {comp.descripcion}
+                                </span>
+                              ))
+                            ) : (
+                              <span className="text-[11px] text-slate-400 italic">Sin competencias registradas</span>
+                            )}
+                            {(course.competencias?.length || 0) > 4 && (
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+                                +{(course.competencias?.length || 0) - 4} más
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Docentes Asignados */}
+                        <div className="mt-3 pt-3 border-t border-slate-200/60 dark:border-slate-700/60">
+                          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 flex items-center gap-1">
+                            <GraduationCap className="w-3 h-3 text-purple-500" />
+                            Plana Docente Asignada
+                          </div>
+                          {uniqueTeachers.length > 0 ? (
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              {uniqueTeachers.map((t) => (
+                                <span
+                                  key={t?.id}
+                                  className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200/60 dark:border-purple-800/60 flex items-center gap-1"
+                                >
+                                  👨‍🏫 {t?.apellidos}, {t?.nombres.split(' ')[0]}
+                                </span>
+                              ))}
+                              <span className="text-[10px] text-slate-400 font-medium ml-1">
+                                ({assignedTeachers.length} aulas)
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-between bg-amber-50/70 dark:bg-amber-950/30 p-2 rounded-xl border border-amber-200/60 dark:border-amber-900/40">
+                              <span className="text-[11px] text-amber-700 dark:text-amber-300 font-medium">
+                                ⚠️ Sin docente asignado
+                              </span>
+                              <Link
+                                href="/admin/docentes"
+                                className="text-[10px] font-black text-amber-700 hover:underline"
+                              >
+                                Asignar &rarr;
+                              </Link>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Card Action Buttons */}
+                      <div className="pt-3 border-t border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between gap-2">
+                        <Link
+                          href="/admin/docentes"
+                          className="px-3 py-1.5 rounded-xl text-[11px] font-bold bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/60 border border-purple-200 dark:border-purple-800/60 transition-colors flex items-center gap-1"
+                        >
+                          <GraduationCap className="w-3 h-3" />
+                          <span>Asignar</span>
+                        </Link>
+
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => {
+                              setCourseToEdit(course);
+                              setIsCourseModalOpen(true);
+                            }}
+                            className="p-1.5 rounded-xl text-slate-600 dark:text-slate-400 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                            title="Editar curso y competencias"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => setCourseToDelete(course)}
+                            className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
+                            title="Eliminar curso"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
         </div>
       )}
 
-      {/* ── 4. Nivel Primaria Section Box ── */}
-      {(selectedLevel === 'todos' || selectedLevel === 'primaria') && (
-        <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-7">
-          
-          {/* Header Primaria (Matching Screenshot 1) */}
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 border-b border-slate-100 dark:border-slate-800/80 pb-6">
-            <div className="flex items-start gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-amber-50 dark:bg-amber-950/60 border border-amber-200/80 dark:border-amber-800 flex items-center justify-center text-amber-500 shrink-0 shadow-sm">
-                <Sun className="w-8 h-8 fill-amber-400 text-amber-500" />
-              </div>
-              <div className="space-y-0.5">
-                <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
-                  Nivel Primaria
-                </h2>
-                <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-bold">
-                  Educación Básica Regular (1.° al 6.° grado)
-                </p>
-                <p className="text-xs text-slate-400">
-                  Gestiona secciones, estudiantes, docentes, materias y horarios de primaria.
-                </p>
-              </div>
+      {/* ── 3. PESTAÑA: PERIODOS LECTIVOS & CIERRE DE BIMESTRES (CNEB) ── */}
+      {activeMainTab === 'periodos' && (
+        <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-5">
+            <div>
+              <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+                <Calendar className="w-6 h-6 text-emerald-600" />
+                Gestión de Periodos de Evaluación (Bimestres 2026)
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Apertura y cierre de bimestres para el ingreso oficial de notas por competencias y conclusiones descriptivas CNEB.
+              </p>
             </div>
-
-            <div className="flex items-center gap-4 self-start lg:self-center">
-              <span className="font-serif italic text-sm text-blue-600 dark:text-blue-400 -rotate-2 hidden xl:block font-bold">
-                Pequeños pasos, grandes futuros
-              </span>
+            <div className="px-4 py-2 bg-emerald-50 text-emerald-800 text-xs font-bold rounded-xl border border-emerald-200 flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-emerald-600" />
+              Año Académico 2026 Activo
             </div>
           </div>
 
-          {/* 4 KPI Stats Pills for Primaria */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-            <div className="bg-blue-50/60 dark:bg-blue-950/40 rounded-2xl p-3 px-4 border border-blue-100/80 dark:border-blue-900/40 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/60 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
-                <Users className="w-5 h-5" />
-              </div>
-              <div>
-                <span className="text-base font-black text-slate-900 dark:text-white block leading-tight">{primariaStudentsCount > 0 ? primariaStudentsCount : 354}</span>
-                <span className="text-[11px] font-bold text-slate-500">Estudiantes</span>
-              </div>
-            </div>
-
-            <div className="bg-emerald-50/60 dark:bg-emerald-950/40 rounded-2xl p-3 px-4 border border-emerald-100/80 dark:border-emerald-900/40 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-                <UserCheck className="w-5 h-5" />
-              </div>
-              <div>
-                <span className="text-base font-black text-slate-900 dark:text-white block leading-tight">{teachers.length > 0 ? teachers.length : 24}</span>
-                <span className="text-[11px] font-bold text-slate-500">Docentes</span>
-              </div>
-            </div>
-
-            <div className="bg-purple-50/60 dark:bg-purple-950/40 rounded-2xl p-3 px-4 border border-purple-100/80 dark:border-purple-900/40 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
-                <BookOpen className="w-5 h-5" />
-              </div>
-              <div>
-                <span className="text-base font-black text-slate-900 dark:text-white block leading-tight">36</span>
-                <span className="text-[11px] font-bold text-slate-500">Materias</span>
-              </div>
-            </div>
-
-            <div className="bg-rose-50/60 dark:bg-rose-950/40 rounded-2xl p-3 px-4 border border-rose-100/80 dark:border-rose-900/40 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-900/60 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
-                <Monitor className="w-5 h-5" />
-              </div>
-              <div>
-                <span className="text-base font-black text-slate-900 dark:text-white block leading-tight">{primariaSections.length > 0 ? primariaSections.length : 12}</span>
-                <span className="text-[11px] font-bold text-slate-500">Secciones</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Grid de 6 Grados de Primaria (Matching Screenshot 1) */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
-            {primariaGrades.map((grade) => {
-              const gradeSections = sections.filter(s => s.grado_id === grade.id);
-              const numGrado = grade.numero_grado || 1;
-              const meta = primariaMeta[numGrado] || primariaMeta[1];
-              const totalGradeStudents = gradeSections.reduce((acc, sec) => {
-                const count = enrollments.filter(e => e.seccion_id === sec.id).length;
-                return acc + (count > 0 ? count : 24);
-              }, 0);
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+            {evaluationPeriods.map((period) => {
+              const isClosed = !!period.cerrado;
+              const isActive = !!period.activo;
 
               return (
                 <div
-                  key={grade.id}
-                  className={`rounded-3xl p-5 border ${meta.theme.cardBg} ${meta.theme.border} shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-4`}
+                  key={period.id}
+                  className={`rounded-3xl p-5 border transition-all flex flex-col justify-between space-y-4 shadow-sm ${
+                    isClosed
+                      ? 'bg-slate-50/80 dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 opacity-90'
+                      : isActive
+                      ? 'bg-gradient-to-br from-emerald-50/60 via-white to-emerald-50/20 border-emerald-300 dark:border-emerald-800 shadow-md ring-2 ring-emerald-500/20'
+                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'
+                  }`}
                 >
-                  <div className="space-y-4">
-                    {/* Top Header: Icon + Title + Slogan + Students Badge */}
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-11 h-11 rounded-2xl ${meta.theme.iconBg} flex items-center justify-center shrink-0`}>
-                          {meta.icon}
-                        </div>
-                        <div className="min-w-0">
-                          <h3 className="font-black text-lg text-slate-900 dark:text-white leading-tight">
-                            {grade.nombre}
-                          </h3>
-                          <span className="text-xs text-slate-500 dark:text-slate-400 font-medium block mt-0.5">
-                            {meta.slogan}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className={`flex items-center gap-1 px-2.5 py-1 rounded-xl ${meta.theme.pillBg} ${meta.theme.pillText} font-bold text-xs shrink-0`}>
-                        <Users className="w-3.5 h-3.5" />
-                        <span>{totalGradeStudents} estudiantes</span>
-                      </div>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider ${
+                        isClosed 
+                          ? 'bg-rose-100 text-rose-700' 
+                          : isActive 
+                          ? 'bg-emerald-100 text-emerald-800' 
+                          : 'bg-blue-100 text-blue-700'
+                      }`}>
+                        {isClosed ? '🔒 Cerrado' : isActive ? '🟢 En Curso (Activo)' : '⚪ Programado'}
+                      </span>
+                      <span className="text-xs font-bold text-slate-400">
+                        N° {period.numero_periodo}
+                      </span>
                     </div>
 
-                    {/* Section Item Rows (White Cards Inside) */}
-                    <div className="space-y-2.5">
-                      {gradeSections.map((sec) => {
-                        const secStudents = enrollments.filter(e => e.seccion_id === sec.id).length;
-                        const secCourses = sectionCourses.filter(sc => sc.seccion_id === sec.id).length;
+                    <div>
+                      <h3 className="text-lg font-black text-slate-900 dark:text-white">
+                        {period.nombre}
+                      </h3>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        {isClosed 
+                          ? 'Las calificaciones están bloqueadas y no pueden ser editadas por docentes.'
+                          : 'Periodo habilitado para el registro de calificaciones.'}
+                      </p>
+                    </div>
 
-                        return (
-                          <Link
-                            key={sec.id}
-                            href={`/admin/secciones/${sec.id}`}
-                            className="p-3 rounded-2xl bg-white dark:bg-slate-800/90 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-100 dark:border-slate-700/60 shadow-sm hover:shadow transition-all flex items-center justify-between group block"
-                          >
-                            <div className="flex items-center gap-3 min-w-0">
-                              <div className={`w-8 h-8 rounded-xl ${meta.theme.itemIconBg} flex items-center justify-center shrink-0`}>
-                                <Users className="w-4 h-4" />
-                              </div>
-                              <div className="min-w-0">
-                                <span className="font-bold text-slate-900 dark:text-white group-hover:text-blue-600 text-xs block">
-                                  Sección {sec.letra}
-                                </span>
-                                <span className="text-[11px] text-slate-400 font-medium">
-                                  {secStudents > 0 ? secStudents : 24} estudiantes &nbsp;|&nbsp; {secCourses > 0 ? secCourses : 9} materias
-                                </span>
-                              </div>
-                            </div>
-                            <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-transform shrink-0" />
-                          </Link>
-                        );
-                      })}
+                    <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200/60 dark:border-slate-700/60 text-xs space-y-1.5">
+                      <div className="flex items-center justify-between text-slate-600 dark:text-slate-300">
+                        <span className="font-semibold text-slate-400">Inicio:</span>
+                        <span className="font-bold">{period.fecha_inicio}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-slate-600 dark:text-slate-300">
+                        <span className="font-semibold text-slate-400">Cierre:</span>
+                        <span className="font-bold">{period.fecha_fin}</span>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Bottom Action Button */}
-                  <Link
-                    href={`/admin/secciones/${gradeSections[0]?.id || ''}`}
-                    className={`w-full py-2.5 rounded-2xl ${meta.theme.btnBg} ${meta.theme.btnText} ${meta.theme.btnHover} font-bold text-xs flex items-center justify-center gap-1.5 transition-colors`}
-                  >
-                    <span>Ver todas las secciones ({gradeSections.length})</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </Link>
+                  <div className="pt-3 border-t border-slate-200/60 dark:border-slate-700/60">
+                    <button
+                      onClick={() => toggleClosePeriod(period.id)}
+                      className={`w-full py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                        isClosed
+                          ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/20'
+                          : 'bg-rose-600 hover:bg-rose-700 text-white shadow-md shadow-rose-600/20'
+                      }`}
+                    >
+                      {isClosed ? (
+                        <>
+                          <Unlock className="w-4 h-4" />
+                          <span>Reabrir Bimestre</span>
+                        </>
+                      ) : (
+                        <>
+                          <Lock className="w-4 h-4" />
+                          <span>Cerrar Bimestre</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
               );
             })}
           </div>
-
         </div>
       )}
 
-      {/* ── 5. Nivel Secundaria Section Box ── */}
-      {(selectedLevel === 'todos' || selectedLevel === 'secundaria') && (
-        <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-7">
-          
-          {/* Header Secundaria (Matching Screenshot 2) */}
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 border-b border-slate-100 dark:border-slate-800/80 pb-6">
-            <div className="flex items-start gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-purple-50 dark:bg-purple-950/60 border border-purple-200/80 dark:border-purple-800 flex items-center justify-center text-purple-600 shrink-0 shadow-sm">
-                <GraduationCap className="w-8 h-8 text-purple-600" />
+      {/* ── MODAL: REGISTRAR / EDITAR CURSO ── */}
+      <CourseFormModal
+        isOpen={isCourseModalOpen}
+        onClose={() => {
+          setIsCourseModalOpen(false);
+          setCourseToEdit(null);
+        }}
+        courseToEdit={courseToEdit}
+        defaultLevel={selectedLevel === 'todos' ? 'primaria' : selectedLevel}
+      />
+
+      {/* ── MODAL: CREAR / EDITAR SALÓN O SECCIÓN ── */}
+      <SectionFormModal
+        isOpen={isSectionModalOpen}
+        onClose={() => {
+          setIsSectionModalOpen(false);
+          setSectionToEdit(null);
+        }}
+        sectionToEdit={sectionToEdit}
+      />
+
+      {/* ── MODAL DE CONFIRMACIÓN DE PRECARGA CNEB ── */}
+      {isCnebPreloadModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-lg w-full shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4">
+            <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center mx-auto">
+              <Sparkles className="w-6 h-6" />
+            </div>
+            <div className="text-center space-y-1">
+              <h3 className="text-lg font-black text-slate-900 dark:text-white">
+                ¿Precargar Currículo CNEB Oficial (MINEDU)?
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Se cargarán automáticamente todas las áreas y competencias oficiales para <strong>Inicial, Primaria y Secundaria</strong> según la Resolución Ministerial del MINEDU. Los cursos ya existentes no se duplicarán.
+              </p>
+            </div>
+            <div className="grid grid-cols-3 gap-2 pt-2 text-center text-xs font-semibold">
+              <div className="p-2.5 bg-amber-50 rounded-xl border border-amber-200">
+                <p className="text-amber-800 font-black">Inicial</p>
+                <p className="text-[10px] text-amber-600">5 Asignaturas</p>
               </div>
-              <div className="space-y-0.5">
-                <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
-                  Nivel Secundaria
-                </h2>
-                <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-bold">
-                  Formación integral para un mejor futuro
-                </p>
-                <p className="text-xs text-slate-400">
-                  Gestiona grados, secciones, estudiantes, docentes, materias y horarios.
-                </p>
+              <div className="p-2.5 bg-blue-50 rounded-xl border border-blue-200">
+                <p className="text-blue-800 font-black">Primaria</p>
+                <p className="text-[10px] text-blue-600">8 Asignaturas</p>
+              </div>
+              <div className="p-2.5 bg-indigo-50 rounded-xl border border-indigo-200">
+                <p className="text-indigo-800 font-black">Secundaria</p>
+                <p className="text-[10px] text-indigo-600">10 Asignaturas</p>
               </div>
             </div>
-
-            <div className="flex items-center gap-6 self-start lg:self-center">
-              <div className="hidden xl:flex flex-col items-end text-blue-600 dark:text-blue-400 font-serif italic text-xs font-bold leading-tight -rotate-1">
-                <span>Disciplina · Conocimiento · Grandes logros</span>
-                <span className="text-[10px] text-blue-500 dark:text-blue-300 font-sans not-italic font-medium">Hoy construimos su mejor mañana</span>
-              </div>
-            </div>
-          </div>
-
-          {/* 4 KPI Stats Pills for Secundaria */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-            <div className="bg-blue-50/60 dark:bg-blue-950/40 rounded-2xl p-3 px-4 border border-blue-100/80 dark:border-blue-900/40 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/60 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
-                <Users className="w-5 h-5" />
-              </div>
-              <div>
-                <span className="text-base font-black text-slate-900 dark:text-white block leading-tight">{secundariaStudentsCount > 0 ? secundariaStudentsCount : 428}</span>
-                <span className="text-[11px] font-bold text-slate-500">Estudiantes</span>
-              </div>
-            </div>
-
-            <div className="bg-emerald-50/60 dark:bg-emerald-950/40 rounded-2xl p-3 px-4 border border-emerald-100/80 dark:border-emerald-900/40 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-                <UserCheck className="w-5 h-5" />
-              </div>
-              <div>
-                <span className="text-base font-black text-slate-900 dark:text-white block leading-tight">{teachers.length > 0 ? teachers.length : 32}</span>
-                <span className="text-[11px] font-bold text-slate-500">Docentes</span>
-              </div>
-            </div>
-
-            <div className="bg-purple-50/60 dark:bg-purple-950/40 rounded-2xl p-3 px-4 border border-purple-100/80 dark:border-purple-900/40 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/60 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
-                <BookOpen className="w-5 h-5" />
-              </div>
-              <div>
-                <span className="text-base font-black text-slate-900 dark:text-white block leading-tight">48</span>
-                <span className="text-[11px] font-bold text-slate-500">Materias</span>
-              </div>
-            </div>
-
-            <div className="bg-rose-50/60 dark:bg-rose-950/40 rounded-2xl p-3 px-4 border border-rose-100/80 dark:border-rose-900/40 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-900/60 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
-                <Monitor className="w-5 h-5" />
-              </div>
-              <div>
-                <span className="text-base font-black text-slate-900 dark:text-white block leading-tight">{secundariaSections.length > 0 ? secundariaSections.length : 12}</span>
-                <span className="text-[11px] font-bold text-slate-500">Secciones</span>
-              </div>
+            <div className="flex items-center justify-end gap-2 pt-3">
+              <button
+                onClick={() => setIsCnebPreloadModalOpen(false)}
+                className="px-4 py-2.5 text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 rounded-xl"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => {
+                  preloadOfficialCnebCurriculum();
+                  setIsCnebPreloadModalOpen(false);
+                }}
+                className="px-5 py-2.5 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 rounded-xl shadow-md transition-colors flex items-center gap-1.5"
+              >
+                <Sparkles className="w-4 h-4" />
+                <span>Confirmar y Precargar</span>
+              </button>
             </div>
           </div>
+        </div>
+      )}
 
-          {/* Grid de Grados de Secundaria (Matching Screenshot 2 with big numbers) */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
-            {secundariaGrades.map((grade) => {
-              const gradeSections = sections.filter(s => s.grado_id === grade.id);
-              const numGrado = grade.numero_grado || 1;
-              const meta = secundariaMeta[numGrado] || secundariaMeta[1];
-
-              return (
-                <div
-                  key={grade.id}
-                  className={`rounded-3xl p-5 border ${meta.theme.cardBg} ${meta.theme.border} shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-4`}
-                >
-                  <div className="space-y-4">
-                    {/* Top Header: Big Number + Title + Slogan + Decorative Icon */}
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-baseline gap-2.5">
-                        <span className={`text-4xl sm:text-5xl font-black ${meta.numColor} tracking-tighter leading-none`}>
-                          {numGrado}°
-                        </span>
-                        <div>
-                          <h3 className="font-black text-lg text-slate-900 dark:text-white leading-tight">
-                            Secundaria
-                          </h3>
-                          <span className="text-xs text-slate-500 dark:text-slate-400 font-medium block mt-0.5">
-                            {meta.slogan}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="shrink-0 p-1">
-                        {meta.decorIcon}
-                      </div>
-                    </div>
-
-                    {/* Section Item Rows */}
-                    <div className="space-y-2.5">
-                      {gradeSections.map((sec) => {
-                        const secStudents = enrollments.filter(e => e.seccion_id === sec.id).length;
-                        const secCourses = sectionCourses.filter(sc => sc.seccion_id === sec.id).length;
-
-                        return (
-                          <Link
-                            key={sec.id}
-                            href={`/admin/secciones/${sec.id}`}
-                            className="p-3 rounded-2xl bg-white dark:bg-slate-800/90 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-100 dark:border-slate-700/60 shadow-sm hover:shadow transition-all flex items-center justify-between group block"
-                          >
-                            <div className="flex items-center gap-3 min-w-0">
-                              <div className={`w-8 h-8 rounded-xl ${meta.theme.itemIconBg} flex items-center justify-center shrink-0`}>
-                                <Users className="w-4 h-4" />
-                              </div>
-                              <div className="min-w-0">
-                                <span className="font-bold text-slate-900 dark:text-white group-hover:text-purple-600 text-xs block">
-                                  Sección {sec.letra}
-                                </span>
-                                <span className="text-[11px] text-slate-400 font-medium">
-                                  {secStudents > 0 ? secStudents : 36} estudiantes &nbsp;|&nbsp; {secCourses > 0 ? secCourses : 12} materias
-                                </span>
-                              </div>
-                            </div>
-                            <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-purple-600 group-hover:translate-x-0.5 transition-transform shrink-0" />
-                          </Link>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Bottom Action Button */}
-                  <Link
-                    href={`/admin/secciones/${gradeSections[0]?.id || ''}`}
-                    className={`w-full py-2.5 rounded-2xl ${meta.theme.btnBg} ${meta.theme.btnText} ${meta.theme.btnHover} font-bold text-xs flex items-center justify-center gap-1.5 transition-colors`}
-                  >
-                    <span>Ver todas las secciones ({gradeSections.length})</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </Link>
-                </div>
-              );
-            })}
+      {/* ── MODAL DE CONFIRMACIÓN DE ELIMINACIÓN DE SECCIÓN ── */}
+      {sectionToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-md w-full shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4">
+            <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 flex items-center justify-center mx-auto">
+              <Trash2 className="w-6 h-6" />
+            </div>
+            <div className="text-center space-y-1">
+              <h3 className="text-base font-black text-slate-900 dark:text-white">
+                ¿Eliminar el salón {sectionToDelete.grado?.nombre} &quot;{sectionToDelete.letra}&quot;?
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Esta acción eliminará el aula y desvinculará sus horarios y asignaciones de cursos.
+              </p>
+            </div>
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                onClick={() => setSectionToDelete(null)}
+                className="px-4 py-2 text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 rounded-xl"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => {
+                  deleteSection(sectionToDelete.id);
+                  setSectionToDelete(null);
+                }}
+                className="px-5 py-2 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-xl shadow-md transition-colors"
+              >
+                Sí, Eliminar Salón
+              </button>
+            </div>
           </div>
+        </div>
+      )}
 
+      {/* ── MODAL DE CONFIRMACIÓN DE ELIMINACIÓN DE CURSO ── */}
+      {courseToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-md w-full shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4">
+            <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 flex items-center justify-center mx-auto">
+              <Trash2 className="w-6 h-6" />
+            </div>
+            <div className="text-center space-y-1">
+              <h3 className="text-base font-black text-slate-900 dark:text-white">
+                ¿Eliminar el curso &quot;{courseToDelete.nombre}&quot;?
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Esta acción eliminará la materia y sus competencias asociadas. Si existen horarios o asignaciones de docentes vinculadas a este curso, también serán removidas.
+              </p>
+            </div>
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                onClick={() => setCourseToDelete(null)}
+                className="px-4 py-2 text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => {
+                  deleteCourse(courseToDelete.id);
+                  setCourseToDelete(null);
+                }}
+                className="px-5 py-2 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-xl shadow-md transition-colors"
+              >
+                Sí, Eliminar Curso
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

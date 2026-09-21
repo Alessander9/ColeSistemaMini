@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
 import { 
   QrCode, 
@@ -49,6 +49,8 @@ export default function DocenteDashboardPage() {
     getTeacherSections,
     saveClassAttendanceQuickly,
     registerAttendance,
+    announcements,
+    confirmAnnouncement,
     showToast 
   } = useApp();
 
@@ -63,6 +65,13 @@ export default function DocenteDashboardPage() {
   const [selectedSectionId, setSelectedSectionId] = useState<string>(
     teacherSections[0]?.seccion.id || ''
   );
+
+  // Fix 1.1: Sincronizar selectedSectionId cuando teacherSections carga después de currentUser
+  useEffect(() => {
+    if (teacherSections.length > 0 && !selectedSectionId) {
+      setSelectedSectionId(teacherSections[0].seccion.id);
+    }
+  }, [teacherSections, selectedSectionId]);
 
   // Estados locales para el pase rápido de asistencia en el dashboard
   const [studentSearchQuery, setStudentSearchQuery] = useState('');
@@ -946,6 +955,118 @@ export default function DocenteDashboardPage() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* ── 5. SECCIÓN DE COMUNICADOS & CITACIONES INSTITUCIONALES PARA DOCENTES ── */}
+      <div className="bg-white dark:bg-slate-900 p-6 sm:p-7 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-black">
+              <School className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-black text-base text-slate-900 dark:text-white flex items-center gap-2">
+                <span>Circular Institucional &amp; Convocatorias a Docentes</span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 font-bold border border-indigo-200">
+                  Plana Docente 2026
+                </span>
+              </h3>
+              <p className="text-xs text-slate-500 font-medium">Disposiciones pedagógicas emitidas por Dirección y Coordinación Académica</p>
+            </div>
+          </div>
+        </div>
+
+        {announcements.filter(a => !a.destinatarios_rol || a.destinatarios_rol === 'todos' || a.destinatarios_rol === 'docente').length === 0 ? (
+          <div className="py-8 text-center text-xs text-slate-400 bg-slate-50/50 dark:bg-slate-800/30 rounded-2xl border border-slate-100 dark:border-slate-800">
+            No hay comunicados o citaciones docentes pendientes en este momento.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+            {announcements
+              .filter(a => !a.destinatarios_rol || a.destinatarios_rol === 'todos' || a.destinatarios_rol === 'docente')
+              .map((ann) => {
+                const isConfirmed = currentUser?.id && ann.confirmado_por?.includes(currentUser.id);
+                const isCitacion = ann.categoria === 'citacion' || ann.tipo === 'citacion';
+                const isUrgente = ann.tipo === 'urgente';
+
+                return (
+                  <div key={ann.id} className="p-4 sm:p-5 rounded-2xl border bg-slate-50/60 dark:bg-slate-800/30 border-slate-200/80 dark:border-slate-800 space-y-3 flex flex-col justify-between">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className={`text-[10px] font-black uppercase px-2.5 py-0.5 rounded-md ${
+                          isCitacion ? 'bg-purple-100 text-purple-800' : isUrgente ? 'bg-rose-100 text-rose-800' : 'bg-blue-100 text-blue-800'
+                        }`}>
+                          {isCitacion ? '📅 Convocatoria Docente' : isUrgente ? '⚠️ Urgente' : '📢 Circular Interna'}
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-bold">
+                          {ann.fecha_publicacion || ann.creado_en?.substring(0, 10) || '2026'}
+                        </span>
+                      </div>
+
+                      <h4 className="text-sm font-black text-slate-900 dark:text-white leading-snug">
+                        {ann.titulo}
+                      </h4>
+
+                      <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-line font-medium">
+                        {ann.contenido}
+                      </p>
+
+                      {isCitacion && (ann.fecha_citacion || ann.lugar_citacion || ann.enlace_reunion) && (
+                        <div className="p-2.5 rounded-xl bg-purple-50/60 dark:bg-purple-950/40 border border-purple-200/60 space-y-1 text-xs text-purple-950 dark:text-purple-200">
+                          {ann.fecha_citacion && (
+                            <div className="flex items-center gap-1.5 font-bold">
+                              <Calendar className="w-3.5 h-3.5 text-purple-600" />
+                              <span>Reunión: {ann.fecha_citacion} {ann.hora_citacion ? `(${ann.hora_citacion})` : ''}</span>
+                            </div>
+                          )}
+                          {ann.lugar_citacion && (
+                            <div className="flex items-center gap-1.5 font-medium text-[11px] text-slate-600 dark:text-slate-400">
+                              <MapPin className="w-3.5 h-3.5 text-slate-500" />
+                              <span>Lugar: {ann.lugar_citacion}</span>
+                            </div>
+                          )}
+                          {ann.enlace_reunion && (
+                            <a
+                              href={ann.enlace_reunion}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1 text-[11px] font-black text-blue-600 hover:underline pt-1"
+                            >
+                              <span>🔗 Sala Virtual (Google Meet / Zoom)</span>
+                            </a>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between gap-2">
+                      <div className="text-[10px] text-slate-400">
+                        {ann.requiere_confirmacion ? 'Requiere acuse de recibo' : 'Aviso informativo'}
+                      </div>
+
+                      {ann.requiere_confirmacion && (
+                        isConfirmed ? (
+                          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-xl bg-emerald-100 text-emerald-800 text-xs font-black">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>Recibido y Leído</span>
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => confirmAnnouncement(ann.id, currentUser?.id || 'docente-user')}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs shadow-xs cursor-pointer"
+                          >
+                            <CheckSquare className="w-3.5 h-3.5" />
+                            <span>Confirmar Recepción</span>
+                          </button>
+                        )
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+        )}
       </div>
 
     </div>

@@ -14,6 +14,7 @@ import {
 let localStudents = [...MOCK_STUDENTS];
 let localEnrollments = [...MOCK_ENROLLMENTS];
 let localGrades: GradeRecord[] = [...MOCK_GRADE_RECORDS];
+let localCourses: Course[] = [...MOCK_COURSES];
 
 export async function fetchGradeLevels(): Promise<GradeLevel[]> {
   if (!isSupabaseConfigured()) return MOCK_GRADE_LEVELS;
@@ -48,17 +49,17 @@ export async function fetchSections(): Promise<Section[]> {
 }
 
 export async function fetchCourses(): Promise<Course[]> {
-  if (!isSupabaseConfigured()) return MOCK_COURSES;
+  if (!isSupabaseConfigured()) return localCourses;
   const supabase = createClient();
   try {
     const { data, error } = await supabase
       .from('cursos')
       .select('*, competencias(*)');
 
-    if (error || !data) return MOCK_COURSES;
+    if (error || !data) return localCourses;
     return data as Course[];
   } catch {
-    return MOCK_COURSES;
+    return localCourses;
   }
 }
 
@@ -317,4 +318,131 @@ export async function saveGradeInDb(params: {
   } else {
     localGrades.push(newRecord);
   }
+}
+
+export async function createCourseInDb(data: {
+  nombre: string;
+  codigo: string;
+  nivel: 'inicial' | 'primaria' | 'secundaria';
+  color?: string;
+  color_hex?: string;
+  area_curricular?: string;
+  horas_semanales_sugeridas?: number;
+  descripcion?: string;
+  competencias?: { codigo: string; descripcion: string }[];
+}): Promise<Course> {
+  const courseId = `course-${data.codigo.toLowerCase().replace(/[^a-z0-9]/g, '')}-${Date.now()}`;
+  
+  const createdCompetencias: Competency[] = (data.competencias || []).map((c, index) => ({
+    id: `comp-${courseId}-${index + 1}`,
+    curso_id: courseId,
+    codigo: c.codigo || `C${index + 1}`,
+    descripcion: c.descripcion,
+    orden: index + 1,
+  }));
+
+  const newCourse: Course = {
+    id: courseId,
+    nombre: data.nombre.trim(),
+    codigo: data.codigo.trim().toUpperCase(),
+    nivel: data.nivel,
+    color: data.color_hex || data.color || '#4f46e5',
+    color_hex: data.color_hex || data.color || '#4f46e5',
+    area_curricular: data.area_curricular || 'General',
+    horas_semanales_sugeridas: data.horas_semanales_sugeridas || 4,
+    descripcion: data.descripcion || '',
+    activo: true,
+    created_at: new Date().toISOString(),
+    competencias: createdCompetencias,
+  };
+
+  if (isSupabaseConfigured()) {
+    const supabase = createClient();
+    try {
+      await supabase.from('cursos').insert({
+        id: newCourse.id,
+        nombre: newCourse.nombre,
+        codigo: newCourse.codigo,
+        nivel: newCourse.nivel,
+        color_hex: newCourse.color_hex,
+      });
+
+      if (createdCompetencias.length > 0) {
+        await supabase.from('competencias').insert(
+          createdCompetencias.map(c => ({
+            id: c.id,
+            curso_id: c.curso_id,
+            codigo: c.codigo,
+            descripcion: c.descripcion,
+            orden: c.orden,
+          }))
+        );
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
+  localCourses.push(newCourse);
+  return newCourse;
+}
+
+export async function updateCourseInDb(
+  courseId: string,
+  data: Omit<Partial<Course>, 'competencias'> & { competencias?: { codigo: string; descripcion: string; id?: string }[] }
+): Promise<Course | null> {
+  const existingIdx = localCourses.findIndex(c => c.id === courseId);
+  if (existingIdx === -1) return null;
+
+  const current = localCourses[existingIdx];
+  
+  let updatedCompetencias: Competency[] = current.competencias || [];
+  if (data.competencias) {
+    updatedCompetencias = data.competencias.map((c, idx) => ({
+      id: c.id || `comp-${courseId}-${idx + 1}-${Date.now()}`,
+      curso_id: courseId,
+      codigo: c.codigo || `C${idx + 1}`,
+      descripcion: c.descripcion,
+      orden: idx + 1,
+    }));
+  }
+
+  const updatedCourse: Course = {
+    ...current,
+    ...data,
+    competencias: updatedCompetencias,
+  };
+
+  localCourses[existingIdx] = updatedCourse;
+
+  if (isSupabaseConfigured()) {
+    const supabase = createClient();
+    try {
+      await supabase.from('cursos').update({
+        nombre: updatedCourse.nombre,
+        codigo: updatedCourse.codigo,
+        nivel: updatedCourse.nivel,
+        color_hex: updatedCourse.color_hex,
+      }).eq('id', courseId);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  return updatedCourse;
+}
+
+export async function deleteCourseFromDb(courseId: string): Promise<boolean> {
+  localCourses = localCourses.filter(c => c.id !== courseId);
+
+  if (isSupabaseConfigured()) {
+    const supabase = createClient();
+    try {
+      await supabase.from('cursos').delete().eq('id', courseId);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  return true;
 }

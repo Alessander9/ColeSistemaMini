@@ -8,22 +8,36 @@ import { EvaluationExam } from '@/types';
 import { Calendar, Clock, BookOpen, AlertCircle, Sparkles, Layers, Award } from 'lucide-react';
 
 export default function EstudianteEvaluacionesPage() {
-  const { exams } = useApp();
+  const { exams, currentUser, students, enrollments } = useApp();
   const [activeFilter, setActiveFilter] = useState<string>('todos');
+
+  // Encontrar el estudiante y su sección asignada
+  const currentStudent = useMemo(() => {
+    return students.find(s => s.profile_id === currentUser?.id || s.id === currentUser?.id);
+  }, [students, currentUser]);
+
+  const currentEnrollment = useMemo(() => {
+    return enrollments.find(e => e.estudiante_id === currentStudent?.id);
+  }, [enrollments, currentStudent]);
+
+  const relevantExams = useMemo(() => {
+    if (!currentEnrollment?.seccion_id) return exams;
+    return exams.filter(e => !e.seccion_id || e.seccion_id === currentEnrollment.seccion_id);
+  }, [exams, currentEnrollment]);
 
   // Filter chips with dynamic counters
   const filterChips: FilterChip[] = useMemo(() => [
-    { id: 'todos', label: 'Todas las Evaluaciones', count: exams.length },
-    { id: 'examen', label: '📝 Exámenes Mensuales', count: exams.filter(e => e.tipo === 'examen').length },
-    { id: 'practica', label: '📋 Prácticas Calificadas', count: exams.filter(e => e.tipo === 'practica').length },
-    { id: 'proyecto', label: '🏆 Proyectos & Rúbricas', count: exams.filter(e => e.tipo === 'proyecto').length },
-  ], [exams]);
+    { id: 'todos', label: 'Todas las Evaluaciones', count: relevantExams.length },
+    { id: 'examen', label: '📝 Exámenes Mensuales', count: relevantExams.filter(e => e.tipo === 'examen').length },
+    { id: 'practica', label: '📋 Prácticas Calificadas', count: relevantExams.filter(e => e.tipo === 'practica').length },
+    { id: 'proyecto', label: '🏆 Proyectos & Rúbricas', count: relevantExams.filter(e => e.tipo === 'proyecto').length },
+  ], [relevantExams]);
 
   // Filtered exams dataset
   const filteredExams = useMemo(() => {
-    if (activeFilter === 'todos') return exams;
-    return exams.filter(e => e.tipo === activeFilter);
-  }, [exams, activeFilter]);
+    if (activeFilter === 'todos') return relevantExams;
+    return relevantExams.filter(e => e.tipo === activeFilter);
+  }, [relevantExams, activeFilter]);
 
   const columns: Column<EvaluationExam>[] = [
     {

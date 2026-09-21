@@ -53,24 +53,49 @@ export default function AdminDashboardPage() {
     auditLogs = []
   } = useApp();
 
-  const [isSetupWizardOpen, setIsSetupWizardOpen] = useState(true);
+  // Fix 1.6: Persistir estado de wizard en localStorage para que no aparezca en cada recarga
+  const [isSetupWizardOpen, setIsSetupWizardOpen] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    const dismissed = localStorage.getItem('setup_wizard_dismissed');
+    return !dismissed;
+  });
+
+  const handleDismissWizard = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('setup_wizard_dismissed', '1');
+    }
+    setIsSetupWizardOpen(false);
+  };
   const [attendanceFilterLevel, setAttendanceFilterLevel] = useState<EducationalLevel | 'todos'>('todos');
 
   const currentLevel = academicContext?.nivel || 'todos';
 
-  // Helper para obtener nivel del estudiante
+  // Fix 1.7: Mapas O(1) indexados para lookup de nivel educativo
+  const sectionGradeMap = useMemo(() => new Map(sections.map(s => [s.id, s.grado_id])), [sections]);
+  const gradeLevelMap = useMemo(() => new Map(gradeLevels.map(g => [g.id, g.nivel])), [gradeLevels]);
+  const studentLevelMap = useMemo(() => {
+    const map = new Map<string, EducationalLevel>();
+    enrollments.forEach(enr => {
+      const gradoId = sectionGradeMap.get(enr.seccion_id);
+      if (gradoId) {
+        const nivel = gradeLevelMap.get(gradoId);
+        if (nivel) map.set(enr.estudiante_id, nivel);
+      }
+    });
+    return map;
+  }, [enrollments, sectionGradeMap, gradeLevelMap]);
+
+  const enrollmentStudentMap = useMemo(() => new Map(enrollments.map(e => [e.id, e.estudiante_id])), [enrollments]);
+
   const getStudentLevel = React.useCallback((studentId: string): EducationalLevel | null => {
-    const enr = enrollments.find(e => e.estudiante_id === studentId);
-    const sec = sections.find(sc => sc.id === enr?.seccion_id);
-    const grd = gradeLevels.find(g => g.id === sec?.grado_id);
-    return grd?.nivel || null;
-  }, [enrollments, sections, gradeLevels]);
+    return studentLevelMap.get(studentId) || null;
+  }, [studentLevelMap]);
 
   // Filtrado de estudiantes por nivel
   const filteredStudents = useMemo(() => {
     if (currentLevel === 'todos') return students;
     return students.filter(s => getStudentLevel(s.id) === currentLevel);
-  }, [students, enrollments, sections, gradeLevels, currentLevel]);
+  }, [students, getStudentLevel, currentLevel]);
 
   // Cálculos dinámicos 100% reales
   const totalStudentsCount = currentLevel === 'todos' ? students.length : filteredStudents.length;
@@ -90,8 +115,7 @@ export default function AdminDashboardPage() {
   const todayAttendances = attendances.filter(a => {
     if (a.fecha !== todayStr) return false;
     if (attendanceFilterLevel === 'todos') return true;
-    const enr = enrollments.find(e => e.id === a.matricula_id);
-    const studentId = enr?.estudiante_id;
+    const studentId = enrollmentStudentMap.get(a.matricula_id);
     return (studentId ? getStudentLevel(studentId) : null) === attendanceFilterLevel;
   });
 
@@ -308,7 +332,13 @@ export default function AdminDashboardPage() {
               <div className="flex items-center gap-2 self-end sm:self-auto">
                 <button
                   type="button"
-                  onClick={() => setIsSetupWizardOpen(!isSetupWizardOpen)}
+                  onClick={() => {
+                    const nextState = !isSetupWizardOpen;
+                    setIsSetupWizardOpen(nextState);
+                    if (typeof window !== 'undefined') {
+                      localStorage.setItem('setup_wizard_dismissed', nextState ? '0' : '1');
+                    }
+                  }}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold transition-all cursor-pointer"
                 >
                   {isSetupWizardOpen ? (

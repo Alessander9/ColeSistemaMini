@@ -9,12 +9,15 @@ import { AnnualReportCardModal } from '@/components/notas/AnnualReportCardModal'
 import { calculateAverage, calculateAnnualStatus, calculateStudentAnnualReportCard, StudentAnnualReportCard } from '@/lib/grades/calculations';
 import { GradeLetter } from '@/types';
 import { Download, FileSpreadsheet, Printer, FileText, Eye, Award, GraduationCap, ArrowRight } from 'lucide-react';
+import { generateReportCardPdf } from '@/lib/pdf/reportCardPdfGenerator';
+import { generateConsolidadoSalonPdf } from '@/lib/pdf/consolidadoSalonPdfGenerator';
 
 export default function AdminReportesPage() {
-  const { enrollments, grades, attendances, teachers, courses, evaluationPeriods, students } = useApp();
+  const { enrollments, grades, attendances, teachers, courses, evaluationPeriods, students, sections, brandingConfig, showToast } = useApp();
   const [selectedReportCard, setSelectedReportCard] = useState<StudentAnnualReportCard | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeFilter, setActiveFilter] = useState<string>('todos');
+  const [isExporting, setIsExporting] = useState(false);
 
   const reportData = useMemo(() => {
     return enrollments.map((enr) => {
@@ -22,9 +25,24 @@ export default function AdminReportesPage() {
       const studentName = `${student?.profile?.apellidos || student?.apellidos || ''}, ${student?.profile?.nombres || student?.nombres || ''}`.trim() || 'Estudiante';
       
       // Calculate student's overall average across all courses
-      const studentGrades = grades.filter(g => g.matricula_id === enr.id).map(g => g.nota_letra);
+      // Fix 1.4: Filtrar nota_letra nula antes de calcular promedio
+      const studentGrades = grades
+        .filter(g => g.matricula_id === enr.id && g.nota_letra != null)
+        .map(g => g.nota_letra as GradeLetter);
       const { averageLetter, averageScore } = calculateAverage(studentGrades);
       const { status, statusColor } = calculateAnnualStatus(studentGrades);
+
+      // SAT MINEDU: Attendance Risk (faltas > 30%)
+      const studentAtts = attendances.filter(a => a.matricula_id === enr.id);
+      const totalAtts = studentAtts.length;
+      const faltas = studentAtts.filter(a => a.estado === 'falta').length;
+      const pctFaltas = totalAtts > 0 ? (faltas / totalAtts) : 0;
+      const hasAttendanceRisk = totalAtts >= 5 && pctFaltas >= 0.30;
+
+      // SAT MINEDU: Academic Risk (3+ 'C' grades)
+      const countC = studentGrades.filter(g => g === 'C').length;
+      const hasAcademicRisk = countC >= 3;
+      const isSatRisk = hasAttendanceRisk || hasAcademicRisk;
 
       return {
         id: enr.id,
@@ -37,9 +55,14 @@ export default function AdminReportesPage() {
         promedioNumerico: averageScore,
         estadoPromocion: status,
         estadoColor: statusColor,
+        isSatRisk,
+        hasAttendanceRisk,
+        hasAcademicRisk,
+        countC,
+        pctFaltas: Math.round(pctFaltas * 100),
       };
     });
-  }, [enrollments, grades, students]);
+  }, [enrollments, grades, students, attendances]);
 
   // Filter chips with dynamic counts
   const filterChips: FilterChip[] = useMemo(() => {
@@ -47,18 +70,27 @@ export default function AdminReportesPage() {
     const promovidos = reportData.filter(r => r.estadoPromocion === 'PROMOVIDO').length;
     const recuperacion = reportData.filter(r => r.estadoPromocion === 'RECUPERACIÓN').length;
     const permanece = reportData.filter(r => r.estadoPromocion === 'PERMANECE').length;
+    const satAlerta = reportData.filter(r => r.isSatRisk).length;
+    const topMerito = reportData.filter(r => r.promedioNumerico >= 3.5).length;
 
     return [
       { id: 'todos', label: 'Todos los Alumnos', count: total },
-      { id: 'PROMOVIDO', label: '🏆 Promovidos', count: promovidos },
+      { id: 'MERITO', label: '🏆 Cuadro de Mérito (Top)', count: topMerito },
+      { id: 'PROMOVIDO', label: '✅ Promovidos', count: promovidos },
       { id: 'RECUPERACIÓN', label: '⚠️ Recuperación', count: recuperacion },
       { id: 'PERMANECE', label: '🛑 Permanece', count: permanece },
+      { id: 'SAT_ALERTA', label: '🚨 Alerta Temprana (MINEDU)', count: satAlerta },
     ];
   }, [reportData]);
 
   // Filtered dataset
   const filteredData = useMemo(() => {
     if (activeFilter === 'todos') return reportData;
+    if (activeFilter === 'SAT_ALERTA') return reportData.filter(r => r.isSatRisk);
+    if (activeFilter === 'MERITO') {
+      return [...reportData]
+        .sort((a, b) => b.promedioNumerico - a.promedioNumerico);
+    }
     return reportData.filter(r => r.estadoPromocion === activeFilter);
   }, [reportData, activeFilter]);
 
@@ -89,6 +121,61 @@ export default function AdminReportesPage() {
 
     setSelectedReportCard(card);
     setIsModalOpen(true);
+  };
+
+  const handleDownloadReportCardPdf = async (row: typeof reportData[0]) => {
+    const student = row.student;
+    if (!student) {
+      showToast('No se encontró el estudiante para generar la libreta', 'error');
+      return;
+    }
+    try {
+      showToast('Generando Libreta Oficial PDF...', 'info');
+      const doc = await generateReportCardPdf({
+        student,
+        enrollment: row.enrollment,
+        courses,
+        grades,
+        periods: evaluationPeriods,
+        attendances,
+        brandingConfig,
+      });
+      doc.save(`Libreta_CNEB_${row.codigo}_${row.nombre.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
+      showToast('Libreta PDF descargada exitosamente', 'success');
+    } catch (err) {
+      console.error(err);
+      showToast('Error al generar la libreta en PDF', 'error');
+    }
+  };
+
+  const handleDownloadConsolidadoPdf = async () => {
+    if (sections.length === 0 || evaluationPeriods.length === 0) {
+      showToast('No hay secciones o periodos registrados', 'warning');
+      return;
+    }
+    try {
+      setIsExporting(true);
+      showToast('Generando Acta Consolidada de Salón en PDF...', 'info');
+      const targetSection = sections[0];
+      const activePeriod = evaluationPeriods.find(p => p.activo) || evaluationPeriods[0];
+      const sectionEnrollments = enrollments.filter(e => e.seccion_id === targetSection.id && e.estado === 'activo');
+
+      const doc = await generateConsolidadoSalonPdf({
+        section: targetSection,
+        period: activePeriod,
+        enrollments: sectionEnrollments.length > 0 ? sectionEnrollments : enrollments.slice(0, 15),
+        courses,
+        grades,
+        brandingConfig,
+      });
+      doc.save(`Acta_Consolidada_${targetSection.grado?.nombre || 'Salon'}_${targetSection.letra}.pdf`);
+      showToast('Acta Consolidada descargada exitosamente', 'success');
+    } catch (err) {
+      console.error(err);
+      showToast('Error al exportar acta consolidada', 'error');
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const columns: Column<typeof reportData[0]>[] = [
@@ -123,21 +210,39 @@ export default function AdminReportesPage() {
     {
       header: 'Condición Anual',
       cell: (row) => (
-        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black border ${row.estadoColor}`}>
-          {row.estadoPromocion}
-        </span>
+        <div className="flex flex-col gap-1">
+          <span className={`inline-flex items-center w-fit px-2.5 py-0.5 rounded-full text-[10px] font-black border ${row.estadoColor}`}>
+            {row.estadoPromocion}
+          </span>
+          {row.isSatRisk && (
+            <span className="inline-flex items-center gap-1 w-fit px-2 py-0.5 rounded-md text-[9px] font-extrabold bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30">
+              🚨 SAT {row.hasAttendanceRisk ? `Ausentismo (${row.pctFaltas}%)` : `${row.countC} cursos 'C'`}
+            </span>
+          )}
+        </div>
       ),
     },
     {
-      header: 'Libreta Final',
+      header: 'Libreta Oficial',
       cell: (row) => (
-        <button
-          onClick={() => handleOpenReportCard(row)}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-950/50 dark:text-indigo-300 dark:hover:bg-indigo-900/50 border border-indigo-200 dark:border-indigo-800 transition-all active:scale-95 cursor-pointer"
-        >
-          <FileText className="w-3.5 h-3.5" />
-          Ver Libreta
-        </button>
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => handleOpenReportCard(row)}
+            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-950/50 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 transition-all cursor-pointer"
+            title="Ver en pantalla"
+          >
+            <Eye className="w-3.5 h-3.5" />
+            <span>Ver</span>
+          </button>
+          <button
+            onClick={() => handleDownloadReportCardPdf(row)}
+            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 transition-all cursor-pointer"
+            title="Descargar PDF oficial"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>PDF</span>
+          </button>
+        </div>
       ),
     },
   ];
@@ -149,13 +254,23 @@ export default function AdminReportesPage() {
         description="Boletín integral del progreso escolar, escala cualitativa y cálculo de promoción según el CNEB."
         badge="Año Lectivo 2026"
       >
-        <button
-          onClick={() => window.print()}
-          className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl bg-slate-900 dark:bg-slate-800 text-white shadow-md hover:bg-slate-800 transition-all active:scale-95 cursor-pointer"
-        >
-          <Printer className="w-3.5 h-3.5" />
-          Imprimir Consolidado
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={handleDownloadConsolidadoPdf}
+            disabled={isExporting}
+            className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-md transition-all active:scale-95 cursor-pointer disabled:opacity-50"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>{isExporting ? 'Generando...' : '📄 Descargar Acta Consolidada PDF'}</span>
+          </button>
+          <button
+            onClick={() => window.print()}
+            className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl bg-slate-900 dark:bg-slate-800 text-white shadow-md hover:bg-slate-800 transition-all active:scale-95 cursor-pointer"
+          >
+            <Printer className="w-3.5 h-3.5" />
+            <span>Imprimir</span>
+          </button>
+        </div>
       </PageHeader>
 
       <DataTable

@@ -47,6 +47,8 @@ export default function EstudianteDashboardPage() {
     courses, 
     teachers,
     lmsModules,
+    announcements,
+    confirmAnnouncement,
   } = useApp();
 
   // Identify active student
@@ -104,6 +106,24 @@ export default function EstudianteDashboardPage() {
     const valid = mySchedule.filter(s => s.dia === todayDay || s.dia === 'lunes');
     return valid.sort((a, b) => a.hora_inicio.localeCompare(b.hora_inicio));
   }, [mySchedule, todayDay]);
+
+  // Comunicados dirigidos a este estudiante
+  const studentAnnouncements = useMemo(() => {
+    const myLevel = activeEnrollment?.seccion?.grado?.nivel;
+    const myGradeId = activeEnrollment?.seccion?.grado_id;
+    const mySecId = activeEnrollment?.seccion_id;
+
+    return announcements.filter(a => {
+      const roleMatch = !a.destinatarios_rol || a.destinatarios_rol === 'todos' || a.destinatarios_rol === 'estudiante';
+      if (!roleMatch) return false;
+
+      if (a.nivel && a.nivel !== 'todos' && myLevel && a.nivel !== myLevel) return false;
+      if (a.grado_id && myGradeId && a.grado_id !== myGradeId) return false;
+      if (a.seccion_id && mySecId && a.seccion_id !== mySecId) return false;
+
+      return true;
+    });
+  }, [announcements, activeEnrollment]);
 
   const studentName = activeStudent?.profile?.nombres?.split(' ')[0] || currentUser?.nombres?.split(' ')[0] || 'Estudiante';
   const gradeName = activeEnrollment?.seccion?.grado?.nombre ? `${activeEnrollment.seccion.grado.nombre} "${activeEnrollment.seccion.letra}"` : 'Sin aula asignada';
@@ -711,6 +731,60 @@ export default function EstudianteDashboardPage() {
                 </div>
               );
             })}
+          </div>
+        )}
+      </div>
+
+      {/* ── 5. COMUNICADOS & AVISOS DEL COLEGIO PARA EL ALUMNO ── */}
+      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm space-y-4">
+        <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold">
+              <Bell className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-bold text-base text-slate-900 dark:text-white">
+                Mural de Avisos &amp; Comunicados
+              </h3>
+              <p className="text-xs text-slate-500 font-medium">Información oficial para los estudiantes</p>
+            </div>
+          </div>
+        </div>
+
+        {studentAnnouncements.length === 0 ? (
+          <div className="py-8 text-center text-xs text-slate-400">
+            No tienes avisos escolares pendientes en este momento.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {studentAnnouncements.map((ann) => (
+              <div
+                key={ann.id}
+                className="p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 space-y-2 flex flex-col justify-between"
+              >
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300">
+                      {ann.categoria === 'evento' ? '🎉 Evento Escolar' : ann.tipo === 'urgente' ? '⚠️ Urgente' : '📢 Comunicado'}
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-medium">{ann.fecha_publicacion || ann.creado_en?.substring(0, 10)}</span>
+                  </div>
+                  <h4 className="text-xs font-black text-slate-900 dark:text-white leading-snug">
+                    {ann.titulo}
+                  </h4>
+                  <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed line-clamp-3">
+                    {ann.contenido}
+                  </p>
+                </div>
+
+                <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between text-[11px] text-slate-500">
+                  <span>{ann.destinatarios_rol === 'todos' ? 'Toda la comunidad' : 'Alumnos'}</span>
+                  {ann.requiere_confirmacion && (
+                    <span className="text-emerald-600 font-bold">✓ Requiere lectura</span>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>

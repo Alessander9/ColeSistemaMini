@@ -65,6 +65,30 @@ export function calculateAverage(grades: GradeLetter[]): {
 }
 
 /**
+ * Calcula el promedio cualitativo de un conjunto de registros de notas
+ */
+export function calculateCoursePeriodAverage(gradeRecords: GradeRecord[]): {
+  letra: GradeLetter | null;
+  score: number | null;
+  totalEvaluated: number;
+} {
+  const letters = gradeRecords
+    .map((g) => g.nota_letra)
+    .filter((l): l is GradeLetter => ['AD', 'A', 'B', 'C'].includes(l as string));
+
+  if (letters.length === 0) {
+    return { letra: null, score: null, totalEvaluated: 0 };
+  }
+
+  const avg = calculateAverage(letters);
+  return {
+    letra: avg.averageLetter,
+    score: avg.averageScore,
+    totalEvaluated: letters.length,
+  };
+}
+
+/**
  * Calcula la calificación de un curso en un bimestre específico
  * a partir de las competencias registradas.
  */

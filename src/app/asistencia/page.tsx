@@ -42,10 +42,12 @@ export default function AsistenciaKioscoPage() {
   const router = useRouter();
   const { 
     currentUser, 
+    users,
     attendances, 
     students, 
     enrollments,
     registerAttendance,
+    recordStaffAttendance,
     brandingConfig,
   } = useApp();
 
@@ -76,6 +78,7 @@ export default function AsistenciaKioscoPage() {
 
   // ── Scanner & Camera State ──────────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState<'scan' | 'manual' | 'config'>('scan');
+  const [scanMode, setScanMode] = useState<'entrada' | 'salida'>('entrada');
   const [isCameraActive, setIsCameraActive] = useState<boolean>(true);
   const [currentFacing, setCurrentFacing] = useState<'environment' | 'user'>('environment');
   const [torchEnabled, setTorchEnabled] = useState<boolean>(false);
@@ -257,10 +260,32 @@ export default function AsistenciaKioscoPage() {
     }
   }, [soundEnabled, brandingConfig?.kioskSoundPreset, brandingConfig?.nombreInstitucion]);
 
-  // ── Core Attendance Processor ──────────────────────────────────────────────
+  // ── Core Attendance Processor & Multi-Format QR Parser ────────────────────
   const handleProcessCode = useCallback((rawInput: string) => {
-    const rawClean = rawInput.trim();
+    let rawClean = rawInput.trim();
     if (!rawClean) return;
+
+    // Multi-format Parser (JSON payload, URL with params, or Raw Code)
+    if (rawClean.startsWith('{') && rawClean.endsWith('}')) {
+      try {
+        const parsed = JSON.parse(rawClean);
+        rawClean = parsed.token_qr || parsed.codigo || parsed.codigo_estudiante || parsed.dni || parsed.id || rawClean;
+      } catch {
+        /* fallback */
+      }
+    } else if (rawClean.includes('http://') || rawClean.includes('https://')) {
+      try {
+        const urlObj = new URL(rawClean);
+        rawClean = urlObj.searchParams.get('token') || 
+                   urlObj.searchParams.get('code') || 
+                   urlObj.searchParams.get('codigo') || 
+                   urlObj.searchParams.get('dni') || 
+                   urlObj.searchParams.get('id') || 
+                   rawClean;
+      } catch {
+        /* fallback */
+      }
+    }
 
     if (decodeCooldownRef.current && lastDecodeRef.current === rawClean) return;
     lastDecodeRef.current = rawClean;
@@ -305,6 +330,40 @@ export default function AsistenciaKioscoPage() {
         s.profile_id === rawClean
       );
     });
+
+    // ── Staff / Teacher Attendance Check ──
+    if (!foundStudent) {
+      const foundStaff = users.find((u) => {
+        const uDni = normalize(u.dni);
+        return (uDni === normClean || (extractedDni && uDni === extractedDni)) && (u.rol === 'docente' || u.rol === 'admin');
+      });
+
+      if (foundStaff) {
+        const staffRes = recordStaffAttendance({
+          userId: foundStaff.id,
+          tipo: scanMode,
+          metodo: 'qr',
+        });
+        playTone('success');
+        confetti({ particleCount: 35, spread: 50, origin: { y: 0.6 } });
+        setActiveAlert({
+          type: 'success',
+          title: scanMode === 'entrada' ? '¡Ingreso Docente Registrado!' : '¡Salida Docente Registrada!',
+          message: `Prof. ${foundStaff.nombres} ${foundStaff.apellidos} — Marcación ${scanMode} exitosa.`,
+          studentName: `Prof. ${foundStaff.nombres} ${foundStaff.apellidos}`,
+          studentCode: `DOC-${foundStaff.dni}`,
+          avatarUrl: foundStaff.avatar_url,
+          gradeSection: foundStaff.especialidad || 'Personal Docente',
+          time: timeStr,
+          statusBadge: staffRes.record?.estado === 'tardanza' ? 'TARDANZA' : 'A TIEMPO',
+        });
+        alertTimeoutRef.current = setTimeout(() => {
+          setActiveAlert(null);
+        }, 4500);
+        setIsProcessingScan(false);
+        return;
+      }
+    }
 
     const foundEnrollment = foundStudent
       ? enrollments.find((e) => e.estudiante_id === foundStudent.id)
@@ -389,6 +448,37 @@ export default function AsistenciaKioscoPage() {
       setActiveAlert(null);
     }, 4500);
   }, [students, enrollments, registerAttendance, playTone]);
+
+  // ── USB Barcode & QR Gun Scanner Global Listener ───────────────────────────
+  useEffect(() => {
+    let keyBuffer = '';
+    let lastKeyTime = Date.now();
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if user is intentionally typing in an input or textarea
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
+
+      const now = Date.now();
+      // Fast burst typing from barcode guns is typically < 100ms between chars
+      if (now - lastKeyTime > 120) {
+        keyBuffer = '';
+      }
+      lastKeyTime = now;
+
+      if (e.key === 'Enter') {
+        if (keyBuffer.trim().length >= 4) {
+          handleProcessCode(keyBuffer.trim());
+          keyBuffer = '';
+        }
+      } else if (e.key.length === 1) {
+        keyBuffer += e.key;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleProcessCode]);
 
   // ── Native / Video Camera Scanning Loop ─────────────────────────────────────
   const startScanLoop = useCallback(async () => {
@@ -723,7 +813,30 @@ export default function AsistenciaKioscoPage() {
       {/* ── TOP MODE TABS ── */}
       <div className="max-w-7xl mx-auto w-full flex items-center justify-between gap-3 pb-3">
         <div className="flex items-center gap-2">
-          
+          {/* Modo Entrada / Salida Toggle */}
+          <div className="flex items-center bg-slate-900/80 p-1 rounded-xl border border-slate-800 mr-2">
+            <button
+              onClick={() => setScanMode('entrada')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                scanMode === 'entrada'
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              📥 Entrada
+            </button>
+            <button
+              onClick={() => setScanMode('salida')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                scanMode === 'salida'
+                  ? 'bg-amber-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              📤 Salida / Retiro
+            </button>
+          </div>
+
           <button
             onClick={() => {
               setActiveTab('scan');
@@ -755,6 +868,14 @@ export default function AsistenciaKioscoPage() {
 
         {/* Sound toggle & Settings */}
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => window.print()}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white text-xs font-bold transition-colors cursor-pointer"
+            title="Imprimir resumen de puerta"
+          >
+            <span>📋 Resumen de Puerta</span>
+          </button>
+
           <button
             onClick={() => setSoundEnabled(!soundEnabled)}
             className={`p-2 rounded-xl border text-xs font-bold transition-colors cursor-pointer ${
