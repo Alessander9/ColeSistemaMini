@@ -461,6 +461,18 @@ export interface SystemBrandingConfig {
   carnetReversoEmergencia: string;
   carnetReversoTelefono: string;
   carnetSelloHolografico: boolean;
+  carnetTitulo: string;
+  carnetSubtitulo: string;
+  carnetTextoInstruccion: string;
+  carnetMostrarDni: boolean;
+  carnetMostrarGrado: boolean;
+  carnetMostrarCodigo: boolean;
+
+  // ── Imágenes del Dashboard Admin / Estructura Académica ──
+  academicBannerTodosUrl: string;
+  academicBannerInicialUrl: string;
+  academicBannerPrimariaUrl: string;
+  academicBannerSecundariaUrl: string;
 
   // ── UI Global & Estilos del Sistema ──
   borderRadiusMode: 'sharp' | 'modern' | 'rounded';
@@ -677,4 +689,3 @@ export interface StaffAttendanceRecord {
 }
 
 export * from './sesiones';
-

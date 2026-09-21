@@ -36,7 +36,7 @@ export function SearchableSelect({
   icon,
   disabled = false,
   required = false,
-  maxVisibleResults = 2,
+  maxVisibleResults = 3,
   error,
   className = '',
   id,
@@ -64,7 +64,7 @@ export function SearchableSelect({
     );
   }, [options, searchQuery]);
 
-  // Cap visible results to max 2 items at the same time as requested
+  // Cap visible results to keep dropdowns compact while typing.
   const visibleOptions = useMemo(
     () => matchingOptions.slice(0, maxVisibleResults),
     [matchingOptions, maxVisibleResults]
@@ -171,7 +171,7 @@ export function SearchableSelect({
             )}
           </div>
 
-          {/* Filtered Options List (Max 2 shown simultaneously) */}
+          {/* Filtered Options List */}
           <div className="space-y-1 max-h-[140px] overflow-y-auto scrollbar-thin">
             {visibleOptions.length === 0 ? (
               <div className="p-3 text-center text-xs text-slate-400 font-medium">
@@ -212,7 +212,7 @@ export function SearchableSelect({
           {/* Footer Badge if more results exist */}
           {matchingOptions.length > maxVisibleResults && (
             <div className="pt-1 px-1 text-[10px] text-slate-400 flex items-center justify-between border-t border-slate-100 dark:border-slate-800">
-              <span>Mostrando 2 de {matchingOptions.length}</span>
+              <span>Mostrando {maxVisibleResults} de {matchingOptions.length}</span>
               <span className="text-indigo-500 font-medium">Escribe para filtrar</span>
             </div>
           )}

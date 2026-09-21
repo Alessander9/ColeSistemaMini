@@ -131,6 +131,18 @@ export const DEFAULT_BRANDING_CONFIG: SystemBrandingConfig = {
   carnetReversoEmergencia: 'Atención Médica: Tópico Central',
   carnetReversoTelefono: '+51 987 654 321',
   carnetSelloHolografico: true,
+  carnetTitulo: 'CARNET ESTUDIANTIL',
+  carnetSubtitulo: 'Año Lectivo 2026',
+  carnetTextoInstruccion: 'Muestra este código en portería o al docente para registrar tu asistencia diaria.',
+  carnetMostrarDni: true,
+  carnetMostrarGrado: true,
+  carnetMostrarCodigo: true,
+
+  // Imágenes del Dashboard Admin / Estructura Académica
+  academicBannerTodosUrl: '/estudiantesTodosBanner.jpg',
+  academicBannerInicialUrl: '/inicial_banner.png',
+  academicBannerPrimariaUrl: '/primariaBanner.png',
+  academicBannerSecundariaUrl: '/secundariaBaner.png',
 
   // UI Global & Estilos del Sistema
   borderRadiusMode: 'modern',

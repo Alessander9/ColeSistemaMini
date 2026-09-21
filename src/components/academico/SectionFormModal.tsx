@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Section, GradeLevel, UserProfile } from '@/types';
 import { useApp } from '@/context/AppContext';
 import { X, School, Users, DoorClosed, Award, Check } from 'lucide-react';
+import { SearchableSelect } from '@/components/ui/SearchableSelect';
 
 interface SectionFormModalProps {
   isOpen: boolean;
@@ -97,18 +98,19 @@ export const SectionFormModal: React.FC<SectionFormModalProps> = ({
             <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
               Grado y Nivel Educativo *
             </label>
-            <select
+            <SearchableSelect
               value={gradoId}
-              onChange={(e) => setGradoId(e.target.value)}
+              onChange={setGradoId}
               required
-              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            >
-              {gradeLevels.map((g) => (
-                <option key={g.id} value={g.id}>
-                  {g.nombre} ({g.nivel.toUpperCase()})
-                </option>
-              ))}
-            </select>
+              icon={<School className="w-4 h-4" />}
+              options={gradeLevels.map((g) => ({
+                value: g.id,
+                label: g.nombre,
+                sublabel: `Nivel ${g.nivel.toUpperCase()} · Grado ${g.numero_grado}`,
+              }))}
+              placeholder="Buscar grado o nivel..."
+              searchPlaceholder="Escribe inicial, primaria, secundaria..."
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -167,18 +169,21 @@ export const SectionFormModal: React.FC<SectionFormModalProps> = ({
             </label>
             <div className="relative">
               <Award className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-              <select
+              <SearchableSelect
                 value={tutorId}
-                onChange={(e) => setTutorId(e.target.value)}
-                className="w-full pl-9 pr-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              >
-                <option value="">-- Sin Tutor Asignado (Por Designar) --</option>
-                {teachers.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    Prof. {t.nombres} {t.apellidos} {t.especialidad ? `(${t.especialidad})` : ''}
-                  </option>
-                ))}
-              </select>
+                onChange={setTutorId}
+                icon={<Award className="w-4 h-4" />}
+                options={[
+                  { value: '', label: 'Sin tutor asignado', sublabel: 'Por designar' },
+                  ...teachers.map((t) => ({
+                    value: t.id,
+                    label: `Prof. ${t.nombres} ${t.apellidos}`,
+                    sublabel: t.especialidad || 'Docente',
+                  })),
+                ]}
+                placeholder="Buscar docente tutor..."
+                searchPlaceholder="Escribe nombre, apellido o especialidad..."
+              />
             </div>
           </div>
 

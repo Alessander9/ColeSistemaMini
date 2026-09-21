@@ -3,8 +3,18 @@
 import React, { useRef } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
 import { Student, Section } from '@/types';
-import { Download, Printer, ShieldCheck, Sparkles } from 'lucide-react';
+import {
+  Download,
+  Printer,
+  ShieldCheck,
+  Sparkles,
+  IdCard,
+  GraduationCap,
+  UserRound,
+  Phone,
+} from 'lucide-react';
 import html2canvas from 'html2canvas';
+import { useApp } from '@/context/AppContext';
 
 interface QrCardProps {
   student: Student;
@@ -20,6 +30,7 @@ export function QrCard({
   showActions = true,
 }: QrCardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
+  const { brandingConfig } = useApp();
 
   const handleDownload = async () => {
     if (!cardRef.current) return;
@@ -42,86 +53,153 @@ export function QrCard({
     window.print();
   };
 
-  const fullName = `${student.profile?.apellidos || student.apellidos || ''}, ${student.profile?.nombres || student.nombres || ''}`.trim() || 'Estudiante';
+  const fullName =
+    `${student.profile?.apellidos || student.apellidos || ''}, ${student.profile?.nombres || student.nombres || ''}`.trim() ||
+    'Estudiante';
   const gradoNombre = section?.grado?.nombre || 'Grado sin asignar';
   const seccionLetra = section?.letra || '-';
   const dni = student.profile?.dni || student.dni || '—';
+  const primaryColor = brandingConfig.carnetColorBorde || brandingConfig.primaryColor || '#4f46e5';
+  const accentColor = brandingConfig.carnetFranjaNivelColor || brandingConfig.accentColor || '#10b981';
+  const isHorizontal = brandingConfig.carnetOrientacion === 'horizontal';
+  const logoText = (brandingConfig.siglas || schoolName.substring(0, 3) || 'CS').substring(0, 3).toUpperCase();
+  const cardBackground = brandingConfig.carnetFondoUrl
+    ? {
+        backgroundImage: `linear-gradient(135deg, rgba(15,23,42,.93), rgba(15,23,42,.78)), url(${brandingConfig.carnetFondoUrl})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }
+    : {
+        background: `linear-gradient(135deg, ${primaryColor} 0%, #0f172a 48%, ${accentColor} 135%)`,
+      };
 
   return (
     <div className="w-full flex flex-col items-center gap-4">
-      {/* Carnet Container */}
       <div
         ref={cardRef}
-        className="printable-card relative w-full max-w-[360px] rounded-3xl overflow-hidden shadow-2xl bg-gradient-to-b from-slate-900 via-slate-800 to-slate-950 text-white border border-slate-700/60 p-4 sm:p-6"
+        className={`printable-card relative overflow-hidden shadow-2xl text-white border bg-slate-950 ${
+          isHorizontal ? 'w-full max-w-[520px] rounded-[28px] p-5' : 'w-full max-w-[340px] rounded-[30px] p-5'
+        }`}
+        style={{
+          ...cardBackground,
+          borderColor: primaryColor,
+          boxShadow: `0 24px 70px ${primaryColor}33`,
+        }}
       >
-        {/* Decorative Top Banner */}
-        <div className="absolute top-0 left-0 right-0 h-3 bg-gradient-to-r from-blue-500 via-emerald-500 to-teal-400" />
-        
-        {/* Header Institucional */}
-        <div className="flex items-center justify-between border-b border-slate-700/60 pb-3 mb-4 mt-1">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-emerald-500 flex items-center justify-center font-black text-white shadow-lg text-sm">
-              CSM
-            </div>
-            <div>
-              <h3 className="font-bold text-xs uppercase tracking-wider text-slate-200">{schoolName}</h3>
-              <p className="text-[10px] text-emerald-400 font-semibold flex items-center gap-1">
-                <Sparkles className="w-3 h-3 inline" /> Año Lectivo 2026
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_10%,rgba(255,255,255,.24),transparent_30%),radial-gradient(circle_at_90%_20%,rgba(255,255,255,.14),transparent_28%)]" />
+        <div
+          className="absolute top-0 left-0 right-0 h-2"
+          style={{ background: `linear-gradient(90deg, ${primaryColor}, ${accentColor})` }}
+        />
+
+        <div className="relative flex items-center justify-between border-b border-white/15 pb-3 mb-4 mt-1">
+          <div className="flex items-center gap-2.5 min-w-0">
+            {brandingConfig.logoUrl ? (
+              <img
+                src={brandingConfig.logoUrl}
+                alt={brandingConfig.nombreInstitucion || schoolName}
+                className="w-10 h-10 rounded-2xl object-cover bg-white/95 p-1 shadow-lg shrink-0"
+              />
+            ) : (
+              <div
+                className="w-10 h-10 rounded-2xl flex items-center justify-center font-black text-white shadow-lg text-sm shrink-0"
+                style={{ background: `linear-gradient(135deg, ${primaryColor}, ${accentColor})` }}
+              >
+                {logoText}
+              </div>
+            )}
+            <div className="min-w-0">
+              <h3 className="font-black text-xs uppercase tracking-wide text-white leading-tight truncate">
+                {brandingConfig.nombreInstitucion || schoolName}
+              </h3>
+              <p className="text-[10px] text-white/75 font-semibold flex items-center gap-1">
+                <Sparkles className="w-3 h-3 inline" />
+                {brandingConfig.carnetSubtitulo || 'Año Lectivo 2026'}
               </p>
             </div>
           </div>
-          <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30">
+          <span className="text-[10px] uppercase font-black tracking-wider px-2.5 py-1 rounded-full bg-white/15 text-white border border-white/20">
             ESTUDIANTE
           </span>
         </div>
 
-        {/* Profile Info & Avatar */}
-        <div className="flex items-center gap-4 mb-4">
-          <div className="relative">
-            <img
-              src={student.profile?.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150'}
-              alt={fullName}
-              className="w-20 h-20 rounded-2xl object-cover border-2 border-emerald-400/80 shadow-md"
+        <div className={`relative ${isHorizontal ? 'grid grid-cols-[1fr_178px] gap-4 items-stretch' : 'space-y-4'}`}>
+          <div className="space-y-4">
+            <div className="flex items-center gap-4">
+              <div className="relative shrink-0">
+                <img
+                  src={student.profile?.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150'}
+                  alt={fullName}
+                  className="w-[88px] h-[88px] rounded-3xl object-cover border-2 shadow-xl"
+                  style={{ borderColor: accentColor }}
+                />
+                <div className="absolute -bottom-1 -right-1 text-white p-1.5 rounded-full shadow" style={{ backgroundColor: accentColor }}>
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                </div>
+              </div>
+
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] uppercase tracking-[0.16em] text-white/60 font-black">
+                  {brandingConfig.carnetTitulo || 'Carnet estudiantil'}
+                </p>
+                <h4 className="font-black text-base text-white leading-tight">{fullName}</h4>
+                <div className="mt-2 grid gap-1.5 text-[11px]">
+                  {brandingConfig.carnetMostrarDni !== false && (
+                    <span className="bg-white/10 text-white/90 px-2.5 py-1 rounded-xl font-mono border border-white/15 inline-flex items-center gap-1.5 w-fit">
+                      <IdCard className="w-3 h-3" />
+                      DNI: {dni}
+                    </span>
+                  )}
+                  {brandingConfig.carnetMostrarGrado !== false && (
+                    <span className="bg-white/10 text-white/90 px-2.5 py-1 rounded-xl font-semibold border border-white/15 inline-flex items-center gap-1.5 w-fit">
+                      <GraduationCap className="w-3 h-3" />
+                      {gradoNombre} &quot;{seccionLetra}&quot;
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 text-[10px] text-white/80">
+              <div className="rounded-2xl bg-white/10 border border-white/15 p-2.5">
+                <UserRound className="w-3.5 h-3.5 mb-1 text-white/70" />
+                <p className="font-bold leading-tight">Acceso personal e intransferible</p>
+              </div>
+              <div className="rounded-2xl bg-white/10 border border-white/15 p-2.5">
+                <Phone className="w-3.5 h-3.5 mb-1 text-white/70" />
+                <p className="font-bold leading-tight">{brandingConfig.carnetReversoTelefono || brandingConfig.telefono}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className={`${isHorizontal ? '' : 'mt-4'} bg-white rounded-[24px] p-4 flex flex-col items-center justify-center shadow-2xl border-2 border-white`}>
+            <QRCodeCanvas
+              value={student.token_qr || student.codigo_estudiante}
+              size={isHorizontal ? 142 : 170}
+              level="M"
+              includeMargin={true}
             />
-            <div className="absolute -bottom-1 -right-1 bg-emerald-500 text-white p-1 rounded-full shadow">
-              <ShieldCheck className="w-3.5 h-3.5" />
-            </div>
-          </div>
-
-          <div className="flex-1 min-w-0">
-            <p className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Estudiante</p>
-            <h4 className="font-extrabold text-sm text-white leading-tight truncate">{fullName}</h4>
-            <div className="mt-1.5 flex flex-wrap gap-1.5 text-[11px]">
-              <span className="bg-slate-800 text-slate-300 px-2 py-0.5 rounded-md font-mono border border-slate-700">
-                DNI: {dni}
-              </span>
-              <span className="bg-emerald-950/60 text-emerald-300 px-2 py-0.5 rounded-md font-semibold border border-emerald-800/60">
-                {gradoNombre} &quot;{seccionLetra}&quot;
-              </span>
-            </div>
+            {brandingConfig.carnetMostrarCodigo !== false && (
+              <p className="text-[11px] font-mono text-slate-700 mt-2 font-black tracking-widest uppercase">
+                {student.codigo_estudiante}
+              </p>
+            )}
           </div>
         </div>
 
-        {/* QR Code Container */}
-        <div className="bg-white rounded-2xl p-4 flex flex-col items-center justify-center shadow-inner border-2 border-slate-200 mb-3">
-          <QRCodeCanvas
-            value={student.token_qr || student.codigo_estudiante}
-            size={170}
-            level="M"
-            includeMargin={true}
-          />
-          <p className="text-[11px] font-mono text-slate-700 mt-2 font-black tracking-widest uppercase">
-            {student.codigo_estudiante}
-          </p>
-        </div>
-
-        {/* Footer */}
-        <div className="text-center text-[10px] text-slate-400 font-medium">
-          Muestra este código en la entrada o cámara del docente para registrar tu asistencia diaria.
+        <div className="relative mt-4 flex items-center justify-between gap-3 text-[10px] text-white/65 font-semibold">
+          <span className="leading-snug">
+            {brandingConfig.carnetTextoInstruccion ||
+              'Muestra este código en portería o al docente para registrar tu asistencia diaria.'}
+          </span>
+          {brandingConfig.carnetSelloHolografico !== false && (
+            <span className="shrink-0 px-2 py-1 rounded-full bg-gradient-to-r from-amber-300 via-rose-300 to-sky-300 text-slate-950 font-black shadow-lg">
+              2026
+            </span>
+          )}
         </div>
       </div>
 
-      {/* Action Buttons */}
       {showActions && (
         <div className="flex items-center gap-2.5 no-print">
           <button

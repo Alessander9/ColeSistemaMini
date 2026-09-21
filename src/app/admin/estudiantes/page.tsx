@@ -26,6 +26,7 @@ import {
   ChevronDown,
   ArrowUpDown,
   User,
+  Users,
   Hash,
   School,
   UserCheck,
@@ -1284,36 +1285,42 @@ export default function AdminEstudiantesPage() {
               <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5">
                 Filtrar por Grado:
               </label>
-              <select
+              <SearchableSelect
                 value={filterGrade}
-                onChange={(e) => setFilterGrade(e.target.value)}
-                className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
-              >
-                <option value="todos">Todos los Grados</option>
-                {gradeLevels.map((g) => (
-                  <option key={g.id} value={g.id}>
-                    {g.nombre} ({g.nivel})
-                  </option>
-                ))}
-              </select>
+                onChange={setFilterGrade}
+                icon={<GraduationCap className="w-4 h-4" />}
+                options={[
+                  { value: 'todos', label: 'Todos los Grados', sublabel: 'Sin filtro de grado' },
+                  ...gradeLevels.map((g) => ({
+                    value: g.id,
+                    label: g.nombre,
+                    sublabel: `Nivel ${g.nivel}`,
+                  })),
+                ]}
+                placeholder="Seleccionar grado..."
+                searchPlaceholder="Escribe 1°, 2°, inicial..."
+              />
             </div>
 
             <div>
               <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5">
                 Filtrar por Salón / Sección:
               </label>
-              <select
+              <SearchableSelect
                 value={filterSection}
-                onChange={(e) => setFilterSection(e.target.value)}
-                className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
-              >
-                <option value="todos">Todas las Secciones</option>
-                {sections.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.grado?.nombre || 'Grado'} &quot;{s.letra}&quot; ({s.grado?.nivel || 'Nivel'})
-                  </option>
-                ))}
-              </select>
+                onChange={setFilterSection}
+                icon={<Users className="w-4 h-4" />}
+                options={[
+                  { value: 'todos', label: 'Todas las Secciones', sublabel: 'Sin filtro de salón' },
+                  ...sections.map((s) => ({
+                    value: s.id,
+                    label: `${s.grado?.nombre || 'Grado'} "${s.letra}"`,
+                    sublabel: `Nivel ${s.grado?.nivel || 'Nivel'} · Cap. ${s.capacidad_maxima}`,
+                  })),
+                ]}
+                placeholder="Seleccionar sección..."
+                searchPlaceholder="Escribe A, B, grado..."
+              />
             </div>
 
             <div className="flex justify-between items-center pt-3 border-t border-slate-100 dark:border-slate-800">
