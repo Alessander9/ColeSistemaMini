@@ -45,32 +45,34 @@ El sistema cuenta con **4 roles de usuario** y un **Modo Kiosco**:
 ### 🛡️ A. Portal Administrador
 
 1. **Dashboard Principal (`/admin`)**:
-   * 6 KPIs institucionales (Total Alumnos, % Asistencia Hoy, Plana Docente, Cursos Activos, Matrículas del Mes, Cobranza).
+   * 6 KPIs institucionales (Total Alumnos, % Asistencia Hoy, Plana Docente, Cursos Activos, Matrículas del Mes, Alertas).
    * Widget de Asistencia del Día por Nivel con barra de progreso.
    * Widget de Rendimiento Académico por Grado.
    * Centro de Alertas Prioritarias (resueltas con 1 clic).
    * Timeline de Auditoría en tiempo real.
 
-2. **Padrón de Estudiantes y Perfil 360° (`/admin/estudiantes` y `/admin/estudiantes/[id]`)**:
+2. **Módulo de Comunicados Masivos & Citaciones (`/admin/comunicados`)**:
+   * Envío de circulares con segmentación multidimensional (Nivel, Grados, Secciones y Roles).
+   * Categorías: General, Urgente, Académico, Evento y Citaciones Oficiales.
+   * Plantillas rápidas predefinidas (Entrega de libretas, Feriado, Seguridad).
+   * Botón de formateo directo para WhatsApp y contador de familias alcanzadas en tiempo real.
+   * Confirmación obligatoria de lectura y acuse de recibo para apoderados y docentes.
+
+3. **Padrón de Estudiantes y Perfil 360° (`/admin/estudiantes` y `/admin/estudiantes/[id]`)**:
    * Listado con búsqueda reactiva, filtros de nivel/sección y estados.
    * Perfil integral con 11 pestañas especializadas.
    * Emisión e impresión de Carnets QR en lote o individual.
 
-3. **Wizard de Matrícula (`/admin/matriculas`)**:
-   * Paso 1: Datos Personales del Estudiante.
-   * Paso 2: Información de Padres / Apoderados.
-   * Paso 3: Asignación de Nivel, Grado y Sección.
-   * Paso 4: Carga y Validación de Documentos.
-   * Paso 5: Registro de Concepto de Pago / Matrícula.
-   * Paso 6: Resumen y Generación de Credenciales de Acceso.
+4. **Matrículas y Admisiones (`/admin/matriculas`)**:
+   * **Wizard de Matrícula Individual**: 6 pasos completos con generación instantánea de credenciales y carnet QR.
+   * **📥 Importación Masiva Excel / CSV**: Carga de lotes completos de estudiantes con plantilla estandarizada y validación automática de campos.
+   * **📇 Planilla Masiva de Carnets (A4)**: Generación en 1 clic de láminas de 8 carnets QR con guías de corte listas para imprenta.
 
-4. **Gestión de Horarios y Plana Docente (`/admin/horarios` y `/admin/docentes`)**:
-   * Matriz horaria semanal por aula con prevención de cruces de docentes y aulas.
-   * Directorio de profesores con especialidad y asignaciones de cursos.
-
-5. **Consolidado de Calificaciones (`/admin/notas-salon` y `/admin/reportes`)**:
+5. **Consolidado de Calificaciones y SIAGIE (`/admin/notas-salon` y `/admin/reportes`)**:
    * Sábana completa de calificaciones por sección y bimestre.
-   * Descarga de actas e informes en PDF.
+   * **📑 Exportador Oficial SIAGIE MINEDU**: Generación de archivos CSV con codificación UTF-8 BOM estructurados para el sistema oficial del MINEDU.
+   * **🏆 Cuadro de Mérito y Padrón de Excelencia**: Ranking ponderado de primeros puestos según la escala CNEB (AD, A, B, C).
+   * Descarga masiva de libretas consolidadas y actas oficiales en PDF.
 
 ---
 
@@ -78,6 +80,7 @@ El sistema cuenta con **4 roles de usuario** y un **Modo Kiosco**:
 
 1. **Dashboard del Profesor (`/docente`)**:
    * Clases del día con horario y aula actual.
+   * Muro de comunicados y citaciones docentes con botón de acuse de recibo *"✓ Recibido y Leído"*.
    * Resumen de tareas pendientes de corrección y alertas del tutor.
 
 2. **Toma de Asistencia Ultrarrápida (`/docente/asistencia`)**:
@@ -85,55 +88,50 @@ El sistema cuenta con **4 roles de usuario** y un **Modo Kiosco**:
    * Cambio de estado con un solo clic (Tardanza, Falta, Justificado).
    * Auto-guardado instantáneo con confirmación visual.
 
-3. **Registro de Notas CNEB (`/docente/notas`)**:
-   * Matriz interactiva de calificaciones por competencia con escala AD / A / B / C o numérica.
+3. **Registro de Notas CNEB & Productividad (`/docente/notas`)**:
+   * **⚡ Llenado Rápido por Columna**: Botón relámpago en cada competencia para asignar notas masivas (`AD`, `A`, `B`, `C`) a todo el salón.
+   * **🪄 Asistente de Conclusiones Descriptivas Sugeridas CNEB**: Recomendaciones pedagógicas formativas automáticas según el área y la escala obtenida.
    * Cálculo en tiempo real del promedio de período y anual.
 
-4. **Gestor de Tareas y Evaluaciones (`/docente/tareas`, `/docente/evaluaciones`)**:
+4. **Panel de Tutoría & Bienestar Estudiantil (`/docente/tutoria`)**:
+   * Semáforo académico del salón con detección de cursos en riesgo.
+   * Bitácora de incidencias, acuerdos de convivencia y directorio telefónico de emergencia de padres.
+
+5. **Gestor de Tareas y Evaluaciones (`/docente/tareas`, `/docente/evaluaciones`)**:
    * Publicación de actividades con rúbrica, fecha límite y adjuntos.
-   * Revisión de entregas con calificación y retroalimentación personalizada.
+   * Revisión de entregas con calificación CNEB y retroalimentación personalizada.
 
 ---
 
 ### 🎓 C. Portal Estudiante
 
 1. **Dashboard Escolar (`/estudiante`)**:
-   * Horario del día y materias en curso.
-   * Pendientes de entrega y recordatorios de exámenes.
-
-2. **Carnet Digital QR (`/estudiante/carnet-qr`)**:
-   * Identificación oficial con código QR dinámico de alta resolución para acceso en puerta.
-
-3. **Libreta de Notas Oficial (`/estudiante/libreta-notas`)**:
-   * Boleta de calificaciones por bimestres (I, II, III, IV) y promedio ponderado anual.
-
-4. **Aula Virtual LMS (`/estudiante/tareas`)**:
-   * Acceso a lecciones, material multimedia y formulario de entrega de tareas.
+   * Carnet digital QR interactivo para acceso en portería.
+   * Mural de comunicados y avisos institucionales del salón.
+   * Horario semanal y próximas evaluaciones bimestrales.
+   * Tareas pendientes con botón de entrega de evidencias.
+   * Consulta en vivo de libreta oficial de calificaciones por competencias.
 
 ---
 
-### 👨‍👩‍👧 D. Portal Apoderado (Familia)
+### 👨‍👩‍👧 D. Portal Apoderado
 
-1. **Selector Multi-Hijo (`/apoderado`)**:
-   * Pestañas para alternar entre hijos matriculados en la institución.
-
-2. **Métricas de Rendimiento y Asistencia**:
-   * Porcentaje de asistencia mensual, asistencias a tiempo y alertas de tardanzas.
-   * Promedio ponderado y estatus en cada curso.
-
-3. **Canal de Tutoría y Avisos**:
-   * Información de contacto del tutor de salón y avisos de dirección.
+1. **Dashboard Familiar Multi-Hijo (`/apoderado`)**:
+   * Switcher de hijos con sincronización inmediata de datos.
+   * Muro de comunicados y citaciones escolares con botón de confirmación de asistencia.
+   * Agenda escolar unificada (tareas, exámenes y feriados).
+   * Descarga directa de Ficha Oficial de Matrícula y Libreta de Notas en PDF.
+   * Formulario de justificación de inasistencias con seguimiento de estado.
 
 ---
 
-### 📲 E. Kiosco de Control QR en Puerta (`/asistencia`)
+### 📲 E. Kiosco de Asistencia QR en Portería (`/asistencia`)
 
-* Modo pantalla completa diseñado para tablets o monitores en recepción.
-* Mensaje gigante **"ACERCA TU CARNET ESCOLAR"**.
-* Lectura por cámara web o pistola lectora de código de barras / QR USB.
-* Respuesta audiovisual inmediata con mensaje de voz ("¡Bienvenido, [Nombre]!").
-* Retorno automático al estado de espera tras 4 segundos.
-
+1. **Operación en Puerta de Ingreso / Salida**:
+   * **🔫 Soporte Nativo para Pistolas Lectoras USB**: Captura global de ráfagas de teclado sin requerir foco en pantalla.
+   * **Decodificador Inteligente Multi-Formato**: Lectura de JSON, URLs, Tokens, DNI y carnets docentes.
+   * **Feedback Auditivo con Web Audio API**: Tonos diferenciados para puntualidad, tardanza y alerta de duplicados.
+   * **Modo Entrada / Salida**: Control de ingreso matutino y retiro escolar.
 ---
 
 ## 4. Búsqueda Rápida Command Palette (`CTRL + K`)
@@ -142,7 +140,7 @@ En cualquier lugar de la aplicación, presionar `CTRL + K` (o `CMD + K` en macOS
 * Búsqueda de estudiantes por nombres, apellidos, DNI o código.
 * Búsqueda de docentes por nombre o especialidad.
 * Búsqueda de cursos y secciones del plan de estudios.
-* Accesos rápidos a acciones del sistema (Nueva Matrícula, Terminal QR, Consolidado).
+* Accesos rápidos a acciones del sistema (Nueva Matrícula, Terminal QR, Comunicados, Consolidado).
 
 ---
 
@@ -157,3 +155,11 @@ En la pantalla de inicio de sesión (`/login`), se encuentran disponibles tarjet
 | **Mateo Quispe** | Estudiante | `alumno@colegio.edu.pe` | `alumno123` |
 | **María Elena Rojas** | Apoderado | `apoderado@colegio.edu.pe` | `123456` |
 | **Control Puerta** | Portería / QR | `porteria@colegio.edu.pe` | `porteria123` |
+
+---
+
+## 6. Despliegue y Acceso en la Nube
+
+* **URL de Producción:** [https://cole-sistema-mini.vercel.app](https://cole-sistema-mini.vercel.app)
+* **Repositorio Git:** [https://github.com/Alessander9/ColeSistemaMini.git](https://github.com/Alessander9/ColeSistemaMini.git)
+* **Normativa Curricular:** Currículo Nacional de la Educación Básica (CNEB) — RVM 094-2020-MINEDU.

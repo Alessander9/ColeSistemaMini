@@ -204,15 +204,22 @@ Así interactúa toda la comunidad educativa a lo largo de una jornada escolar:
 
 #### 1. Mi Horario y Clases del Día (`/docente` y `/docente/horario`)
 - Consulta qué salones te tocan hoy y la distribución de horas de toda la semana.
+- Muro de comunicados docentes con botón de acuse de recibo *"✓ Recibido y Leído"*.
 
 #### 2. Tomar Asistencia en Salón (`/docente/asistencia`)
 - Marca con un toque: 🟢 Presente, 🟡 Tardanza, 🔴 Falta o 🔵 Justificado. Haz clic en **Guardar**.
+- Descarga el **Registro Auxiliar en Blanco (PDF)** para tomar asistencia o notas a mano en el patio o laboratorio.
 
-#### 3. Calificar por Competencias CNEB (`/docente/notas`)
+#### 3. Calificar por Competencias CNEB & Productividad (`/docente/notas`)
+- **⚡ Llenado Rápido por Columna**: Botón relámpago en cada competencia para asignar una nota masiva (`AD`, `A`, `B`, `C`) a todo el salón y editar solo las excepciones.
+- **🪄 Asistente de Conclusiones Descriptivas Sugeridas CNEB**: Banco de sugerencias pedagógicas formativas automáticas según el área y la escala obtenida.
 - Selecciona tu curso y califica con **AD**, **A**, **B** o **C**.
-- Escribe la conclusión descriptiva con recomendaciones claras para el estudiante.
 
-#### 4. Dejar Tareas y Revisar Entregas (`/docente/tareas`)
+#### 4. Panel de Tutoría & Bienestar Estudiantil (`/docente/tutoria`)
+- Semáforo académico del aula con detección de cursos en riesgo.
+- Bitácora de incidencias, acuerdos de convivencia y directorio telefónico de emergencia de padres.
+
+#### 5. Dejar Tareas y Revisar Entregas (`/docente/tareas`)
 - Crea tareas con fecha límite y archivos adjuntos.
 - Revisa los trabajos enviados por los alumnos, califícalos y envíales tu retroalimentación.
 
@@ -224,10 +231,13 @@ Así interactúa toda la comunidad educativa a lo largo de una jornada escolar:
 #### 1. Mi Carnet QR Digital (`/estudiante/carnet-qr`)
 - Muestra este código en la puerta del colegio para registrar tu ingreso en el Kiosco.
 
-#### 2. Mis Tareas y Entregas (`/estudiante/tareas`)
+#### 2. Mural de Comunicados y Eventos (`/estudiante`)
+- Consulta circulares, eventos y avisos importantes de tu grado y sección.
+
+#### 3. Mis Tareas y Entregas (`/estudiante/tareas`)
 - Revisa las tareas pendientes, descarga los archivos de los profesores y sube tus trabajos resueltos.
 
-#### 3. Mi Libreta de Calificaciones (`/estudiante/libreta-notas`)
+#### 4. Mi Libreta de Calificaciones (`/estudiante/libreta-notas`)
 - Consulta tus notas bimestrales, tu promedio anual y los comentarios de tus profesores.
 
 ---
@@ -238,17 +248,17 @@ Así interactúa toda la comunidad educativa a lo largo de una jornada escolar:
 #### 1. Selector Multi-Hijo
 - Si tienes varios hijos en el colegio, cambia entre ellos con un solo clic en la parte superior.
 
-#### 2. Monitoreo de Asistencia en Tiempo Real
+#### 2. Muro de Comunicados y Citaciones Escolares
+- Revisa circulares de dirección y citaciones con fecha, hora, lugar o enlace de reunión virtual con botón de confirmación de asistencia.
+
+#### 3. Monitoreo de Asistencia en Tiempo Real
 - Verifica a qué hora exacta ingresó tu hijo hoy y su récord mensual de puntualidad.
 
-#### 3. Justificación de Inasistencias
+#### 4. Justificación de Inasistencias
 - Justifica faltas por motivos de salud o emergencia familiar directamente desde tu celular.
 
-#### 4. Ver e Imprimir Libreta Oficial
-- Haz clic en **"Ver Libreta Oficial"** para abrir el documento formal con firmas digitales de la dirección y presiona **"Imprimir / Guardar en PDF"**.
-
-#### 5. Contacto con el Tutor
-- Consulta el nombre, correo y horario de atención del profesor tutor de tu hijo.
+#### 5. Ver e Imprimir Libreta Oficial y Ficha de Matrícula
+- Descarga en PDF vectorial la **Ficha Oficial de Matrícula** y la **Libreta Anual de Notas** con 1 clic.
 
 ---
 
@@ -256,22 +266,28 @@ Así interactúa toda la comunidad educativa a lo largo de una jornada escolar:
 *Para el personal de seguridad y auxiliares.*
 
 1. **Abrir la pantalla**: Entra a `/asistencia` y activa la cámara.
-2. **Escaneo del Alumno**: El alumno muestra su código frente al lente a 15 cm.
-3. **Confirmación**: Pantalla verde y sonido de confirmación para ingreso a tiempo; pantalla ámbar para tardanza.
-4. **Ingreso Manual de Emergencia**: Si el alumno no trajo su carnet, escribe su DNI o código escolar en la barra inferior y presiona Enter.
+2. **Escaneo con Pistola Óptica USB**: Conecta cualquier lector de código de barras/QR USB y escanea directamente sin tocar la pantalla ni enfocar cajas de texto.
+3. **Escaneo por Cámara Web**: El alumno muestra su código frente al lente a 15 cm con detección ultra-rápida a 60 FPS y soporte de linterna (Torch).
+4. **Confirmación Audiovisual**: Pantalla verde y sonido agradable para ingreso a tiempo; pantalla ámbar y alerta hablada para tardanza.
+5. **Modo Entrada y Salida**: Registra ingresos en la mañana y retiros escolares a la salida.
+6. **Ingreso Manual de Emergencia**: Si el alumno no trajo su carnet, escribe su DNI o código escolar en la barra inferior y presiona Enter.
 
 ---
 
 ## ❓ 5. Preguntas Frecuentes (FAQ)
 
-### ¿Qué pasa si se corta el internet en el colegio?
-El sistema cuenta con tecnología **Offline-First**. Sigue funcionando y guardando asistencias en la memoria de la computadora. Al restablecerse la conexión, todo se sincroniza sin perder registros.
+### ¿Cómo importo la lista de alumnos desde Excel?
+En `/admin/matriculas`, haz clic en **"📥 Importar CSV / Excel"**, descarga la plantilla estructurada, pega los datos de tu lista y presiona **"Procesar e Importar Lote"**. Se crearán automáticamente los alumnos, carnets QR y credenciales.
+
+### ¿Cómo exporto las notas para el SIAGIE del MINEDU?
+En `/admin/notas-salon`, abre cualquier salón o curso y haz clic en **"Exportar Formato SIAGIE (CSV)"**. El archivo generado tiene la estructura oficial con codificación UTF-8 BOM lista para subir al portal oficial.
+
+### ¿Qué pasa si se corta el internet en la portería?
+El sistema cuenta con tecnología **Offline-First**. Sigue funcionando y guardando asistencias en la memoria local. Al restablecerse la conexión, todo se sincroniza sin perder registros.
 
 ### ¿Se puede usar en teléfonos celulares?
 Sí. El diseño es 100% adaptable para celulares Android, iPhone, tablets y computadoras.
 
-### ¿Dónde configuro el horario de tardanzas?
-Por defecto la hora límite de puntualidad son las **08:00 AM**. Todo escaneo posterior se clasifica automáticamente como tardanza y calcula los minutos exactos de retraso.
-
 ---
 *ColeSistema Mini — Educación, Tecnología y Seguridad para toda la Comunidad Escolar.*
+*Desplegado en producción:* [https://cole-sistema-mini.vercel.app](https://cole-sistema-mini.vercel.app)

@@ -24,6 +24,7 @@ src/components/
 │   ├── Modal.tsx                    # Diálogo modal accesible con overlay y animaciones
 │   ├── Badge.tsx                    # Badges semánticos para roles, estados y niveles
 │   ├── NotificationBell.tsx         # Campana de notificaciones con badge de no leídos
+│   ├── CommandPalette.tsx           # Buscador global universal (CTRL+K)
 │   └── PageHeader.tsx               # Encabezado estándar para todas las páginas
 ├── layout/                          # ESTRUCTURA Y NAVEGACIÓN
 │   ├── Navbar.tsx                   # Barra superior con selector de roles y notificaciones
@@ -34,7 +35,8 @@ src/components/
 ├── notas/                           # DOMINIO: SISTEMA DE CALIFICACIONES
 │   ├── GradeBadge.tsx               # Insignia de nota con color según escala AD, A, B, C
 │   ├── GradeSelector.tsx            # Selector rápido con 1-clic para docentes
-│   └── GradeMatrixTable.tsx         # Matriz editable de notas por competencia y estudiante
+│   ├── GradeMatrixTable.tsx         # Matriz editable de notas con llenado rápido y sugerencias CNEB
+│   └── SubsanacionModal.tsx         # Modal de examen de recuperación y subsanación
 ├── tareas/                          # DOMINIO: GESTIÓN DE TAREAS Y ENTREGAS
 │   ├── TaskCard.tsx                 # Tarjeta de tarea con estado, fecha límite y adjuntos
 │   ├── TaskFormModal.tsx            # Modal para que el docente cree y asigne tareas
@@ -45,6 +47,22 @@ src/components/
 └── notificaciones/                  # DOMINIO: AVISOS Y COMUNICADOS
     ├── NotificationDropdown.tsx     # Menú desplegable de avisos
     └── NotificationCard.tsx         # Tarjeta de alerta (Asistencia, Tarea, Calificación)
+
+src/lib/
+├── cneb/                            # MOTOR CURRICULAR OFICIAL MINEDU
+│   ├── officialCurriculum.ts        # Áreas, competencias y capacidades CNEB
+│   └── conclusionesDescriptivasTemplates.ts # Banco de conclusiones formativas automáticas
+├── export/                          # SERVICIOS DE EXPORTACIÓN EXTERNA
+│   └── siagieExportService.ts       # Generador CSV con BOM UTF-8 para MINEDU SIAGIE
+├── pdf/                             # GENERADORES VECTORIALES JSPDF
+│   ├── reportCardPdfGenerator.ts    # Libreta de notas oficial anual
+│   ├── consolidadoSalonPdfGenerator.ts # Acta consolidada por sección
+│   ├── batchQrCardsPdfGenerator.ts  # Planilla de 8 carnets QR por página A4
+│   ├── registroAuxiliarPdfGenerator.ts # Registro auxiliar de campo en blanco
+│   ├── generateEnrollmentFichaPdf.ts # Ficha oficial de matrícula
+│   └── certificatePdfGenerator.ts   # Constancias oficiales de estudio
+└── constants/                       # CONSTANTES COMPARTIDAS
+    └── schedule.ts                  # Bloques horarios y días de la semana centralizados
 ```
 
 ---

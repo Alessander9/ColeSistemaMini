@@ -1,20 +1,21 @@
 # Contexto del Proyecto: Sistema Escolar Mini (ColeSistemaMini)
 
-**Última actualización:** 13 de Septiembre, 2026  
+**Última actualización:** 21 de Septiembre, 2026  
 **Framework de Agente & Herramientas:** Gentle.ai (CodeGraph Indexing & Tooling)  
 **Arquitectura de Frontend:** Component-Driven Architecture (Componentes Atómicos Reutilizables)  
-**Estado:** Ampliación Funcional (Evaluaciones, Tareas y Notificaciones)  
+**Estado:** Producción Oficial Activa ([https://cole-sistema-mini.vercel.app](https://cole-sistema-mini.vercel.app))  
 
 ---
 
 ## 1. Visión General del Proyecto
-**ColeSistemaMini** es un sistema de gestión escolar integral, modular, ultra-rápido y liviano orientado a instituciones educativas (primaria y secundaria). Sus objetivos clave son:
-1. **Control de Asistencia Instantáneo:** Escaneo de carnets con códigos QR mediante cámara web o dispositivos móviles.
-2. **Evaluación por Competencias (AD, A, B, C):** Registro, modificación de calificaciones y cálculo ponderado de promedios de periodo y anuales.
-3. **Módulo de Tareas Escolares:** Asignación de tareas por curso/sección, fechas límite de entrega, archivos adjuntos y control de entregas.
-4. **Módulo de Evaluaciones Continuas:** Programación de exámenes, prácticas calificadas y rúbricas por competencia.
-5. **Centro de Notificaciones Multicanal:** Avisos en tiempo real para apoderados y estudiantes sobre asistencias (tardanzas/faltas), publicación de notas, tareas pendientes y comunicados de dirección.
-6. **Portales y Dashboards por Rol:** Experiencias optimizadas para **Administrador**, **Docente** y **Estudiante/Apoderado**.
+**ColeSistemaMini** es un sistema de gestión escolar integral, modular, ultra-rápido y liviano orientado a instituciones educativas peruanas (Inicial, Primaria y Secundaria bajo normativa CNEB/MINEDU). Sus capacidades centrales son:
+1. **Control de Asistencia Bi-Modal:** Escaneo de carnets QR por cámara y soporte nativo para pistolas lectoras USB en portería con audio sintetizado.
+2. **Evaluación CNEB con Asistente de Conclusiones (AD, A, B, C):** Matriz de notas con llenado rápido por columna, banco de sugerencias formativas y cálculo de actas anuales.
+3. **Exportador Oficial SIAGIE MINEDU:** Generación de archivos CSV con BOM UTF-8 estructurados según la normativa estatal.
+4. **Módulo de Comunicados Masivos & Citaciones:** Segmentación por nivel, grado, sección y rol con confirmación obligatoria de lectura y exportación a WhatsApp.
+5. **Asistente de Matrícula Masiva:** Importación masiva de estudiantes desde Excel/CSV y generación automática de planillas A4 de carnets QR.
+6. **Módulo de Tareas y Aula Virtual LMS:** Asignación de actividades, entrega de evidencias y devolución formativa.
+7. **Portales y Dashboards por Rol:** Experiencias optimizadas para **Administrador**, **Docente**, **Estudiante**, **Apoderado** y **Kiosco QR de Portería**.
 
 ---
 
