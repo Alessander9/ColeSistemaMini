@@ -22,7 +22,7 @@ describe('Universal Persistence & Multi-Role Data Flow', () => {
     localStorage.setItem('colegio_current_user', JSON.stringify(teacherUser));
     const loaded = JSON.parse(localStorage.getItem('colegio_current_user') || '{}');
     expect(loaded.rol).toBe('docente');
-    expect(loaded.nombre).toBe(teacherUser?.nombre);
+    expect(loaded.nombres).toBe(teacherUser?.nombres);
   });
 
   it('restores all data to defaults when reset is invoked', () => {

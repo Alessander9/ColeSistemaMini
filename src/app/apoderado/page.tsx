@@ -87,6 +87,7 @@ export default function ApoderadoDashboardPage() {
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   const [isJustifyModalOpen, setIsJustifyModalOpen] = useState(false);
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
+  const [apoderadoTab, setApoderadoTab] = useState<'hoy' | 'calificaciones' | 'deberes' | 'tramites'>('hoy');
 
   // Estados del modal de justificación
   const [justifyDate, setJustifyDate] = useState(new Date().toISOString().split('T')[0]);
@@ -195,6 +196,11 @@ export default function ApoderadoDashboardPage() {
   const tardanzaAttendances = studentAttendances.filter(a => a.estado === 'tardanza').length;
   const faltaAttendances = studentAttendances.filter(a => a.estado === 'falta').length;
   const attendanceRate = totalAttendances > 0 ? Math.round((presentAttendances / totalAttendances) * 100) : 0;
+
+  const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
+  const todayAttendanceRecord = useMemo(() => {
+    return studentAttendances.find(a => a.fecha === todayStr) || null;
+  }, [studentAttendances, todayStr]);
 
   // Tutor del salón
   const currentTutor = useMemo(() => {
@@ -726,448 +732,198 @@ export default function ApoderadoDashboardPage() {
         </div>
       </div>
 
-      {/* ── 3.5 BARRA DE RUTA DE SEGUIMIENTO FAMILIAR (SECUENCIA LÓGICA) ── */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 shadow-sm">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
-          <div className="flex items-center gap-2">
-            <span className="flex h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
-            <h3 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">
-              Ruta de Seguimiento Familiar
-            </h3>
-          </div>
-          <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-            Monitoreo en tiempo real de {currentChild?.nombre || 'tu hijo'}
-          </span>
-        </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 pt-3">
-          <button
-            type="button"
-            onClick={() => document.getElementById('asistencia-en-vivo')?.scrollIntoView({ behavior: 'smooth' })}
-            className="group flex flex-col p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 border border-slate-200/60 dark:border-slate-700/60 hover:border-emerald-300 transition-all text-left cursor-pointer"
-          >
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300">
-                1. Ingreso
-              </span>
-              <Clock className="w-3.5 h-3.5 text-emerald-500 group-hover:scale-110 transition-transform" />
-            </div>
-            <span className="text-xs font-bold text-slate-900 dark:text-white">Asistencia Live</span>
-            <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate">Hora de llegada y estado</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setIsJustifyModalOpen(true)}
-            className="group flex flex-col p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 hover:bg-amber-50 dark:hover:bg-amber-950/40 border border-slate-200/60 dark:border-slate-700/60 hover:border-amber-300 transition-all text-left cursor-pointer"
-          >
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300">
-                2. Bienestar
-              </span>
-              <ShieldCheck className="w-3.5 h-3.5 text-amber-500 group-hover:scale-110 transition-transform" />
-            </div>
-            <span className="text-xs font-bold text-slate-900 dark:text-white">Justificar Falta</span>
-            <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate">Enviar motivo al tutor</span>
-          </button>
-
-          <Link
-            href="/apoderado/tareas"
-            className="group flex flex-col p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 hover:bg-blue-50 dark:hover:bg-blue-950/40 border border-slate-200/60 dark:border-slate-700/60 hover:border-blue-300 transition-all text-left"
-          >
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300">
-                3. Estudio
-              </span>
-              <FileText className="w-3.5 h-3.5 text-blue-500 group-hover:scale-110 transition-transform" />
-            </div>
-            <span className="text-xs font-bold text-slate-900 dark:text-white">Tareas en Casa</span>
-            <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate">Deberes pendientes</span>
-          </Link>
-
-          <button
-            type="button"
-            onClick={() => setIsReportCardModalOpen(true)}
-            className="group flex flex-col p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 hover:bg-purple-50 dark:hover:bg-purple-950/40 border border-slate-200/60 dark:border-slate-700/60 hover:border-purple-300 transition-all text-left cursor-pointer"
-          >
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-purple-100 dark:bg-purple-900/60 text-purple-700 dark:text-purple-300">
-                4. Notas
-              </span>
-              <Award className="w-3.5 h-3.5 text-purple-500 group-hover:scale-110 transition-transform" />
-            </div>
-            <span className="text-xs font-bold text-slate-900 dark:text-white">Libreta CNEB</span>
-            <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate">Informe bimestral</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={handleDownloadFichaMatriculaPdf}
-            className="group flex flex-col p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 border border-slate-200/60 dark:border-slate-700/60 hover:border-indigo-300 transition-all text-left cursor-pointer"
-          >
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300">
-                5. Matrícula
-              </span>
-              <Download className="w-3.5 h-3.5 text-indigo-500 group-hover:scale-110 transition-transform" />
-            </div>
-            <span className="text-xs font-bold text-slate-900 dark:text-white">Ficha Oficial</span>
-            <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate">Descargar PDF</span>
-          </button>
-        </div>
-      </div>
-
-      {/* ── 4. BANNER SECUNDARIO: TAREAS ESCOLARES (APRENDIZAJE EN CASA) ── */}
-      <div className="relative overflow-hidden rounded-3xl sm:rounded-[32px] bg-gradient-to-r from-blue-50/90 via-indigo-50/50 to-blue-50/80 dark:from-slate-900 dark:via-indigo-950/30 dark:to-slate-900 border border-blue-200/70 dark:border-slate-800 p-6 sm:p-8 shadow-sm">
-        
-        {/* Glow & Decorative elements */}
-        <div className="absolute top-0 right-1/3 -mt-8 w-64 h-64 bg-blue-400/10 rounded-full blur-3xl pointer-events-none" />
-
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-          
-          {/* Lado Izquierdo: Icono + Título + Píldoras */}
-          <div className="space-y-4 max-w-2xl">
-            <div className="flex items-start gap-4">
-              {/* Icono 3D de Libro Azul */}
-              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-3xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center shadow-lg shadow-blue-500/30 shrink-0">
-                <BookOpen className="w-7 h-7 sm:w-8 sm:h-8" />
-              </div>
-
-              <div className="space-y-1">
-                {/* Badge Superior */}
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-100/90 dark:bg-blue-900/50 border border-blue-200/80 dark:border-blue-800/60 text-blue-700 dark:text-blue-300 text-[10px] font-black uppercase tracking-wider">
-                  <BookOpen className="w-3 h-3" />
-                  <span>Aprendizaje en Casa</span>
-                </div>
-
-                <h3 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
-                  Tareas Escolares
-                </h3>
-                <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 font-medium">
-                  Organiza y revisa las actividades escolares de tus hijos.
-                </p>
-              </div>
-            </div>
-
-            {/* 3 Chips Informativos */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
-              <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-2xl bg-white/80 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 backdrop-blur-sm shadow-2xs">
-                <div className="w-7 h-7 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
-                  <Calendar className="w-4 h-4" />
-                </div>
-                <div>
-                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block leading-tight">Revisa y entrega</span>
-                  <span className="text-[10px] text-slate-400 font-medium">sus tareas</span>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-2xl bg-white/80 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 backdrop-blur-sm shadow-2xs">
-                <div className="w-7 h-7 rounded-xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
-                  <Clock className="w-4 h-4" />
-                </div>
-                <div>
-                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block leading-tight">Consulta fechas</span>
-                  <span className="text-[10px] text-slate-400 font-medium">de vencimiento</span>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-2xl bg-white/80 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 backdrop-blur-sm shadow-2xs">
-                <div className="w-7 h-7 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
-                  <TrendingUp className="w-4 h-4" />
-                </div>
-                <div>
-                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block leading-tight">Acompaña</span>
-                  <span className="text-[10px] text-slate-400 font-medium">su progreso</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Lado Derecho: Frase Inspiradora, Ilustración y Botón */}
-          <div className="flex flex-col sm:flex-row lg:flex-col xl:flex-row items-center gap-4 shrink-0 justify-between lg:justify-end">
-            
-            {/* Frase / Cita */}
-            <div className="text-center sm:text-left lg:text-center xl:text-left space-y-1">
-              <span className="font-serif italic text-sm text-indigo-500 dark:text-indigo-300 font-bold block leading-tight">
-                Pequeños esfuerzos,<br />grandes logros ♡
-              </span>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 max-w-[180px] leading-tight">
-                &ldquo;La disciplina de hoy es el éxito de mañana.&rdquo;
-              </p>
-            </div>
-
-            {/* Mini Ilustración del Estudiante */}
-            <div className="w-36 h-24 sm:w-40 sm:h-28 rounded-2xl overflow-hidden border border-indigo-200/80 dark:border-slate-700 shadow-md relative group shrink-0">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/hero-tasks-student.jpg"
-                alt="Tareas Escolares"
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-              />
-            </div>
-
-            {/* Botón de Acción */}
-            <Link
-              href="/apoderado/tareas"
-              className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black text-xs shadow-lg shadow-blue-600/25 transition-all hover:scale-102 active:scale-98 cursor-pointer shrink-0"
-            >
-              <span>Ver mis tareas</span>
-              <ArrowRight className="w-4 h-4" />
-            </Link>
-
-          </div>
-
-        </div>
-      </div>
-
-      {/* ── 5. BENTO GRID EJECUTIVO DEL HIJO SELECCIONADO (SINGLE PANE OF GLASS) ── */}
-      <div className="space-y-6">
-        
-        {/* Banner de Contexto del Hijo Seleccionado */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm">
+      {/* ── 3.5 TARJETA DE SEGURIDAD Y ESTADO DE INGRESO EN VIVO (PAZ MENTAL MATUTINA) ── */}
+      <div className={`p-4 sm:p-5 rounded-3xl border transition-all ${
+        todayAttendanceRecord?.estado === 'presente'
+          ? 'bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent border-emerald-500/30'
+          : todayAttendanceRecord?.estado === 'tardanza'
+          ? 'bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border-amber-500/30'
+          : 'bg-gradient-to-r from-rose-500/10 via-rose-500/5 to-transparent border-rose-500/30'
+      }`}>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white flex items-center justify-center font-black text-lg shadow-md shadow-blue-600/20">
-              {currentChild?.nombre?.[0] || 'E'}
+            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-md ${
+              todayAttendanceRecord?.estado === 'presente'
+                ? 'bg-emerald-600 text-white'
+                : todayAttendanceRecord?.estado === 'tardanza'
+                ? 'bg-amber-600 text-white'
+                : 'bg-rose-600 text-white'
+            }`}>
+              {todayAttendanceRecord?.estado === 'presente' ? (
+                <CheckCircle2 className="w-6 h-6" />
+              ) : todayAttendanceRecord?.estado === 'tardanza' ? (
+                <Clock className="w-6 h-6" />
+              ) : (
+                <AlertCircle className="w-6 h-6" />
+              )}
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-base font-black text-slate-900 dark:text-white">
-                  Expediente Escolar de {currentChild ? `${currentChild.nombre} ${currentChild.apellidos}` : 'Estudiante'}
-                </h3>
-                <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 uppercase">
-                  {currentChild?.grado_nombre || 'Grado'}
+                <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                  todayAttendanceRecord?.estado === 'presente'
+                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                    : todayAttendanceRecord?.estado === 'tardanza'
+                    ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                    : 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
+                }`}>
+                  Control de Ingreso Hoy ({todayStr})
                 </span>
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
-                Sección &quot;{currentChild?.seccion_letra || '-'}&quot; • Código: {activeStudent?.codigo_estudiante || '—'} • Tutor: {tutorDisplayName}
+              <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white mt-0.5">
+                {todayAttendanceRecord?.estado === 'presente'
+                  ? `Ingreso confirmado: ${currentChild?.nombre || 'El estudiante'} está en el plantel escolar`
+                  : todayAttendanceRecord?.estado === 'tardanza'
+                  ? `Ingreso con tardanza registrado para ${currentChild?.nombre || 'el estudiante'}`
+                  : `Sin registro de ingreso en portería aún para ${currentChild?.nombre || 'el estudiante'}`}
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                {todayAttendanceRecord?.estado === 'presente'
+                  ? `Hora registrada: ${todayAttendanceRecord.hora_registro || '07:45 AM'} • Salón "${currentChild?.seccion_letra || '-'}" • Control en portería validado.`
+                  : todayAttendanceRecord?.estado === 'tardanza'
+                  ? `Hora registrada: ${todayAttendanceRecord.hora_registro || '08:15 AM'} • Notificado a tutoría.`
+                  : 'Si tu hijo no asistirá hoy, puedes enviar la justificación directa a su tutor para registrar la falta justificada.'}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2.5 shrink-0">
+            {(!todayAttendanceRecord || todayAttendanceRecord.estado !== 'presente') && (
+              <button
+                type="button"
+                onClick={() => setIsJustifyModalOpen(true)}
+                className="px-4 py-2.5 rounded-xl bg-pink-600 hover:bg-pink-500 text-white font-black text-xs shadow-md shadow-pink-600/20 transition-all cursor-pointer flex items-center gap-1.5"
+              >
+                <Send className="w-3.5 h-3.5" />
+                <span>Justificar Inasistencia</span>
+              </button>
+            )}
             <button
-              onClick={() => setIsReportCardModalOpen(true)}
-              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-2xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-xs font-black hover:bg-blue-100 transition-all cursor-pointer shadow-2xs"
+              type="button"
+              onClick={() => setIsQrModalOpen(true)}
+              className="px-4 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-black text-xs shadow-2xs transition-all cursor-pointer flex items-center gap-1.5"
             >
-              <Award className="w-4 h-4 text-amber-500" />
-              <span>Ver Libreta Oficial</span>
-            </button>
-            <button
-              onClick={() => setIsScheduleModalOpen(true)}
-              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-black hover:bg-slate-200 transition-all cursor-pointer shadow-2xs"
-            >
-              <Clock className="w-4 h-4 text-slate-500" />
-              <span>Horario Completo</span>
-            </button>
-            <button
-              onClick={() => setIsJustifyModalOpen(true)}
-              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-2xl bg-pink-600 hover:bg-pink-500 text-white text-xs font-black shadow-md shadow-pink-600/20 transition-all cursor-pointer"
-            >
-              <Send className="w-4 h-4" />
-              <span>Justificar Falta</span>
+              <QrCode className="w-3.5 h-3.5 text-emerald-500" />
+              <span>Ver Carnet QR</span>
             </button>
           </div>
         </div>
+      </div>
 
-        {/* Bento Grid Principal: 2 Columnas */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          
-          {/* ── COLUMNA IZQUIERDA (7 de 12 Cols): NOTAS, ASISTENCIA SEMANAL Y TAREAS ── */}
-          <div className="lg:col-span-7 space-y-6">
-            
-            {/* 1. Rendimiento por Cursos & Notas CNEB */}
-            <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 flex items-center justify-center font-black">
-                    <Award className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h4 className="font-black text-sm text-slate-900 dark:text-white">
-                      Calificaciones por Asignatura (I Bimestre)
-                    </h4>
-                    <p className="text-[11px] text-slate-400 font-medium">Evaluación cualitativa según currículo CNEB</p>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => setIsReportCardModalOpen(true)}
-                  className="text-xs font-black text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 cursor-pointer"
-                >
-                  Ver boletín completo <ChevronRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
-
-              {/* Lista de Asignaturas con Barra de Nivel de Logro */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
-                {courses.slice(0, 6).map((course) => {
-                  const courseCompetencyIds = course.competencias?.map(c => c.id) || [];
-                  const courseGrades = studentGrades.filter(g => 
-                    courseCompetencyIds.includes(g.competencia_id) || (g as any).curso_id === course.id
-                  );
-                  const grade = courseGrades[0]?.nota_letra;
-                  const scoreNumber = grade === 'AD' ? 19 : grade === 'A' ? 16 : grade === 'B' ? 13 : grade === 'C' ? 10 : 0;
-                  const progressPct = scoreNumber > 0 ? Math.round((scoreNumber / 20) * 100) : 0;
-
-                  return (
-                    <div key={course.id} className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60 space-y-2.5">
-                      <div className="flex items-center justify-between">
-                        <span className="font-black text-xs text-slate-900 dark:text-white truncate">
-                          {course.nombre}
-                        </span>
-                        {grade ? <GradeBadge grade={grade} size="sm" /> : <span className="text-[10px] font-bold text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">Sin nota</span>}
-                      </div>
-
-                      {/* Micro Progress Bar */}
-                      <div className="space-y-1">
-                        <div className="w-full h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
-                          <div 
-                            className={`h-full rounded-full ${
-                              grade === 'AD' ? 'bg-indigo-600' : grade === 'A' ? 'bg-blue-500' : grade === 'B' ? 'bg-amber-500' : grade === 'C' ? 'bg-rose-500' : 'bg-slate-300'
-                            }`}
-                            style={{ width: `${progressPct}%` }}
-                          />
-                        </div>
-                        <div className="flex items-center justify-between text-[10px] text-slate-400 font-medium">
-                          <span>Logro: {grade === 'AD' ? 'Destacado' : grade === 'A' ? 'Esperado' : grade === 'B' ? 'En Proceso' : grade === 'C' ? 'En Inicio' : 'Sin evaluar'}</span>
-                          <span className="font-bold">{scoreNumber > 0 ? `${scoreNumber}/20` : '—'}</span>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* 2. Monitor Semanal de Asistencia */}
-            <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-black">
-                    <CalendarCheck className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h4 className="font-black text-sm text-slate-900 dark:text-white">
-                      Registro de Asistencia de la Semana
-                    </h4>
-                    <p className="text-[11px] text-slate-400 font-medium">Puntualidad acumulada: {attendanceRate}%</p>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => setIsJustifyModalOpen(true)}
-                  className="text-xs font-black text-pink-600 dark:text-pink-400 hover:underline flex items-center gap-1 cursor-pointer"
-                >
-                  Justificar falta <ChevronRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
-
-              {/* 5 Days Dynamic Strip */}
-              {studentAttendances.length === 0 ? (
-                <div className="py-6 text-center text-xs text-slate-400">
-                  No hay registros de asistencia recientes para el estudiante seleccionado.
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 text-center">
-                  {[...studentAttendances].slice(-5).map((att, idx) => (
-                    <div 
-                      key={att.id || idx}
-                      className={`p-3 rounded-2xl border transition-all ${
-                        att.estado === 'presente'
-                          ? 'bg-emerald-50/60 dark:bg-emerald-950/30 border-emerald-200/80 dark:border-emerald-900/40'
-                          : att.estado === 'tardanza'
-                            ? 'bg-amber-50/60 dark:bg-amber-950/30 border-amber-200/80 dark:border-amber-900/40'
-                            : 'bg-rose-50/60 dark:bg-rose-950/30 border-rose-200/80 dark:border-rose-900/40'
-                      }`}
-                    >
-                      <span className="text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 block">{att.fecha}</span>
-                      <div className="my-1.5 flex items-center justify-center">
-                        {att.estado === 'presente' ? (
-                          <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-                        ) : (
-                          <Clock className="w-5 h-5 text-amber-600 dark:text-amber-400" />
-                        )}
-                      </div>
-                      <span className="font-mono text-[9px] font-black text-slate-500 capitalize block">{att.estado}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* 3. Tareas y Actividades del Alumno */}
-            <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400 flex items-center justify-center font-black">
-                    <CheckSquare className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h4 className="font-black text-sm text-slate-900 dark:text-white">
-                      Agenda de Tareas &amp; Deberes Escolares
-                    </h4>
-                    <p className="text-[11px] text-slate-400 font-medium">Actividades académicas asignadas en plataforma</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-black uppercase text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/60 px-2.5 py-1 rounded-full border border-purple-200/60">
-                    {studentTasks.filter(t => !submissions.some(s => s.tarea_id === t.id && s.matricula_id === activeEnrollment?.id)).length} Pendientes
-                  </span>
-                  <Link
-                    href="/apoderado/tareas"
-                    className="text-xs font-black text-purple-600 dark:text-purple-400 hover:underline flex items-center gap-0.5 ml-1"
-                  >
-                    Ver panel <ChevronRight className="w-3.5 h-3.5" />
-                  </Link>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                {studentTasks.length === 0 ? (
-                  <p className="text-xs text-slate-400 py-6 text-center">No hay tareas asignadas en esta aula.</p>
-                ) : (
-                  studentTasks.slice(0, 3).map((task) => {
-                    const courseObj = courses.find(c => c.id === task.curso_id);
-                    const sub = submissions.find(s => s.tarea_id === task.id && s.matricula_id === activeEnrollment?.id);
-                    const isSubmitted = !!sub;
-                    return (
-                      <div key={task.id} className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                        <div className="space-y-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-black uppercase text-purple-600 bg-purple-50 dark:bg-purple-950 px-2 py-0.5 rounded-md border border-purple-200/60">
-                              {courseObj?.nombre || 'Curso'}
-                            </span>
-                            <span className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                              {task.titulo}
-                            </span>
-                          </div>
-                          <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                            Vence: {task.fecha_limite} • Valor pedagógico
-                          </p>
-                        </div>
-
-                        <span className={`text-[10px] font-black px-2.5 py-1 rounded-xl shrink-0 ${
-                          isSubmitted 
-                            ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30'
-                            : 'bg-pink-50 dark:bg-pink-950/60 text-pink-700 dark:text-pink-300 border border-pink-500/30'
-                        }`}>
-                          {isSubmitted ? '✓ Entregada' : '● Pendiente de Envío'}
-                        </span>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-
+      {/* ── 3.6 BANNER DE CONTEXTO DEL HIJO SELECCIONADO ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm">
+        <div className="flex items-center gap-3.5">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white flex items-center justify-center font-black text-lg shadow-md shadow-blue-600/20">
+            {currentChild?.nombre?.[0] || 'E'}
           </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-base font-black text-slate-900 dark:text-white">
+                Expediente Escolar de {currentChild ? `${currentChild.nombre} ${currentChild.apellidos}` : 'Estudiante'}
+              </h3>
+              <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 uppercase">
+                {currentChild?.grado_nombre || 'Grado'}
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
+              Sección &quot;{currentChild?.seccion_letra || '-'}&quot; • Código: {activeStudent?.codigo_estudiante || '—'} • Tutor: {tutorDisplayName}
+            </p>
+          </div>
+        </div>
 
-          {/* ── COLUMNA DERECHA (5 de 12 Cols): CLASES DE HOY, CARNET QR Y TUTOR ── */}
-          <div className="lg:col-span-5 space-y-6">
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => setIsReportCardModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-2xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-xs font-black hover:bg-blue-100 transition-all cursor-pointer shadow-2xs"
+          >
+            <Award className="w-4 h-4 text-amber-500" />
+            <span>Ver Libreta Oficial</span>
+          </button>
+          <button
+            onClick={() => setIsScheduleModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-black hover:bg-slate-200 transition-all cursor-pointer shadow-2xs"
+          >
+            <Clock className="w-4 h-4 text-slate-500" />
+            <span>Horario Completo</span>
+          </button>
+          <button
+            onClick={() => setIsJustifyModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-2xl bg-pink-600 hover:bg-pink-500 text-white text-xs font-black shadow-md shadow-pink-600/20 transition-all cursor-pointer"
+          >
+            <Send className="w-4 h-4" />
+            <span>Justificar Falta</span>
+          </button>
+        </div>
+      </div>
+
+      {/* ── 3.7 BARRA DE 4 PESTAÑAS OPERATIVAS FAMILIARES ── */}
+      <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 overflow-x-auto scrollbar-none">
+        <button
+          type="button"
+          onClick={() => setApoderadoTab('hoy')}
+          className={`flex-1 min-w-[130px] sm:min-w-[140px] shrink-0 flex items-center justify-center gap-2 py-2.5 px-3.5 sm:px-4 rounded-xl text-xs font-black transition-all cursor-pointer ${
+            apoderadoTab === 'hoy'
+              ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm border border-slate-200/60 dark:border-slate-700'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+          }`}
+        >
+          <Clock className="w-4 h-4" />
+          <span>Hoy en el Colegio</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setApoderadoTab('calificaciones')}
+          className={`flex-1 min-w-[130px] sm:min-w-[140px] shrink-0 flex items-center justify-center gap-2 py-2.5 px-3.5 sm:px-4 rounded-xl text-xs font-black transition-all cursor-pointer ${
+            apoderadoTab === 'calificaciones'
+              ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm border border-slate-200/60 dark:border-slate-700'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+          }`}
+        >
+          <Award className="w-4 h-4 text-amber-500" />
+          <span>Calificaciones & Libreta</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setApoderadoTab('deberes')}
+          className={`flex-1 min-w-[130px] sm:min-w-[140px] shrink-0 flex items-center justify-center gap-2 py-2.5 px-3.5 sm:px-4 rounded-xl text-xs font-black transition-all cursor-pointer ${
+            apoderadoTab === 'deberes'
+              ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm border border-slate-200/60 dark:border-slate-700'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+          }`}
+        >
+          <FileText className="w-4 h-4 text-purple-500" />
+          <span>Tareas & Exámenes</span>
+          {studentTasks.filter(t => !submissions.some(s => s.tarea_id === t.id && s.matricula_id === activeEnrollment?.id)).length > 0 && (
+            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-black bg-pink-100 text-pink-700 dark:bg-pink-950 dark:text-pink-300">
+              {studentTasks.filter(t => !submissions.some(s => s.tarea_id === t.id && s.matricula_id === activeEnrollment?.id)).length}
+            </span>
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setApoderadoTab('tramites')}
+          className={`flex-1 min-w-[130px] sm:min-w-[140px] shrink-0 flex items-center justify-center gap-2 py-2.5 px-3.5 sm:px-4 rounded-xl text-xs font-black transition-all cursor-pointer ${
+            apoderadoTab === 'tramites'
+              ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm border border-slate-200/60 dark:border-slate-700'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+          }`}
+        >
+          <ShieldCheck className="w-4 h-4 text-indigo-500" />
+          <span>Trámites & Tutor</span>
+        </button>
+      </div>
+
+      {/* ═══════════════════════════════════════════════════════════════════════ */}
+      {/* PESTAÑA 1: HOY EN EL COLEGIO (ASISTENCIA, HORARIO Y COMUNICADOS)        */}
+      {/* ═══════════════════════════════════════════════════════════════════════ */}
+      {apoderadoTab === 'hoy' && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             
-            {/* 1. Clases del Día (Timeline Dinámico) */}
-            <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
+            {/* Clases de Hoy (Timeline Dinámico) */}
+            <div className="lg:col-span-7 bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
               <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-xl bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 flex items-center justify-center font-black">
@@ -1191,7 +947,7 @@ export default function ApoderadoDashboardPage() {
 
               <div className="space-y-2.5">
                 {todaySlots.length > 0 ? (
-                  todaySlots.map((slot, idx) => {
+                  todaySlots.map((slot) => {
                     const courseObj = courses.find(c => c.id === slot.curso_id);
                     const teacherObj = teachers.find(t => t.id === slot.docente_id);
                     return (
@@ -1221,8 +977,8 @@ export default function ApoderadoDashboardPage() {
               </div>
             </div>
 
-            {/* 2. Carnet Escolar QR (Mini Widget Rápido) */}
-            <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-950 text-white p-6 rounded-3xl border border-indigo-500/20 shadow-xl space-y-4">
+            {/* Carnet Escolar QR (Mini Widget Rápido) */}
+            <div className="lg:col-span-5 bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-950 text-white p-6 rounded-3xl border border-indigo-500/20 shadow-xl space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-xl bg-white/10 text-emerald-300 flex items-center justify-center font-black">
@@ -1265,57 +1021,440 @@ export default function ApoderadoDashboardPage() {
               </button>
             </div>
 
-            {/* 3. Ficha de Tutoría & Contacto */}
-            <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-blue-600 text-white flex items-center justify-center font-black text-sm shrink-0 shadow-md">
-                  {currentTutor?.nombres?.[0] || 'D'}{currentTutor?.apellidos?.[0] || 'T'}
+          </div>
+
+          {/* Monitor Semanal de Asistencia */}
+          <div id="asistencia-en-vivo" className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-black">
+                  <CalendarCheck className="w-4 h-4" />
                 </div>
                 <div>
-                  <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider block">Tutor de Salón</span>
                   <h4 className="font-black text-sm text-slate-900 dark:text-white">
-                    {currentTutor ? `Prof. ${currentTutor.nombres} ${currentTutor.apellidos}` : 'Docente Tutor por asignar'}
+                    Registro de Asistencia de la Semana
                   </h4>
-                  <span className="text-[11px] text-slate-400 font-medium block">
-                    {currentTutor ? 'Horario de Atención: Lun a Vie 8:00 AM - 1:00 PM' : 'Contacto institucional'}
-                  </span>
+                  <p className="text-[11px] text-slate-400 font-medium">Puntualidad acumulada: {attendanceRate}%</p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                {currentTutor?.telefono ? (
-                  <a
-                    href={`tel:${currentTutor.telefono}`}
-                    className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center justify-center gap-1.5 border border-slate-200 dark:border-slate-700"
+              <button
+                onClick={() => setIsJustifyModalOpen(true)}
+                className="text-xs font-black text-pink-600 dark:text-pink-400 hover:underline flex items-center gap-1 cursor-pointer"
+              >
+                Justificar falta <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {studentAttendances.length === 0 ? (
+              <div className="py-6 text-center text-xs text-slate-400">
+                No hay registros de asistencia recientes para el estudiante seleccionado.
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 text-center">
+                {[...studentAttendances].slice(-5).map((att, idx) => (
+                  <div 
+                    key={att.id || idx}
+                    className={`p-3 rounded-2xl border transition-all ${
+                      att.estado === 'presente'
+                        ? 'bg-emerald-50/60 dark:bg-emerald-950/30 border-emerald-200/80 dark:border-emerald-900/40'
+                        : att.estado === 'tardanza'
+                          ? 'bg-amber-50/60 dark:bg-amber-950/30 border-amber-200/80 dark:border-amber-900/40'
+                          : 'bg-rose-50/60 dark:bg-rose-950/30 border-rose-200/80 dark:border-rose-900/40'
+                    }`}
                   >
-                    <Phone className="w-3.5 h-3.5 text-blue-600" />
-                    <span>Llamar</span>
-                  </a>
-                ) : (
-                  <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-400 font-medium text-xs flex items-center justify-center gap-1.5 border border-slate-200 dark:border-slate-700">
-                    <Phone className="w-3.5 h-3.5 text-slate-400" />
-                    <span>Sin teléfono</span>
+                    <span className="text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 block">{att.fecha}</span>
+                    <div className="my-1.5 flex items-center justify-center">
+                      {att.estado === 'presente' ? (
+                        <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                      ) : (
+                        <Clock className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                      )}
+                    </div>
+                    <span className="font-mono text-[9px] font-black text-slate-500 capitalize block">{att.estado}</span>
                   </div>
-                )}
-                {currentTutor?.email ? (
-                  <a
-                    href={`mailto:${currentTutor.email}`}
-                    className="p-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-blue-600/20"
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Sección de Comunicados & Citaciones Oficiales */}
+          <div id="comunicados-section" className="bg-white dark:bg-slate-900 p-6 sm:p-7 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-black">
+                  <MessageSquare className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-black text-base text-slate-900 dark:text-white flex items-center gap-2">
+                    <span>Boletín Oficial &amp; Citaciones Escolares</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 font-bold border border-indigo-200">
+                      {currentChild?.grado_nombre} &quot;{currentChild?.seccion_letra}&quot;
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-500 font-medium">Avisos y citaciones oficiales emitidos por Dirección y Tutoría</p>
+                </div>
+              </div>
+              <span className="text-xs text-slate-400 font-medium">Año Lectivo 2026</span>
+            </div>
+
+            {targetedAnnouncements.length === 0 ? (
+              <div className="py-8 text-center text-xs text-slate-400 bg-slate-50/50 dark:bg-slate-800/30 rounded-2xl border border-slate-100 dark:border-slate-800">
+                No hay comunicados o citaciones pendientes para este grado y sección.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+                {targetedAnnouncements.map((ann) => {
+                  const isConfirmed = currentUser?.id && ann.confirmado_por?.includes(currentUser.id);
+                  const isCitacion = ann.categoria === 'citacion' || ann.tipo === 'citacion';
+                  const isUrgente = ann.tipo === 'urgente';
+
+                  const cardBgClass = isCitacion
+                    ? 'bg-purple-50/60 dark:bg-purple-950/30 border-purple-200/80 dark:border-purple-900/40'
+                    : isUrgente
+                    ? 'bg-rose-50/60 dark:bg-rose-950/30 border-rose-200/80 dark:border-rose-900/40'
+                    : 'bg-blue-50/60 dark:bg-blue-950/30 border-blue-200/80 dark:border-blue-900/40';
+
+                  const badgeBgClass = isCitacion
+                    ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/60 dark:text-purple-200'
+                    : isUrgente
+                    ? 'bg-rose-100 text-rose-800 dark:bg-rose-900/60 dark:text-rose-200'
+                    : 'bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-200';
+
+                  return (
+                    <div key={ann.id} className={`p-4 sm:p-5 rounded-2xl border ${cardBgClass} space-y-3 flex flex-col justify-between shadow-2xs`}>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className={`text-[10px] font-black uppercase px-2.5 py-0.5 rounded-md ${badgeBgClass}`}>
+                            {isCitacion ? '📅 Citación a Padres' : isUrgente ? '⚠️ Comunicado Urgente' : '📢 Comunicado Oficial'}
+                          </span>
+                          <span className="text-[10px] text-slate-500 font-bold">
+                            {ann.fecha_publicacion || ann.creado_en?.substring(0, 10) || '2026'}
+                          </span>
+                        </div>
+
+                        <h4 className="text-sm font-black text-slate-900 dark:text-white leading-snug">
+                          {ann.titulo}
+                        </h4>
+
+                        <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-line">
+                          {ann.contenido}
+                        </p>
+
+                        {/* Detalles de Citación si aplica */}
+                        {isCitacion && (ann.fecha_citacion || ann.lugar_citacion || ann.enlace_reunion) && (
+                          <div className="p-2.5 rounded-xl bg-white/80 dark:bg-slate-900/80 border border-purple-200/60 dark:border-purple-800/40 space-y-1 text-xs text-purple-950 dark:text-purple-200">
+                            {ann.fecha_citacion && (
+                              <div className="flex items-center gap-1.5 font-bold">
+                                <Calendar className="w-3.5 h-3.5 text-purple-600" />
+                                <span>Fecha: {ann.fecha_citacion} {ann.hora_citacion ? `a las ${ann.hora_citacion}` : ''}</span>
+                              </div>
+                            )}
+                            {ann.lugar_citacion && (
+                              <div className="flex items-center gap-1.5 font-medium text-[11px] text-slate-600 dark:text-slate-400">
+                                <MapPin className="w-3.5 h-3.5 text-slate-500" />
+                                <span>Lugar: {ann.lugar_citacion}</span>
+                              </div>
+                            )}
+                            {ann.enlace_reunion && (
+                              <div className="pt-1">
+                                <a
+                                  href={ann.enlace_reunion}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="inline-flex items-center gap-1 text-[11px] font-black text-blue-600 hover:underline"
+                                >
+                                  <span>🔗 Unirse a Sala Virtual (Google Meet / Zoom)</span>
+                                </a>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Acciones de Confirmación & Acuse de Recibo */}
+                      <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between gap-2">
+                        <div className="text-[10px] text-slate-500">
+                          {ann.requiere_confirmacion ? 'Requiere confirmación familiar' : 'Aviso informativo'}
+                        </div>
+
+                        {ann.requiere_confirmacion && (
+                          isConfirmed ? (
+                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-xl bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 text-xs font-black">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                              <span>Confirmado por ti</span>
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => confirmAnnouncement(ann.id, currentUser?.id || 'apoderado-user')}
+                              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-black text-xs shadow-md shadow-indigo-600/20 cursor-pointer transition-all"
+                            >
+                              <CheckSquare className="w-3.5 h-3.5" />
+                              <span>Confirmar Asistencia</span>
+                            </button>
+                          )
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════════════ */}
+      {/* PESTAÑA 2: CALIFICACIONES & LIBRETA CNEB                                */}
+      {/* ═══════════════════════════════════════════════════════════════════════ */}
+      {apoderadoTab === 'calificaciones' && (
+        <div className="space-y-6">
+          {/* Calificaciones por Asignatura (I Bimestre) */}
+          <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 flex items-center justify-center font-black">
+                  <Award className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="font-black text-sm text-slate-900 dark:text-white">
+                    Calificaciones por Asignatura (I Bimestre)
+                  </h4>
+                  <p className="text-[11px] text-slate-400 font-medium">Evaluación cualitativa según currículo CNEB (AD, A, B, C)</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setIsReportCardModalOpen(true)}
+                  className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-black shadow-md shadow-blue-600/20 flex items-center gap-1.5 cursor-pointer transition-all"
+                >
+                  <Award className="w-3.5 h-3.5 text-amber-300" />
+                  <span>Ver Libreta Oficial CNEB</span>
+                </button>
+                <button
+                  onClick={handleDownloadReportCardPdf}
+                  className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-black hover:bg-slate-200 transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5 text-slate-500" />
+                  <span>Descargar PDF</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Lista de Asignaturas con Barra de Nivel de Logro */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 pt-1">
+              {courses.map((course) => {
+                const courseCompetencyIds = course.competencias?.map(c => c.id) || [];
+                const courseGrades = studentGrades.filter(g => 
+                  courseCompetencyIds.includes(g.competencia_id) || (g as any).curso_id === course.id
+                );
+                const grade = courseGrades[0]?.nota_letra;
+                const scoreNumber = grade === 'AD' ? 19 : grade === 'A' ? 16 : grade === 'B' ? 13 : grade === 'C' ? 10 : 0;
+                const progressPct = scoreNumber > 0 ? Math.round((scoreNumber / 20) * 100) : 0;
+
+                return (
+                  <div key={course.id} className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="font-black text-xs text-slate-900 dark:text-white truncate">
+                        {course.nombre}
+                      </span>
+                      {grade ? <GradeBadge grade={grade} size="sm" /> : <span className="text-[10px] font-bold text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">Sin nota</span>}
+                    </div>
+
+                    {/* Micro Progress Bar */}
+                    <div className="space-y-1">
+                      <div className="w-full h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+                        <div 
+                          className={`h-full rounded-full ${
+                            grade === 'AD' ? 'bg-indigo-600' : grade === 'A' ? 'bg-blue-500' : grade === 'B' ? 'bg-amber-500' : grade === 'C' ? 'bg-rose-500' : 'bg-slate-300'
+                          }`}
+                          style={{ width: `${progressPct}%` }}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between text-[10px] text-slate-400 font-medium">
+                        <span>Logro: {grade === 'AD' ? 'Destacado' : grade === 'A' ? 'Esperado' : grade === 'B' ? 'En Proceso' : grade === 'C' ? 'En Inicio' : 'Sin evaluar'}</span>
+                        <span className="font-bold">{scoreNumber > 0 ? `${scoreNumber}/20` : '—'}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Tarjeta de Resumen Cualitativo y Libreta */}
+          <div className="p-6 rounded-3xl bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+            <div className="space-y-2 max-w-xl">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 text-amber-300 text-[10px] font-black uppercase tracking-wider">
+                <Award className="w-3.5 h-3.5" />
+                <span>Estado de Rendimiento Anual</span>
+              </div>
+              <h3 className="text-xl font-black">
+                {currentChild?.nombre} tiene promedio cualitativo &quot;{averageLetter}&quot; ({annualStatus})
+              </h3>
+              <p className="text-xs text-slate-300 font-medium">
+                La evaluación formativa CNEB valora el desarrollo de competencias pedagógicas continuas. Puedes descargar la libreta oficial con firmas institucionales y sellos del MINEDU.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3 shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsReportCardModalOpen(true)}
+                className="px-5 py-3 rounded-2xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs shadow-lg transition-all cursor-pointer flex items-center gap-2"
+              >
+                <Award className="w-4 h-4" />
+                <span>Abrir Libreta CNEB</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════════════ */}
+      {/* PESTAÑA 3: TAREAS ESCOLARES & PRÓXIMOS EXÁMENES                         */}
+      {/* ═══════════════════════════════════════════════════════════════════════ */}
+      {apoderadoTab === 'deberes' && (
+        <div className="space-y-6">
+          {/* Banner de Aprendizaje en Casa */}
+          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-blue-50/90 via-indigo-50/50 to-blue-50/80 dark:from-slate-900 dark:via-indigo-950/30 dark:to-slate-900 border border-blue-200/70 dark:border-slate-800 p-6 sm:p-8 shadow-sm">
+            <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+              <div className="space-y-4 max-w-2xl">
+                <div className="flex items-start gap-4">
+                  <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-3xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center shadow-lg shadow-blue-500/30 shrink-0">
+                    <BookOpen className="w-7 h-7 sm:w-8 sm:h-8" />
+                  </div>
+                  <div className="space-y-1">
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-100/90 dark:bg-blue-900/50 border border-blue-200/80 dark:border-blue-800/60 text-blue-700 dark:text-blue-300 text-[10px] font-black uppercase tracking-wider">
+                      <BookOpen className="w-3 h-3" />
+                      <span>Aprendizaje en Casa</span>
+                    </div>
+                    <h3 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
+                      Tareas Escolares
+                    </h3>
+                    <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 font-medium">
+                      Supervisa los deberes académicos asignados a {currentChild?.nombre || 'tu hijo'}.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
+                  <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-2xl bg-white/80 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 backdrop-blur-sm shadow-2xs">
+                    <div className="w-7 h-7 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+                      <Calendar className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block leading-tight">Revisa y entrega</span>
+                      <span className="text-[10px] text-slate-400 font-medium">sus tareas</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-2xl bg-white/80 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 backdrop-blur-sm shadow-2xs">
+                    <div className="w-7 h-7 rounded-xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
+                      <Clock className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block leading-tight">Consulta fechas</span>
+                      <span className="text-[10px] text-slate-400 font-medium">de vencimiento</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-2xl bg-white/80 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 backdrop-blur-sm shadow-2xs">
+                    <div className="w-7 h-7 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                      <TrendingUp className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block leading-tight">Acompaña</span>
+                      <span className="text-[10px] text-slate-400 font-medium">su progreso</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row lg:flex-col xl:flex-row items-center gap-4 shrink-0 justify-between lg:justify-end">
+                <Link
+                  href="/apoderado/tareas"
+                  className="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black text-xs shadow-lg shadow-blue-600/25 transition-all hover:scale-102 active:scale-98 cursor-pointer shrink-0"
+                >
+                  <span>Ir al Portal de Tareas</span>
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            {/* Lista Detallada de Tareas */}
+            <div className="lg:col-span-7 bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400 flex items-center justify-center font-black">
+                    <CheckSquare className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="font-black text-sm text-slate-900 dark:text-white">
+                      Agenda de Tareas &amp; Deberes Escolares
+                    </h4>
+                    <p className="text-[11px] text-slate-400 font-medium">Actividades académicas asignadas en plataforma</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-black uppercase text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/60 px-2.5 py-1 rounded-full border border-purple-200/60">
+                    {studentTasks.filter(t => !submissions.some(s => s.tarea_id === t.id && s.matricula_id === activeEnrollment?.id)).length} Pendientes
+                  </span>
+                  <Link
+                    href="/apoderado/tareas"
+                    className="text-xs font-black text-purple-600 dark:text-purple-400 hover:underline flex items-center gap-0.5 ml-1"
                   >
-                    <Mail className="w-3.5 h-3.5" />
-                    <span>Enviar Correo</span>
-                  </a>
+                    Ver panel <ChevronRight className="w-3.5 h-3.5" />
+                  </Link>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                {studentTasks.length === 0 ? (
+                  <p className="text-xs text-slate-400 py-6 text-center">No hay tareas asignadas en esta aula.</p>
                 ) : (
-                  <div className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 font-medium text-xs flex items-center justify-center gap-1.5">
-                    <Mail className="w-3.5 h-3.5 text-slate-400" />
-                    <span>Sin correo</span>
-                  </div>
+                  studentTasks.map((task) => {
+                    const courseObj = courses.find(c => c.id === task.curso_id);
+                    const sub = submissions.find(s => s.tarea_id === task.id && s.matricula_id === activeEnrollment?.id);
+                    const isSubmitted = !!sub;
+                    return (
+                      <div key={task.id} className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="space-y-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-black uppercase text-purple-600 bg-purple-50 dark:bg-purple-950 px-2 py-0.5 rounded-md border border-purple-200/60">
+                              {courseObj?.nombre || 'Curso'}
+                            </span>
+                            <span className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                              {task.titulo}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                            Vence: {task.fecha_limite} • Valor pedagógico
+                          </p>
+                        </div>
+
+                        <span className={`text-[10px] font-black px-2.5 py-1 rounded-xl shrink-0 ${
+                          isSubmitted 
+                            ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30'
+                            : 'bg-pink-50 dark:bg-pink-950/60 text-pink-700 dark:text-pink-300 border border-pink-500/30'
+                        }`}>
+                          {isSubmitted ? '✓ Entregada' : '● Pendiente de Envío'}
+                        </span>
+                      </div>
+                    );
+                  })
                 )}
               </div>
             </div>
 
-            {/* 4. Próximas Evaluaciones / Exámenes */}
-            <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3.5">
+            {/* Próximas Evaluaciones / Exámenes */}
+            <div className="lg:col-span-5 bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3.5">
               <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
                 <div className="flex items-center gap-2">
                   <FileCheck2 className="w-4 h-4 text-amber-500" />
@@ -1329,150 +1468,159 @@ export default function ApoderadoDashboardPage() {
               </div>
 
               <div className="space-y-2">
-                {studentExams.slice(0, 2).map((exam) => (
-                  <div key={exam.id} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60 space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-black text-slate-900 dark:text-white">{exam.titulo}</span>
-                      <span className="text-[10px] font-black text-amber-600">{exam.fecha_programada}</span>
+                {studentExams.length === 0 ? (
+                  <p className="text-xs text-slate-400 py-6 text-center">No hay exámenes programados en esta sección.</p>
+                ) : (
+                  studentExams.map((exam) => (
+                    <div key={exam.id} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60 space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-black text-slate-900 dark:text-white">{exam.titulo}</span>
+                        <span className="text-[10px] font-black text-amber-600">{exam.fecha_programada}</span>
+                      </div>
+                      <span className="text-[10px] text-slate-400 font-medium block">
+                        Duración: {exam.duracion_minutos} min • Hora: {exam.hora_inicio || '08:00 AM'}
+                      </span>
                     </div>
-                    <span className="text-[10px] text-slate-400 font-medium block">
-                      Duración: {exam.duracion_minutos} min • Hora: {exam.hora_inicio || '08:00 AM'}
-                    </span>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </div>
 
           </div>
-
         </div>
+      )}
 
-        {/* ── 6. SECCIÓN DE COMUNICADOS & CITACIONES OFICIALES (DIRIGIDO A ESTE SALÓN) ── */}
-        <div id="comunicados-section" className="bg-white dark:bg-slate-900 p-6 sm:p-7 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-black">
-                <MessageSquare className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="font-black text-base text-slate-900 dark:text-white flex items-center gap-2">
-                  <span>Boletín Oficial &amp; Citaciones Escolares</span>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 font-bold border border-indigo-200">
-                    {currentChild?.grado_nombre} &quot;{currentChild?.seccion_letra}&quot;
+      {/* ═══════════════════════════════════════════════════════════════════════ */}
+      {/* PESTAÑA 4: TRÁMITES, DOCUMENTOS & CONTACTO TUTOR                        */}
+      {/* ═══════════════════════════════════════════════════════════════════════ */}
+      {apoderadoTab === 'tramites' && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            {/* Ficha de Tutoría & Contacto */}
+            <div className="lg:col-span-6 bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-5">
+              <div className="flex items-center gap-3.5">
+                <div className="w-14 h-14 rounded-2xl bg-blue-600 text-white flex items-center justify-center font-black text-lg shrink-0 shadow-md">
+                  {currentTutor?.nombres?.[0] || 'D'}{currentTutor?.apellidos?.[0] || 'T'}
+                </div>
+                <div>
+                  <span className="text-[10px] font-black uppercase text-blue-600 dark:text-blue-400 tracking-wider block">Docente Tutor Oficial</span>
+                  <h4 className="font-black text-base text-slate-900 dark:text-white">
+                    {currentTutor ? `Prof. ${currentTutor.nombres} ${currentTutor.apellidos}` : 'Docente Tutor por asignar'}
+                  </h4>
+                  <span className="text-xs text-slate-500 dark:text-slate-400 font-medium block mt-0.5">
+                    {currentTutor ? 'Atención a familias: Lunes a Viernes 8:00 AM - 1:00 PM' : 'Contacto institucional'}
                   </span>
-                </h3>
-                <p className="text-xs text-slate-500 font-medium">Avisos y citaciones oficiales emitidos por Dirección y Tutoría</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+                {currentTutor?.telefono ? (
+                  <a
+                    href={`tel:${currentTutor.telefono}`}
+                    className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center justify-center gap-2 border border-slate-200 dark:border-slate-700 transition-all"
+                  >
+                    <Phone className="w-4 h-4 text-blue-600" />
+                    <span>Llamar al Tutor</span>
+                  </a>
+                ) : (
+                  <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800 text-slate-400 font-medium text-xs flex items-center justify-center gap-2 border border-slate-200 dark:border-slate-700">
+                    <Phone className="w-4 h-4 text-slate-400" />
+                    <span>Sin teléfono</span>
+                  </div>
+                )}
+                {currentTutor?.email ? (
+                  <a
+                    href={`mailto:${currentTutor.email}`}
+                    className="p-3 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-blue-600/20 transition-all"
+                  >
+                    <Mail className="w-4 h-4" />
+                    <span>Enviar Correo</span>
+                  </a>
+                ) : (
+                  <div className="p-3 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 font-medium text-xs flex items-center justify-center gap-2">
+                    <Mail className="w-4 h-4 text-slate-400" />
+                    <span>Sin correo</span>
+                  </div>
+                )}
               </div>
             </div>
-            <span className="text-xs text-slate-400 font-medium">Año Lectivo 2026</span>
-          </div>
 
-          {targetedAnnouncements.length === 0 ? (
-            <div className="py-8 text-center text-xs text-slate-400 bg-slate-50/50 dark:bg-slate-800/30 rounded-2xl border border-slate-100 dark:border-slate-800">
-              No hay comunicados o citaciones pendientes para este grado y sección.
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
-              {targetedAnnouncements.map((ann) => {
-                const isConfirmed = currentUser?.id && ann.confirmado_por?.includes(currentUser.id);
-                const isCitacion = ann.categoria === 'citacion' || ann.tipo === 'citacion';
-                const isUrgente = ann.tipo === 'urgente';
+            {/* Trámites Documentarios Rápidos */}
+            <div className="lg:col-span-6 bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
+              <div className="flex items-center gap-2.5 pb-2 border-b border-slate-100 dark:border-slate-800">
+                <ShieldCheck className="w-5 h-5 text-indigo-600" />
+                <h4 className="font-black text-sm text-slate-900 dark:text-white">
+                  Documentación Oficial y Descargas
+                </h4>
+              </div>
 
-                const cardBgClass = isCitacion
-                  ? 'bg-purple-50/60 dark:bg-purple-950/30 border-purple-200/80 dark:border-purple-900/40'
-                  : isUrgente
-                  ? 'bg-rose-50/60 dark:bg-rose-950/30 border-rose-200/80 dark:border-rose-900/40'
-                  : 'bg-blue-50/60 dark:bg-blue-950/30 border-blue-200/80 dark:border-blue-900/40';
-
-                const badgeBgClass = isCitacion
-                  ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/60 dark:text-purple-200'
-                  : isUrgente
-                  ? 'bg-rose-100 text-rose-800 dark:bg-rose-900/60 dark:text-rose-200'
-                  : 'bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-200';
-
-                return (
-                  <div key={ann.id} className={`p-4 sm:p-5 rounded-2xl border ${cardBgClass} space-y-3 flex flex-col justify-between shadow-2xs`}>
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className={`text-[10px] font-black uppercase px-2.5 py-0.5 rounded-md ${badgeBgClass}`}>
-                          {isCitacion ? '📅 Citación a Padres' : isUrgente ? '⚠️ Comunicado Urgente' : '📢 Comunicado Oficial'}
-                        </span>
-                        <span className="text-[10px] text-slate-500 font-bold">
-                          {ann.fecha_publicacion || ann.creado_en?.substring(0, 10) || '2026'}
-                        </span>
-                      </div>
-
-                      <h4 className="text-sm font-black text-slate-900 dark:text-white leading-snug">
-                        {ann.titulo}
-                      </h4>
-
-                      <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-line">
-                        {ann.contenido}
-                      </p>
-
-                      {/* Detalles de Citación si aplica */}
-                      {isCitacion && (ann.fecha_citacion || ann.lugar_citacion || ann.enlace_reunion) && (
-                        <div className="p-2.5 rounded-xl bg-white/80 dark:bg-slate-900/80 border border-purple-200/60 dark:border-purple-800/40 space-y-1 text-xs text-purple-950 dark:text-purple-200">
-                          {ann.fecha_citacion && (
-                            <div className="flex items-center gap-1.5 font-bold">
-                              <Calendar className="w-3.5 h-3.5 text-purple-600" />
-                              <span>Fecha: {ann.fecha_citacion} {ann.hora_citacion ? `a las ${ann.hora_citacion}` : ''}</span>
-                            </div>
-                          )}
-                          {ann.lugar_citacion && (
-                            <div className="flex items-center gap-1.5 font-medium text-[11px] text-slate-600 dark:text-slate-400">
-                              <MapPin className="w-3.5 h-3.5 text-slate-500" />
-                              <span>Lugar: {ann.lugar_citacion}</span>
-                            </div>
-                          )}
-                          {ann.enlace_reunion && (
-                            <div className="pt-1">
-                              <a
-                                href={ann.enlace_reunion}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="inline-flex items-center gap-1 text-[11px] font-black text-blue-600 hover:underline"
-                              >
-                                <span>🔗 Unirse a Sala Virtual (Google Meet / Zoom)</span>
-                              </a>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Acciones de Confirmación & Acuse de Recibo */}
-                    <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between gap-2">
-                      <div className="text-[10px] text-slate-500">
-                        {ann.requiere_confirmacion ? 'Requiere confirmación familiar' : 'Aviso informativo'}
-                      </div>
-
-                      {ann.requiere_confirmacion && (
-                        isConfirmed ? (
-                          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-xl bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 text-xs font-black">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                            <span>Confirmado por ti</span>
-                          </span>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => confirmAnnouncement(ann.id, currentUser?.id || 'apoderado-user')}
-                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-black text-xs shadow-md shadow-indigo-600/20 cursor-pointer transition-all"
-                          >
-                            <CheckSquare className="w-3.5 h-3.5" />
-                            <span>Confirmar Asistencia</span>
-                          </button>
-                        )
-                      )}
-                    </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={handleDownloadFichaMatriculaPdf}
+                  className="p-4 rounded-2xl bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-200/70 dark:border-indigo-900/50 hover:border-indigo-400 transition-all text-left cursor-pointer flex flex-col justify-between gap-2"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black uppercase text-indigo-700 dark:text-indigo-300">Oficial MINEDU</span>
+                    <Download className="w-4 h-4 text-indigo-600" />
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+                  <div>
+                    <span className="text-xs font-bold text-slate-900 dark:text-white block">Ficha de Matrícula</span>
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400">Descargar documento PDF</span>
+                  </div>
+                </button>
 
-      </div>
+                <button
+                  type="button"
+                  onClick={handleDownloadConstancia}
+                  className="p-4 rounded-2xl bg-blue-50/60 dark:bg-blue-950/30 border border-blue-200/70 dark:border-blue-900/50 hover:border-blue-400 transition-all text-left cursor-pointer flex flex-col justify-between gap-2"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black uppercase text-blue-700 dark:text-blue-300">Institucional</span>
+                    <FileText className="w-4 h-4 text-blue-600" />
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold text-slate-900 dark:text-white block">Constancia de Estudios</span>
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400">Generar constancia formal</span>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setIsJustifyModalOpen(true)}
+                  className="p-4 rounded-2xl bg-pink-50/60 dark:bg-pink-950/30 border border-pink-200/70 dark:border-pink-900/50 hover:border-pink-400 transition-all text-left cursor-pointer flex flex-col justify-between gap-2"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black uppercase text-pink-700 dark:text-pink-300">Tutoría</span>
+                    <Send className="w-4 h-4 text-pink-600" />
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold text-slate-900 dark:text-white block">Justificar Inasistencia</span>
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400">Enviar solicitud de justificación</span>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setIsQrModalOpen(true)}
+                  className="p-4 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200/70 dark:border-emerald-900/50 hover:border-emerald-400 transition-all text-left cursor-pointer flex flex-col justify-between gap-2"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black uppercase text-emerald-700 dark:text-emerald-300">Control de Acceso</span>
+                    <QrCode className="w-4 h-4 text-emerald-600" />
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold text-slate-900 dark:text-white block">Carnet QR Escolar</span>
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400">Pase digital de portería</span>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
 
       {/* ═══════════════════════════════════════════════════════════════════════ */}
       {/* MODAL 1: LIBRETA DE NOTAS OFICIAL (COMPLETA)                            */}

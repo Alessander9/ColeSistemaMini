@@ -34,7 +34,7 @@ describe('Navegación y Consultas por Sección Escolar', () => {
     expect(sectionSlots.length).toBeGreaterThan(0);
     
     sectionSlots.forEach(slot => {
-      expect(slot.dia).toBeGreaterThanOrEqual(1);
+      expect(['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 1, 2, 3, 4, 5, 6]).toContain(slot.dia);
       expect(slot.hora_inicio).toMatch(/^[0-1][0-9]:[0-5][0-9]$/);
       expect(slot.hora_fin).toMatch(/^[0-1][0-9]:[0-5][0-9]$/);
     });

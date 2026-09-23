@@ -1316,6 +1316,8 @@ export default function AdminDocentesPage() {
                     value={newTeacherData.especialidad}
                     onChange={(val) => setNewTeacherData({ ...newTeacherData, especialidad: val })}
                     icon={<Award className="w-4 h-4" />}
+                    allowCustomOption={true}
+                    customOptionLabel="Usar especialidad personalizada"
                     options={[
                       { value: 'Matemática', label: 'Matemática', sublabel: 'Aritmética, Álgebra, Geometría' },
                       { value: 'Comunicación', label: 'Comunicación', sublabel: 'Lenguaje y Literatura' },
@@ -1327,7 +1329,7 @@ export default function AdminDocentesPage() {
                       { value: 'Computación y Robótica', label: 'Computación y Robótica', sublabel: 'TIC y Tecnología' },
                       { value: 'Educación Religiosa', label: 'Educación Religiosa', sublabel: 'Valores y Fe' },
                     ]}
-                    placeholder="Buscar especialidad..."
+                    placeholder="Buscar o escribir especialidad..."
                   />
                 </div>
 
@@ -1424,11 +1426,14 @@ export default function AdminDocentesPage() {
                     value={selectedSectionId}
                     onChange={(val) => setSelectedSectionId(val)}
                     icon={<School className="w-4 h-4" />}
-                    options={sections.map((s) => ({
-                      value: s.id,
-                      label: `${s.grado?.nombre} "${s.letra}"`,
-                      sublabel: `Nivel ${s.grado?.nivel === 'primaria' ? 'Primaria' : 'Secundaria'} (Cap. ${s.capacidad_maxima})`,
-                    }))}
+                    options={sections.map((s) => {
+                      const lvl = s.grado?.nivel === 'inicial' ? 'Inicial' : s.grado?.nivel === 'primaria' ? 'Primaria' : 'Secundaria';
+                      return {
+                        value: s.id,
+                        label: `${s.grado?.nombre} "${s.letra}"`,
+                        sublabel: `Nivel ${lvl} (Cap. ${s.capacidad_maxima})`,
+                      };
+                    })}
                     placeholder="Buscar salón..."
                   />
                 </div>

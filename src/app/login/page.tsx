@@ -54,9 +54,25 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
-  const handleAutoFillAdmin = () => {
-    setEmail('admin@colegio.edu.pe');
-    setPassword('admin123');
+  const handleSelectRole = (rol: UserRole) => {
+    const user = MOCK_USERS.find(u => u.rol === rol) || MOCK_USERS[0];
+    setSelectedUser(user);
+    if (rol === 'admin') {
+      setEmail('admin@colegio.edu.pe');
+      setPassword('admin123');
+    } else if (rol === 'docente') {
+      setEmail('docente@colegio.edu.pe');
+      setPassword('Colegio2026!');
+    } else if (rol === 'estudiante') {
+      setEmail('estudiante@colegio.edu.pe');
+      setPassword('Colegio2026!');
+    } else if (rol === 'apoderado') {
+      setEmail('apoderado@colegio.edu.pe');
+      setPassword('Colegio2026!');
+    } else if (rol === 'asistencia') {
+      setEmail('asistencia@colegio.edu.pe');
+      setPassword('Colegio2026!');
+    }
     setErrorMessage('');
   };
 
@@ -236,24 +252,40 @@ export default function LoginPage() {
               </p>
             </div>
 
-            {/* Quick Helper Button for Administrator Initial Access */}
-            <div className="p-3.5 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200/70 dark:border-indigo-800/50 flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-xs">
-                  <ShieldCheck className="w-4 h-4" />
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-indigo-950 dark:text-indigo-200">Acceso Administrador</p>
-                  <p className="text-[11px] text-indigo-700/80 dark:text-indigo-300/70">admin@colegio.edu.pe</p>
-                </div>
+            {/* Quick Demo Role Selector Pills */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  Acceso Rápido por Roles Demo
+                </label>
+                <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold">1 clic</span>
               </div>
-              <button
-                type="button"
-                onClick={handleAutoFillAdmin}
-                className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-slate-700 text-xs font-bold hover:bg-indigo-50 transition-colors shadow-xs cursor-pointer active:scale-95"
-              >
-                Autocompletar
-              </button>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                {[
+                  { rol: 'admin' as UserRole, label: 'Director / Admin', icon: ShieldCheck, email: 'admin@colegio.edu.pe' },
+                  { rol: 'docente' as UserRole, label: 'Docente', icon: GraduationCap, email: 'docente@colegio.edu.pe' },
+                  { rol: 'estudiante' as UserRole, label: 'Estudiante', icon: User, email: 'estudiante@colegio.edu.pe' },
+                  { rol: 'apoderado' as UserRole, label: 'Apoderado', icon: Users, email: 'apoderado@colegio.edu.pe' },
+                  { rol: 'asistencia' as UserRole, label: 'Kiosco QR', icon: QrCode, email: 'asistencia@colegio.edu.pe' },
+                ].map(({ rol, label, icon: Icon, email: roleEmail }) => {
+                  const isActive = email.toLowerCase() === roleEmail.toLowerCase();
+                  return (
+                    <button
+                      key={rol}
+                      type="button"
+                      onClick={() => handleSelectRole(rol)}
+                      className={`flex items-center gap-1.5 px-2.5 py-2 rounded-xl text-xs font-bold border transition-all text-left cursor-pointer active:scale-95 ${
+                        isActive
+                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-600/20'
+                          : 'bg-slate-50 dark:bg-slate-800/80 hover:bg-indigo-50/70 dark:hover:bg-slate-750 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'
+                      }`}
+                    >
+                      <Icon className="w-3.5 h-3.5 shrink-0" />
+                      <span className="truncate">{label}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             {/* Form */}
@@ -341,7 +373,7 @@ export default function LoginPage() {
                     </span>
                     <span className="text-xs font-bold text-slate-900 dark:text-white leading-tight">
                       {selectedUser.rol === 'admin' && 'Dashboard Director / Administrador'}
-                      {selectedUser.rol === 'docente' && 'Panel Docente & Asistencia'}
+                      {selectedUser.rol === 'docente' && 'Panel Docente & Calificaciones'}
                       {selectedUser.rol === 'estudiante' && 'Portal Alumno & Carnet QR'}
                       {selectedUser.rol === 'apoderado' && 'Portal Familia & Seguimiento de Hijos'}
                       {selectedUser.rol === 'asistencia' && 'Terminal Portería Móvil QR'}

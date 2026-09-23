@@ -43,7 +43,7 @@ export function Navbar({ onOpenMobileMenu }: NavbarProps) {
         <div className="px-3 sm:px-6 h-16 flex items-center justify-between gap-3">
           
           {/* Left: Sidebar Toggle + Logo */}
-          <div className="flex items-center gap-1.5 sm:gap-2">
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
             {/* Sidebar toggle button (Desplegable / Colapsable) */}
             <button
               type="button"
@@ -62,33 +62,38 @@ export function Navbar({ onOpenMobileMenu }: NavbarProps) {
               title={isSidebarCollapsed ? "Desplegar menú lateral" : "Ocultar menú lateral"}
               aria-label="Alternar menú lateral"
             >
-              {isSidebarCollapsed ? (
-                <PanelLeftOpen className="w-5 h-5 text-indigo-600 dark:text-indigo-400 animate-in zoom-in-75 duration-150" />
-              ) : (
-                <PanelLeftClose className="w-5 h-5 text-slate-500 dark:text-slate-400 animate-in zoom-in-75 duration-150" />
-              )}
+              {/* Mobile hamburger icon */}
+              <Menu className="w-5 h-5 text-slate-700 dark:text-slate-300 md:hidden" />
+              {/* Desktop collapse / expand icon */}
+              <span className="hidden md:inline-flex">
+                {isSidebarCollapsed ? (
+                  <PanelLeftOpen className="w-5 h-5 text-indigo-600 dark:text-indigo-400 animate-in zoom-in-75 duration-150" />
+                ) : (
+                  <PanelLeftClose className="w-5 h-5 text-slate-500 dark:text-slate-400 animate-in zoom-in-75 duration-150" />
+                )}
+              </span>
             </button>
 
-            <Link href={homeHref} className="flex items-center gap-2.5 group shrink-0" title="Ir a mi Dashboard">
+            <Link href={homeHref} className="flex items-center gap-2 sm:gap-2.5 group shrink-0" title="Ir a mi Dashboard">
               {brandingConfig?.logoUrl ? (
                 <img 
                   src={brandingConfig.logoUrl} 
                   alt={brandingConfig.nombreInstitucion || 'Logo'} 
-                  className="w-9 h-9 rounded-xl object-contain bg-white border border-slate-200/80 dark:border-slate-700 shadow-md shrink-0 group-hover:scale-105 transition-transform p-0.5" 
+                  className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl object-contain bg-white border border-slate-200/80 dark:border-slate-700 shadow-md shrink-0 group-hover:scale-105 transition-transform p-0.5" 
                 />
               ) : (
                 <div 
                   style={{
                     background: `linear-gradient(135deg, ${brandingConfig?.primaryColor || '#4f46e5'} 0%, ${brandingConfig?.accentColor || '#3b82f6'} 50%, ${brandingConfig?.secondaryColor || '#10b981'} 100%)`
                   }}
-                  className="relative w-9 h-9 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/25 group-hover:shadow-blue-500/40 transition-shadow text-white font-black text-sm"
+                  className="relative w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/25 group-hover:shadow-blue-500/40 transition-shadow text-white font-black text-xs sm:text-sm"
                 >
                   {brandingConfig?.siglas || 'CS'}
                   <div className="absolute inset-0 rounded-xl ring-2 ring-white/20" />
                 </div>
               )}
-              <div className="max-w-[200px] sm:max-w-xs">
-                <div className="text-sm font-black tracking-tight text-slate-900 dark:text-white truncate">
+              <div className="max-w-[100px] xs:max-w-[140px] sm:max-w-xs">
+                <div className="text-xs sm:text-sm font-black tracking-tight text-slate-900 dark:text-white truncate">
                   {brandingConfig?.nombreInstitucion || 'ColeSistema Mini'}
                 </div>
                 <div className="text-[10px] text-slate-400 font-medium -mt-0.5 hidden sm:block truncate">

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { Search, ChevronDown, Check, X } from 'lucide-react';
+import { Search, ChevronDown, Check, X, Plus } from 'lucide-react';
 
 export interface SearchableSelectOption {
   value: string;
@@ -21,6 +21,8 @@ interface SearchableSelectProps {
   disabled?: boolean;
   required?: boolean;
   maxVisibleResults?: number;
+  allowCustomOption?: boolean;
+  customOptionLabel?: string;
   error?: string;
   className?: string;
   id?: string;
@@ -36,7 +38,9 @@ export function SearchableSelect({
   icon,
   disabled = false,
   required = false,
-  maxVisibleResults = 3,
+  maxVisibleResults,
+  allowCustomOption = false,
+  customOptionLabel = 'Agregar opción personalizada',
   error,
   className = '',
   id,
@@ -48,7 +52,7 @@ export function SearchableSelect({
 
   // Selected Option
   const selectedOption = useMemo(
-    () => options.find((opt) => String(opt.value) === String(value)),
+    () => options.find((opt) => String(opt.value) === String(value)) || (value ? { value, label: value } : undefined),
     [options, value]
   );
 
@@ -64,11 +68,19 @@ export function SearchableSelect({
     );
   }, [options, searchQuery]);
 
-  // Cap visible results to keep dropdowns compact while typing.
-  const visibleOptions = useMemo(
-    () => matchingOptions.slice(0, maxVisibleResults),
-    [matchingOptions, maxVisibleResults]
-  );
+  // Options to render - if maxVisibleResults is defined and greater than 0 use it, otherwise show all
+  const visibleOptions = useMemo(() => {
+    if (maxVisibleResults && maxVisibleResults > 0) {
+      return matchingOptions.slice(0, maxVisibleResults);
+    }
+    return matchingOptions;
+  }, [matchingOptions, maxVisibleResults]);
+
+  const hasExactMatch = useMemo(() => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.trim().toLowerCase();
+    return options.some(opt => opt.label.toLowerCase() === q || String(opt.value).toLowerCase() === q);
+  }, [options, searchQuery]);
 
   // Focus search input on open
   useEffect(() => {
@@ -98,6 +110,13 @@ export function SearchableSelect({
 
   const handleSelect = (val: string) => {
     onChange(val);
+    setIsOpen(false);
+    setSearchQuery('');
+  };
+
+  const handleAddCustom = () => {
+    if (!searchQuery.trim()) return;
+    onChange(searchQuery.trim());
     setIsOpen(false);
     setSearchQuery('');
   };
@@ -171,9 +190,9 @@ export function SearchableSelect({
             )}
           </div>
 
-          {/* Filtered Options List */}
-          <div className="space-y-1 max-h-[140px] overflow-y-auto scrollbar-thin">
-            {visibleOptions.length === 0 ? (
+          {/* Filtered Options List with full scroll support */}
+          <div className="space-y-1 max-h-56 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-700">
+            {visibleOptions.length === 0 && (!allowCustomOption || !searchQuery.trim()) ? (
               <div className="p-3 text-center text-xs text-slate-400 font-medium">
                 No se encontraron coincidencias
               </div>
@@ -207,13 +226,25 @@ export function SearchableSelect({
                 );
               })
             )}
+
+            {/* Custom Option Button */}
+            {allowCustomOption && searchQuery.trim() && !hasExactMatch && (
+              <button
+                type="button"
+                onClick={handleAddCustom}
+                className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50/70 dark:bg-indigo-950/40 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 border border-dashed border-indigo-300 dark:border-indigo-800 transition-all text-left"
+              >
+                <Plus className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">{customOptionLabel}: &quot;{searchQuery.trim()}&quot;</span>
+              </button>
+            )}
           </div>
 
-          {/* Footer Badge if more results exist */}
-          {matchingOptions.length > maxVisibleResults && (
+          {/* Footer showing total available count */}
+          {matchingOptions.length > 5 && (
             <div className="pt-1 px-1 text-[10px] text-slate-400 flex items-center justify-between border-t border-slate-100 dark:border-slate-800">
-              <span>Mostrando {maxVisibleResults} de {matchingOptions.length}</span>
-              <span className="text-indigo-500 font-medium">Escribe para filtrar</span>
+              <span>Total: {matchingOptions.length} opciones disponibles</span>
+              <span className="text-indigo-500 font-medium">Desplaza para ver más</span>
             </div>
           )}
         </div>

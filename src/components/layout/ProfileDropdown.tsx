@@ -178,7 +178,7 @@ export function ProfileDropdown() {
 
         {/* Dropdown Menu Modal */}
         {isOpen && (
-          <div className="absolute right-0 top-full mt-2 w-64 sm:w-72 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-2xl p-2 z-50 animate-in zoom-in-95 fade-in duration-150">
+          <div className="absolute right-0 top-full mt-2 w-64 sm:w-72 max-w-[calc(100vw-1.5rem)] bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-2xl p-2 z-50 animate-in zoom-in-95 fade-in duration-150">
             
             {/* Header User Card */}
             <div className="p-3 rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100/80 dark:from-slate-800/60 dark:to-slate-900/60 border border-slate-200/60 dark:border-slate-700/60 mb-1.5">

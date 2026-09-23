@@ -66,18 +66,24 @@ export default function DocenteDashboardPage() {
     teacherSections[0]?.seccion.id || ''
   );
 
-  // Fix 1.1: Sincronizar selectedSectionId cuando teacherSections carga después de currentUser
+  // Active or upcoming class details
+  const featuredClass = currentSlot || nextSlot || todaySlots[0];
+
+  // Fix 1.1: Sincronizar selectedSectionId cuando teacherSections o featuredClass carga
   useEffect(() => {
-    if (teacherSections.length > 0 && !selectedSectionId) {
+    if (featuredClass?.seccion?.id && !selectedSectionId) {
+      setSelectedSectionId(featuredClass.seccion.id);
+    } else if (teacherSections.length > 0 && !selectedSectionId) {
       setSelectedSectionId(teacherSections[0].seccion.id);
     }
-  }, [teacherSections, selectedSectionId]);
+  }, [featuredClass, teacherSections, selectedSectionId]);
 
   // Estados locales para el pase rápido de asistencia en el dashboard
   const [studentSearchQuery, setStudentSearchQuery] = useState('');
   const [statusOverrides, setStatusOverrides] = useState<Record<string, AttendanceStatus>>({});
   const [isSavingAttendance, setIsSavingAttendance] = useState(false);
   const [closedSections, setClosedSections] = useState<Record<string, boolean>>({});
+  const [attendanceFilterMode, setAttendanceFilterMode] = useState<'todos' | 'ausentes'>('todos');
 
   const todayStr = new Date().toISOString().split('T')[0];
 
@@ -86,13 +92,17 @@ export default function DocenteDashboardPage() {
     return enrollments.filter(e => e.seccion_id === selectedSectionId && e.estado === 'activo');
   }, [enrollments, selectedSectionId]);
 
-  // Alumnos filtrados por búsqueda dentro del aula
+  // Alumnos filtrados por búsqueda y por modo dentro del aula
   const displayedStudents = useMemo(() => {
     return selectedSectionEnrollments.filter(enr => {
+      const currentSt = statusOverrides[enr.id] || attendances.find(a => a.matricula_id === enr.id && a.fecha === todayStr)?.estado || 'presente';
+      if (attendanceFilterMode === 'ausentes' && currentSt === 'presente') {
+        return false;
+      }
       const fullName = `${enr.estudiante?.profile?.apellidos || ''} ${enr.estudiante?.profile?.nombres || ''} ${enr.estudiante?.codigo_estudiante || ''}`.toLowerCase();
       return fullName.includes(studentSearchQuery.toLowerCase());
     });
-  }, [selectedSectionEnrollments, studentSearchQuery]);
+  }, [selectedSectionEnrollments, studentSearchQuery, attendanceFilterMode, statusOverrides, attendances, todayStr]);
 
   // Obtener estado actual de un estudiante
   const getStudentCurrentStatus = (matriculaId: string): AttendanceStatus => {
@@ -200,8 +210,6 @@ export default function DocenteDashboardPage() {
   const currentHour = new Date().getHours();
   const greeting = currentHour < 12 ? 'Buenos días' : currentHour < 18 ? 'Buenas tardes' : 'Buenas noches';
 
-  // Active or upcoming class details
-  const featuredClass = currentSlot || nextSlot || todaySlots[0];
   const featuredCourse = courses.find(c => c.id === featuredClass?.curso_id);
   const activeSelectedSection = teacherSections.find(ts => ts.seccion.id === selectedSectionId) || teacherSections[0];
 
@@ -282,6 +290,24 @@ export default function DocenteDashboardPage() {
                     <span>Notas</span>
                   </Link>
                 </div>
+              </div>
+            )}
+
+            {/* Alerta de Tareas Pendientes de Revisión */}
+            {pendingReviewSubmissions.length > 0 && (
+              <div className="mt-3 p-3 rounded-2xl bg-amber-500/20 border border-amber-400/30 backdrop-blur-md flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                  <span className="text-xs text-amber-100 font-medium">
+                    Tienes <strong className="text-white font-bold">{pendingReviewSubmissions.length} entregas de estudiantes</strong> pendientes de corrección y nota.
+                  </span>
+                </div>
+                <Link
+                  href="/docente/tareas"
+                  className="px-3 py-1 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-[11px] font-black shrink-0 transition-colors"
+                >
+                  Revisar Tareas
+                </Link>
               </div>
             )}
           </div>
@@ -568,12 +594,49 @@ export default function DocenteDashboardPage() {
                 <button
                   type="button"
                   onClick={() => setStudentSearchQuery('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
                 >
                   <XCircle className="w-3.5 h-3.5" />
                 </button>
               )}
             </div>
+          </div>
+
+          {/* Sub-barra de Filtro Rápido: Todos vs Solo Ausentes/Tardanzas */}
+          <div className="flex items-center justify-between pt-1 border-t border-slate-200/50 dark:border-slate-700/50">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setAttendanceFilterMode('todos')}
+                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  attendanceFilterMode === 'todos'
+                    ? 'bg-indigo-600 text-white shadow-xs'
+                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-50'
+                }`}
+              >
+                Todos ({selectedSectionEnrollments.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setAttendanceFilterMode('ausentes')}
+                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  attendanceFilterMode === 'ausentes'
+                    ? 'bg-amber-600 text-white shadow-xs'
+                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-50'
+                }`}
+              >
+                <span>Solo Ausentes / Tardanzas</span>
+                <span className="px-1.5 py-0.2 rounded-md bg-black/20 text-[10px]">
+                  {attendanceStats.absent + attendanceStats.late + attendanceStats.justified}
+                </span>
+              </button>
+            </div>
+
+            <span className="text-[11px] text-slate-400 hidden sm:inline">
+              {attendanceFilterMode === 'todos' 
+                ? `Mostrando ${displayedStudents.length} alumnos`
+                : `${displayedStudents.length} pendientes de ajuste`}
+            </span>
           </div>
 
           {/* Grid de Estudiantes con Selector de 1 Toque */}
@@ -614,14 +677,14 @@ export default function DocenteDashboardPage() {
                   </div>
 
                   {/* Botones de Estado Rápido (P / T / F / J) */}
-                  <div className="flex items-center gap-1 shrink-0">
+                  <div className="flex items-center gap-1.5 shrink-0">
                     <button
                       type="button"
                       onClick={() => handleToggleStatus(enr.id, 'presente')}
-                      className={`px-2 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                      className={`min-w-[32px] sm:min-w-[28px] h-8 flex items-center justify-center rounded-xl text-xs font-black transition-all cursor-pointer active:scale-95 ${
                         currentStatus === 'presente'
-                          ? 'bg-emerald-600 text-white shadow-xs'
-                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-emerald-100'
+                          ? 'bg-emerald-600 text-white shadow-xs scale-105'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-emerald-100 dark:hover:bg-emerald-950/40'
                       }`}
                       title="Presente"
                     >
@@ -631,10 +694,10 @@ export default function DocenteDashboardPage() {
                     <button
                       type="button"
                       onClick={() => handleToggleStatus(enr.id, 'tardanza')}
-                      className={`px-2 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                      className={`min-w-[32px] sm:min-w-[28px] h-8 flex items-center justify-center rounded-xl text-xs font-black transition-all cursor-pointer active:scale-95 ${
                         currentStatus === 'tardanza'
-                          ? 'bg-amber-500 text-white shadow-xs'
-                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-amber-100'
+                          ? 'bg-amber-500 text-white shadow-xs scale-105'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-amber-100 dark:hover:bg-amber-950/40'
                       }`}
                       title="Tardanza"
                     >
@@ -644,10 +707,10 @@ export default function DocenteDashboardPage() {
                     <button
                       type="button"
                       onClick={() => handleToggleStatus(enr.id, 'falta')}
-                      className={`px-2 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                      className={`min-w-[32px] sm:min-w-[28px] h-8 flex items-center justify-center rounded-xl text-xs font-black transition-all cursor-pointer active:scale-95 ${
                         currentStatus === 'falta'
-                          ? 'bg-rose-600 text-white shadow-xs'
-                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-rose-100'
+                          ? 'bg-rose-600 text-white shadow-xs scale-105'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-rose-100 dark:hover:bg-rose-950/40'
                       }`}
                       title="Falta injustificada"
                     >
@@ -657,10 +720,10 @@ export default function DocenteDashboardPage() {
                     <button
                       type="button"
                       onClick={() => handleToggleStatus(enr.id, 'justificado')}
-                      className={`px-2 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                      className={`min-w-[32px] sm:min-w-[28px] h-8 flex items-center justify-center rounded-xl text-xs font-black transition-all cursor-pointer active:scale-95 ${
                         currentStatus === 'justificado'
-                          ? 'bg-blue-600 text-white shadow-xs'
-                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-blue-100'
+                          ? 'bg-blue-600 text-white shadow-xs scale-105'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-blue-100 dark:hover:bg-blue-950/40'
                       }`}
                       title="Falta Justificada"
                     >

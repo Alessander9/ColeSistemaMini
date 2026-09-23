@@ -103,7 +103,7 @@ export function AcademicContextSelector() {
 
       {/* Popover Dropdown Panel */}
       {isOpen && (
-        <div className="fixed sm:absolute top-16 sm:top-full left-3 right-3 sm:left-auto sm:right-0 mt-1 sm:mt-2 sm:w-[420px] max-w-[420px] mx-auto rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl shadow-slate-900/20 dark:shadow-black/60 p-4 z-50 text-slate-900 dark:text-slate-100 animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed sm:absolute top-16 sm:top-full left-3 right-3 sm:left-auto sm:right-0 mt-1 sm:mt-2 sm:w-[420px] max-w-[calc(100vw-1.5rem)] sm:max-w-[420px] mx-auto rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl shadow-slate-900/20 dark:shadow-black/60 p-4 z-50 text-slate-900 dark:text-slate-100 animate-in fade-in zoom-in-95 duration-150">
           
           <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-100 dark:border-slate-800">
             <div>

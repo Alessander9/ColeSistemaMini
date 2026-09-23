@@ -67,6 +67,7 @@ export default function AdminDashboardPage() {
     setIsSetupWizardOpen(false);
   };
   const [attendanceFilterLevel, setAttendanceFilterLevel] = useState<EducationalLevel | 'todos'>('todos');
+  const [adminActiveTab, setAdminActiveTab] = useState<'live' | 'academico' | 'supervision'>('live');
 
   const currentLevel = academicContext?.nivel || 'todos';
 
@@ -248,6 +249,45 @@ export default function AdminDashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* ── BANNER DE ATENCIÓN PRIORITARIA DIRECTIVA (SI HAY ALERTAS PENDIENTES) ── */}
+      {pendingAlertsCount > 0 && (
+        <div className="p-4 rounded-2xl bg-gradient-to-r from-rose-500/10 via-amber-500/10 to-transparent border border-rose-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-rose-500 text-white flex items-center justify-center font-bold shrink-0 animate-pulse">
+              <AlertTriangle className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-black uppercase tracking-wider text-rose-700 dark:text-rose-400">
+                  Atención Requerida
+                </span>
+                <span className="px-2 py-0.5 rounded-full bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300 text-[10px] font-black">
+                  {pendingAlertsCount} {pendingAlertsCount === 1 ? 'incidencia' : 'incidencias'}
+                </span>
+              </div>
+              <p className="text-xs text-slate-700 dark:text-slate-300 font-medium mt-0.5">
+                Existen alertas operativas o alumnos con ausentismo crítico que requieren intervención de dirección.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => setAdminActiveTab('live')}
+              className="px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold shadow-xs transition-colors"
+            >
+              Revisar Incidentes
+            </button>
+            <Link
+              href="/admin/alertas"
+              className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 transition-colors"
+            >
+              Ver Todas
+            </Link>
+          </div>
+        </div>
+      )}
 
       {/* ── ASISTENTE GUIADO DE PUESTA EN MARCHA (5 PASOS SECUENCIALES) ── */}
       {(() => {
@@ -519,314 +559,491 @@ export default function AdminDashboardPage() {
 
       </div>
 
-      {/* ── 3. GRID PRINCIPAL: ASISTENCIA EN VIVO & RENDIMIENTO ACADÉMICO ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        
-        {/* Widget 1: Control de Asistencia del Día (Columna 7) */}
-        <div className="lg:col-span-7 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm space-y-5">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100 dark:border-slate-800">
-            <div>
-              <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <QrCode className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-                Control de Asistencia del Día (Kiosco Live)
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Lecturas biométricas QR en portería en tiempo real
-              </p>
-            </div>
+      {/* ── 3. SELECTOR DE VISTAS OPERATIVAS DIRECTIVAS ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-800 pb-3">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none sm:flex-wrap w-full sm:w-auto">
+          <button
+            type="button"
+            onClick={() => setAdminActiveTab('live')}
+            className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+              adminActiveTab === 'live'
+                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/25 scale-[1.02]'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+            }`}
+          >
+            <QrCode className="w-3.5 h-3.5" />
+            <span>En Vivo Hoy (Asistencia & Alertas)</span>
+            {pendingAlertsCount > 0 && (
+              <span className="w-2 h-2 rounded-full bg-rose-400 animate-pulse" />
+            )}
+          </button>
 
-            {/* Quick Filter */}
-            <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl text-xs font-semibold">
-              {(['todos', 'inicial', 'primaria', 'secundaria'] as const).map((lvl) => (
-                <button
-                  key={lvl}
-                  onClick={() => setAttendanceFilterLevel(lvl)}
-                  className={`px-3 py-1 rounded-xl capitalize transition-all ${
-                    attendanceFilterLevel === lvl
-                      ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs font-bold'
-                      : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'
-                  }`}
-                >
-                  {lvl === 'todos' ? 'Todos' : lvl}
-                </button>
-              ))}
-            </div>
-          </div>
+          <button
+            type="button"
+            onClick={() => setAdminActiveTab('academico')}
+            className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+              adminActiveTab === 'academico'
+                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/25 scale-[1.02]'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+            }`}
+          >
+            <BarChart3 className="w-3.5 h-3.5" />
+            <span>Consolidado Académico CNEB</span>
+          </button>
 
-          {/* Cards con Métricas Desglosadas */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="p-4 rounded-2xl bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200/60 dark:border-emerald-800/40">
-              <div className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider">Presentes</div>
-              <div className="text-2xl font-black text-emerald-800 dark:text-emerald-200 mt-1">{presentStudents}</div>
-              <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">{presentPct}% del total</div>
-            </div>
-            
-            <div className="p-4 rounded-2xl bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-800/40">
-              <div className="text-[11px] font-bold text-amber-700 dark:text-amber-300 uppercase tracking-wider">Tardanzas</div>
-              <div className="text-2xl font-black text-amber-800 dark:text-amber-200 mt-1">{lateStudents}</div>
-              <div className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">{latePct}% del total</div>
-            </div>
-
-            <div className="p-4 rounded-2xl bg-blue-50/80 dark:bg-blue-950/30 border border-blue-200/60 dark:border-blue-800/40">
-              <div className="text-[11px] font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wider">Justificadas</div>
-              <div className="text-2xl font-black text-blue-800 dark:text-blue-200 mt-1">{justifiedAbsents}</div>
-              <div className="text-[10px] text-blue-600 dark:text-blue-400 font-medium">{justPct}% del total</div>
-            </div>
-
-            <div className="p-4 rounded-2xl bg-rose-50/80 dark:bg-rose-950/30 border border-rose-200/60 dark:border-rose-800/40">
-              <div className="text-[11px] font-bold text-rose-700 dark:text-rose-300 uppercase tracking-wider">Injustificadas</div>
-              <div className="text-2xl font-black text-rose-800 dark:text-rose-200 mt-1">{unjustifiedAbsents}</div>
-              <div className="text-[10px] text-rose-600 dark:text-rose-400 font-medium">{injustPct}% del total</div>
-            </div>
-          </div>
-
-          {/* Visual Distribution Progress Bar */}
-          <div className="space-y-2 pt-1">
-            <div className="flex justify-between text-xs font-semibold text-slate-600 dark:text-slate-400">
-              <span>Distribución Proporcional</span>
-              <span>{totalStudentsCount} Estudiantes Matriculados</span>
-            </div>
-            <div className="h-4 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden flex shadow-inner">
-              <div style={{ width: `${presentPct}%` }} className="bg-emerald-500 hover:opacity-90 transition-opacity" title={`Presentes: ${presentPct}%`} />
-              <div style={{ width: `${latePct}%` }} className="bg-amber-500 hover:opacity-90 transition-opacity" title={`Tardanzas: ${latePct}%`} />
-              <div style={{ width: `${justPct}%` }} className="bg-blue-500 hover:opacity-90 transition-opacity" title={`Justificadas: ${justPct}%`} />
-              <div style={{ width: `${injustPct}%` }} className="bg-rose-500 hover:opacity-90 transition-opacity" title={`Injustificadas: ${injustPct}%`} />
-            </div>
-          </div>
-
-          <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-t border-slate-100 dark:border-slate-800">
-            <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-              <span>
-                Último registro en vivo: <strong>{lastAttendanceRecord ? `${lastAttendanceRecord.hora_registro} (${lastAttendanceRecord.metodo || 'QR'})` : 'Sin registros hoy'}</strong>
-              </span>
-            </div>
-            <Link
-              href="/asistencia"
-              className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
-            >
-              Abrir Pantalla Kiosco QR <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
+          <button
+            type="button"
+            onClick={() => setAdminActiveTab('supervision')}
+            className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+              adminActiveTab === 'supervision'
+                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/25 scale-[1.02]'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+            }`}
+          >
+            <Activity className="w-3.5 h-3.5" />
+            <span>Supervisión & Auditoría</span>
+          </button>
         </div>
 
-        {/* Widget 2: Rendimiento Académico CNEB (Columna 5) */}
-        <div className="lg:col-span-5 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm space-y-5">
-          <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
-            <div>
-              <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <BarChart3 className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-                Rendimiento Escolar CNEB
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Ponderado consolidado actual
-              </p>
-            </div>
-            <span className="px-2.5 py-1 rounded-xl bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 font-black text-xs border border-purple-200/60 dark:border-purple-800/40">
-              AD + A: {totalGrades > 0 ? adPercent + aPercent : 0}%
-            </span>
-          </div>
-
-          {/* Breakdown por Escala Oficial */}
-          <div className="space-y-3.5">
-            {/* AD */}
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-md bg-emerald-500 inline-block shadow-xs" />
-                  AD • Logro Destacado (18–20)
-                </span>
-                <span className="font-black text-slate-800 dark:text-slate-200">{adPercent}%</span>
-              </div>
-              <div className="w-full h-2.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                <div className="h-full bg-emerald-500 rounded-full transition-all duration-500" style={{ width: `${adPercent}%` }} />
-              </div>
-            </div>
-
-            {/* A */}
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-bold text-blue-700 dark:text-blue-400 flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-md bg-blue-500 inline-block shadow-xs" />
-                  A • Logro Esperado (14–17)
-                </span>
-                <span className="font-black text-slate-800 dark:text-slate-200">{aPercent}%</span>
-              </div>
-              <div className="w-full h-2.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                <div className="h-full bg-blue-500 rounded-full transition-all duration-500" style={{ width: `${aPercent}%` }} />
-              </div>
-            </div>
-
-            {/* B */}
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-bold text-amber-700 dark:text-amber-400 flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-md bg-amber-500 inline-block shadow-xs" />
-                  B • En Proceso (11–13)
-                </span>
-                <span className="font-black text-slate-800 dark:text-slate-200">{bPercent}%</span>
-              </div>
-              <div className="w-full h-2.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                <div className="h-full bg-amber-500 rounded-full transition-all duration-500" style={{ width: `${bPercent}%` }} />
-              </div>
-            </div>
-
-            {/* C */}
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-bold text-rose-700 dark:text-rose-400 flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-md bg-rose-500 inline-block shadow-xs" />
-                  C • En Inicio (00–10)
-                </span>
-                <span className="font-black text-slate-800 dark:text-slate-200">{cPercent}%</span>
-              </div>
-              <div className="w-full h-2.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                <div className="h-full bg-rose-500 rounded-full transition-all duration-500" style={{ width: `${cPercent}%` }} />
-              </div>
-            </div>
-          </div>
-
-          <div className="pt-3 flex items-center justify-between border-t border-slate-100 dark:border-slate-800">
-            <span className="text-xs text-slate-500 dark:text-slate-400">
-              Promedio Institucional: <strong className="text-slate-900 dark:text-white">{avgVigesimal} / 20</strong>
-            </span>
-            <Link
-              href="/admin/notas-salon"
-              className="inline-flex items-center gap-1.5 text-xs font-bold text-purple-600 dark:text-purple-400 hover:underline"
-            >
-              Consolidado por Aulas <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
-        </div>
-
+        <span className="text-xs text-slate-500 dark:text-slate-400 font-medium hidden md:inline">
+          {adminActiveTab === 'live' ? 'Monitoreo en tiempo real de asistencia y contingencias' :
+           adminActiveTab === 'academico' ? 'Evaluación curricular y actas por competencias' :
+           'Trazabilidad institucional y registro de operaciones'}
+        </span>
       </div>
 
-      {/* ── 4. CENTRO DE ALERTAS PRIORITARIAS & TIMELINE DE AUDITORÍA ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        
-        {/* Centro de Alertas (Columna 7) */}
-        <div className="lg:col-span-7 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
-            <div>
-              <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <AlertTriangle className="w-5 h-5 text-rose-600 dark:text-rose-400" />
-                Centro de Alertas Prioritarias ({pendingAlertsCount})
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Detección automática de inconsistencias y alumnos en riesgo académico
-              </p>
-            </div>
-            <Link
-              href="/admin/alertas"
-              className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline shrink-0"
-            >
-              <span>Abrir Centro Completo</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
-
-          <div className="space-y-3">
-            {alerts.length === 0 ? (
-              <div className="p-8 text-center text-slate-400 text-xs">
-                No hay alertas activas en el sistema. Todo se encuentra en orden.
+      {/* ── TAB 1: EN VIVO HOY (ASISTENCIA & ALERTAS PRIORITARIAS) ── */}
+      {adminActiveTab === 'live' && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in fade-in-50 duration-200">
+          {/* Widget 1: Control de Asistencia del Día (Columna 7) */}
+          <div className="lg:col-span-7 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100 dark:border-slate-800">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <QrCode className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                  Control de Asistencia del Día (Kiosco Live)
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Lecturas biométricas QR en portería en tiempo real
+                </p>
               </div>
-            ) : (
-              alerts.map((alert) => {
-                const isResolved = alert.estado === 'resuelta';
-                return (
-                  <div
-                    key={alert.id}
-                    className={`p-4 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
-                      isResolved 
-                        ? 'bg-slate-50/60 dark:bg-slate-800/20 border-slate-200/60 dark:border-slate-800 opacity-60'
-                        : alert.prioridad === 'critica'
-                          ? 'bg-rose-50/70 dark:bg-rose-950/30 border-rose-200 dark:border-rose-900/60 shadow-xs'
-                          : alert.prioridad === 'alta'
-                            ? 'bg-amber-50/70 dark:bg-amber-950/30 border-amber-200 dark:border-amber-900/60 shadow-xs'
-                            : 'bg-purple-50/70 dark:bg-purple-950/30 border-purple-200 dark:border-purple-900/60 shadow-xs'
+
+              {/* Quick Filter */}
+              <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl text-xs font-semibold">
+                {(['todos', 'inicial', 'primaria', 'secundaria'] as const).map((lvl) => (
+                  <button
+                    key={lvl}
+                    onClick={() => setAttendanceFilterLevel(lvl)}
+                    className={`px-3 py-1 rounded-xl capitalize transition-all cursor-pointer ${
+                      attendanceFilterLevel === lvl
+                        ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs font-bold'
+                        : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'
                     }`}
                   >
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className={`w-2.5 h-2.5 rounded-full ${
-                          alert.prioridad === 'critica' ? 'bg-rose-600 animate-pulse' :
-                          alert.prioridad === 'alta' ? 'bg-amber-600' : 'bg-purple-600'
-                        }`} />
-                        <h4 className="text-xs font-bold text-slate-900 dark:text-white">
-                          {alert.titulo}
-                        </h4>
-                      </div>
-                      <p className="text-xs text-slate-600 dark:text-slate-300">
-                        {alert.descripcion}
-                      </p>
-                    </div>
+                    {lvl === 'todos' ? 'Todos' : lvl}
+                  </button>
+                ))}
+              </div>
+            </div>
 
-                    <div className="flex items-center gap-2 shrink-0">
-                      <Link
-                        href={alert.accion_url}
-                        className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 shadow-2xs transition-colors"
-                      >
-                        {alert.accion_label}
-                      </Link>
-                      {!isResolved && (
-                        <button
-                          onClick={() => resolveAlert(alert.id)}
-                          className="p-1.5 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-200 dark:hover:bg-emerald-900/80 text-xs font-semibold transition-colors"
-                          title="Marcar como resuelta"
+            {/* Cards con Métricas Desglosadas */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="p-4 rounded-2xl bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200/60 dark:border-emerald-800/40">
+                <div className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider">Presentes</div>
+                <div className="text-2xl font-black text-emerald-800 dark:text-emerald-200 mt-1">{presentStudents}</div>
+                <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">{presentPct}% del total</div>
+              </div>
+              
+              <div className="p-4 rounded-2xl bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-800/40">
+                <div className="text-[11px] font-bold text-amber-700 dark:text-amber-300 uppercase tracking-wider">Tardanzas</div>
+                <div className="text-2xl font-black text-amber-800 dark:text-amber-200 mt-1">{lateStudents}</div>
+                <div className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">{latePct}% del total</div>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-blue-50/80 dark:bg-blue-950/30 border border-blue-200/60 dark:border-blue-800/40">
+                <div className="text-[11px] font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wider">Justificadas</div>
+                <div className="text-2xl font-black text-blue-800 dark:text-blue-200 mt-1">{justifiedAbsents}</div>
+                <div className="text-[10px] text-blue-600 dark:text-blue-400 font-medium">{justPct}% del total</div>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-rose-50/80 dark:bg-rose-950/30 border border-rose-200/60 dark:border-rose-800/40">
+                <div className="text-[11px] font-bold text-rose-700 dark:text-rose-300 uppercase tracking-wider">Injustificadas</div>
+                <div className="text-2xl font-black text-rose-800 dark:text-rose-200 mt-1">{unjustifiedAbsents}</div>
+                <div className="text-[10px] text-rose-600 dark:text-rose-400 font-medium">{injustPct}% del total</div>
+              </div>
+            </div>
+
+            {/* Visual Distribution Progress Bar */}
+            <div className="space-y-2 pt-1">
+              <div className="flex justify-between text-xs font-semibold text-slate-600 dark:text-slate-400">
+                <span>Distribución Proporcional</span>
+                <span>{totalStudentsCount} Estudiantes Matriculados</span>
+              </div>
+              <div className="h-4 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden flex shadow-inner">
+                <div style={{ width: `${presentPct}%` }} className="bg-emerald-500 hover:opacity-90 transition-opacity" title={`Presentes: ${presentPct}%`} />
+                <div style={{ width: `${latePct}%` }} className="bg-amber-500 hover:opacity-90 transition-opacity" title={`Tardanzas: ${latePct}%`} />
+                <div style={{ width: `${justPct}%` }} className="bg-blue-500 hover:opacity-90 transition-opacity" title={`Justificadas: ${justPct}%`} />
+                <div style={{ width: `${injustPct}%` }} className="bg-rose-500 hover:opacity-90 transition-opacity" title={`Injustificadas: ${injustPct}%`} />
+              </div>
+            </div>
+
+            <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-t border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                <span>
+                  Último registro en vivo: <strong>{lastAttendanceRecord ? `${lastAttendanceRecord.hora_registro} (${lastAttendanceRecord.metodo || 'QR'})` : 'Sin registros hoy'}</strong>
+                </span>
+              </div>
+              <Link
+                href="/asistencia"
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
+              >
+                Abrir Pantalla Kiosco QR <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+          </div>
+
+          {/* Widget 2: Centro de Alertas Prioritarias (Columna 5) */}
+          <div className="lg:col-span-5 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <AlertTriangle className="w-5 h-5 text-rose-600 dark:text-rose-400" />
+                  Centro de Alertas ({pendingAlertsCount})
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Detección de ausentismo crítico y contingencias
+                </p>
+              </div>
+              <Link
+                href="/admin/alertas"
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline shrink-0"
+              >
+                <span>Ver Todas</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+
+            <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1">
+              {alerts.length === 0 ? (
+                <div className="p-8 text-center text-slate-400 text-xs">
+                  No hay alertas activas en el sistema. Todo se encuentra en orden.
+                </div>
+              ) : (
+                alerts.map((alert) => {
+                  const isResolved = alert.estado === 'resuelta';
+                  return (
+                    <div
+                      key={alert.id}
+                      className={`p-3.5 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                        isResolved 
+                          ? 'bg-slate-50/60 dark:bg-slate-800/20 border-slate-200/60 dark:border-slate-800 opacity-60'
+                          : alert.prioridad === 'critica'
+                            ? 'bg-rose-50/70 dark:bg-rose-950/30 border-rose-200 dark:border-rose-900/60 shadow-xs'
+                            : alert.prioridad === 'alta'
+                              ? 'bg-amber-50/70 dark:bg-amber-950/30 border-amber-200 dark:border-amber-900/60 shadow-xs'
+                              : 'bg-purple-50/70 dark:bg-purple-950/30 border-purple-200 dark:border-purple-900/60 shadow-xs'
+                      }`}
+                    >
+                      <div className="space-y-0.5">
+                        <div className="flex items-center gap-2">
+                          <span className={`w-2.5 h-2.5 rounded-full ${
+                            alert.prioridad === 'critica' ? 'bg-rose-600 animate-pulse' :
+                            alert.prioridad === 'alta' ? 'bg-amber-600' : 'bg-purple-600'
+                          }`} />
+                          <h4 className="text-xs font-bold text-slate-900 dark:text-white">
+                            {alert.titulo}
+                          </h4>
+                        </div>
+                        <p className="text-xs text-slate-600 dark:text-slate-300">
+                          {alert.descripcion}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Link
+                          href={alert.accion_url}
+                          className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 shadow-2xs transition-colors"
                         >
-                          <Check className="w-4 h-4" />
-                        </button>
-                      )}
+                          {alert.accion_label}
+                        </Link>
+                        {!isResolved && (
+                          <button
+                            onClick={() => resolveAlert(alert.id)}
+                            className="p-1.5 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-200 dark:hover:bg-emerald-900/80 text-xs font-semibold transition-colors cursor-pointer"
+                            title="Marcar como resuelta"
+                          >
+                            <Check className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── TAB 2: CONSOLIDADO ACADÉMICO CNEB ── */}
+      {adminActiveTab === 'academico' && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in fade-in-50 duration-200">
+          {/* Rendimiento Escolar CNEB (Columna 7) */}
+          <div className="lg:col-span-7 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm space-y-5">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                  Rendimiento Escolar CNEB Oficial
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Distribución según escala ministerial por competencias
+                </p>
+              </div>
+              <span className="px-2.5 py-1 rounded-xl bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 font-black text-xs border border-purple-200/60 dark:border-purple-800/40">
+                AD + A: {totalGrades > 0 ? adPercent + aPercent : 0}%
+              </span>
+            </div>
+
+            {/* Breakdown por Escala Oficial */}
+            <div className="space-y-4">
+              {/* AD */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-md bg-emerald-500 inline-block shadow-xs" />
+                    AD • Logro Destacado (18–20)
+                  </span>
+                  <span className="font-black text-slate-800 dark:text-slate-200">{adPercent}% ({adGrades} registros)</span>
+                </div>
+                <div className="w-full h-3 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                  <div className="h-full bg-emerald-500 rounded-full transition-all duration-500" style={{ width: `${adPercent}%` }} />
+                </div>
+              </div>
+
+              {/* A */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-bold text-blue-700 dark:text-blue-400 flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-md bg-blue-500 inline-block shadow-xs" />
+                    A • Logro Esperado (14–17)
+                  </span>
+                  <span className="font-black text-slate-800 dark:text-slate-200">{aPercent}% ({aGrades} registros)</span>
+                </div>
+                <div className="w-full h-3 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                  <div className="h-full bg-blue-500 rounded-full transition-all duration-500" style={{ width: `${aPercent}%` }} />
+                </div>
+              </div>
+
+              {/* B */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-bold text-amber-700 dark:text-amber-400 flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-md bg-amber-500 inline-block shadow-xs" />
+                    B • En Proceso (11–13)
+                  </span>
+                  <span className="font-black text-slate-800 dark:text-slate-200">{bPercent}% ({bGrades} registros)</span>
+                </div>
+                <div className="w-full h-3 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                  <div className="h-full bg-amber-500 rounded-full transition-all duration-500" style={{ width: `${bPercent}%` }} />
+                </div>
+              </div>
+
+              {/* C */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-bold text-rose-700 dark:text-rose-400 flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-md bg-rose-500 inline-block shadow-xs" />
+                    C • En Inicio (00–10)
+                  </span>
+                  <span className="font-black text-slate-800 dark:text-slate-200">{cPercent}% ({cGrades} registros)</span>
+                </div>
+                <div className="w-full h-3 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                  <div className="h-full bg-rose-500 rounded-full transition-all duration-500" style={{ width: `${cPercent}%` }} />
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-3 flex items-center justify-between border-t border-slate-100 dark:border-slate-800">
+              <span className="text-xs text-slate-500 dark:text-slate-400">
+                Promedio Institucional Ponderado: <strong className="text-slate-900 dark:text-white text-sm">{avgVigesimal} / 20</strong>
+              </span>
+              <Link
+                href="/admin/notas-salon"
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-purple-600 dark:text-purple-400 hover:underline"
+              >
+                Actas Oficiales de Aula <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+          </div>
+
+          {/* Accesos y Resumen Curricular (Columna 5) */}
+          <div className="lg:col-span-5 space-y-4">
+            <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm space-y-4">
+              <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <Award className="w-5 h-5 text-amber-500" />
+                Módulos de Gestión Pedagógica
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Herramientas rápidas para supervisión de notas y emisión de libretas.
+              </p>
+
+              <div className="grid grid-cols-1 gap-2.5 pt-1">
+                <Link
+                  href="/admin/notas-salon"
+                  className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 border border-slate-200/60 dark:border-slate-700/60 transition-all group"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold">
+                      <Award className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 transition-colors">
+                        Consolidado por Salón
+                      </div>
+                      <div className="text-[11px] text-slate-500">Matriz de calificaciones por aula</div>
+                    </div>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-slate-400 group-hover:translate-x-1 transition-transform" />
+                </Link>
+
+                <Link
+                  href="/admin/evaluaciones"
+                  className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 border border-slate-200/60 dark:border-slate-700/60 transition-all group"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold">
+                      <Calendar className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 transition-colors">
+                        Periodos de Evaluación
+                      </div>
+                      <div className="text-[11px] text-slate-500">Apertura y cierre de bimestres</div>
+                    </div>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-slate-400 group-hover:translate-x-1 transition-transform" />
+                </Link>
+
+                <Link
+                  href="/admin/reportes"
+                  className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 border border-slate-200/60 dark:border-slate-700/60 transition-all group"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold">
+                      <BarChart3 className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 transition-colors">
+                        Reportes e Informes UGEL
+                      </div>
+                      <div className="text-[11px] text-slate-500">Exportación de cuadros estadísticos</div>
+                    </div>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-slate-400 group-hover:translate-x-1 transition-transform" />
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── TAB 3: SUPERVISIÓN & AUDITORÍA INSTITUCIONAL ── */}
+      {adminActiveTab === 'supervision' && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in fade-in-50 duration-200">
+          {/* Padrón y Capacidad (Columna 6) */}
+          <div className="lg:col-span-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <Users className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                  Padrón & Capacidad por Niveles
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Distribución de estudiantes y vacantes por nivel educativo
+                </p>
+              </div>
+              <Link
+                href="/admin/estudiantes"
+                className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
+              >
+                Ver Alumnos →
+              </Link>
+            </div>
+
+            <div className="space-y-3 pt-1">
+              {(['inicial', 'primaria', 'secundaria'] as const).map((lvl) => {
+                const count = countByLevel(lvl);
+                const lvlSections = sections.filter(s => {
+                  const g = gradeLevels.find(grd => grd.id === s.grado_id);
+                  return g?.nivel === lvl;
+                });
+                const lvlCapacity = lvlSections.reduce((acc, s) => acc + (s.capacidad_maxima || 30), 0);
+                const lvlPercent = lvlCapacity > 0 ? Math.min(100, Math.round((count / lvlCapacity) * 100)) : 0;
+
+                return (
+                  <div key={lvl} className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-700/60 space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-bold text-slate-900 dark:text-white capitalize flex items-center gap-2">
+                        <span>{lvl === 'inicial' ? '🧸' : lvl === 'primaria' ? '📚' : '🎓'}</span>
+                        <span>Nivel {lvl}</span>
+                      </span>
+                      <span className="font-bold text-slate-700 dark:text-slate-300">
+                        {count} alumnos / {lvlCapacity} vacantes ({lvlPercent}%)
+                      </span>
+                    </div>
+                    <div className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                      <div className="h-full bg-indigo-600 rounded-full" style={{ width: `${lvlPercent}%` }} />
                     </div>
                   </div>
                 );
-              })
-            )}
-          </div>
-        </div>
-
-        {/* Timeline de Actividad Reciente & Auditoría (Columna 5) */}
-        <div className="lg:col-span-5 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-            <div>
-              <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <Activity className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                Actividad & Trazabilidad
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Registro de eventos y operaciones en tiempo real
-              </p>
+              })}
             </div>
           </div>
 
-          <div className="space-y-3.5 divide-y divide-slate-100 dark:divide-slate-800/60">
-            {auditLogs.slice(0, 4).map((log) => (
-              <div key={log.id} className="pt-3.5 first:pt-0 flex items-start gap-3">
-                <div className="p-2 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0">
-                  <Clock className="w-4 h-4" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-bold text-slate-800 dark:text-slate-200 truncate">
-                      {log.usuario_nombre}
-                    </span>
-                    <span className="text-[10px] text-slate-400 shrink-0 font-mono">
-                      {log.timestamp.split(' ')[1] || log.timestamp}
+          {/* Timeline de Actividad Reciente & Auditoría (Columna 6) */}
+          <div className="lg:col-span-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <Activity className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                  Actividad & Trazabilidad
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Registro de eventos y operaciones en tiempo real
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-3.5 divide-y divide-slate-100 dark:divide-slate-800/60">
+              {auditLogs.slice(0, 5).map((log) => (
+                <div key={log.id} className="pt-3.5 first:pt-0 flex items-start gap-3">
+                  <div className="p-2 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0">
+                    <Clock className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-bold text-slate-800 dark:text-slate-200 truncate">
+                        {log.usuario_nombre}
+                      </span>
+                      <span className="text-[10px] text-slate-400 shrink-0 font-mono">
+                        {log.timestamp.split(' ')[1] || log.timestamp}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
+                      {log.detalle}
+                    </p>
+                    <span className="inline-block mt-1 text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 rounded-lg border border-indigo-200/60 dark:border-indigo-800/40">
+                      {log.modulo}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
-                    {log.detalle}
-                  </p>
-                  <span className="inline-block mt-1 text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 rounded-lg border border-indigo-200/60 dark:border-indigo-800/40">
-                    {log.modulo}
-                  </span>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
-
-      </div>
+      )}
 
     </div>
   );

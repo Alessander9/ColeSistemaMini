@@ -811,13 +811,13 @@ export default function AsistenciaKioscoPage() {
       </header>
 
       {/* ── TOP MODE TABS ── */}
-      <div className="max-w-7xl mx-auto w-full flex items-center justify-between gap-3 pb-3">
-        <div className="flex items-center gap-2">
+      <div className="max-w-7xl mx-auto w-full flex flex-wrap sm:flex-nowrap items-center justify-between gap-3 pb-3">
+        <div className="flex items-center gap-2 overflow-x-auto scrollbar-none max-w-full pb-1 sm:pb-0 shrink-0">
           {/* Modo Entrada / Salida Toggle */}
-          <div className="flex items-center bg-slate-900/80 p-1 rounded-xl border border-slate-800 mr-2">
+          <div className="flex items-center bg-slate-900/80 p-1 rounded-xl border border-slate-800 mr-1 shrink-0">
             <button
               onClick={() => setScanMode('entrada')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
                 scanMode === 'entrada'
                   ? 'bg-emerald-600 text-white shadow-sm'
                   : 'text-slate-400 hover:text-slate-200'
@@ -827,7 +827,7 @@ export default function AsistenciaKioscoPage() {
             </button>
             <button
               onClick={() => setScanMode('salida')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
                 scanMode === 'salida'
                   ? 'bg-amber-600 text-white shadow-sm'
                   : 'text-slate-400 hover:text-slate-200'
@@ -842,7 +842,7 @@ export default function AsistenciaKioscoPage() {
               setActiveTab('scan');
               if (!isCameraActive) startCamera(currentFacing);
             }}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 whitespace-nowrap ${
               activeTab === 'scan'
                 ? 'bg-emerald-950/50 text-emerald-300 border border-emerald-500/50 shadow-sm shadow-emerald-950'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
@@ -854,7 +854,7 @@ export default function AsistenciaKioscoPage() {
 
           <button
             onClick={() => setActiveTab('manual')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 whitespace-nowrap ${
               activeTab === 'manual'
                 ? 'bg-indigo-950/50 text-indigo-300 border border-indigo-500/50 shadow-sm'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
@@ -867,13 +867,13 @@ export default function AsistenciaKioscoPage() {
         </div>
 
         {/* Sound toggle & Settings */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0 ml-auto sm:ml-0">
           <button
             onClick={() => window.print()}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white text-xs font-bold transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white text-xs font-bold transition-colors cursor-pointer whitespace-nowrap"
             title="Imprimir resumen de puerta"
           >
-            <span>📋 Resumen de Puerta</span>
+            <span>📋 Resumen</span>
           </button>
 
           <button
@@ -905,7 +905,7 @@ export default function AsistenciaKioscoPage() {
         <div className="lg:col-span-8 flex flex-col justify-between bg-[#0b1324] rounded-3xl p-4 sm:p-6 border border-slate-800/80 shadow-2xl relative overflow-hidden">
           
           {/* Live Viewport Area */}
-          <div className="relative w-full aspect-[16/10] min-h-[340px] sm:min-h-[420px] rounded-2xl overflow-hidden bg-slate-950 flex items-center justify-center border border-slate-800/90">
+          <div className="relative w-full aspect-[16/10] min-h-[280px] sm:min-h-[420px] rounded-2xl overflow-hidden bg-slate-950 flex items-center justify-center border border-slate-800/90">
             
             {/* Real Video Element */}
             <video
@@ -940,7 +940,7 @@ export default function AsistenciaKioscoPage() {
               <div className="relative z-10 flex flex-col items-center justify-center">
                 
                 {/* Glowing Target Frame */}
-                <div className="relative w-64 h-64 sm:w-72 sm:h-72 flex items-center justify-center">
+                <div className="relative w-56 h-56 sm:w-72 sm:h-72 max-w-[70vw] max-h-[70vw] flex items-center justify-center">
                   
                   {/* Glowing Corner Brackets */}
                   <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-emerald-400 rounded-tl-2xl shadow-[0_0_12px_rgba(52,211,153,0.8)]" />

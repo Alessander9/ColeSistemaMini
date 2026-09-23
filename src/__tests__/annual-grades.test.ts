@@ -70,12 +70,11 @@ describe('Cálculo Oficial Anual de Calificaciones (4 Bimestres - MINEDU / CNEB)
           sampleGrades.push({
             id: `gr-${course.id}-${comp.id}-${period.id}`,
             matricula_id: 'enr-1',
-            curso_id: course.id,
             competencia_id: comp.id,
             periodo_evaluacion_id: period.id,
             nota_letra: 'AD',
             nota_numerica: 4,
-            conclusiones_descriptivas: 'Excelente desempeño.',
+            conclusion_descriptiva: 'Excelente desempeño.',
             created_at: '2026-03-15',
           });
         });

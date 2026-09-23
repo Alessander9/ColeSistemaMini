@@ -27,7 +27,9 @@ describe('DataTable Pagination & Filters', () => {
     );
 
     expect(matches.length).toBeGreaterThan(0);
-    expect(matches[0].apellidos.toLowerCase()).toContain('silva');
+    const firstMatch = matches[0];
+    expect(firstMatch).toBeDefined();
+    expect((firstMatch?.apellidos ?? '').toLowerCase()).toContain('silva');
   });
 
   it('validates CNEB competency grading scale consistency', () => {

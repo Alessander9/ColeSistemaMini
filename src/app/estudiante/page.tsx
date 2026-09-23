@@ -4,6 +4,7 @@ import React, { useMemo, useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import { GradeBadge } from '@/components/notas/GradeBadge';
 import { calculateAverage, calculateAnnualStatus } from '@/lib/grades/calculations';
+import { QrCard } from '@/components/qr/QrCard';
 import { 
   QrCode, 
   Award, 
@@ -29,11 +30,13 @@ import {
   ArrowUpRight,
   School,
   Laptop,
-  Plus
+  Plus,
+  X
 } from 'lucide-react';
 import Link from 'next/link';
 
 export default function EstudianteDashboardPage() {
+  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
   const { 
     students, 
     enrollments, 
@@ -222,14 +225,15 @@ export default function EstudianteDashboardPage() {
             {/* Pila de Botones de Acción Rápida */}
             <div className="flex flex-col gap-2.5 w-full sm:w-56 shrink-0">
               
-              {/* Botón Principal: Ver Mi Carnet QR */}
-              <Link
-                href="/estudiante/carnet-qr"
+              {/* Botón Principal: Ver Mi Carnet QR (Modal Instantáneo) */}
+              <button
+                type="button"
+                onClick={() => setIsQrModalOpen(true)}
                 className="flex items-center justify-center gap-2.5 px-5 py-3 rounded-2xl bg-gradient-to-r from-emerald-400 via-emerald-500 to-teal-500 hover:from-emerald-300 hover:to-teal-400 text-slate-950 font-extrabold text-xs sm:text-sm shadow-lg shadow-emerald-500/25 transition-all duration-150 hover:scale-[1.02] active:scale-[0.98] cursor-pointer text-center"
               >
                 <QrCode className="w-4 h-4 text-slate-950" />
-                <span>Ver Mi Carnet QR</span>
-              </Link>
+                <span>Mostrar Carnet QR</span>
+              </button>
 
               {/* Botón 2: Ir a Mis Tareas */}
               <Link
@@ -788,6 +792,51 @@ export default function EstudianteDashboardPage() {
           </div>
         )}
       </div>
+
+      {/* ── MODAL EMERGENTE RÁPIDO DE CARNET QR ── */}
+      {isQrModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in-50">
+          <div className="relative w-full max-w-sm bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <QrCode className="w-5 h-5 text-emerald-500" />
+                <h3 className="text-sm font-black text-slate-900 dark:text-white">Pase Escolar Biométrico QR</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsQrModalOpen(false)}
+                className="p-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-white transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {activeStudent && (
+              <QrCard
+                student={activeStudent}
+                section={activeEnrollment?.seccion || undefined}
+                schoolName="Colegio San Martín"
+              />
+            )}
+
+            <div className="pt-2 flex items-center justify-between border-t border-slate-100 dark:border-slate-800">
+              <Link
+                href="/estudiante/carnet-qr"
+                className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline"
+              >
+                Página completa →
+              </Link>
+              <button
+                type="button"
+                onClick={() => setIsQrModalOpen(false)}
+                className="px-4 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs hover:bg-slate-200 cursor-pointer"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

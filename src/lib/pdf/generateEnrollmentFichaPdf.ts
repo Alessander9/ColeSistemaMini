@@ -243,19 +243,20 @@ export async function generateEnrollmentFichaPdf(data: EnrollmentFichaPdfData): 
   doc.setDrawColor(165, 180, 252); // Indigo border
   doc.roundedRect(marginX, y, 182, 45, 3, 3, 'FD');
 
-  // Header banner for credentials
+  // Header banner for credentials (no emojis to prevent mojibake in jsPDF)
   doc.setFillColor(cPrimaryDark[0], cPrimaryDark[1], cPrimaryDark[2]);
   doc.rect(marginX, y, 182, 7, 'F');
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
-  doc.text('🔑 CREDENCIALES OFICIALES DE ACCESO AL SISTEMA WEB (PORTAL DEL COLEGIO)', marginX + 91, y + 4.8, { align: 'center' });
+  doc.text('CREDENCIALES OFICIALES DE ACCESO AL SISTEMA WEB INSTITUCIONAL', marginX + 91, y + 4.8, { align: 'center' });
 
   // Web portal URL line
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(7);
   doc.setTextColor(cPrimary[0], cPrimary[1], cPrimary[2]);
-  doc.text('🌐 Portal Web Institucional: https://cole-sistema-mini.vercel.app  (Acceso 24/7 desde PC, Tablet o Móvil)', marginX + 4, y + 12);
+  const portalAccessText = `Portal Web del Colegio: Acceso Oficial 24/7 para Estudiantes y Familias desde PC, Tablet o Móvil`;
+  doc.text(portalAccessText, marginX + 4, y + 12);
 
   // Two sub-cards for credentials: Left -> Estudiante, Right -> Apoderado
   const credCardW = 86;
@@ -319,7 +320,7 @@ export async function generateEnrollmentFichaPdf(data: EnrollmentFichaPdfData): 
   doc.setTextColor(180, 83, 9);
   doc.text('Apoderado / Tutor', credCard2X + 25, y + 37);
 
-  y += 49;
+  y += 48;
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // 6. CÓDIGO QR DE ASISTENCIA & FIRMAS INSTITUCIONALES (SIDE BY SIDE)
@@ -341,55 +342,64 @@ export async function generateEnrollmentFichaPdf(data: EnrollmentFichaPdfData): 
   }
 
   // Left Box: QR Escolar
-  const qrBoxW = 54;
+  const qrBoxW = 52;
   doc.setFillColor(cBgLight[0], cBgLight[1], cBgLight[2]);
   doc.setDrawColor(cBorder[0], cBorder[1], cBorder[2]);
-  doc.roundedRect(marginX, y, qrBoxW, 58, 2, 2, 'FD');
+  doc.roundedRect(marginX, y, qrBoxW, 54, 2, 2, 'FD');
 
   doc.setFillColor(238, 242, 255);
-  doc.rect(marginX, y, qrBoxW, 6, 'F');
+  doc.rect(marginX, y, qrBoxW, 5.5, 'F');
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(7);
   doc.setTextColor(cPrimary[0], cPrimary[1], cPrimary[2]);
-  doc.text('QR ASISTENCIA DIARIA', marginX + qrBoxW / 2, y + 4.2, { align: 'center' });
+  doc.text('QR ASISTENCIA DIARIA', marginX + qrBoxW / 2, y + 3.8, { align: 'center' });
 
   if (qrDataUrl) {
-    doc.addImage(qrDataUrl, 'PNG', marginX + 9, y + 8, 36, 36);
+    doc.addImage(qrDataUrl, 'PNG', marginX + 8, y + 7, 36, 36);
   }
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(6.5);
   doc.setTextColor(cPrimaryDark[0], cPrimaryDark[1], cPrimaryDark[2]);
-  doc.text(studentCode, marginX + qrBoxW / 2, y + 47, { align: 'center' });
+  doc.text(studentCode, marginX + qrBoxW / 2, y + 45, { align: 'center' });
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(5.5);
   doc.setTextColor(cMuted[0], cMuted[1], cMuted[2]);
-  doc.text('Presentar este QR en portería', marginX + qrBoxW / 2, y + 51, { align: 'center' });
-  doc.text('para registrar ingreso y salida.', marginX + qrBoxW / 2, y + 54.5, { align: 'center' });
+  doc.text('Presentar en portería escolar', marginX + qrBoxW / 2, y + 49, { align: 'center' });
+  doc.text('para control de ingreso.', marginX + qrBoxW / 2, y + 52, { align: 'center' });
 
   // Right Box: Firmas, Sellos y Compromiso Institucional
   const sigBoxX = marginX + qrBoxW + 4;
   const sigBoxW = 182 - qrBoxW - 4;
   doc.setFillColor(cBgLight[0], cBgLight[1], cBgLight[2]);
   doc.setDrawColor(cBorder[0], cBorder[1], cBorder[2]);
-  doc.roundedRect(sigBoxX, y, sigBoxW, 58, 2, 2, 'FD');
+  doc.roundedRect(sigBoxX, y, sigBoxW, 54, 2, 2, 'FD');
 
   doc.setFillColor(238, 242, 255);
-  doc.rect(sigBoxX, y, sigBoxW, 6, 'F');
+  doc.rect(sigBoxX, y, sigBoxW, 5.5, 'F');
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(7);
   doc.setTextColor(cPrimary[0], cPrimary[1], cPrimary[2]);
-  doc.text('COMPROMISO Y CONFORMIDAD INSTITUCIONAL', sigBoxX + 4, y + 4.2);
+  doc.text('COMPROMISO Y CONFORMIDAD INSTITUCIONAL', sigBoxX + 4, y + 3.8);
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(6.5);
   doc.setTextColor(cMuted[0], cMuted[1], cMuted[2]);
-  doc.text('El suscrito declara bajo juramento la veracidad de los datos consignados en la presente ficha de matrícula', sigBoxX + 4, y + 10);
-  doc.text('y asume el compromiso de respetar el Reglamento Interno y velar por el cumplimiento de los deberes escolares.', sigBoxX + 4, y + 14);
+  doc.text('El suscrito declara bajo juramento la veracidad de los datos consignados en la presente ficha', sigBoxX + 4, y + 9);
+  doc.text('y asume el compromiso de respetar el Reglamento Interno y velar por el cumplimiento escolar.', sigBoxX + 4, y + 13);
 
   // Signatures Lines
-  const sigLineY = y + 42;
+  const sigLineY = y + 38;
   const sigColW = (sigBoxW - 12) / 2;
+
+  // Render Director signature image if available
+  if (brandingConfig?.directorFirmaUrl) {
+    try {
+      doc.addImage(brandingConfig.directorFirmaUrl, 'PNG', sigBoxX + 10, sigLineY - 14, 30, 13);
+    } catch {
+      /* ignore image error */
+    }
+  }
 
   // Signature Director
   doc.setDrawColor(148, 163, 184);
@@ -397,7 +407,8 @@ export async function generateEnrollmentFichaPdf(data: EnrollmentFichaPdfData): 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(6.5);
   doc.setTextColor(cDark[0], cDark[1], cDark[2]);
-  doc.text('DIRECCIÓN GENERAL', sigBoxX + 6 + sigColW / 2, sigLineY + 4, { align: 'center' });
+  const directorTitle = brandingConfig?.directorNombre || 'DIRECCIÓN GENERAL';
+  doc.text(directorTitle.toUpperCase(), sigBoxX + 6 + sigColW / 2, sigLineY + 4, { align: 'center' });
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(5.5);
   doc.setTextColor(cMuted[0], cMuted[1], cMuted[2]);
@@ -412,13 +423,13 @@ export async function generateEnrollmentFichaPdf(data: EnrollmentFichaPdfData): 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(5.5);
   doc.setTextColor(cMuted[0], cMuted[1], cMuted[2]);
-  doc.text(`DNI: ${studentDni || '___________________'}`, sigBoxX + 12 + sigColW * 1.5, sigLineY + 7.5, { align: 'center' });
+  doc.text(`DNI: ${parentDni || '___________________'}`, sigBoxX + 12 + sigColW * 1.5, sigLineY + 7.5, { align: 'center' });
 
   // Footer note inside signature box
   doc.setFont('helvetica', 'italic');
   doc.setFontSize(5.5);
   doc.setTextColor(cMuted[0], cMuted[1], cMuted[2]);
-  doc.text(`Emisión: ${new Date().toLocaleString('es-PE')} • Código de Verificación Segura: ${studentCode}-VER-${Date.now().toString().slice(-4)}`, sigBoxX + 4, y + 55);
+  doc.text(`Emisión: ${new Date().toLocaleDateString('es-PE')} • Código de Verificación Segura: ${studentCode}-VER-${Date.now().toString().slice(-4)}`, sigBoxX + 4, y + 51);
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // 7. BOTTOM SYSTEM FOOTER
@@ -426,7 +437,7 @@ export async function generateEnrollmentFichaPdf(data: EnrollmentFichaPdfData): 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(6);
   doc.setTextColor(148, 163, 184);
-  doc.text('Documento oficial generado automáticamente por ColeSistema Mini • Validez legal e institucional según normativa MINEDU.', marginX + 91, 288, { align: 'center' });
+  doc.text('Documento oficial generado automáticamente por ColeSistema Mini • Validez legal e institucional según normativa MINEDU.', marginX + 91, 286, { align: 'center' });
 
   return doc;
 }

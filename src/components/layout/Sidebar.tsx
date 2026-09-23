@@ -88,8 +88,8 @@ export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
     {
       section: 'CONFIGURACIÓN INICIAL (PASO A PASO)',
       items: [
-        { href: '/admin/academico', label: '1. Cursos & Materias', icon: BookOpen, badge: 'Paso 1' },
-        { href: '/admin/academico', label: '2. Grados & Secciones', icon: School, badge: 'Paso 2' },
+        { href: '/admin/academico?tab=cursos', label: '1. Cursos & Materias', icon: BookOpen, badge: 'Paso 1' },
+        { href: '/admin/academico?tab=grados', label: '2. Grados & Secciones', icon: School, badge: 'Paso 2' },
         { href: '/admin/docentes', label: '3. Plana Docente', icon: GraduationCap, badge: 'Paso 3' },
         { href: '/admin/horarios', label: '4. Horarios por Aula', icon: Calendar, badge: 'Paso 4' },
         { href: '/admin/matriculas', label: '5. Matrículas & Fichas PDF', icon: UserPlus, badge: 'Paso 5', badgeColor: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold' },

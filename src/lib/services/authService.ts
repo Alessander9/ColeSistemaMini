@@ -6,20 +6,26 @@ export async function loginWithCredentials(emailOrUsername: string, password: st
   // 1. Si Supabase no está configurado con credenciales reales, autenticar localmente contra base de datos interna
   if (!isSupabaseConfigured()) {
     const cleanInput = emailOrUsername.trim().toLowerCase();
-    let userList: UserProfile[] = MOCK_USERS;
+    const userMap = new Map<string, UserProfile>();
+    MOCK_USERS.forEach((u) => userMap.set(u.id, u));
+
     if (typeof window !== 'undefined') {
       try {
         const stored = localStorage.getItem('colegio_users');
         if (stored) {
           const parsed = JSON.parse(stored);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            userList = parsed;
+            parsed.forEach((u: UserProfile) => {
+              if (u && u.id) userMap.set(u.id, u);
+            });
           }
         }
       } catch {
         /* ignore */
       }
     }
+
+    const userList = Array.from(userMap.values());
 
     const matchedUser = userList.find(u => 
       u.email?.toLowerCase() === cleanInput || 

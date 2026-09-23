@@ -59,6 +59,7 @@ export function BottomNav() {
 
   const apoderadoItems: BottomNavItem[] = [
     { href: '/apoderado', label: 'Familia', icon: LayoutDashboard },
+    { href: '/apoderado/tareas', label: 'Tareas', icon: FileText },
     { href: '/estudiante/libreta-notas', label: 'Notas', icon: Award },
     { href: '/estudiante/horario', label: 'Horario', icon: Calendar },
     { href: '/estudiante/carnet-qr', label: 'Carnet QR', icon: QrCode },

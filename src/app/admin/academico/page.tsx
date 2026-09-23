@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import {
   GraduationCap,
@@ -67,11 +68,20 @@ export default function AdminAcademicoPage() {
     updateBrandingConfig
   } = useApp();
 
+  const searchParams = useSearchParams();
+
   // Estado del panel de personalización de imágenes de banners
   const [isBannerEditorOpen, setIsBannerEditorOpen] = useState(false);
   const [selectedLevel, setSelectedLevel] = useState<'todos' | 'inicial' | 'primaria' | 'secundaria'>('todos');
   const [activeMainTab, setActiveMainTab] = useState<'grados' | 'cursos' | 'periodos'>('grados');
   const [courseSearch, setCourseSearch] = useState('');
+
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam === 'cursos' || tabParam === 'grados' || tabParam === 'periodos') {
+      setActiveMainTab(tabParam);
+    }
+  }, [searchParams]);
   
   // Modal de Curso
   const [isCourseModalOpen, setIsCourseModalOpen] = useState(false);

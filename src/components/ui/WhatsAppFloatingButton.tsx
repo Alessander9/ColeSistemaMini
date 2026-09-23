@@ -20,10 +20,10 @@ export function WhatsAppFloatingButton() {
   const waUrl = `https://wa.me/${cleanNumber}?text=${encodedText}`;
 
   return (
-    <div className="fixed bottom-6 right-6 z-[9990] flex flex-col items-end animate-in slide-in-from-bottom-5 duration-300">
+    <div className="fixed bottom-20 md:bottom-6 right-4 md:right-6 z-[9990] flex flex-col items-end animate-in slide-in-from-bottom-5 duration-300">
       {/* Popover Card */}
       {isOpen && (
-        <div className="mb-3 w-72 sm:w-80 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-4 animate-in zoom-in-95 duration-200">
+        <div className="mb-3 w-72 sm:w-80 max-w-[calc(100vw-2rem)] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-4 animate-in zoom-in-95 duration-200">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold">

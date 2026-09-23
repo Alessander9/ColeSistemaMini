@@ -45,7 +45,62 @@ export const INITIAL_ADMIN_USER: UserProfile = {
   activo: true,
 };
 
-export const MOCK_USERS: UserProfile[] = [INITIAL_ADMIN_USER];
+export const DEMO_TEACHER_USER: UserProfile = {
+  id: 'teacher-1',
+  rol: 'docente',
+  nombres: 'Tomás',
+  apellidos: 'Pérez Quispe',
+  dni: '10203040',
+  email: 'docente@colegio.edu.pe',
+  telefono: '912345678',
+  especialidad: 'Matemática',
+  avatar_url: 'https://images.unsplash.com/photo-1568602471122-7832951cc4c5?w=150&auto=format&fit=crop&q=80',
+  activo: true,
+};
+
+export const DEMO_STUDENT_USER: UserProfile = {
+  id: 'user-student-1',
+  rol: 'estudiante',
+  nombres: 'Lucas',
+  apellidos: 'Morales Vega',
+  dni: '70809010',
+  email: 'estudiante@colegio.edu.pe',
+  telefono: '998877665',
+  avatar_url: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150&auto=format&fit=crop&q=80',
+  activo: true,
+};
+
+export const DEMO_PARENT_USER: UserProfile = {
+  id: 'parent-1',
+  rol: 'apoderado',
+  nombres: 'Perico',
+  apellidos: 'Morales Silva',
+  dni: '09876543',
+  email: 'apoderado@colegio.edu.pe',
+  telefono: '987654321',
+  avatar_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+  activo: true,
+};
+
+export const DEMO_ASISTENCIA_USER: UserProfile = {
+  id: 'user-asistencia-1',
+  rol: 'asistencia',
+  nombres: 'Portería',
+  apellidos: 'Principal',
+  dni: '99887766',
+  email: 'asistencia@colegio.edu.pe',
+  telefono: '999888777',
+  avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+  activo: true,
+};
+
+export const MOCK_USERS: UserProfile[] = [
+  INITIAL_ADMIN_USER,
+  DEMO_TEACHER_USER,
+  DEMO_STUDENT_USER,
+  DEMO_PARENT_USER,
+  DEMO_ASISTENCIA_USER,
+];
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 2. ESTRUCTURA ACADÉMICA OFICIAL CNEB (MINISTERIO DE EDUCACIÓN)
@@ -125,9 +180,7 @@ export const MOCK_GRADE_LEVELS: GradeLevel[] = [
 
 export const MOCK_GRADES: GradeLevel[] = MOCK_GRADE_LEVELS;
 export const MOCK_PERIODS: EvaluationPeriod[] = MOCK_EVALUATION_PERIODS;
-export const MOCK_TEACHERS: UserProfile[] = [];
-
-import { getOfficialCnebCoursesAndCompetencies } from '@/lib/cneb/officialCurriculum';
+export const MOCK_TEACHERS: UserProfile[] = [DEMO_TEACHER_USER];
 
 export const MOCK_SECTIONS: Section[] = [
   // Inicial
@@ -163,6 +216,7 @@ export const MOCK_SECTIONS: Section[] = [
   { id: 'sec-5sec-b', grado_id: 'grd-sec-5', letra: 'B', capacidad_maxima: 32, aula: 'Pabellón C - Aula 306', grado: MOCK_GRADE_LEVELS.find(g => g.id === 'grd-sec-5') },
 ];
 
+import { getOfficialCnebCoursesAndCompetencies } from '@/lib/cneb/officialCurriculum';
 const cnebData = getOfficialCnebCoursesAndCompetencies();
 
 // Competencias oficiales CNEB
@@ -172,23 +226,100 @@ export const MINEDU_COMPETENCIES: Competency[] = MOCK_COMPETENCIES;
 // Cursos oficiales CNEB
 export const MOCK_COURSES: Course[] = cnebData.courses;
 
-// ─────────────────────────────────────────────────────────────────────────────
-// 3. COLECCIONES OPERATIVAS LIMPIAS (SIN DATOS MOCKEADOS NI DUMMY RECORDS)
-// Listas vacías listas para recibir registros reales de los usuarios
-// ─────────────────────────────────────────────────────────────────────────────
-export const MOCK_STUDENTS: Student[] = [];
-export const MOCK_ENROLLMENTS: Enrollment[] = [];
-export const MOCK_ATTENDANCES: AttendanceRecord[] = [];
+export const DEMO_STUDENT: Student = {
+  id: 'student-1',
+  profile_id: 'user-student-1',
+  codigo_estudiante: 'EST-2026-001',
+  nombres: 'Lucas',
+  apellidos: 'Morales Vega',
+  dni: '70809010',
+  fecha_nacimiento: '2015-05-14',
+  genero: 'M',
+  direccion: 'Av. Los Álamos 456, Lima',
+  nombre_apoderado: 'Perico Morales Silva',
+  telefono_apoderado: '987654321',
+  email_apoderado: 'apoderado@colegio.edu.pe',
+  token_qr: 'QR-EST-2026-001-Lucas_Morales',
+  profile: DEMO_STUDENT_USER,
+};
+
+export const MOCK_STUDENTS: Student[] = [DEMO_STUDENT];
+
+export const MOCK_ENROLLMENTS: Enrollment[] = [
+  {
+    id: 'enr-1',
+    estudiante_id: 'student-1',
+    periodo_id: 'period-2026',
+    seccion_id: 'sec-3pri-a',
+    fecha_matricula: '2026-03-01',
+    estado: 'activo',
+    estudiante: DEMO_STUDENT,
+    seccion: MOCK_SECTIONS.find((s: Section) => s.id === 'sec-3pri-a'),
+  }
+];
+
+export const MOCK_ATTENDANCES: AttendanceRecord[] = [
+  {
+    id: 'att-1',
+    matricula_id: 'enr-1',
+    fecha: new Date().toISOString().split('T')[0],
+    hora_registro: '07:45:00',
+    estado: 'presente',
+    metodo: 'qr',
+    observacion: 'Ingreso puntual por portería principal',
+    registrado_por: 'user-asistencia-1',
+  }
+];
+
 export const MOCK_GRADE_RECORDS: GradeRecord[] = [];
 export const MOCK_TASKS: TaskAssignment[] = [];
 export const MOCK_SUBMISSIONS: TaskSubmission[] = [];
 export const MOCK_EXAMS: EvaluationExam[] = [];
 export const MOCK_NOTIFICATIONS: AppNotification[] = [];
-export const MOCK_SECTION_COURSES: SectionCourseAssignment[] = [];
+
+export const MOCK_SECTION_COURSES: SectionCourseAssignment[] = [
+  {
+    id: 'sc-1',
+    seccion_id: 'sec-3pri-a',
+    curso_id: 'cneb-pri-mat',
+    docente_id: 'teacher-1',
+    horas_semanales: 6,
+    aula_defecto: 'Aula 201',
+    docente: DEMO_TEACHER_USER,
+    curso: MOCK_COURSES.find((c: Course) => c.id === 'cneb-pri-mat'),
+    seccion: MOCK_SECTIONS.find((s: Section) => s.id === 'sec-3pri-a'),
+  }
+];
+
 export const MOCK_SCHEDULE_SLOTS: ScheduleSlot[] = [];
 export const MOCK_CLASS_SESSIONS: ClassSessionLog[] = [];
-export const MOCK_CHILDREN: ChildProfile[] = [];
-export const MOCK_PARENTS: ParentProfile[] = [];
+
+export const MOCK_CHILDREN: ChildProfile[] = [
+  {
+    id: 'child-1',
+    estudiante_id: 'student-1',
+    nombre: 'Lucas',
+    apellidos: 'Morales Vega',
+    nivel: 'primaria',
+    grado_nombre: '3° de Primaria',
+    seccion_letra: 'A',
+    asistencia_porcentaje: 98,
+    tareas_pendientes: 1,
+  }
+];
+
+export const MOCK_PARENTS: ParentProfile[] = [
+  {
+    id: 'parent-1',
+    user_id: 'parent-1',
+    nombres: 'Perico',
+    apellidos: 'Morales Silva',
+    dni: '09876543',
+    telefono: '987654321',
+    email: 'apoderado@colegio.edu.pe',
+    hijos_ids: ['student-1'],
+  }
+];
 export const MOCK_LMS_MODULES: LMSModule[] = [
   {
     id: 'lms-mod-mat-1',

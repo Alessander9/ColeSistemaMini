@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { NotaCualitativa } from '@/types';
+import { GradeLetter } from '@/types';
 import { TEST_GRADE_RECORDS, TEST_ENROLLMENTS, TEST_PERIODS } from './test-fixtures';
 
 // Helper to determine predominant achievement level
-function calculatePredominantGrade(grades: NotaCualitativa[]): NotaCualitativa {
+function calculatePredominantGrade(grades: GradeLetter[]): GradeLetter {
   if (grades.length === 0) return 'A';
-  const counts: Record<NotaCualitativa, number> = { AD: 0, A: 0, B: 0, C: 0 };
+  const counts: Record<GradeLetter, number> = { AD: 0, A: 0, B: 0, C: 0 };
   grades.forEach(g => { counts[g] = (counts[g] || 0) + 1; });
 
   if (counts.AD >= counts.A && counts.AD >= counts.B && counts.AD >= counts.C && counts.AD >= 2) return 'AD';
@@ -16,17 +16,17 @@ function calculatePredominantGrade(grades: NotaCualitativa[]): NotaCualitativa {
 
 describe('Cálculo de Calificaciones por Competencias (Escala MINEDU)', () => {
   it('calcula correctamente el logro predominante AD cuando hay mayoría de AD', () => {
-    const grades: NotaCualitativa[] = ['AD', 'AD', 'A', 'AD'];
+    const grades: GradeLetter[] = ['AD', 'AD', 'A', 'AD'];
     expect(calculatePredominantGrade(grades)).toBe('AD');
   });
 
   it('calcula logro esperado A cuando el estudiante alcanza las metas previstas', () => {
-    const grades: NotaCualitativa[] = ['A', 'A', 'B', 'A'];
+    const grades: GradeLetter[] = ['A', 'A', 'B', 'A'];
     expect(calculatePredominantGrade(grades)).toBe('A');
   });
 
   it('calcula en proceso B cuando predominan notas de refuerzo', () => {
-    const grades: NotaCualitativa[] = ['B', 'B', 'A', 'B'];
+    const grades: GradeLetter[] = ['B', 'B', 'A', 'B'];
     expect(calculatePredominantGrade(grades)).toBe('B');
   });
 
@@ -37,7 +37,7 @@ describe('Cálculo de Calificaciones por Competencias (Escala MINEDU)', () => {
 
       expect(enrollment).toBeDefined();
       expect(period).toBeDefined();
-      expect(['AD', 'A', 'B', 'C']).toContain(gr.nota_cualitativa);
+      expect(['AD', 'A', 'B', 'C']).toContain(gr.nota_letra);
     });
   });
 });

@@ -507,7 +507,7 @@ function MatriculasContent() {
         description="Proceso de admisión, asignación de vacantes por nivel (Inicial, Primaria, Secundaria) y emisión de credenciales oficiales."
         badge={`${enrollments.length} Matrículas Activas`}
       >
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={async () => {
               const activeEnrs = enrollments.filter(e => e.estado === 'activo');

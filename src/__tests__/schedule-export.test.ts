@@ -8,9 +8,9 @@ describe('Exportación de Horarios (/admin/horarios)', () => {
     const grade = TEST_GRADES.find(g => g.id === section.grado_id);
     const tutor = TEST_USERS.find(t => t.id === section.tutor_id);
     
-    const sectionName = `${grade?.nombre || 'Grado'} "${section.nombre}"`;
+    const sectionName = `${grade?.nombre || 'Grado'} "${section.letra}"`;
     const schoolName = DEFAULT_BRANDING_CONFIG.nombreInstitucion;
-    const tutorName = tutor ? tutor.nombre : 'No asignado';
+    const tutorName = tutor ? tutor.nombres : 'No asignado';
     
     let csvContent = '\uFEFF';
     csvContent += `"${schoolName} - Horario Escolar Oficial 2026"\n`;

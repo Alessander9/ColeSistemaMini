@@ -3,9 +3,9 @@ import { ScheduleSlot, DayOfWeek, ScheduleConflict } from '@/types';
 import { TEST_SCHEDULE_SLOTS, TEST_SECTIONS, TEST_COURSES, TEST_USERS } from './test-fixtures';
 
 function checkTeacherConflict(
-  slots: any[],
+  slots: ScheduleSlot[],
   docenteId: string,
-  dia: number,
+  dia: DayOfWeek | string,
   horaInicio: string,
   ignoreSlotId?: string
 ) {
@@ -18,22 +18,22 @@ function checkTeacherConflict(
   );
 
   if (existingSlot) {
-    const sec = existingSlot.seccion || TEST_SECTIONS.find(s => s.id === existingSlot.seccion_id);
-    const crs = existingSlot.curso || TEST_COURSES.find(c => c.id === existingSlot.curso_id);
-    const doc = existingSlot.docente || TEST_USERS.find(u => u.id === existingSlot.docente_id);
+    const sec = TEST_SECTIONS.find(s => s.id === existingSlot.seccion_id);
+    const crs = TEST_COURSES.find(c => c.id === existingSlot.curso_id);
+    const doc = TEST_USERS.find(u => u.id === existingSlot.docente_id);
 
     return {
       hasConflict: true,
       conflictingSlot: { ...existingSlot, seccion: sec, curso: crs, docente: doc },
-      message: `El Prof. ${doc?.nombre?.split(' ')[0]} ya tiene asignado ${crs?.nombre} el día ${dia} a las ${horaInicio}.`
+      message: `El Prof. ${doc?.nombres?.split(' ')[0]} ya tiene asignado ${crs?.nombre} el día ${dia} a las ${horaInicio}.`
     };
   }
 
   return { hasConflict: false };
 }
 
-function auditScheduleIntegrity(slots: any[]) {
-  const conflicts: { slotA: any; slotB: any }[] = [];
+function auditScheduleIntegrity(slots: ScheduleSlot[]) {
+  const conflicts: { slotA: ScheduleSlot; slotB: ScheduleSlot }[] = [];
 
   for (let i = 0; i < slots.length; i++) {
     for (let j = i + 1; j < slots.length; j++) {
@@ -68,7 +68,7 @@ describe('Validación Anti-Cruce y Horarios Escolares', () => {
 
   it('debe detectar conflicto cuando se intenta asignar al mismo docente en dos salones a la misma hora', () => {
     const docenteId = 'user-docente-1'; // Prof. Carlos Mendoza
-    const dia = 1;
+    const dia: DayOfWeek = 'lunes';
     const horaInicio = '08:00';
 
     const conflict = checkTeacherConflict(TEST_SCHEDULE_SLOTS, docenteId, dia, horaInicio);
@@ -80,7 +80,7 @@ describe('Validación Anti-Cruce y Horarios Escolares', () => {
 
   it('no debe marcar conflicto si el docente está libre en ese bloque horario', () => {
     const docenteId = 'user-docente-1';
-    const dia = 1;
+    const dia: DayOfWeek = 'lunes';
     const horaInicio = '13:00'; // Libre
 
     const conflict = checkTeacherConflict(TEST_SCHEDULE_SLOTS, docenteId, dia, horaInicio);

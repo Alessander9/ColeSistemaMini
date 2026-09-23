@@ -158,7 +158,7 @@ export async function generateSchedulePdf(data: SchedulePdfData): Promise<jsPDF>
       doc.setTextColor(180, 83, 9);
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(8);
-      doc.text('★ RECREO Y DESCANSO PEDAGÓGICO ★', marginX + timeColWidth + totalDaysWidth / 2, y + 4.8, { align: 'center' });
+      doc.text('RECREO Y DESCANSO PEDAGÓGICO', marginX + timeColWidth + totalDaysWidth / 2, y + 4.8, { align: 'center' });
     } else {
       // Slot per day
       DAYS.forEach((day, idx) => {
