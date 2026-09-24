@@ -88,7 +88,12 @@ export async function fetchStudents(): Promise<Student[]> {
       .select('*, profile:profiles(*)');
 
     if (error || !data) return localStudents;
-    return data as Student[];
+    const map = new Map<string, Student>();
+    (data as Student[]).forEach(s => map.set(s.id, s));
+    localStudents.forEach(s => {
+      if (!map.has(s.id)) map.set(s.id, s);
+    });
+    return Array.from(map.values());
   } catch {
     return localStudents;
   }
@@ -108,7 +113,12 @@ export async function fetchEnrollments(): Promise<Enrollment[]> {
       `);
 
     if (error || !data) return localEnrollments;
-    return data as Enrollment[];
+    const map = new Map<string, Enrollment>();
+    (data as Enrollment[]).forEach(e => map.set(e.id, e));
+    localEnrollments.forEach(e => {
+      if (!map.has(e.id)) map.set(e.id, e);
+    });
+    return Array.from(map.values());
   } catch {
     return localEnrollments;
   }
@@ -214,6 +224,9 @@ export async function createStudentInDb(data: {
     id: `est-${Date.now()}`,
     profile_id: profileId,
     codigo_estudiante: studentCode,
+    nombres: data.nombres,
+    apellidos: data.apellidos,
+    dni: data.dni,
     fecha_nacimiento: data.fechaNacimiento,
     genero: data.genero || 'No especificado',
     nombre_apoderado: data.nombreApoderado,

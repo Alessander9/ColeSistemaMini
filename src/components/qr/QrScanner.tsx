@@ -181,8 +181,30 @@ export function QrScanner({
 
   // ── Process decoded QR text ───────────────────────────────────────────────
   const handleDecoded = useCallback((decodedText: string) => {
-    const rawClean = decodedText.trim();
+    let rawClean = decodedText.trim();
     if (!rawClean) return;
+
+    // Multi-format Parser (JSON payload, URL with params, or Raw Code)
+    if (rawClean.startsWith('{') && rawClean.endsWith('}')) {
+      try {
+        const parsed = JSON.parse(rawClean);
+        rawClean = parsed.token_qr || parsed.codigo || parsed.codigo_estudiante || parsed.dni || parsed.id || rawClean;
+      } catch {
+        /* fallback */
+      }
+    } else if (rawClean.includes('http://') || rawClean.includes('https://')) {
+      try {
+        const urlObj = new URL(rawClean);
+        rawClean = urlObj.searchParams.get('token') || 
+                   urlObj.searchParams.get('code') || 
+                   urlObj.searchParams.get('codigo') || 
+                   urlObj.searchParams.get('dni') || 
+                   urlObj.searchParams.get('id') || 
+                   rawClean;
+      } catch {
+        /* fallback */
+      }
+    }
 
     // Fast-throttle consecutive camera reads of identical QR in 3s
     if (decodeCooldownRef.current && lastDecodeRef.current === rawClean) return;
@@ -211,23 +233,31 @@ export function QrScanner({
     const foundStudent = students.find((s) => {
       const sToken = normalize(s.token_qr);
       const sCode = normalize(s.codigo_estudiante);
-      const sDni = normalize(s.profile?.dni);
+      const sDni = normalize(s.profile?.dni || s.dni);
       return (
         (sToken && (sToken === normClean || normClean.includes(sToken) || sToken.includes(normClean))) ||
         (sCode && (sCode === normClean || normClean.includes(sCode) || sCode.includes(normClean) || (extractedCode && sCode === extractedCode))) ||
         (sDni && (sDni === normClean || normClean.includes(sDni) || (extractedDni && sDni === extractedDni))) ||
         s.id === rawClean ||
-        s.profile_id === rawClean
+        s.profile_id === rawClean ||
+        (normClean.includes(sCode) && sCode.length >= 4)
       );
     });
 
     const foundEnrollment = foundStudent
-      ? enrollments.find((e) => e.estudiante_id === foundStudent.id)
+      ? enrollments.find((e) => 
+          e.estudiante_id === foundStudent.id ||
+          e.estudiante?.id === foundStudent.id ||
+          (foundStudent.profile_id && (e.estudiante_id === foundStudent.profile_id || e.estudiante?.profile_id === foundStudent.profile_id)) ||
+          (foundStudent.codigo_estudiante && e.estudiante?.codigo_estudiante === foundStudent.codigo_estudiante) ||
+          (foundStudent.dni && (e.estudiante?.dni === foundStudent.dni || e.estudiante?.profile?.dni === foundStudent.dni)) ||
+          (foundStudent.profile?.dni && (e.estudiante?.dni === foundStudent.profile.dni || e.estudiante?.profile?.dni === foundStudent.profile.dni))
+        )
       : undefined;
 
     const studentFullName = foundStudent?.profile
       ? `${foundStudent.profile.nombres} ${foundStudent.profile.apellidos}`
-      : 'Estudiante No Reconocido';
+      : `${foundStudent?.nombres || ''} ${foundStudent?.apellidos || ''}`.trim() || 'Estudiante No Reconocido';
 
     const gradeSectionStr = foundEnrollment?.seccion
       ? `${foundEnrollment.seccion.grado?.nombre || 'Grado'} "${foundEnrollment.seccion.letra}"`

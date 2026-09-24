@@ -321,13 +321,14 @@ export default function AsistenciaKioscoPage() {
     const foundStudent = students.find((s) => {
       const sToken = normalize(s.token_qr);
       const sCode = normalize(s.codigo_estudiante);
-      const sDni = normalize(s.profile?.dni);
+      const sDni = normalize(s.profile?.dni || s.dni);
       return (
         (sToken && (sToken === normClean || normClean.includes(sToken) || sToken.includes(normClean))) ||
         (sCode && (sCode === normClean || normClean.includes(sCode) || sCode.includes(normClean) || (extractedCode && sCode === extractedCode))) ||
         (sDni && (sDni === normClean || normClean.includes(sDni) || (extractedDni && sDni === extractedDni))) ||
         s.id === rawClean ||
-        s.profile_id === rawClean
+        s.profile_id === rawClean ||
+        (normClean.includes(sCode) && sCode.length >= 4)
       );
     });
 
@@ -366,12 +367,19 @@ export default function AsistenciaKioscoPage() {
     }
 
     const foundEnrollment = foundStudent
-      ? enrollments.find((e) => e.estudiante_id === foundStudent.id)
+      ? enrollments.find((e) => 
+          e.estudiante_id === foundStudent.id ||
+          e.estudiante?.id === foundStudent.id ||
+          (foundStudent.profile_id && (e.estudiante_id === foundStudent.profile_id || e.estudiante?.profile_id === foundStudent.profile_id)) ||
+          (foundStudent.codigo_estudiante && e.estudiante?.codigo_estudiante === foundStudent.codigo_estudiante) ||
+          (foundStudent.dni && (e.estudiante?.dni === foundStudent.dni || e.estudiante?.profile?.dni === foundStudent.dni)) ||
+          (foundStudent.profile?.dni && (e.estudiante?.dni === foundStudent.profile.dni || e.estudiante?.profile?.dni === foundStudent.profile.dni))
+        )
       : undefined;
 
     const studentFullName = foundStudent?.profile
       ? `${foundStudent.profile.nombres} ${foundStudent.profile.apellidos}`
-      : 'Estudiante no registrado';
+      : `${foundStudent?.nombres || ''} ${foundStudent?.apellidos || ''}`.trim() || 'Estudiante no registrado';
 
     const gradeSectionStr = foundEnrollment?.seccion
       ? `${foundEnrollment.seccion.grado?.nombre || 'Grado'} "${foundEnrollment.seccion.letra}"`

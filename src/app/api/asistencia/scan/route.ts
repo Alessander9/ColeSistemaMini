@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { MOCK_STUDENTS, MOCK_ENROLLMENTS, MOCK_ATTENDANCES } from '@/lib/mock-data';
+import { MOCK_STUDENTS, MOCK_ENROLLMENTS } from '@/lib/mock-data';
+import { fetchStudents, fetchEnrollments } from '@/lib/services/academicService';
 
 export async function POST(req: NextRequest) {
   try {
@@ -13,13 +14,43 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    let rawToken = String(tokenQr).trim();
+    if (rawToken.startsWith('{') && rawToken.endsWith('}')) {
+      try {
+        const parsed = JSON.parse(rawToken);
+        rawToken = parsed.token_qr || parsed.codigo || parsed.codigo_estudiante || parsed.dni || parsed.id || rawToken;
+      } catch {
+        /* fallback */
+      }
+    }
+
     const normalize = (s?: string) =>
       s ? s.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') : '';
-    const normToken = normalize(tokenQr);
+    const normToken = normalize(rawToken);
 
-    const student = MOCK_STUDENTS.find(
+    const codeMatch = rawToken.match(/EST-\d{4}-[\w-]+/i);
+    const extractedCode = codeMatch ? normalize(codeMatch[0]) : '';
+    const dniMatch = rawToken.match(/\b\d{8}\b/);
+    const extractedDni = dniMatch ? dniMatch[0] : '';
+
+    const allStudents = await fetchStudents();
+    const student = allStudents.find(
+      (s) => {
+        const sToken = normalize(s.token_qr);
+        const sCode = normalize(s.codigo_estudiante);
+        const sDni = normalize(s.profile?.dni || s.dni);
+        return (
+          (sToken && (sToken === normToken || normToken.includes(sToken) || sToken.includes(normToken))) ||
+          (sCode && (sCode === normToken || normToken.includes(sCode) || sCode.includes(normToken) || (extractedCode && sCode === extractedCode))) ||
+          (sDni && (sDni === normToken || normToken.includes(sDni) || (extractedDni && sDni === extractedDni))) ||
+          s.id === rawToken ||
+          s.profile_id === rawToken ||
+          (normToken.includes(sCode) && sCode.length >= 4)
+        );
+      }
+    ) || MOCK_STUDENTS.find(
       (s) =>
-        s.token_qr === tokenQr ||
+        s.token_qr === rawToken ||
         normalize(s.codigo_estudiante) === normToken ||
         normalize(s.profile?.dni) === normToken
     );
@@ -31,17 +62,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const enrollment = MOCK_ENROLLMENTS.find((e) => e.estudiante_id === student.id);
-    if (!enrollment) {
-      return NextResponse.json(
-        { success: false, message: 'Estudiante sin matrícula activa' },
-        { status: 400 }
-      );
-    }
+    const allEnrollments = await fetchEnrollments();
+    const enrollment = allEnrollments.find((e) => 
+      e.estudiante_id === student.id ||
+      e.estudiante?.id === student.id ||
+      (student.profile_id && (e.estudiante_id === student.profile_id || e.estudiante?.profile_id === student.profile_id)) ||
+      (student.codigo_estudiante && e.estudiante?.codigo_estudiante === student.codigo_estudiante)
+    ) || MOCK_ENROLLMENTS.find((e) => e.estudiante_id === student.id);
 
     const todayStr = new Date().toISOString().split('T')[0];
     const timeStr = new Date().toLocaleTimeString('es-PE', { hour12: false });
-    const studentName = `${student.profile?.nombres} ${student.profile?.apellidos}`;
+    const studentName = student.profile
+      ? `${student.profile.nombres} ${student.profile.apellidos}`
+      : `${student.nombres || ''} ${student.apellidos || ''}`.trim() || 'Estudiante';
 
     return NextResponse.json({
       success: true,

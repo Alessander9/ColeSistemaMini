@@ -1037,10 +1037,33 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     let targetEnrollment: Enrollment | undefined;
 
     if (studentQrToken) {
+      let rawToken = studentQrToken.trim();
+
+      // Multi-format Parser (JSON payload, URL with params, or Raw Code)
+      if (rawToken.startsWith('{') && rawToken.endsWith('}')) {
+        try {
+          const parsed = JSON.parse(rawToken);
+          rawToken = parsed.token_qr || parsed.codigo || parsed.codigo_estudiante || parsed.dni || parsed.id || rawToken;
+        } catch {
+          /* fallback */
+        }
+      } else if (rawToken.includes('http://') || rawToken.includes('https://')) {
+        try {
+          const urlObj = new URL(rawToken);
+          rawToken = urlObj.searchParams.get('token') || 
+                     urlObj.searchParams.get('code') || 
+                     urlObj.searchParams.get('codigo') || 
+                     urlObj.searchParams.get('dni') || 
+                     urlObj.searchParams.get('id') || 
+                     rawToken;
+        } catch {
+          /* fallback */
+        }
+      }
+
       const normalize = (str?: string) =>
         str ? str.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "";
-      const normToken = normalize(studentQrToken);
-      const rawToken = studentQrToken.trim();
+      const normToken = normalize(rawToken);
 
       // Extraer posible código de estudiante (ej: EST-2026-123456) o DNI numérico de 8 dígitos
       const codeMatch = rawToken.match(/EST-\d{4}-[\w-]+/i);
@@ -1051,7 +1074,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const student = students.find(s => {
         const sToken = normalize(s.token_qr);
         const sCode = normalize(s.codigo_estudiante);
-        const sDni = normalize(s.profile?.dni);
+        const sDni = normalize(s.profile?.dni || s.dni);
         const sId = s.id;
         const pId = s.profile_id;
         
@@ -1060,17 +1083,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           (sCode && (sCode === normToken || normToken.includes(sCode) || sCode.includes(normToken) || (extractedCode && sCode === extractedCode))) ||
           (sDni && (sDni === normToken || normToken.includes(sDni) || (extractedDni && sDni === extractedDni))) ||
           sId === rawToken ||
-          pId === rawToken
+          pId === rawToken ||
+          (normToken.includes(sCode) && sCode.length >= 4)
         );
       });
       if (!student) {
         return { success: false, message: 'Código QR no reconocido o estudiante inexistente' };
       }
-      targetEnrollment = enrollments.find(e => e.estudiante_id === student.id);
+      targetEnrollment = enrollments.find(e => 
+        e.estudiante_id === student.id ||
+        e.estudiante?.id === student.id ||
+        (student.profile_id && (e.estudiante_id === student.profile_id || e.estudiante?.profile_id === student.profile_id)) ||
+        (student.codigo_estudiante && e.estudiante?.codigo_estudiante === student.codigo_estudiante) ||
+        (student.dni && (e.estudiante?.dni === student.dni || e.estudiante?.profile?.dni === student.dni)) ||
+        (student.profile?.dni && (e.estudiante?.dni === student.profile.dni || e.estudiante?.profile?.dni === student.profile.dni))
+      );
 
       // Si el estudiante existe pero no tiene registro en matrículas, crear fallback activo automáticamente
       if (!targetEnrollment) {
-        const fallbackSection = MOCK_SECTIONS[0];
+        const fallbackSection = sections[0] || MOCK_SECTIONS[0];
         targetEnrollment = {
           id: `enr-auto-${student.id}`,
           estudiante_id: student.id,
@@ -1101,7 +1132,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       a => a.matricula_id === targetEnrollment!.id && a.fecha === todayStr
     );
 
-    const studentName = `${targetEnrollment.estudiante?.profile?.nombres} ${targetEnrollment.estudiante?.profile?.apellidos}`;
+    const studentName = targetEnrollment.estudiante?.profile
+      ? `${targetEnrollment.estudiante.profile.nombres} ${targetEnrollment.estudiante.profile.apellidos}`
+      : `${targetEnrollment.estudiante?.nombres || ''} ${targetEnrollment.estudiante?.apellidos || ''}`.trim() || 'Estudiante';
 
     if (existingIndex >= 0) {
       const existing = attendances[existingIndex];
