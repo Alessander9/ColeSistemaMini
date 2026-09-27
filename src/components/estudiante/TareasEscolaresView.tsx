@@ -393,6 +393,30 @@ export function TareasEscolaresView({ isApoderado = false }: TareasEscolaresView
     sortBy
   ]);
 
+  // En escritorio la lista usa el alto restante de la pantalla y hace scroll interno,
+  // así la sección completa entra en una sola pantalla sin scroll de página.
+  const taskListRef = useRef<HTMLDivElement>(null);
+  const [taskListMaxHeight, setTaskListMaxHeight] = useState<number | undefined>(undefined);
+
+  useEffect(() => {
+    const compute = () => {
+      const el = taskListRef.current;
+      if (!el || window.innerWidth < 1024) {
+        setTaskListMaxHeight(undefined);
+        return;
+      }
+      const main = el.closest('main');
+      const top = el.getBoundingClientRect().top + (main?.scrollTop ?? 0);
+      const mainPad = main ? parseFloat(getComputedStyle(main).paddingBottom) || 0 : 0;
+      const wrapper = main?.firstElementChild as HTMLElement | null;
+      const wrapperPad = wrapper ? parseFloat(getComputedStyle(wrapper).paddingBottom) || 0 : 0;
+      setTaskListMaxHeight(Math.max(240, Math.floor(window.innerHeight - top - mainPad - wrapperPad)));
+    };
+    compute();
+    window.addEventListener('resize', compute);
+    return () => window.removeEventListener('resize', compute);
+  }, [viewMode, selectedCalendarDate, searchQuery, displayedTasks.length, isApoderado, selectedChildId]);
+
   // Execute file compression with preset
   const runFileCompression = async (file: File, preset: CompressionPreset) => {
     setIsCompressing(true);
@@ -520,7 +544,7 @@ export function TareasEscolaresView({ isApoderado = false }: TareasEscolaresView
   }, [studentMetrics.studentTasks, submissions, activeEnrollment?.id]);
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto animate-in fade-in-50 pb-16">
+    <div className="space-y-4 max-w-7xl mx-auto animate-in fade-in-50 pb-6">
       
       {/* ── APODERADO MULTI-CHILD SELECTOR ── */}
       {isApoderado && childrenList.length > 0 && (
@@ -574,17 +598,17 @@ export function TareasEscolaresView({ isApoderado = false }: TareasEscolaresView
       )}
 
       {/* ── 1. HEADER ILUSTRADO CON FRASE Y 3D BADGE ── */}
-      <div className="relative rounded-[32px] overflow-hidden bg-gradient-to-r from-blue-50/80 via-indigo-50/60 to-purple-50/80 dark:from-slate-900 dark:via-indigo-950/40 dark:to-slate-900 border border-indigo-100/80 dark:border-slate-800 p-6 sm:p-8 shadow-xs">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
+      <div className="relative rounded-[32px] overflow-hidden bg-gradient-to-r from-blue-50/80 via-indigo-50/60 to-purple-50/80 dark:from-slate-900 dark:via-indigo-950/40 dark:to-slate-900 border border-indigo-100/80 dark:border-slate-800 px-5 py-4 sm:px-6 shadow-xs">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 relative z-10">
           
           {/* Left Title & Description */}
           <div className="space-y-2 max-w-xl">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-lg shadow-blue-600/30 shrink-0">
-                <BookOpen className="w-6 h-6" />
+              <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-lg shadow-blue-600/30 shrink-0">
+                <BookOpen className="w-5 h-5" />
               </div>
               <div>
-                <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
+                <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
                   Tareas Escolares
                 </h1>
                 <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-medium">
@@ -609,7 +633,7 @@ export function TareasEscolaresView({ isApoderado = false }: TareasEscolaresView
             </div>
 
             {/* 3D Illustration Avatar / Badge */}
-            <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl overflow-hidden border-2 border-white/80 dark:border-slate-700 shadow-xl bg-gradient-to-b from-blue-100 to-indigo-100 dark:from-slate-800 dark:to-indigo-950 shrink-0 relative group">
+            <div className="hidden sm:block w-16 h-16 rounded-2xl overflow-hidden border-2 border-white/80 dark:border-slate-700 shadow-xl bg-gradient-to-b from-blue-100 to-indigo-100 dark:from-slate-800 dark:to-indigo-950 shrink-0 relative group">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/hero-tasks-student.jpg"
@@ -626,8 +650,8 @@ export function TareasEscolaresView({ isApoderado = false }: TareasEscolaresView
       {/* ── 2. METRICAS SUPERIORES / KPIS (4 COMPACT + MOTIVATIONAL BANNER) ── */}
       <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
         {/* KPI 1: Total */}
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-2xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+        <div className="bg-white dark:bg-slate-900 px-4 py-3 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
             <FileText className="w-5 h-5" />
           </div>
           <div>
@@ -640,8 +664,8 @@ export function TareasEscolaresView({ isApoderado = false }: TareasEscolaresView
         </div>
 
         {/* KPI 2: Pendientes */}
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-2xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+        <div className="bg-white dark:bg-slate-900 px-4 py-3 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
             <Hourglass className="w-5 h-5" />
           </div>
           <div>
@@ -654,8 +678,8 @@ export function TareasEscolaresView({ isApoderado = false }: TareasEscolaresView
         </div>
 
         {/* KPI 3: Entregadas */}
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+        <div className="bg-white dark:bg-slate-900 px-4 py-3 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
             <CheckCircle2 className="w-5 h-5" />
           </div>
           <div>
@@ -668,8 +692,8 @@ export function TareasEscolaresView({ isApoderado = false }: TareasEscolaresView
         </div>
 
         {/* KPI 4: Calificadas */}
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-2xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
+        <div className="bg-white dark:bg-slate-900 px-4 py-3 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
             <Star className="w-5 h-5" />
           </div>
           <div>
@@ -681,30 +705,45 @@ export function TareasEscolaresView({ isApoderado = false }: TareasEscolaresView
           </div>
         </div>
 
-        {/* KPI 5: Sigue así (Motivational Banner) */}
-        <div className="col-span-2 sm:col-span-2 lg:col-span-1 bg-gradient-to-r from-indigo-50/90 to-purple-50/90 dark:from-slate-900 dark:to-indigo-950/60 p-4 rounded-3xl border border-indigo-100 dark:border-slate-800 shadow-sm flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-purple-100 dark:bg-purple-900/60 text-purple-600 dark:text-purple-300 flex items-center justify-center shrink-0">
-              <Target className="w-5 h-5" />
-            </div>
-            <div>
-              <span className="text-xs font-black text-slate-900 dark:text-white block leading-tight">Sigue así</span>
-              <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight mt-0.5">
-                Organiza tu tiempo y completa tus tareas.
-              </p>
-            </div>
+        {/* KPI 5: Mi progreso (porcentaje de entregas del periodo) */}
+        <div className="col-span-2 sm:col-span-2 lg:col-span-1 bg-gradient-to-r from-indigo-50/90 to-purple-50/90 dark:from-slate-900 dark:to-indigo-950/60 px-4 py-3 rounded-3xl border border-indigo-100 dark:border-slate-800 shadow-sm flex items-center gap-3">
+          <div className="relative w-12 h-12 shrink-0 flex items-center justify-center">
+            <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
+              <path
+                className="text-white dark:text-slate-800"
+                strokeWidth="4"
+                stroke="currentColor"
+                fill="none"
+                d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+              />
+              <path
+                className="text-blue-600 dark:text-indigo-400 transition-all duration-1000 ease-out"
+                strokeDasharray={`${studentMetrics.progressPercentage}, 100`}
+                strokeWidth="4"
+                strokeLinecap="round"
+                stroke="currentColor"
+                fill="none"
+                d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+              />
+            </svg>
+            <span className="absolute font-black text-[11px] text-slate-900 dark:text-white">
+              {studentMetrics.progressPercentage}%
+            </span>
           </div>
-          <div className="w-7 h-7 rounded-full bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center shadow-2xs shrink-0">
-            <ChevronRight className="w-4 h-4" />
+          <div className="min-w-0">
+            <span className="text-xs font-black text-slate-900 dark:text-white block leading-tight">Mi progreso</span>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-tight mt-0.5">
+              {studentMetrics.submittedCount} de {studentMetrics.total} tareas completadas
+            </p>
           </div>
         </div>
       </div>
 
       {/* ── 3. CONTENIDO PRINCIPAL: 2 COLUMNAS (75% IZQ / 25% DER) ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
         
         {/* ── COLUMNA IZQUIERDA (8 o 9 de 12 Cols ≈ 75%): BÚSQUEDA, FILTROS Y TAREAS ── */}
-        <div className="lg:col-span-8 xl:col-span-9 space-y-4">
+        <div className="lg:col-span-8 xl:col-span-9 space-y-3">
           
           {/* Barra de Búsqueda con Atajo Ctrl+K */}
           <div className="relative">
@@ -715,7 +754,7 @@ export function TareasEscolaresView({ isApoderado = false }: TareasEscolaresView
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Buscar tarea por título, materia o descripción..."
-              className="w-full pl-11 pr-20 py-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 shadow-2xs focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+              className="w-full pl-11 pr-20 py-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 shadow-2xs focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
             />
             <div className="absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
               {searchQuery && (
@@ -734,7 +773,7 @@ export function TareasEscolaresView({ isApoderado = false }: TareasEscolaresView
           </div>
 
           {/* Fila de Filtros (Chips con contadores), Selector de Orden & Switch de Vista */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-2.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-2 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs">
             
             {/* Filter Tabs/Chips with Dynamic Counters */}
             <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
@@ -744,7 +783,7 @@ export function TareasEscolaresView({ isApoderado = false }: TareasEscolaresView
                   setActiveFilter('todas');
                   setSelectedCalendarDate(null);
                 }}
-                className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap ${
+                className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap ${
                   activeFilter === 'todas' && !selectedCalendarDate
                     ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/30'
                     : 'bg-slate-50 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
@@ -767,7 +806,7 @@ export function TareasEscolaresView({ isApoderado = false }: TareasEscolaresView
                   setActiveFilter('pendientes');
                   setSelectedCalendarDate(null);
                 }}
-                className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap ${
+                className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap ${
                   activeFilter === 'pendientes'
                     ? 'bg-amber-500 text-white shadow-sm shadow-amber-500/30'
                     : 'bg-slate-50 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
@@ -790,7 +829,7 @@ export function TareasEscolaresView({ isApoderado = false }: TareasEscolaresView
                   setActiveFilter('entregadas');
                   setSelectedCalendarDate(null);
                 }}
-                className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap ${
+                className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap ${
                   activeFilter === 'entregadas'
                     ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-600/30'
                     : 'bg-slate-50 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
@@ -813,7 +852,7 @@ export function TareasEscolaresView({ isApoderado = false }: TareasEscolaresView
                   setActiveFilter('calificadas');
                   setSelectedCalendarDate(null);
                 }}
-                className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap ${
+                className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap ${
                   activeFilter === 'calificadas'
                     ? 'bg-purple-600 text-white shadow-sm shadow-purple-600/30'
                     : 'bg-slate-50 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
@@ -899,7 +938,7 @@ export function TareasEscolaresView({ isApoderado = false }: TareasEscolaresView
           )}
 
           {/* ── LISTADO PRINCIPAL DE TAREAS ── */}
-          <div className="space-y-3">
+          <div className="space-y-2">
             <div className="flex items-center justify-between px-1">
               <h2 className="text-base font-black text-slate-900 dark:text-white">
                 Tareas ({displayedTasks.length})
@@ -910,9 +949,9 @@ export function TareasEscolaresView({ isApoderado = false }: TareasEscolaresView
             </div>
 
             {displayedTasks.length === 0 ? (
-              <div className="bg-white dark:bg-slate-900 rounded-3xl p-12 text-center border border-slate-200/80 dark:border-slate-800 space-y-3">
-                <div className="w-16 h-16 rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center mx-auto">
-                  <FileCheck className="w-8 h-8" />
+              <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 text-center border border-slate-200/80 dark:border-slate-800 space-y-2">
+                <div className="w-12 h-12 rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center mx-auto">
+                  <FileCheck className="w-6 h-6" />
                 </div>
                 <h3 className="text-base font-black text-slate-900 dark:text-white">
                   {activeFilter === 'pendientes'
@@ -938,7 +977,7 @@ export function TareasEscolaresView({ isApoderado = false }: TareasEscolaresView
               </div>
             ) : viewMode === 'list' ? (
               /* ── LIST VIEW (Rows) ── */
-              <div className="space-y-2.5">
+              <div ref={taskListRef} style={{ maxHeight: taskListMaxHeight }} className="space-y-2 lg:overflow-y-auto lg:pr-1 custom-scrollbar">
                 {displayedTasks.map((task) => {
                   const subjectMeta = getSubjectMeta(task.curso?.nombre);
                   const SubjectIcon = subjectMeta.icon;
@@ -952,7 +991,7 @@ export function TareasEscolaresView({ isApoderado = false }: TareasEscolaresView
                   return (
                     <div
                       key={task.id}
-                      className={`group bg-white dark:bg-slate-900 rounded-3xl p-4 sm:p-5 border transition-all duration-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative hover:shadow-md hover:-translate-y-0.5 ${
+                      className={`group bg-white dark:bg-slate-900 rounded-2xl px-4 py-3 border transition-all duration-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 relative hover:shadow-md ${
                         deadline.isToday && !isSubmitted
                           ? 'border-rose-300 dark:border-rose-900/60 bg-rose-50/20 dark:bg-rose-950/10 ring-2 ring-rose-500/10'
                           : 'border-slate-200/90 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
@@ -974,12 +1013,12 @@ export function TareasEscolaresView({ isApoderado = false }: TareasEscolaresView
                         </div>
 
                         {/* Subject Icon Square */}
-                        <div className={`w-12 h-12 rounded-2xl ${subjectMeta.bgColor} ${subjectMeta.textColor} flex items-center justify-center shrink-0 shadow-2xs`}>
-                          <SubjectIcon className="w-6 h-6" />
+                        <div className={`w-10 h-10 rounded-xl ${subjectMeta.bgColor} ${subjectMeta.textColor} flex items-center justify-center shrink-0 shadow-2xs`}>
+                          <SubjectIcon className="w-5 h-5" />
                         </div>
 
                         {/* Title, Description & Subject Badge */}
-                        <div className="min-w-0 space-y-1.5 flex-1">
+                        <div className="min-w-0 space-y-1 flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
                             <h3
                               onClick={() => setSelectedTaskDetail(task)}
@@ -1090,7 +1129,7 @@ export function TareasEscolaresView({ isApoderado = false }: TareasEscolaresView
               </div>
             ) : (
               /* ── GRID VIEW (Cards) ── */
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div ref={taskListRef} style={{ maxHeight: taskListMaxHeight }} className="grid grid-cols-1 sm:grid-cols-2 gap-3 lg:overflow-y-auto lg:pr-1 custom-scrollbar">
                 {displayedTasks.map((task) => {
                   const subjectMeta = getSubjectMeta(task.curso?.nombre);
                   const SubjectIcon = subjectMeta.icon;
@@ -1104,7 +1143,7 @@ export function TareasEscolaresView({ isApoderado = false }: TareasEscolaresView
                   return (
                     <div
                       key={task.id}
-                      className="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-md transition-all flex flex-col justify-between h-full group"
+                      className="bg-white dark:bg-slate-900 rounded-3xl p-4 border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-md transition-all flex flex-col justify-between h-full group"
                     >
                       <div className="space-y-3.5">
                         <div className="flex items-center justify-between gap-2">
@@ -1175,15 +1214,15 @@ export function TareasEscolaresView({ isApoderado = false }: TareasEscolaresView
         </div>
 
         {/* ── COLUMNA DERECHA (4 o 3 de 12 Cols ≈ 25%): SIDEBAR COMPACTO ── */}
-        <div className="lg:col-span-4 xl:col-span-3 space-y-5">
+        <div className="lg:col-span-4 xl:col-span-3 space-y-3">
           
           {/* CARD 1: CALENDARIO DE ENTREGAS */}
-          <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
+          <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-2.5">
             
             {/* Header Calendario */}
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center font-black">
+                <div className="w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center font-black">
                   <Calendar className="w-4 h-4" />
                 </div>
                 <h4 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white">
@@ -1225,9 +1264,9 @@ export function TareasEscolaresView({ isApoderado = false }: TareasEscolaresView
               </div>
 
               {/* Días del Mes (Septiembre 2026 inicia en Martes) */}
-              <div className="grid grid-cols-7 gap-1 text-center pt-1">
+              <div className="grid grid-cols-7 gap-0.5 text-center">
                 {/* Días previos de Agosto */}
-                <span className="text-xs text-slate-300 dark:text-slate-700 p-1.5">31</span>
+                <span className="text-xs text-slate-300 dark:text-slate-700 py-1">31</span>
 
                 {/* Días 1 al 30 de Septiembre */}
                 {Array.from({ length: 30 }, (_, i) => i + 1).map((day) => {
@@ -1255,13 +1294,13 @@ export function TareasEscolaresView({ isApoderado = false }: TareasEscolaresView
                           showToast(`Filtrando tareas del ${day} de setiembre`, 'info');
                         }
                       }}
-                      className={`relative p-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex flex-col items-center justify-center ${cellBg}`}
+                      className={`relative py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex flex-col items-center justify-center ${cellBg}`}
                     >
                       <span>{day}</span>
 
                       {/* Dots indicators under day number */}
                       {hasTasks && (
-                        <div className="flex items-center gap-0.5 mt-0.5">
+                        <div className="absolute bottom-0 flex items-center gap-0.5">
                           {hasTasks.hasToday && !isDay18Today && (
                             <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
                           )}
@@ -1282,13 +1321,13 @@ export function TareasEscolaresView({ isApoderado = false }: TareasEscolaresView
 
                 {/* Días siguientes de Octubre */}
                 {Array.from({ length: 4 }, (_, i) => i + 1).map((d) => (
-                  <span key={`next-${d}`} className="text-xs text-slate-300 dark:text-slate-700 p-1.5">{d}</span>
+                  <span key={`next-${d}`} className="text-xs text-slate-300 dark:text-slate-700 py-1">{d}</span>
                 ))}
               </div>
             </div>
 
             {/* Leyenda de Colores */}
-            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between flex-wrap gap-2 text-[10px] text-slate-500 dark:text-slate-400">
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between flex-wrap gap-1.5 text-[10px] text-slate-500 dark:text-slate-400">
               <span className="inline-flex items-center gap-1">
                 <span className="w-2 h-2 rounded-full bg-rose-500" /> Hoy
               </span>
@@ -1305,123 +1344,35 @@ export function TareasEscolaresView({ isApoderado = false }: TareasEscolaresView
 
           </div>
 
-          {/* CARD 2: MI PROGRESO */}
-          <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
-            
-            <div className="flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
-              <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-black">
-                <Target className="w-4 h-4" />
-              </div>
-              <h4 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white">
-                Mi progreso
-              </h4>
-            </div>
-
-            {/* Circular Gauge / Donut Ring */}
-            <div className="flex items-center gap-4 py-1">
-              <div className="relative w-16 h-16 shrink-0 flex items-center justify-center">
-                <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
-                  {/* Background Circle */}
-                  <path
-                    className="text-slate-100 dark:text-slate-800"
-                    strokeWidth="3.5"
-                    stroke="currentColor"
-                    fill="none"
-                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                  />
-                  {/* Progress Circle */}
-                  <path
-                    className="text-blue-600 dark:text-indigo-400 transition-all duration-1000 ease-out"
-                    strokeDasharray={`${studentMetrics.progressPercentage}, 100`}
-                    strokeWidth="3.5"
-                    strokeLinecap="round"
-                    stroke="currentColor"
-                    fill="none"
-                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                  />
-                </svg>
-                <span className="absolute font-black text-xs sm:text-sm text-slate-900 dark:text-white">
-                  {studentMetrics.progressPercentage}%
-                </span>
-              </div>
-
-              <div>
-                <span className="text-xs font-black text-slate-900 dark:text-white block">
-                  {studentMetrics.submittedCount} de {studentMetrics.total} tareas
-                </span>
-                <span className="text-[11px] text-slate-400 font-medium block">
-                  completadas este periodo
-                </span>
-              </div>
-            </div>
-
-            {/* Motivational Badge */}
-            <div className="p-3 rounded-2xl bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/80 flex items-center gap-2.5">
-              <div className="w-6 h-6 rounded-lg bg-emerald-100 dark:bg-emerald-900/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-                <Sparkles className="w-3.5 h-3.5" />
-              </div>
-              <div className="min-w-0">
-                <span className="text-xs font-black text-emerald-800 dark:text-emerald-200 block leading-tight">
-                  ¡Vas bien!
-                </span>
-                <span className="text-[10px] text-emerald-600 dark:text-emerald-300 font-medium block">
-                  Sigue completando tus tareas.
-                </span>
-              </div>
-            </div>
-
-          </div>
-
-          {/* CARD 3: ACCESOS RÁPIDOS */}
-          <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3">
-            
-            <div className="flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
-              <div className="w-8 h-8 rounded-xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center font-black">
-                <Sparkles className="w-4 h-4" />
-              </div>
-              <h4 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white">
-                Accesos rápidos
-              </h4>
-            </div>
-
-            <div className="space-y-1.5">
+          {/* CARD 2: ACCESOS RÁPIDOS (fila compacta) */}
+          <div className="bg-white dark:bg-slate-900 p-3 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
+            <h4 className="px-1 pb-2 font-black text-xs text-slate-900 dark:text-white">Accesos rápidos</h4>
+            <div className="grid grid-cols-3 gap-1.5">
               <button
                 type="button"
                 onClick={() => setIsGradesModalOpen(true)}
-                className="w-full flex items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition-colors cursor-pointer group"
+                className="flex flex-col items-center gap-1 p-2 rounded-2xl bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition-colors cursor-pointer"
               >
-                <div className="flex items-center gap-2.5">
-                  <Award className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                  <span className="text-xs font-bold">Mis calificaciones</span>
-                </div>
-                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+                <Award className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                <span className="text-[11px] font-bold leading-tight text-center">Mis notas</span>
               </button>
-
               <button
                 type="button"
                 onClick={() => setIsScheduleModalOpen(true)}
-                className="w-full flex items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition-colors cursor-pointer group"
+                className="flex flex-col items-center gap-1 p-2 rounded-2xl bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition-colors cursor-pointer"
               >
-                <div className="flex items-center gap-2.5">
-                  <Clock className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-                  <span className="text-xs font-bold">Horario de clases</span>
-                </div>
-                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+                <Clock className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                <span className="text-[11px] font-bold leading-tight text-center">Horario</span>
               </button>
-
               <button
                 type="button"
                 onClick={() => setIsResourcesModalOpen(true)}
-                className="w-full flex items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition-colors cursor-pointer group"
+                className="flex flex-col items-center gap-1 p-2 rounded-2xl bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition-colors cursor-pointer"
               >
-                <div className="flex items-center gap-2.5">
-                  <BookOpen className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                  <span className="text-xs font-bold">Recursos de estudio</span>
-                </div>
-                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+                <BookOpen className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                <span className="text-[11px] font-bold leading-tight text-center">Recursos</span>
               </button>
             </div>
-
           </div>
 
         </div>

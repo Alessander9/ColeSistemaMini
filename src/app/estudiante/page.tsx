@@ -214,20 +214,20 @@ export default function EstudianteDashboardPage() {
   ];
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-16 animate-in fade-in-50 duration-200">
+    <div className="space-y-4 max-w-7xl mx-auto pb-16 animate-in fade-in-50 duration-200">
       
       {/* ── 1. CABECERA PANORÁMICA HERO (ESTILO PORTAL PREMIUM 2026) ── */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-950 via-[#062428] to-[#041a1e] text-white p-6 sm:p-8 lg:p-9 shadow-2xl shadow-emerald-950/30 border border-emerald-500/20">
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-950 via-[#062428] to-[#041a1e] text-white p-5 sm:p-6 lg:px-8 lg:py-6 shadow-2xl shadow-emerald-950/30 border border-emerald-500/20">
         
         {/* Luces y ambiente de fondo decorativos */}
         <div className="absolute top-0 right-1/4 -mt-12 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute bottom-0 right-10 -mb-10 w-80 h-80 bg-teal-400/10 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute top-1/2 left-0 -translate-y-1/2 w-64 h-64 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none" />
 
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6 lg:gap-8">
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-5 lg:gap-8">
           
           {/* Columna Izquierda: Saludo fluido, frase inspiracional y badges */}
-          <div className="space-y-4 max-w-2xl">
+          <div className="space-y-3 max-w-2xl">
             
             {/* Badge superior */}
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/15 backdrop-blur-md border border-emerald-400/30 text-emerald-200 text-xs font-semibold shadow-xs">
@@ -237,7 +237,7 @@ export default function EstudianteDashboardPage() {
 
             {/* Saludo Principal: el nombre y el emoji nunca se separan de línea */}
             <div className="space-y-2">
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white leading-[1.1]">
+              <h1 className="text-3xl sm:text-3xl font-black tracking-tight text-white leading-[1.1]">
                 <span suppressHydrationWarning>{greeting}</span>,{' '}
                 <span className="whitespace-nowrap">
                   <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 via-teal-200 to-cyan-300" suppressHydrationWarning>
@@ -253,7 +253,7 @@ export default function EstudianteDashboardPage() {
             </div>
 
             {/* Tip de Oro del día */}
-            <div className="flex items-start gap-3 p-3.5 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 shadow-inner max-w-xl">
+            <div className="flex items-start gap-3 p-2.5 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 shadow-inner max-w-xl">
               <div className="w-9 h-9 rounded-xl bg-amber-400/20 border border-amber-300/30 text-amber-300 flex items-center justify-center shrink-0">
                 <Lightbulb className="w-[18px] h-[18px]" />
               </div>
@@ -290,9 +290,9 @@ export default function EstudianteDashboardPage() {
           <div className="flex flex-col sm:flex-row lg:flex-row items-stretch sm:items-center gap-4 lg:gap-5 shrink-0">
             
             {/* Tarjeta de Perfil del Alumno */}
-            <div className="hidden sm:flex flex-col items-center p-4 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 w-full sm:w-52 shadow-lg">
+            <div className="hidden sm:flex flex-col items-center p-3 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 w-full sm:w-52 shadow-lg">
               <div className="relative">
-                <div className="w-16 h-16 rounded-full p-0.5 bg-gradient-to-tr from-emerald-400 to-cyan-400 shadow-lg shadow-emerald-500/20">
+                <div className="w-14 h-14 rounded-full p-0.5 bg-gradient-to-tr from-emerald-400 to-cyan-400 shadow-lg shadow-emerald-500/20">
                   {studentAvatar ? (
                     <img
                       src={studentAvatar}
@@ -309,7 +309,7 @@ export default function EstudianteDashboardPage() {
               </div>
               <p className="mt-2.5 text-sm font-bold text-white truncate max-w-full">{studentName}</p>
               <p className="text-[11px] text-emerald-200/70">Matriculado 2026</p>
-              <div className="w-full mt-3 pt-2.5 border-t border-white/10 flex items-center justify-between text-[11px]">
+              <div className="w-full mt-2 pt-2 border-t border-white/10 flex items-center justify-between text-[11px]">
                 <span className="text-slate-400">Asistencia:</span>
                 <strong className="text-emerald-400">
                   {attendanceCount === 0 ? 'Sin registros' : `${attendanceRate}% ${attendanceRate === 100 ? 'Impecable' : attendanceRate >= 80 ? 'Regular' : ''}`}
@@ -361,7 +361,7 @@ export default function EstudianteDashboardPage() {
       </div>
 
       {/* ── 2. MI RUTA DE ESTUDIO DIARIA (ACCESOS CON ESTADO EN VIVO) ── */}
-      <section className="space-y-3">
+      <section className="space-y-2">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 px-1">
           <div className="flex items-center gap-2">
             <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -381,9 +381,9 @@ export default function EstudianteDashboardPage() {
               <Link
                 key={step.href}
                 href={step.href}
-                className={`group flex flex-col p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all text-left ${step.hover}`}
+                className={`group flex flex-col p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all text-left ${step.hover}`}
               >
-                <div className="flex items-center justify-between mb-2.5">
+                <div className="flex items-center justify-between mb-1.5">
                   <span className={`text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded-md ${step.chip}`}>
                     {step.step}
                   </span>
@@ -391,7 +391,7 @@ export default function EstudianteDashboardPage() {
                 </div>
                 <span className="text-sm font-bold text-slate-900 dark:text-white">{step.title}</span>
                 <span className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">{step.subtitle}</span>
-                <span className={`mt-auto pt-3 flex items-center gap-1 text-[11px] font-bold ${step.statusColor}`}>
+                <span className={`mt-auto pt-2 flex items-center gap-1 text-[11px] font-bold ${step.statusColor}`}>
                   {step.statusIcon && <step.statusIcon className="w-3.5 h-3.5 shrink-0" />}
                   <span className="leading-tight">{step.status}</span>
                 </span>
@@ -405,7 +405,7 @@ export default function EstudianteDashboardPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
 
         {/* CARD 1: PROMEDIO ACTUAL */}
-        <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs hover:shadow-md transition-all flex flex-col">
+        <div className="p-4 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs hover:shadow-md transition-all flex flex-col">
           <div className="flex items-start justify-between gap-3">
             <div>
               <div className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">Promedio Actual</div>
@@ -416,9 +416,9 @@ export default function EstudianteDashboardPage() {
             </div>
           </div>
 
-          <div className="my-5 flex items-center justify-between">
+          <div className="my-3 flex items-center justify-between">
             <div className="flex items-baseline gap-2">
-              <span className="text-4xl font-black text-slate-900 dark:text-white tracking-tight">
+              <span className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">
                 {averageScore > 0 ? averageScore.toFixed(1) : (averageLetter || '—')}
               </span>
               <span className="px-2 py-0.5 rounded-lg bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 text-xs font-bold">
@@ -432,7 +432,7 @@ export default function EstudianteDashboardPage() {
             </div>
           </div>
 
-          <div className="mt-auto pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2 text-xs">
+          <div className="mt-auto pt-2.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2 text-xs">
             <span className="text-slate-500 dark:text-slate-400">
               Escala: <strong className="text-slate-800 dark:text-slate-200">{averageLetter ? `Logro ${averageLetter}` : 'Sin notas'}</strong>
             </span>
@@ -447,7 +447,7 @@ export default function EstudianteDashboardPage() {
         </div>
 
         {/* CARD 2: PUNTUALIDAD & ASISTENCIA */}
-        <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs hover:shadow-md transition-all flex flex-col">
+        <div className="p-4 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs hover:shadow-md transition-all flex flex-col">
           <div className="flex items-start justify-between gap-3">
             <div>
               <div className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">Puntualidad</div>
@@ -458,8 +458,8 @@ export default function EstudianteDashboardPage() {
             </div>
           </div>
 
-          <div className="my-5 flex items-center justify-between">
-            <span className="text-4xl font-black text-slate-900 dark:text-white tracking-tight">
+          <div className="my-3 flex items-center justify-between">
+            <span className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">
               {attendanceRate}%
             </span>
             <div className="relative w-12 h-12 flex items-center justify-center">
@@ -485,7 +485,7 @@ export default function EstudianteDashboardPage() {
             </div>
           </div>
 
-          <div className={`mt-auto pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center gap-1.5 text-xs font-bold ${
+          <div className={`mt-auto pt-2.5 border-t border-slate-100 dark:border-slate-800 flex items-center gap-1.5 text-xs font-bold ${
             attendanceCount > 0 && attendanceRate < 80 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'
           }`}>
             <TrendingUp className="w-3.5 h-3.5 shrink-0" />
@@ -502,7 +502,7 @@ export default function EstudianteDashboardPage() {
         </div>
 
         {/* CARD 3: DEBERES PENDIENTES */}
-        <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs hover:shadow-md transition-all flex flex-col">
+        <div className="p-4 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs hover:shadow-md transition-all flex flex-col">
           <div className="flex items-start justify-between gap-3">
             <div>
               <div className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">Deberes Pendientes</div>
@@ -513,8 +513,8 @@ export default function EstudianteDashboardPage() {
             </div>
           </div>
 
-          <div className="my-5 flex items-center justify-between">
-            <span className={`text-4xl font-black tracking-tight ${pendingTasks.length > 0 ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-900 dark:text-white'}`}>
+          <div className="my-3 flex items-center justify-between">
+            <span className={`text-3xl font-black tracking-tight ${pendingTasks.length > 0 ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-900 dark:text-white'}`}>
               {pendingTasks.length}
             </span>
             <div className="w-11 h-11 rounded-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700 flex items-center justify-center text-slate-400">
@@ -524,7 +524,7 @@ export default function EstudianteDashboardPage() {
 
           <Link
             href="/estudiante/tareas"
-            className="mt-auto pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
+            className="mt-auto pt-2.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
           >
             <span>{pendingTasks.length === 0 ? '✓ Al día sin pendientes' : `${pendingTasks.length} ${pendingTasks.length === 1 ? 'tarea por entregar' : 'tareas por entregar'}`}</span>
             <ChevronRight className="w-3.5 h-3.5" />
@@ -532,7 +532,7 @@ export default function EstudianteDashboardPage() {
         </div>
 
         {/* CARD 4: PRÓXIMO EXAMEN */}
-        <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs hover:shadow-md transition-all flex flex-col">
+        <div className="p-4 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs hover:shadow-md transition-all flex flex-col">
           <div className="flex items-start justify-between gap-3">
             <div>
               <div className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">Próximo Examen</div>
@@ -543,7 +543,7 @@ export default function EstudianteDashboardPage() {
             </div>
           </div>
 
-          <div className="my-5 space-y-1.5">
+          <div className="my-3 space-y-1.5">
             <h4 className="text-base font-black text-slate-900 dark:text-white leading-snug line-clamp-2">
               {upcomingExams > 0 ? exams[0].titulo : 'Sin evaluaciones próximas'}
             </h4>
@@ -566,7 +566,7 @@ export default function EstudianteDashboardPage() {
 
           <Link
             href="/estudiante/evaluaciones"
-            className="mt-auto pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-1.5 text-xs font-bold text-amber-600 dark:text-amber-400 hover:underline"
+            className="mt-auto pt-2.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-1.5 text-xs font-bold text-amber-600 dark:text-amber-400 hover:underline"
           >
             <span className="flex items-center gap-1.5">
               <Bell className="w-3.5 h-3.5" />
@@ -578,33 +578,33 @@ export default function EstudianteDashboardPage() {
 
       </div>
 
-      {/* ── 4. GRID PRINCIPAL: MI HORARIO DE HOY & MIS PENDIENTES ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        
-        {/* Mi Día (Horario de Clases) - Columna 7 */}
-        <div className="lg:col-span-7 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm space-y-5">
-          <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
-            <div>
-              <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <Calendar className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-                Mi Día • Horario de Clases
+      {/* ── 4. PANELES DEL DÍA: HORARIO, TAREAS, AULA VIRTUAL Y AVISOS (visibles al ingresar) ── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+
+        {/* Mi Día (Horario de Clases) */}
+        <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-4 shadow-sm flex flex-col min-h-0">
+          <div className="flex items-start justify-between gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
+            <div className="min-w-0">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                <span className="truncate">Mi Día • Horario</span>
               </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Cursos y docentes programados para la jornada de hoy
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                Cursos y docentes de la jornada de hoy
               </p>
             </div>
             <Link
               href="/estudiante/horario"
-              className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
+              className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-0.5 shrink-0"
             >
-              <span>Ver Semana Completa</span>
+              <span>Semana</span>
               <ChevronRight className="w-3.5 h-3.5" />
             </Link>
           </div>
 
-          <div className="space-y-3">
+          <div className="pt-3 space-y-2 max-h-56 overflow-y-auto">
             {todaySlots.length === 0 ? (
-              <p className="text-xs text-slate-400 py-8 text-center">No hay clases programadas para hoy.</p>
+              <p className="text-xs text-slate-400 py-6 text-center">No hay clases programadas para hoy.</p>
             ) : (
               todaySlots.map((slot) => {
                 const course = courses.find(c => c.id === slot.curso_id);
@@ -612,24 +612,22 @@ export default function EstudianteDashboardPage() {
                 return (
                   <div
                     key={slot.id}
-                    className="p-4 rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3 hover:border-indigo-200 dark:hover:border-indigo-800 transition-colors"
+                    className="p-2.5 rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 flex items-center gap-3 hover:border-indigo-200 dark:hover:border-indigo-800 transition-colors"
                   >
-                    <div className="flex items-center gap-3.5">
-                      <div className="w-12 h-12 rounded-2xl bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
-                        {slot.hora_inicio}
-                      </div>
-                      <div>
-                        <h4 className="text-sm font-bold text-slate-900 dark:text-white">
-                          {course?.nombre || 'Materia'}
-                        </h4>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                          Prof. {teacher?.nombres} {teacher?.apellidos} • {slot.aula || 'Aula Principal'}
-                        </p>
-                      </div>
+                    <div className="w-11 h-11 rounded-xl bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 flex items-center justify-center font-bold text-[11px] shrink-0">
+                      {slot.hora_inicio}
                     </div>
-                    <span className="text-xs font-mono font-semibold text-slate-400 shrink-0">
-                      {slot.hora_inicio} - {slot.hora_fin}
-                    </span>
+                    <div className="min-w-0">
+                      <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                        {course?.nombre || 'Materia'}
+                      </h4>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                        Prof. {teacher?.nombres} {teacher?.apellidos} • {slot.aula || 'Aula Principal'}
+                      </p>
+                      <p className="text-[10px] font-mono text-slate-400">
+                        {slot.hora_inicio} - {slot.hora_fin}
+                      </p>
+                    </div>
                   </div>
                 );
               })
@@ -637,47 +635,47 @@ export default function EstudianteDashboardPage() {
           </div>
         </div>
 
-        {/* Mis Pendientes (Tareas Próximas a Vencer) - Columna 5 */}
-        <div className="lg:col-span-5 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm space-y-5">
-          <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
-            <div>
-              <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <FileText className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-                Mis Tareas & Entregas
+        {/* Mis Tareas & Entregas */}
+        <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-4 shadow-sm flex flex-col min-h-0">
+          <div className="flex items-start justify-between gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
+            <div className="min-w-0">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <FileText className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0" />
+                <span className="truncate">Mis Tareas & Entregas</span>
               </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">
                 Actividades con entrega abierta
               </p>
             </div>
             <Link
               href="/estudiante/tareas"
-              className="text-xs font-bold text-purple-600 dark:text-purple-400 hover:underline flex items-center gap-1"
+              className="text-[11px] font-bold text-purple-600 dark:text-purple-400 hover:underline flex items-center gap-0.5 shrink-0"
             >
-              <span>Ver Todas ({myTasks.length})</span>
+              <span>Todas ({myTasks.length})</span>
               <ChevronRight className="w-3.5 h-3.5" />
             </Link>
           </div>
 
-          <div className="space-y-3">
+          <div className="pt-3 space-y-2 max-h-56 overflow-y-auto">
             {myTasks.length === 0 ? (
-              <p className="text-xs text-slate-400 py-8 text-center">No tienes tareas asignadas por el momento.</p>
+              <p className="text-xs text-slate-400 py-6 text-center">No tienes tareas asignadas por el momento.</p>
             ) : (
               myTasks.slice(0, 3).map((task) => {
                 const isSubmitted = submissions.some(s => s.tarea_id === task.id && s.matricula_id === activeEnrollment?.id);
                 return (
                   <div
                     key={task.id}
-                    className="p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 flex items-center justify-between gap-3"
+                    className="p-2.5 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 flex items-center justify-between gap-2"
                   >
                     <div className="min-w-0">
                       <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate">
                         {task.titulo}
                       </h4>
                       <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                        Fecha Límite: <strong>{task.fecha_limite}</strong>
+                        Límite: <strong>{task.fecha_limite}</strong>
                       </p>
                     </div>
-                    <span className={`text-[10px] font-bold px-2.5 py-1 rounded-xl shrink-0 ${
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg shrink-0 ${
                       isSubmitted
                         ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
                         : 'bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 border border-amber-500/20'
@@ -691,118 +689,103 @@ export default function EstudianteDashboardPage() {
           </div>
         </div>
 
-      </div>
-
-      {/* ── 5. CONTINUAR APRENDIENDO (AULA VIRTUAL LMS) ── */}
-      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm space-y-5">
-        <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
-          <div>
-            <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <BookOpen className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-              Continuar Aprendiendo • Aula Virtual LMS
+        {/* Continuar Aprendiendo (Aula Virtual LMS) */}
+        <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-4 shadow-sm flex flex-col min-h-0">
+          <div className="pb-3 border-b border-slate-100 dark:border-slate-800 min-w-0">
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-start gap-2 leading-snug">
+              <BookOpen className="w-4 h-4 mt-0.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+              <span>Continuar Aprendiendo • Aula Virtual LMS</span>
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Módulos explicativos, videos y recursos interactivos de tus cursos
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+              Módulos, videos y recursos interactivos
             </p>
           </div>
-        </div>
 
-        {lmsModules.length === 0 ? (
-          <div className="py-8 text-center text-xs text-slate-400">
-            No hay módulos de autoaprendizaje activos en el Aula Virtual por el momento.
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {lmsModules.slice(0, 3).map((module) => {
-              const course = courses.find(c => c.id === module.curso_id);
-              return (
-                <div
-                  key={module.id}
-                  className="p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 hover:border-indigo-400 dark:hover:border-indigo-600 transition-all flex flex-col justify-between"
-                >
-                  <div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-2.5 py-1 rounded-lg border border-indigo-200/60 dark:border-indigo-800/40">
+          <div className="pt-3 space-y-2 max-h-56 overflow-y-auto">
+            {lmsModules.length === 0 ? (
+              <p className="py-6 text-center text-xs text-slate-400">
+                No hay módulos de autoaprendizaje activos en el Aula Virtual por el momento.
+              </p>
+            ) : (
+              lmsModules.slice(0, 3).map((module) => {
+                const course = courses.find(c => c.id === module.curso_id);
+                return (
+                  <div
+                    key={module.id}
+                    className="p-2.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 hover:border-indigo-400 dark:hover:border-indigo-600 transition-all"
+                  >
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 rounded-md border border-indigo-200/60 dark:border-indigo-800/40">
                       {course?.nombre || 'Curso'}
                     </span>
-                    <h4 className="text-sm font-bold text-slate-900 dark:text-white mt-3 leading-snug">
+                    <h4 className="text-xs font-bold text-slate-900 dark:text-white mt-1.5 leading-snug line-clamp-1">
                       {module.titulo}
                     </h4>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2 leading-relaxed">
-                      {module.descripcion}
-                    </p>
-                  </div>
-
-                  <div className="mt-5 pt-3.5 border-t border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between">
-                    <div className="text-xs font-semibold text-slate-400 flex items-center gap-1.5">
-                      <Play className="w-3.5 h-3.5 text-indigo-500" />
-                      <span>{module.contenidos.length} lecciones</span>
+                    <div className="mt-1.5 flex items-center justify-between">
+                      <div className="text-[11px] font-semibold text-slate-400 flex items-center gap-1">
+                        <Play className="w-3 h-3 text-indigo-500" />
+                        <span>{module.contenidos.length} lecciones</span>
+                      </div>
+                      <Link
+                        href="/estudiante/tareas"
+                        className="inline-flex items-center gap-0.5 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
+                      >
+                        Abrir <ArrowRight className="w-3 h-3" />
+                      </Link>
                     </div>
-                    <Link
-                      href="/estudiante/tareas"
-                      className="inline-flex items-center gap-1 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
-                    >
-                      Abrir Módulo <ArrowRight className="w-3.5 h-3.5" />
-                    </Link>
                   </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* ── 6. COMUNICADOS & AVISOS DEL COLEGIO PARA EL ALUMNO ── */}
-      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm space-y-4">
-        <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold">
-              <Bell className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="font-bold text-base text-slate-900 dark:text-white">
-                Mural de Avisos &amp; Comunicados
-              </h3>
-              <p className="text-xs text-slate-500 font-medium">Información oficial para los estudiantes</p>
-            </div>
+                );
+              })
+            )}
           </div>
         </div>
 
-        {studentAnnouncements.length === 0 ? (
-          <div className="py-8 text-center text-xs text-slate-400">
-            No tienes avisos escolares pendientes en este momento.
+        {/* Mural de Avisos & Comunicados */}
+        <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-4 shadow-sm flex flex-col min-h-0">
+          <div className="pb-3 border-b border-slate-100 dark:border-slate-800 min-w-0">
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <Bell className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <span className="truncate">Mural de Avisos &amp; Comunicados</span>
+            </h3>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+              Información oficial para los estudiantes
+            </p>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {studentAnnouncements.map((ann) => (
-              <div
-                key={ann.id}
-                className="p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 space-y-2 flex flex-col justify-between"
-              >
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300">
+
+          <div className="pt-3 space-y-2 max-h-56 overflow-y-auto">
+            {studentAnnouncements.length === 0 ? (
+              <p className="py-6 text-center text-xs text-slate-400">
+                No tienes avisos escolares pendientes en este momento.
+              </p>
+            ) : (
+              studentAnnouncements.map((ann) => (
+                <div
+                  key={ann.id}
+                  className="p-2.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 space-y-1"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[10px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 truncate">
                       {ann.categoria === 'evento' ? '🎉 Evento Escolar' : ann.tipo === 'urgente' ? '⚠️ Urgente' : '📢 Comunicado'}
                     </span>
-                    <span className="text-[10px] text-slate-400 font-medium">{ann.fecha_publicacion || ann.creado_en?.substring(0, 10)}</span>
+                    <span className="text-[10px] text-slate-400 font-medium shrink-0">{ann.fecha_publicacion || ann.creado_en?.substring(0, 10)}</span>
                   </div>
-                  <h4 className="text-xs font-black text-slate-900 dark:text-white leading-snug">
+                  <h4 className="text-xs font-black text-slate-900 dark:text-white leading-snug line-clamp-1">
                     {ann.titulo}
                   </h4>
-                  <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed line-clamp-3">
+                  <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed line-clamp-2">
                     {ann.contenido}
                   </p>
+                  <div className="flex items-center justify-between text-[10px] text-slate-500">
+                    <span>{ann.destinatarios_rol === 'todos' ? 'Toda la comunidad' : 'Alumnos'}</span>
+                    {ann.requiere_confirmacion && (
+                      <span className="text-emerald-600 font-bold">✓ Requiere lectura</span>
+                    )}
+                  </div>
                 </div>
-
-                <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between text-[11px] text-slate-500">
-                  <span>{ann.destinatarios_rol === 'todos' ? 'Toda la comunidad' : 'Alumnos'}</span>
-                  {ann.requiere_confirmacion && (
-                    <span className="text-emerald-600 font-bold">✓ Requiere lectura</span>
-                  )}
-                </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
-        )}
+        </div>
+
       </div>
 
       {/* ── AYUDANTE DE ESTUDIO FLOTANTE ── */}

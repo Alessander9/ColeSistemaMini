@@ -1,44 +1,31 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
-import { PageHeader } from '@/components/ui/PageHeader';
 import { GradeBadge } from '@/components/notas/GradeBadge';
 import { AnnualReportCardView } from '@/components/notas/AnnualReportCardView';
-import { calculateAverage, calculateAnnualStatus, calculateStudentAnnualReportCard } from '@/lib/grades/calculations';
+import { calculateAverage, calculateStudentAnnualReportCard, getGradeMeta } from '@/lib/grades/calculations';
 import { generateReportCardPdf } from '@/lib/pdf/reportCardPdfGenerator';
-import { 
-  Printer, 
-  FileText, 
-  Layers, 
-  Award, 
-  Sparkles, 
-  CheckCircle2, 
-  Users, 
-  Calendar, 
-  Clock, 
-  TrendingUp, 
-  Search, 
-  ChevronRight, 
-  Heart, 
-  BookOpen, 
-  AlertCircle, 
-  GraduationCap, 
-  BarChart3, 
+import {
+  Printer,
+  FileText,
+  Layers,
+  Award,
+  Users,
+  Calendar,
+  TrendingUp,
+  Search,
+  ChevronRight,
+  BookOpen,
+  BarChart3,
   HelpCircle,
-  FileCheck2,
-  CheckSquare,
   Star,
   Flame,
   ShieldCheck,
-  AlertTriangle,
   Lightbulb,
   MessageCircle,
-  ArrowUpRight,
-  Info,
-  Check,
   Download,
-  Filter
+  ChevronDown,
 } from 'lucide-react';
 
 export default function EstudianteLibretaNotasPage() {
@@ -49,6 +36,7 @@ export default function EstudianteLibretaNotasPage() {
     sections,
     gradeLevels,
     courses, 
+    sectionCourses,
     grades, 
     attendances,
     teachers,
@@ -123,11 +111,11 @@ export default function EstudianteLibretaNotasPage() {
   }, [enrollments, activeStudent?.id]);
 
   // Estados de navegación y filtros
-  const [activeTab, setActiveTab] = useState<'anual' | 'bimestral' | 'diagnostico'>('anual');
+  const [activeTab, setActiveTab] = useState<'cursos' | 'resumen' | 'anual'>('cursos');
   const [selectedBimestreId, setSelectedBimestreId] = useState<string>('todos');
   const [gradeFilter, setGradeFilter] = useState<'todos' | 'AD' | 'A' | 'B' | 'C'>('todos');
   const [courseSearch, setCourseSearch] = useState('');
-  const [showScaleHelp, setShowScaleHelp] = useState(false);
+  const [expandedCourses, setExpandedCourses] = useState<Set<string>>(new Set());
 
   // Notas calculadas del estudiante activo
   const studentGradesAll = useMemo(() => {
@@ -159,6 +147,22 @@ export default function EstudianteLibretaNotasPage() {
 
   const tutorDisplayName = activeTutor ? `${activeTutor.nombres} ${activeTutor.apellidos}` : 'No asignado';
 
+  // Cursos del alumno: los asignados a su sección (o los de su nivel) y cualquiera donde ya tenga notas
+  const studentCourses = useMemo(() => {
+    const sectionId = activeEnrollment?.seccion_id;
+    const level = activeEnrollment?.seccion?.grado?.nivel || activeChild?.nivel;
+    const assigned = new Set(sectionCourses.filter(sc => sc.seccion_id === sectionId).map(sc => sc.curso_id));
+    const gradedCompetencies = new Set(
+      grades.filter(g => g.matricula_id === activeEnrollment?.id).map(g => g.competencia_id)
+    );
+    return courses.filter(c => {
+      const hasGrades = (c.competencias || []).some(comp => gradedCompetencies.has(comp.id));
+      if (hasGrades) return true;
+      if (assigned.size > 0) return assigned.has(c.id);
+      return !level || c.nivel === level;
+    });
+  }, [courses, sectionCourses, grades, activeEnrollment, activeChild]);
+
   // Consolidado Anual para reporte oficial
   const annualReportCard = useMemo(() => {
     return calculateStudentAnnualReportCard({
@@ -171,17 +175,17 @@ export default function EstudianteLibretaNotasPage() {
       sectionLetter: activeEnrollment?.seccion?.letra || activeChild?.seccion_letra || '-',
       academicYear: 2026,
       tutorName: tutorDisplayName,
-      courses,
+      courses: studentCourses,
       grades,
       evaluationPeriodIds: evaluationPeriods.map(p => ({ id: p.id, numero_periodo: p.numero_periodo })),
       attendancePercentage: realAttendancePercentage,
       conductGrade: studentGradesAll.length > 0 ? (averageLetter || 'A') : undefined,
     });
-  }, [activeEnrollment, activeStudent, studentProfile, activeChild, tutorDisplayName, courses, grades, evaluationPeriods, realAttendancePercentage, studentGradesAll, averageLetter]);
+  }, [activeEnrollment, activeStudent, studentProfile, activeChild, tutorDisplayName, studentCourses, grades, evaluationPeriods, realAttendancePercentage, studentGradesAll, averageLetter]);
 
   // Cursos analizados con sus promedios
   const analyzedCourses = useMemo(() => {
-    return courses.map(course => {
+    return studentCourses.map(course => {
       const courseCompetencies = course.competencias || [];
       const courseGrades = grades.filter(g => {
         const matchEnrollment = g.matricula_id === activeEnrollment?.id;
@@ -199,18 +203,19 @@ export default function EstudianteLibretaNotasPage() {
         gradesList: courseGrades,
         avgLetter: avg.averageLetter,
         avgScore: avg.averageScore,
+        gradeCount: avg.count,
       };
     });
-  }, [courses, grades, activeEnrollment?.id, selectedBimestreId]);
+  }, [studentCourses, grades, activeEnrollment?.id, selectedBimestreId]);
 
   // Cursos filtrados por búsqueda y por escala (AD, A, B, C)
   const filteredCourses = useMemo(() => {
-    return analyzedCourses.filter(({ course, avgLetter }) => {
+    return analyzedCourses.filter(({ course, avgLetter, gradeCount }) => {
       const matchSearch = !courseSearch.trim() || 
         course.nombre.toLowerCase().includes(courseSearch.toLowerCase()) || 
         course.codigo.toLowerCase().includes(courseSearch.toLowerCase());
       
-      const matchGrade = gradeFilter === 'todos' || avgLetter === gradeFilter;
+      const matchGrade = gradeFilter === 'todos' || (gradeCount > 0 && avgLetter === gradeFilter);
 
       return matchSearch && matchGrade;
     });
@@ -223,7 +228,8 @@ export default function EstudianteLibretaNotasPage() {
     let bCourses: string[] = [];
     let cCourses: string[] = [];
 
-    analyzedCourses.forEach(({ course, avgLetter }) => {
+    analyzedCourses.forEach(({ course, avgLetter, gradeCount }) => {
+      if (gradeCount === 0) return;
       if (avgLetter === 'AD') adCourses.push(course.nombre);
       else if (avgLetter === 'A') aCourses.push(course.nombre);
       else if (avgLetter === 'B') bCourses.push(course.nombre);
@@ -259,7 +265,7 @@ export default function EstudianteLibretaNotasPage() {
       const doc = await generateReportCardPdf({
         student: activeStudent,
         enrollment: activeEnrollment,
-        courses,
+        courses: studentCourses,
         grades: studentGradesFiltered,
         evaluationPeriods,
         brandingConfig,
@@ -273,27 +279,89 @@ export default function EstudianteLibretaNotasPage() {
     }
   };
 
+  const hasAnyGrades = studentGradesAll.length > 0;
+  const averageMeta = getGradeMeta(averageLetter);
+  const attendanceShown = activeChild ? activeChild.asistencia_porcentaje : realAttendancePercentage;
+  const hasAttendance = activeChild ? true : studentAttendances.length > 0;
+  const studentFirstName = studentProfile?.nombres?.split(' ')[0] || activeStudent?.nombres || 'Estudiante';
+  const classroomName = activeEnrollment?.seccion?.grado?.nombre
+    ? `${activeEnrollment.seccion.grado.nombre} "${activeEnrollment.seccion.letra}"`
+    : 'Sin aula asignada';
+
+  const gradedCourses = analyzedCourses.filter(c => c.gradeCount > 0);
+  const countByLetter = (letter: 'AD' | 'A' | 'B' | 'C') => gradedCourses.filter(c => c.avgLetter === letter).length;
+
+  const toggleCourse = (id: string) => {
+    setExpandedCourses(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+  const allExpanded = filteredCourses.length > 0 && filteredCourses.every(c => expandedCourses.has(c.course.id));
+
+  // Informe oficial: se muestra recortado al alto disponible y, solo si no entra, aparece el botón para desplegarlo
+  const informeRef = useRef<HTMLDivElement>(null);
+  const [informeMaxHeight, setInformeMaxHeight] = useState<number | null>(null);
+  const [informeOverflows, setInformeOverflows] = useState(false);
+  const [informeExpanded, setInformeExpanded] = useState(false);
+
+  useEffect(() => {
+    if (activeTab !== 'anual') return;
+    const el = informeRef.current;
+    if (!el) return;
+    const BUTTON_SPACE = 56;
+    const compute = () => {
+      const main = el.closest('main');
+      const top = el.getBoundingClientRect().top + (main?.scrollTop ?? 0);
+      const mainPad = main ? parseFloat(getComputedStyle(main).paddingBottom) || 0 : 0;
+      const available = Math.max(320, Math.floor(window.innerHeight - top - mainPad - BUTTON_SPACE));
+      setInformeMaxHeight(available);
+      setInformeOverflows(el.scrollHeight > available + 1);
+    };
+    compute();
+    window.addEventListener('resize', compute);
+    const observer = new ResizeObserver(compute);
+    if (el.firstElementChild) observer.observe(el.firstElementChild);
+    return () => {
+      window.removeEventListener('resize', compute);
+      observer.disconnect();
+    };
+  }, [activeTab, annualReportCard]);
+
+  const informeCollapsed = informeOverflows && !informeExpanded && informeMaxHeight !== null;
+
+  const SCALE = [
+    { letter: 'AD', label: 'Logro destacado', desc: 'Supera lo esperado para su grado', dot: 'bg-purple-500' },
+    { letter: 'A', label: 'Logro esperado', desc: 'Logra lo que se espera en su grado', dot: 'bg-emerald-500' },
+    { letter: 'B', label: 'En proceso', desc: 'Está cerca; necesita practicar un poco más', dot: 'bg-amber-500' },
+    { letter: 'C', label: 'En inicio', desc: 'Necesita apoyo para lograrlo', dot: 'bg-rose-500' },
+  ] as const;
+
+  const barColor = (letter: string) =>
+    letter === 'AD' ? 'bg-purple-500' : letter === 'A' ? 'bg-emerald-500' : letter === 'B' ? 'bg-amber-500' : 'bg-rose-500';
+
+  const tabs = [
+    { id: 'cursos' as const, label: isApoderadoOrAdmin ? 'Notas por curso' : 'Mis cursos', icon: Layers },
+    { id: 'resumen' as const, label: 'Resumen', icon: BarChart3 },
+    { id: 'anual' as const, label: 'Libreta oficial', icon: FileText },
+  ];
+
   return (
-    <div className="space-y-6 max-w-5xl mx-auto animate-in fade-in duration-200">
-      
-      {/* ── HEADER PRINCIPAL ELEGANTE ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 sm:p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm print:hidden">
-        <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-pink-500 text-white flex items-center justify-center font-black shadow-lg shadow-indigo-500/25 shrink-0">
-            <Award className="w-6 h-6" />
+    <div className="space-y-4 max-w-6xl mx-auto animate-in fade-in duration-200">
+
+      {/* ── ENCABEZADO: título + acciones ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 print:hidden">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-pink-500 text-white flex items-center justify-center shadow-lg shadow-indigo-500/25 shrink-0">
+            <Award className="w-5 h-5" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
-                Libreta de Calificaciones Escolar
-              </h1>
-              <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                Año Lectivo 2026
-              </span>
-            </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Boletín oficial del progreso de aprendizaje y competencias según normativa MINEDU / SIAGIE.
+            <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
+              {isApoderadoOrAdmin ? `Libreta de notas de ${studentFirstName}` : 'Mi libreta de notas'}
+            </h1>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Año escolar {annualReportCard.academicYear} · {classroomName} · Escala CNEB (MINEDU)
             </p>
           </div>
         </div>
@@ -301,795 +369,427 @@ export default function EstudianteLibretaNotasPage() {
         <div className="flex items-center gap-2 self-start sm:self-center">
           <button
             type="button"
-            onClick={handleDownloadPdf}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-black rounded-2xl bg-purple-600 hover:bg-purple-700 text-white shadow-md shadow-purple-600/20 transition-all active:scale-95 cursor-pointer"
-            title="Descargar Libreta Oficial CNEB en PDF vectorizado"
-          >
-            <Download className="w-4 h-4" />
-            <span>Descargar PDF</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setShowScaleHelp(!showScaleHelp)}
-            className={`inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-2xl border transition-all cursor-pointer ${
-              showScaleHelp
-                ? 'bg-purple-100 text-purple-700 border-purple-300 dark:bg-purple-950 dark:text-purple-300'
-                : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
-            }`}
-            title="Ver qué significa cada nota (AD, A, B, C)"
-          >
-            <HelpCircle className="w-4 h-4 text-purple-600" />
-            <span className="hidden sm:inline">Guía de Notas</span>
-          </button>
-
-          <button
             onClick={() => window.print()}
-            className="inline-flex items-center gap-2 px-4 py-2.5 text-xs font-black rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-lg shadow-indigo-600/25 transition-all active:scale-95 cursor-pointer"
-            title="Imprimir libreta oficial o guardar en PDF"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+            title="Imprimir la libreta"
           >
             <Printer className="w-4 h-4" />
             <span>Imprimir</span>
           </button>
+          <button
+            type="button"
+            onClick={handleDownloadPdf}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-black rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/20 transition-all active:scale-95 cursor-pointer"
+            title="Descargar la libreta oficial CNEB en PDF"
+          >
+            <Download className="w-4 h-4" />
+            <span>Descargar PDF</span>
+          </button>
         </div>
       </div>
 
-      {/* ── MODAL / DESPLEGABLE: GUÍA DE NOTAS CNEB FÁCIL PARA PADRES ── */}
-      {showScaleHelp && (
-        <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-br from-slate-900 to-indigo-950 text-white border border-indigo-700/50 shadow-xl space-y-3 animate-in zoom-in-95 duration-150 print:hidden">
-          <div className="flex items-center justify-between">
-            <h4 className="text-xs font-black uppercase tracking-wider text-indigo-300 flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-amber-400" />
-              ¿Qué significan las calificaciones de mi hijo? (Escala Oficial CNEB)
-            </h4>
-            <button
-              onClick={() => setShowScaleHelp(false)}
-              className="text-xs text-slate-400 hover:text-white font-bold"
-            >
-              Entendido ✕
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 text-xs">
-            <div className="p-3 rounded-2xl bg-purple-950/60 border border-purple-700/50">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="w-6 h-6 rounded-lg bg-purple-500 text-white font-black text-xs flex items-center justify-center">AD</span>
-                <strong className="text-purple-300 font-extrabold">Logro Destacado</strong>
-              </div>
-              <p className="text-[11px] text-purple-200/80 leading-tight">
-                Supera con excelencia los aprendizajes esperados para el grado escolar.
-              </p>
-            </div>
-
-            <div className="p-3 rounded-2xl bg-emerald-950/60 border border-emerald-700/50">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="w-6 h-6 rounded-lg bg-emerald-500 text-white font-black text-xs flex items-center justify-center">A</span>
-                <strong className="text-emerald-300 font-extrabold">Logro Esperado</strong>
-              </div>
-              <p className="text-[11px] text-emerald-200/80 leading-tight">
-                Alcanza de manera sólida y satisfactoria el nivel y competencias requeridas.
-              </p>
-            </div>
-
-            <div className="p-3 rounded-2xl bg-amber-950/60 border border-amber-700/50">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="w-6 h-6 rounded-lg bg-amber-500 text-white font-black text-xs flex items-center justify-center">B</span>
-                <strong className="text-amber-300 font-extrabold">En Proceso</strong>
-              </div>
-              <p className="text-[11px] text-amber-200/80 leading-tight">
-                Está cerca de lograrlo, pero requiere acompañamiento y práctica adicional.
-              </p>
-            </div>
-
-            <div className="p-3 rounded-2xl bg-rose-950/60 border border-rose-700/50">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="w-6 h-6 rounded-lg bg-rose-500 text-white font-black text-xs flex items-center justify-center">C</span>
-                <strong className="text-rose-300 font-extrabold">En Inicio</strong>
-              </div>
-              <p className="text-[11px] text-rose-200/80 leading-tight">
-                Muestra dificultades importantes y requiere un plan de recuperación pedagógica.
-              </p>
-            </div>
-          </div>
+      {/* ── SELECTOR DE HIJO (apoderado / admin) ── */}
+      {isApoderadoOrAdmin && availableChildren.length > 1 && (
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 print:hidden">
+          <span className="text-xs font-bold text-slate-500 dark:text-slate-400 shrink-0 flex items-center gap-1.5">
+            <Users className="w-4 h-4" /> Ver libreta de:
+          </span>
+          {availableChildren.map((child) => {
+            const isSelected = (activeChild?.id === child.id) || (activeChild?.estudiante_id === child.estudiante_id);
+            return (
+              <button
+                key={child.id}
+                type="button"
+                onClick={() => handleSelectChild(child.id)}
+                className={`flex items-center gap-2 pl-1 pr-3 py-1 rounded-full border text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                  isSelected
+                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                    : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-indigo-300'
+                }`}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={child.avatar_url || 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150'}
+                  alt={child.nombre}
+                  className="w-7 h-7 rounded-full object-cover"
+                />
+                <span>{child.nombre}</span>
+                <span className={`text-[10px] font-medium ${isSelected ? 'text-indigo-100' : 'text-slate-400'}`}>
+                  {child.grado_nombre} &quot;{child.seccion_letra}&quot;
+                </span>
+              </button>
+            );
+          })}
         </div>
       )}
 
-      {/* ── SELECTOR MULTI-HIJO EN LA MISMA PESTAÑA (Para Familias con 1 o más hijos) ── */}
-      {isApoderadoOrAdmin && availableChildren.length > 0 && (
-        <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-br from-slate-900 via-indigo-950 to-purple-950 text-white border border-indigo-700/40 shadow-xl relative overflow-hidden print:hidden">
-          {/* Ambient decorative glow */}
-          <div className="absolute top-0 right-0 w-64 h-64 bg-pink-500/15 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute bottom-0 left-0 w-48 h-48 bg-indigo-500/15 rounded-full blur-2xl pointer-events-none" />
-
-          <div className="relative z-10 space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-pink-500/20 text-pink-300 border border-pink-500/30 flex items-center justify-center font-bold">
-                  <Users className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="text-xs font-black uppercase tracking-wider text-pink-300 flex items-center gap-1.5">
-                    <span>Hijos Matriculados (Cambiar Estudiante)</span>
-                    <span className="text-[10px] bg-pink-500/30 text-pink-200 px-2 py-0.2 rounded-full font-bold">
-                      {availableChildren.length} Hijos
-                    </span>
-                  </h3>
-                  <p className="text-xs text-slate-300">
-                    Haz clic en el estudiante para alternar su libreta, notas y competencias en tiempo real:
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Children Cards Selector */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
-              {availableChildren.map((child) => {
-                const isSelected = (activeChild?.id === child.id) || (activeChild?.estudiante_id === child.estudiante_id);
-                return (
-                  <button
-                    key={child.id}
-                    type="button"
-                    onClick={() => handleSelectChild(child.id)}
-                    className={`flex items-center gap-3 p-3 rounded-2xl border-2 text-left transition-all duration-200 cursor-pointer select-none active:scale-[0.98] ${
-                      isSelected
-                        ? 'bg-white text-slate-900 border-pink-400 shadow-xl shadow-pink-500/20 ring-2 ring-pink-400/40'
-                        : 'bg-white/10 hover:bg-white/15 text-white border-white/15 hover:border-white/30'
-                    }`}
-                  >
-                    <div className="relative shrink-0">
-                      <img
-                        src={child.avatar_url || 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150'}
-                        alt={child.nombre}
-                        className={`w-12 h-12 rounded-2xl object-cover border-2 ${
-                          isSelected ? 'border-pink-500 shadow-sm' : 'border-white/30'
-                        }`}
-                      />
-                      {isSelected && (
-                        <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-pink-500 rounded-full border-2 border-white flex items-center justify-center shadow">
-                          <Check className="w-2.5 h-2.5 text-white stroke-[3]" />
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-1">
-                        <p className={`text-xs font-black truncate ${isSelected ? 'text-slate-900' : 'text-white'}`}>
-                          {child.nombre}
-                        </p>
-                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-lg ${
-                          isSelected 
-                            ? 'bg-pink-100 text-pink-700' 
-                            : 'bg-white/20 text-pink-300'
-                        }`}>
-                          {child.promedio_letra || 'AD'}
-                        </span>
-                      </div>
-                      <p className={`text-[11px] font-bold truncate mt-0.5 ${isSelected ? 'text-indigo-700' : 'text-indigo-300'}`}>
-                        {child.grado_nombre} &quot;{child.seccion_letra}&quot;
-                      </p>
-                      <div className="flex items-center gap-2 mt-1 text-[10px]">
-                        <span className={`font-extrabold flex items-center gap-1 ${isSelected ? 'text-emerald-700' : 'text-emerald-400'}`}>
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                          {child.asistencia_porcentaje}% Asist.
-                        </span>
-                        <span className={isSelected ? 'text-slate-400' : 'text-slate-500'}>•</span>
-                        <span className={`font-semibold ${isSelected ? 'text-slate-500' : 'text-slate-400'}`}>
-                          {child.nivel.toUpperCase()}
-                        </span>
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
+      {/* ── RESUMEN DEL AÑO: 4 datos clave ── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="col-span-2 lg:col-span-1 flex items-center gap-3 p-3 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={studentProfile?.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150'}
+            alt={studentProfile?.nombres || 'Estudiante'}
+            className="w-12 h-12 rounded-2xl object-cover border-2 border-indigo-500 shrink-0"
+          />
+          <div className="min-w-0">
+            <p className="text-sm font-black text-slate-900 dark:text-white truncate">
+              {studentProfile?.nombres} {studentProfile?.apellidos}
+            </p>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">Tutor(a): {tutorDisplayName}</p>
+            <p className="text-[11px] text-slate-400 font-mono truncate">Código {activeStudent?.codigo_estudiante || '—'}</p>
           </div>
         </div>
-      )}
 
-      {/* ── CARD RESUMEN Y ESTADO ACADÉMICO DEL ALUMNO ACTIVO ── */}
-      <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 sm:p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-5">
-        <div className="flex items-center gap-4">
-          <div className="relative shrink-0">
-            <img
-              src={studentProfile?.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150'}
-              alt={studentProfile?.nombres}
-              className="w-16 h-16 sm:w-20 sm:h-20 rounded-3xl object-cover border-2 border-indigo-500 shadow-md"
-            />
-            <span className="absolute -bottom-1 -right-1 px-2 py-0.5 rounded-lg text-[9px] font-black uppercase bg-indigo-600 text-white shadow-sm border border-white dark:border-slate-900">
-              {activeEnrollment?.seccion?.grado?.nivel || 'PRIMARIA'}
-            </span>
-          </div>
-
-          <div className="space-y-1 min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 className="font-black text-lg sm:text-xl text-slate-900 dark:text-white truncate">
-                {studentProfile?.apellidos}, {studentProfile?.nombres}
-              </h2>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                {annualReportCard.finalAcademicStatus}
-              </span>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
-              <span>Código: <strong className="font-mono text-slate-700 dark:text-slate-300">{activeStudent?.codigo_estudiante || '—'}</strong></span>
-              <span>•</span>
-              <span>DNI: <strong className="font-mono text-slate-700 dark:text-slate-300">{studentProfile?.dni || activeStudent?.dni || '—'}</strong></span>
-              <span>•</span>
-              <span>Salón: <strong className="text-indigo-600 dark:text-indigo-400">{activeEnrollment?.seccion?.grado?.nombre ? `${activeEnrollment.seccion.grado.nombre} "${activeEnrollment.seccion.letra}"` : 'Sin aula asignada'}</strong></span>
-            </div>
-
-            <p className="text-[11px] text-slate-400 font-medium">
-              Tutor(a): <strong className="text-slate-700 dark:text-slate-300">{tutorDisplayName}</strong>
+        <div className="flex items-center gap-3 p-3 rounded-3xl bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200/70 dark:border-indigo-900/60">
+          {hasAnyGrades ? <GradeBadge grade={averageLetter} size="lg" /> : (
+            <span className="w-11 h-9 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400 font-black flex items-center justify-center">—</span>
+          )}
+          <div className="min-w-0">
+            <p className="text-[10px] font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400">Promedio general</p>
+            <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
+              {hasAnyGrades ? averageMeta.label.replace(/^\w+ \((.*)\)$/, '$1') : 'Aún sin notas'}
             </p>
           </div>
         </div>
 
-        {/* Mini KPIs */}
-        <div className="flex flex-wrap sm:flex-nowrap items-center gap-3 pt-3 md:pt-0 border-t md:border-t-0 border-slate-100 dark:border-slate-800">
-          
-          <div className="flex-1 sm:flex-initial p-3 rounded-2xl bg-indigo-50/80 dark:bg-indigo-950/50 border border-indigo-200/80 dark:border-indigo-800/60 text-center min-w-[100px]">
-            <span className="text-[10px] font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400 block mb-0.5">
-              Promedio General
-            </span>
-            <div className="flex items-center justify-center gap-2">
-              <GradeBadge grade={averageLetter} size="md" />
-              <span className="text-xs font-extrabold text-indigo-900 dark:text-indigo-200 font-mono">
-                {averageScore}
-              </span>
-            </div>
+        <div className="flex items-center gap-3 p-3 rounded-3xl bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200/70 dark:border-emerald-900/60">
+          <span className="w-11 h-9 rounded-lg bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+            <Calendar className="w-5 h-5" />
+          </span>
+          <div className="min-w-0">
+            <p className="text-[10px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Asistencia</p>
+            <p className="text-base font-black text-emerald-700 dark:text-emerald-300 leading-tight">
+              {hasAttendance ? `${attendanceShown}%` : 'Sin registros'}
+            </p>
           </div>
+        </div>
 
-          <div className="flex-1 sm:flex-initial p-3 rounded-2xl bg-emerald-50/80 dark:bg-emerald-950/50 border border-emerald-200/80 dark:border-emerald-800/60 text-center min-w-[100px]">
-            <span className="text-[10px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 block mb-0.5">
-              Asistencia Anual
-            </span>
-            <span className="text-base font-black text-emerald-700 dark:text-emerald-300 font-mono">
-              {activeChild?.asistencia_porcentaje || 98}%
-            </span>
+        <div className="col-span-2 lg:col-span-1 flex items-center gap-3 p-3 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm">
+          <span className="w-11 h-9 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+            <ShieldCheck className="w-5 h-5" />
+          </span>
+          <div className="min-w-0">
+            <p className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">Situación del año</p>
+            <p className="text-sm font-black text-slate-900 dark:text-white leading-tight">{hasAnyGrades ? annualReportCard.finalAcademicStatus : 'Año en curso'}</p>
+            {hasAnyGrades && (
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">Conducta: {annualReportCard.conductGrade}</p>
+            )}
           </div>
-
-          <div className="flex-1 sm:flex-initial p-3 rounded-2xl bg-purple-50/80 dark:bg-purple-950/50 border border-purple-200/80 dark:border-purple-800/60 text-center min-w-[100px]">
-            <span className="text-[10px] font-black uppercase tracking-wider text-purple-600 dark:text-purple-400 block mb-0.5">
-              Conducta
-            </span>
-            <span className="text-base font-black text-purple-700 dark:text-purple-300">
-              AD (Excelente)
-            </span>
-          </div>
-
         </div>
       </div>
 
-      {/* ── BARRA DE PESTAÑAS PRINCIPALES (TABS) ── */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-800 pb-2 print:hidden">
-        <div className="flex items-center gap-1.5 p-1.5 bg-slate-100 dark:bg-slate-800/90 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-x-auto max-w-full">
-          
-          <button
-            onClick={() => setActiveTab('anual')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap ${
-              activeTab === 'anual'
-                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-md'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            <FileText className="w-4 h-4" />
-            <span>1. Libreta Anual Consolidada (4 Bimestres)</span>
-          </button>
-          
-          <button
-            onClick={() => setActiveTab('bimestral')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap ${
-              activeTab === 'bimestral'
-                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-md'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            <Layers className="w-4 h-4" />
-            <span>2. Desglose Bimestral & Competencias</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('diagnostico')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap ${
-              activeTab === 'diagnostico'
-                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-md'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            <BarChart3 className="w-4 h-4" />
-            <span>3. Diagnóstico & Fortalezas</span>
-          </button>
-        </div>
+      {/* ── LEYENDA SIEMPRE VISIBLE: qué significa cada nota ── */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 px-4 py-2.5 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/70 dark:border-slate-800 text-xs print:hidden">
+        <span className="font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+          <HelpCircle className="w-4 h-4 text-indigo-500" /> ¿Qué significa cada nota?
+        </span>
+        {SCALE.map(s => (
+          <span key={s.letter} className="inline-flex items-center gap-1.5 text-slate-700 dark:text-slate-300" title={s.desc}>
+            <GradeBadge grade={s.letter} size="sm" />
+            <span className="font-semibold">{s.label}</span>
+          </span>
+        ))}
       </div>
 
-      {/* ══════════════════════════════════════════════════════════════════════════════════
-          SECCIÓN 1: LIBRETA ANUAL CONSOLIDADA (4 BIMESTRES - MINEDU / SIAGIE)
-         ══════════════════════════════════════════════════════════════════════════════════ */}
-      {activeTab === 'anual' && (
-        <div className="space-y-6 animate-in fade-in-50 duration-200">
-          
-          {/* Banner explicativo del consolidado anual */}
-          <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 dark:from-slate-900 dark:via-indigo-950/40 dark:to-slate-900 border border-indigo-200/80 dark:border-indigo-900/60 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-3.5">
-              <div className="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-bold shadow-md shadow-indigo-600/20 shrink-0">
-                <FileCheck2 className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
-                  Acta Oficial de Evaluación Integral {annualReportCard.academicYear}
-                </h3>
-                <p className="text-xs text-slate-600 dark:text-slate-400">
-                  Consolidado anual de los 4 bimestres lectivos con validación digital y conclusión descriptiva final por materia.
-                </p>
-              </div>
+      {/* ── PESTAÑAS ── */}
+      <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800/90 rounded-2xl w-full sm:w-fit overflow-x-auto print:hidden">
+        {tabs.map(({ id, label, icon: Icon }) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => setActiveTab(id)}
+            className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap ${
+              activeTab === id
+                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <Icon className="w-4 h-4" />
+            <span>{label}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* ══ PESTAÑA: MIS CURSOS (acordeón compacto por curso) ══ */}
+      {activeTab === 'cursos' && (
+        <div className="space-y-3 animate-in fade-in-50 duration-200">
+
+          {/* Barra de filtros en una sola fila */}
+          <div className="flex flex-col lg:flex-row lg:items-center gap-2 print:hidden">
+            <div className="flex items-center gap-1 overflow-x-auto">
+              <button
+                type="button"
+                onClick={() => setSelectedBimestreId('todos')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                  selectedBimestreId === 'todos' ? 'bg-indigo-600 text-white' : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-indigo-300'
+                }`}
+              >
+                Todo el año
+              </button>
+              {evaluationPeriods.map((period) => (
+                <button
+                  key={period.id}
+                  type="button"
+                  onClick={() => setSelectedBimestreId(period.id)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                    selectedBimestreId === period.id ? 'bg-indigo-600 text-white' : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-indigo-300'
+                  }`}
+                >
+                  {period.nombre}
+                </button>
+              ))}
             </div>
 
-            <div className="flex items-center gap-2 self-start sm:self-center">
-              <span className="px-3 py-1 rounded-xl text-xs font-black bg-emerald-600 text-white shadow-xs">
-                {annualReportCard.finalAcademicStatus}
-              </span>
-            </div>
-          </div>
-
-          {/* Componente de Libreta Oficial */}
-          <AnnualReportCardView reportCard={annualReportCard} showPrintButton={false} />
-        </div>
-      )}
-
-      {/* ══════════════════════════════════════════════════════════════════════════════════
-          SECCIÓN 2: DESGLOSE BIMESTRAL & COMPETENCIAS (INTERACTIVO Y CLARO)
-         ══════════════════════════════════════════════════════════════════════════════════ */}
-      {activeTab === 'bimestral' && (
-        <div className="space-y-5 animate-in fade-in-50 duration-200">
-          
-          {/* Filtros Interactivos: Periodos + Escalas + Buscador */}
-          <div className="p-4 sm:p-5 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4 print:hidden">
-            
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-              
-              {/* Selector de Bimestre */}
-              <div className="space-y-1.5">
-                <span className="text-[11px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                  <Calendar className="w-3.5 h-3.5 text-indigo-600" />
-                  Filtrar por Periodo Escolar:
-                </span>
-                <div className="flex flex-wrap items-center gap-1.5">
+            <div className="flex items-center gap-1 overflow-x-auto lg:ml-2">
+              {(['todos', 'AD', 'A', 'B', 'C'] as const).map(letter => {
+                const count = letter === 'todos' ? analyzedCourses.length : countByLetter(letter);
+                const active = gradeFilter === letter;
+                return (
                   <button
+                    key={letter}
                     type="button"
-                    onClick={() => setSelectedBimestreId('todos')}
-                    className={`px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                      selectedBimestreId === 'todos'
-                        ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
-                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+                    onClick={() => setGradeFilter(letter)}
+                    className={`px-2.5 py-1.5 rounded-xl text-[11px] font-extrabold whitespace-nowrap transition-all cursor-pointer ${
+                      active
+                        ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900'
+                        : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-slate-400'
                     }`}
                   >
-                    ✨ Todos los Bimestres
+                    {letter === 'todos' ? 'Todos' : letter} ({count})
                   </button>
-                  {evaluationPeriods.map((period) => (
-                    <button
-                      key={period.id}
-                      type="button"
-                      onClick={() => setSelectedBimestreId(period.id)}
-                      className={`px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                        selectedBimestreId === period.id
-                          ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
-                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
-                      }`}
-                    >
-                      {period.nombre}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Buscador de Cursos */}
-              <div className="space-y-1.5 min-w-[240px]">
-                <span className="text-[11px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                  <Search className="w-3.5 h-3.5 text-purple-600" />
-                  Buscar Materia:
-                </span>
-                <div className="relative">
-                  <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="text"
-                    placeholder="Ej. Matemática, Comunicación..."
-                    value={courseSearch}
-                    onChange={(e) => setCourseSearch(e.target.value)}
-                    className="w-full pl-10 pr-3.5 py-2 text-xs rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
-                  />
-                </div>
-              </div>
-
+                );
+              })}
             </div>
 
-            {/* Filtros Rápidos por Nivel de Logro (AD, A, B, C) */}
-            <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-1.5 text-xs">
-                <span className="text-slate-400 font-bold mr-1">Filtrar por Logro:</span>
-                
-                <button
-                  type="button"
-                  onClick={() => setGradeFilter('todos')}
-                  className={`px-2.5 py-1 rounded-lg font-extrabold text-[11px] transition-all cursor-pointer ${
-                    gradeFilter === 'todos'
-                      ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900'
-                      : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
-                  }`}
-                >
-                  Todas ({analyzedCourses.length})
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setGradeFilter('AD')}
-                  className={`px-2.5 py-1 rounded-lg font-extrabold text-[11px] transition-all cursor-pointer ${
-                    gradeFilter === 'AD'
-                      ? 'bg-purple-600 text-white shadow-xs'
-                      : 'bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 hover:bg-purple-100'
-                  }`}
-                >
-                  AD: Destacado ({analyzedCourses.filter(c => c.avgLetter === 'AD').length})
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setGradeFilter('A')}
-                  className={`px-2.5 py-1 rounded-lg font-extrabold text-[11px] transition-all cursor-pointer ${
-                    gradeFilter === 'A'
-                      ? 'bg-emerald-600 text-white shadow-xs'
-                      : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100'
-                  }`}
-                >
-                  A: Esperado ({analyzedCourses.filter(c => c.avgLetter === 'A').length})
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setGradeFilter('B')}
-                  className={`px-2.5 py-1 rounded-lg font-extrabold text-[11px] transition-all cursor-pointer ${
-                    gradeFilter === 'B'
-                      ? 'bg-amber-600 text-white shadow-xs'
-                      : 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 hover:bg-amber-100'
-                  }`}
-                >
-                  B: En Proceso ({analyzedCourses.filter(c => c.avgLetter === 'B').length})
-                </button>
-              </div>
-
-              <span className="text-[11px] text-slate-400 font-medium">
-                Mostrando {filteredCourses.length} de {analyzedCourses.length} cursos
-              </span>
+            <div className="relative lg:ml-auto lg:w-56">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Buscar curso"
+                value={courseSearch}
+                onChange={(e) => setCourseSearch(e.target.value)}
+                className="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+              />
             </div>
-
           </div>
 
-          {/* Listado de Cursos & Tarjetas de Competencias */}
-          <div className="space-y-4">
-            {filteredCourses.length === 0 ? (
-              <div className="p-10 text-center bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 text-slate-400 space-y-2">
-                <BookOpen className="w-10 h-10 mx-auto text-slate-300 dark:text-slate-600" />
-                <p className="font-extrabold text-base text-slate-700 dark:text-slate-300">
-                  No se encontraron materias con los filtros seleccionados
-                </p>
-                <p className="text-xs text-slate-400">
-                  Prueba cambiando el filtro de notas o limpiando la búsqueda.
-                </p>
-                <button
-                  onClick={() => { setGradeFilter('todos'); setCourseSearch(''); }}
-                  className="mt-2 px-4 py-2 rounded-xl bg-indigo-600 text-white font-bold text-xs"
-                >
-                  Restablecer Filtros
-                </button>
-              </div>
-            ) : (
-              filteredCourses.map(({ course, competencies, gradesList, avgLetter, avgScore }) => {
-                return (
-                  <div
-                    key={course.id}
-                    className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden hover:border-indigo-300 dark:hover:border-indigo-800/60 transition-all"
-                  >
-                    {/* Course Header Bar */}
-                    <div className="p-4 sm:p-5 bg-gradient-to-r from-slate-50 via-indigo-50/20 to-slate-50/50 dark:from-slate-800/80 dark:via-slate-800/50 dark:to-slate-800/30 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div className="flex items-center gap-3.5">
-                        <div 
-                          className="w-10 h-10 rounded-2xl flex items-center justify-center font-black text-white shadow-md shrink-0 text-sm"
-                          style={{ backgroundColor: course.color_hex || '#4f46e5' }}
-                        >
-                          {course.nombre.substring(0, 2).toUpperCase()}
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <h4 className="font-black text-base text-slate-900 dark:text-white">
-                              {course.nombre}
-                            </h4>
-                            <span className="font-mono text-[10px] font-bold text-slate-400 bg-slate-200/60 dark:bg-slate-700/60 px-2 py-0.5 rounded-md">
-                              {course.codigo}
-                            </span>
-                          </div>
-                          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
-                            Área Curricular Oficial • {competencies.length} Competencias evaluadas
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Grade Badge Summary */}
-                      <div className="flex items-center gap-3 self-start sm:self-center">
-                        <div className="text-right">
-                          <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider">
-                            Nivel del Curso
-                          </p>
-                          <p className="text-xs font-extrabold text-slate-700 dark:text-slate-300 font-mono">
-                            Puntaje: {avgScore.toFixed(1)} / 20
-                          </p>
-                        </div>
-                        <GradeBadge grade={avgLetter} size="lg" />
-                      </div>
-                    </div>
-
-                    {/* Competencies Table with descriptive bubbles */}
-                    <div className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                      {competencies.map((comp) => {
-                        const compGrade = gradesList.find(g => g.competencia_id === comp.id);
-                        const letter = compGrade?.nota_letra || 'A';
-
-                        return (
-                          <div
-                            key={comp.id}
-                            className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-50/40 dark:hover:bg-slate-800/30 transition-colors"
-                          >
-                            <div className="space-y-2 max-w-2xl">
-                              <div className="flex items-start gap-2.5">
-                                <span className="mt-0.5 px-2 py-0.5 rounded-md font-mono font-black text-[10px] bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 shrink-0">
-                                  {comp.codigo}
-                                </span>
-                                <div>
-                                  <h5 className="font-extrabold text-xs sm:text-sm text-slate-900 dark:text-white">
-                                    {comp.descripcion}
-                                  </h5>
-                                </div>
-                              </div>
-
-                              {/* Teacher Descriptive Conclusion Box */}
-                              <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60 text-xs flex items-start gap-2.5">
-                                <MessageCircle className="w-4 h-4 text-indigo-500 shrink-0 mt-0.5" />
-                                <div className="space-y-0.5">
-                                  <span className="text-[10px] font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400 block">
-                                    Conclusión Descriptiva Docente
-                                  </span>
-                                  {compGrade?.conclusion_descriptiva ? (
-                                    <p className="text-slate-700 dark:text-slate-300 italic font-medium leading-relaxed">
-                                      &quot;{compGrade.conclusion_descriptiva}&quot;
-                                    </p>
-                                  ) : (
-                                    <p className="text-slate-500 dark:text-slate-400 italic">
-                                      Demuestra comprensión satisfactoria y progreso constante en las actividades y evaluaciones formativas del aula.
-                                    </p>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Badge with full label */}
-                            <div className="flex items-center gap-3 shrink-0 self-end sm:self-center">
-                              <div className="text-right hidden md:block">
-                                <span className="text-[10px] font-bold text-slate-400 block">Calificación</span>
-                                <span className="text-xs font-black text-slate-700 dark:text-slate-300">
-                                  {letter === 'AD' ? 'Logro Destacado' :
-                                   letter === 'A' ? 'Logro Esperado' :
-                                   letter === 'B' ? 'En Proceso' : 'En Inicio'}
-                                </span>
-                              </div>
-                              <GradeBadge grade={letter} size="md" showLabel={true} />
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                  </div>
-                );
-              })
+          <div className="flex items-center justify-between px-1 text-[11px] text-slate-500 dark:text-slate-400">
+            <span>
+              {filteredCourses.length} {filteredCourses.length === 1 ? 'curso' : 'cursos'} · toca un curso para ver sus competencias
+            </span>
+            {filteredCourses.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setExpandedCourses(allExpanded ? new Set() : new Set(filteredCourses.map(c => c.course.id)))}
+                className="font-bold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer print:hidden"
+              >
+                {allExpanded ? 'Contraer todo' : 'Ver todo'}
+              </button>
             )}
           </div>
 
-        </div>
-      )}
-
-      {/* ══════════════════════════════════════════════════════════════════════════════════
-          SECCIÓN 3: DIAGNÓSTICO & FORTALEZAS (CLARO Y ACCIONABLE PARA PADRES)
-         ══════════════════════════════════════════════════════════════════════════════════ */}
-      {activeTab === 'diagnostico' && (
-        <div className="space-y-6 animate-in fade-in-50 duration-200">
-          
-          {/* 4 Categorías de Logro Visuales */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            
-            {/* Logro Destacado AD */}
-            <div className="p-5 rounded-3xl bg-gradient-to-br from-purple-500 to-indigo-600 text-white shadow-lg shadow-purple-500/20 space-y-3 relative overflow-hidden">
-              <div className="flex items-center justify-between">
-                <span className="w-8 h-8 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center font-black text-sm">
-                  AD
-                </span>
-                <Sparkles className="w-5 h-5 text-amber-300" />
-              </div>
-              <div>
-                <p className="text-xs font-bold text-purple-100 uppercase tracking-wider">Logro Destacado</p>
-                <h4 className="text-3xl font-black mt-0.5">
-                  {performanceStats.adCourses.length} <span className="text-xs font-medium text-purple-200">Materias</span>
-                </h4>
-              </div>
-              <p className="text-[11px] text-purple-100 leading-tight">
-                Supera ampliamente el estándar del grado con gran autonomía.
-              </p>
+          {filteredCourses.length === 0 ? (
+            <div className="p-8 text-center bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-2">
+              <BookOpen className="w-8 h-8 mx-auto text-slate-300 dark:text-slate-600" />
+              <p className="font-extrabold text-sm text-slate-700 dark:text-slate-300">No hay cursos con esos filtros</p>
+              <button
+                type="button"
+                onClick={() => { setGradeFilter('todos'); setCourseSearch(''); }}
+                className="px-4 py-1.5 rounded-xl bg-indigo-600 text-white font-bold text-xs cursor-pointer"
+              >
+                Quitar filtros
+              </button>
             </div>
-
-            {/* Logro Esperado A */}
-            <div className="p-5 rounded-3xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/20 space-y-3 relative overflow-hidden">
-              <div className="flex items-center justify-between">
-                <span className="w-8 h-8 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center font-black text-sm">
-                  A
-                </span>
-                <CheckCircle2 className="w-5 h-5 text-emerald-200" />
-              </div>
-              <div>
-                <p className="text-xs font-bold text-emerald-100 uppercase tracking-wider">Logro Esperado</p>
-                <h4 className="text-3xl font-black mt-0.5">
-                  {performanceStats.aCourses.length} <span className="text-xs font-medium text-emerald-200">Materias</span>
-                </h4>
-              </div>
-              <p className="text-[11px] text-emerald-100 leading-tight">
-                Cumple satisfactoriamente con todos los objetivos del grado.
-              </p>
-            </div>
-
-            {/* En Proceso B */}
-            <div className="p-5 rounded-3xl bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-lg shadow-amber-500/20 space-y-3 relative overflow-hidden">
-              <div className="flex items-center justify-between">
-                <span className="w-8 h-8 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center font-black text-sm">
-                  B
-                </span>
-                <Flame className="w-5 h-5 text-amber-200" />
-              </div>
-              <div>
-                <p className="text-xs font-bold text-amber-100 uppercase tracking-wider">En Proceso</p>
-                <h4 className="text-3xl font-black mt-0.5">
-                  {performanceStats.bCourses.length} <span className="text-xs font-medium text-amber-200">Materias</span>
-                </h4>
-              </div>
-              <p className="text-[11px] text-amber-100 leading-tight">
-                Requiere acompañamiento para consolidar los aprendizajes.
-              </p>
-            </div>
-
-            {/* En Inicio C */}
-            <div className="p-5 rounded-3xl bg-gradient-to-br from-rose-500 to-pink-600 text-white shadow-lg shadow-rose-500/20 space-y-3 relative overflow-hidden">
-              <div className="flex items-center justify-between">
-                <span className="w-8 h-8 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center font-black text-sm">
-                  C
-                </span>
-                <AlertCircle className="w-5 h-5 text-rose-200" />
-              </div>
-              <div>
-                <p className="text-xs font-bold text-rose-100 uppercase tracking-wider">En Inicio</p>
-                <h4 className="text-3xl font-black mt-0.5">
-                  {performanceStats.cCourses.length} <span className="text-xs font-medium text-rose-200">Materias</span>
-                </h4>
-              </div>
-              <p className="text-[11px] text-rose-100 leading-tight">
-                Requiere plan de recuperación pedagógica intensivo.
-              </p>
-            </div>
-
-          </div>
-
-          {/* Gráfico Comparativo de Materias con Barras Visuales */}
-          <div className="p-6 sm:p-7 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-5">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 flex items-center justify-center font-bold">
-                  <TrendingUp className="w-5 h-5" />
-                </div>
-                <div>
-                  <h4 className="font-extrabold text-base text-slate-900 dark:text-white">
-                    Mapa Comparativo de Rendimiento por Área Curricular
-                  </h4>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Puntaje equivalente sobre la escala vigesimal oficial (0 a 20).
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-4 pt-2">
-              {analyzedCourses.map(({ course, avgLetter, avgScore }) => {
-                const percentage = Math.min(100, Math.max(10, (avgScore / 20) * 100));
-                
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5 items-start">
+              {filteredCourses.map(({ course, competencies, gradesList, avgLetter, avgScore, gradeCount }) => {
+                const isOpen = expandedCourses.has(course.id);
+                const graded = gradeCount > 0;
+                const pct = graded ? Math.round((avgScore / 4) * 100) : 0;
                 return (
-                  <div key={course.id} className="space-y-1.5">
-                    <div className="flex items-center justify-between text-xs font-bold">
-                      <div className="flex items-center gap-2">
-                        <span 
-                          className="w-3 h-3 rounded-full" 
-                          style={{ backgroundColor: course.color_hex || '#4f46e5' }} 
-                        />
-                        <span className="text-slate-800 dark:text-slate-200">{course.nombre}</span>
+                  <div
+                    key={course.id}
+                    className={`bg-white dark:bg-slate-900 rounded-2xl border shadow-sm overflow-hidden transition-colors ${
+                      isOpen ? 'border-indigo-300 dark:border-indigo-800' : 'border-slate-200/80 dark:border-slate-800 hover:border-indigo-200 dark:hover:border-indigo-900'
+                    }`}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => toggleCourse(course.id)}
+                      aria-expanded={isOpen}
+                      className="w-full flex items-center gap-3 px-3.5 py-3 text-left cursor-pointer"
+                    >
+                      <span
+                        className="w-9 h-9 rounded-xl flex items-center justify-center font-black text-white text-xs shrink-0"
+                        style={{ backgroundColor: course.color_hex || '#4f46e5' }}
+                      >
+                        {course.nombre.substring(0, 2).toUpperCase()}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-black text-slate-900 dark:text-white truncate">{course.nombre}</p>
+                        {graded ? (
+                          <div className="flex items-center gap-2 mt-1">
+                            <div className="flex-1 h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                              <div className={`h-full rounded-full ${barColor(avgLetter)}`} style={{ width: `${pct}%` }} />
+                            </div>
+                            <span className="text-[11px] text-slate-500 dark:text-slate-400 shrink-0">
+                              {competencies.length} comp.
+                            </span>
+                          </div>
+                        ) : (
+                          <p className="text-[11px] text-slate-400 mt-0.5">Aún sin notas · {competencies.length} competencias</p>
+                        )}
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-slate-600 dark:text-slate-400">
-                          {avgScore.toFixed(1)} / 20
-                        </span>
-                        <GradeBadge grade={avgLetter} size="sm" />
-                      </div>
-                    </div>
+                      {graded ? <GradeBadge grade={avgLetter} size="md" /> : (
+                        <span className="min-w-[34px] px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400 text-sm font-black text-center">—</span>
+                      )}
+                      <ChevronRight className={`w-4 h-4 text-slate-400 shrink-0 transition-transform ${isOpen ? 'rotate-90' : ''}`} />
+                    </button>
 
-                    <div className="w-full h-3 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden relative shadow-inner">
-                      <div
-                        className={`h-full rounded-full transition-all duration-500 ${
-                          avgLetter === 'AD' ? 'bg-gradient-to-r from-purple-500 to-indigo-600' :
-                          avgLetter === 'A' ? 'bg-gradient-to-r from-emerald-500 to-teal-500' :
-                          avgLetter === 'B' ? 'bg-gradient-to-r from-amber-400 to-orange-500' :
-                          'bg-gradient-to-r from-rose-500 to-red-600'
-                        }`}
-                        style={{ width: `${percentage}%` }}
-                      />
-                    </div>
+                    {isOpen && (
+                      <ul className="border-t border-slate-100 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800/60 animate-in fade-in-50">
+                        {competencies.map((comp) => {
+                          const compGrade = gradesList.find(g => g.competencia_id === comp.id);
+                          return (
+                            <li key={comp.id} className="px-3.5 py-2.5 flex items-start gap-3">
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-bold text-slate-800 dark:text-slate-200 leading-snug">{comp.descripcion}</p>
+                                {compGrade?.conclusion_descriptiva && (
+                                  <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400 italic leading-relaxed flex gap-1.5">
+                                    <MessageCircle className="w-3.5 h-3.5 text-indigo-400 shrink-0 mt-0.5" />
+                                    <span>&ldquo;{compGrade.conclusion_descriptiva}&rdquo;</span>
+                                  </p>
+                                )}
+                              </div>
+                              {compGrade ? <GradeBadge grade={compGrade.nota_letra} size="sm" /> : (
+                                <span className="text-[11px] font-semibold text-slate-400 shrink-0">Sin calificar</span>
+                              )}
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
                   </div>
                 );
               })}
             </div>
+          )}
+        </div>
+      )}
+
+      {/* ══ PESTAÑA: RESUMEN (fortalezas y qué reforzar, con datos reales) ══ */}
+      {activeTab === 'resumen' && (
+        <div className="space-y-3 animate-in fade-in-50 duration-200">
+
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+            {SCALE.map(s => (
+              <button
+                key={s.letter}
+                type="button"
+                onClick={() => { setGradeFilter(s.letter); setActiveTab('cursos'); }}
+                className="flex items-center gap-3 p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-indigo-300 text-left transition-colors cursor-pointer"
+                title={`Ver cursos con ${s.letter}`}
+              >
+                <GradeBadge grade={s.letter} size="lg" />
+                <div className="min-w-0">
+                  <p className="text-xl font-black text-slate-900 dark:text-white leading-none">{countByLetter(s.letter)}</p>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{s.label}</p>
+                </div>
+              </button>
+            ))}
           </div>
 
-          {/* Recomendaciones Psicopedagógicas y Acompañamiento Familiar */}
-          <div className="p-6 sm:p-7 rounded-3xl bg-gradient-to-br from-indigo-900 via-purple-900 to-slate-900 text-white border border-indigo-700/50 shadow-xl space-y-5">
-            <div className="flex items-center gap-3.5">
-              <div className="w-12 h-12 rounded-2xl bg-amber-400/20 text-amber-300 border border-amber-400/30 flex items-center justify-center font-bold">
-                <Lightbulb className="w-6 h-6" />
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-3">
+            <div className="lg:col-span-3 p-4 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm">
+              <h3 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2 mb-3">
+                <TrendingUp className="w-4 h-4 text-indigo-600" /> Cómo voy en cada curso
+              </h3>
+              {gradedCourses.length === 0 ? (
+                <p className="py-6 text-center text-xs text-slate-400">Cuando tus profesores registren notas, aquí verás tu avance por curso.</p>
+              ) : (
+                <div className="space-y-2">
+                  {gradedCourses.map(({ course, avgLetter, avgScore }) => (
+                    <div key={course.id} className="flex items-center gap-3">
+                      <span className="w-28 sm:w-36 text-xs font-bold text-slate-700 dark:text-slate-300 truncate">{course.nombre}</span>
+                      <div className="flex-1 h-2.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                        <div className={`h-full rounded-full ${barColor(avgLetter)}`} style={{ width: `${Math.round((avgScore / 4) * 100)}%` }} />
+                      </div>
+                      <GradeBadge grade={avgLetter} size="sm" />
+                    </div>
+                  ))}
+                  {analyzedCourses.length > gradedCourses.length && (
+                    <p className="pt-1 text-[11px] text-slate-400">
+                      {analyzedCourses.length - gradedCourses.length} cursos aún sin notas.
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="lg:col-span-2 space-y-3">
+              <div className="p-4 rounded-3xl bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200/70 dark:border-emerald-900/50">
+                <h3 className="text-sm font-black text-emerald-800 dark:text-emerald-200 flex items-center gap-2">
+                  <Star className="w-4 h-4" /> {isApoderadoOrAdmin ? 'Sus fortalezas' : 'Tus fortalezas'}
+                </h3>
+                <p className="mt-1 text-xs text-emerald-900/80 dark:text-emerald-200/80">
+                  {performanceStats.adCourses.length + performanceStats.aCourses.length > 0
+                    ? [...performanceStats.adCourses, ...performanceStats.aCourses].join(', ')
+                    : 'Aún no hay cursos con logro A o AD.'}
+                </p>
               </div>
-              <div>
-                <h4 className="font-black text-lg text-white">
-                  Recomendaciones de Tutoría & Acompañamiento en Casa
-                </h4>
-                <p className="text-xs text-indigo-200">
-                  Estrategias recomendadas para potenciar el talento y hábitos de estudio de <strong className="text-white">{studentProfile?.nombres}</strong>.
+              <div className="p-4 rounded-3xl bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200/70 dark:border-amber-900/50">
+                <h3 className="text-sm font-black text-amber-800 dark:text-amber-200 flex items-center gap-2">
+                  <Flame className="w-4 h-4" /> Para reforzar
+                </h3>
+                <p className="mt-1 text-xs text-amber-900/80 dark:text-amber-200/80">
+                  {performanceStats.bCourses.length + performanceStats.cCourses.length > 0
+                    ? `${[...performanceStats.cCourses, ...performanceStats.bCourses].join(', ')}. Pide ayuda a tu profesor y practica un poco cada día.`
+                    : hasAnyGrades ? '¡Nada por ahora! Sigue así.' : 'Todavía no hay notas registradas.'}
+                </p>
+              </div>
+              <div className="p-4 rounded-3xl bg-indigo-50/80 dark:bg-indigo-950/30 border border-indigo-200/70 dark:border-indigo-900/50">
+                <h3 className="text-sm font-black text-indigo-800 dark:text-indigo-200 flex items-center gap-2">
+                  <Lightbulb className="w-4 h-4" /> Consejo
+                </h3>
+                <p className="mt-1 text-xs text-indigo-900/80 dark:text-indigo-200/80">
+                  Estudia un rato fijo cada día y revisa tus tareas pendientes antes de dormir.
                 </p>
               </div>
             </div>
+          </div>
+        </div>
+      )}
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 pt-2 text-xs">
-              
-              <div className="p-4 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 space-y-1.5">
-                <div className="flex items-center gap-2 text-amber-300 font-extrabold">
-                  <Star className="w-4 h-4" />
-                  <span>Fortalezas a Fomentar</span>
-                </div>
-                <p className="text-slate-200 leading-relaxed">
-                  Destaca con notas <strong>AD</strong> en materias de razonamiento. Se sugiere motivarlo con proyectos de robótica, lectura científica o clubes escolares.
-                </p>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 space-y-1.5">
-                <div className="flex items-center gap-2 text-emerald-300 font-extrabold">
-                  <Clock className="w-4 h-4" />
-                  <span>Hábitos & Rutina</span>
-                </div>
-                <p className="text-slate-200 leading-relaxed">
-                  Mantener un horario fijo de 45 minutos de estudio diario y verificar las entregas en el portal de tareas antes de las 6:00 PM.
-                </p>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 space-y-1.5">
-                <div className="flex items-center gap-2 text-pink-300 font-extrabold">
-                  <Heart className="w-4 h-4" />
-                  <span>Bienestar Emocional</span>
-                </div>
-                <p className="text-slate-200 leading-relaxed">
-                  Reconocer positivamente sus logros escolares de cada semana para fortalecer su autoconfianza y motivación formativa.
-                </p>
-              </div>
-
+      {/* ══ PESTAÑA: LIBRETA OFICIAL (consolidado anual MINEDU / SIAGIE) ══ */}
+      {activeTab === 'anual' && (
+        <div className="space-y-3 animate-in fade-in-50 duration-200">
+          <div className="relative">
+            <div
+              ref={informeRef}
+              className={informeCollapsed ? 'overflow-hidden max-h-[var(--informe-max)] print:max-h-none print:overflow-visible' : ''}
+              style={informeCollapsed ? ({ '--informe-max': `${informeMaxHeight}px` } as React.CSSProperties) : undefined}
+            >
+              <AnnualReportCardView reportCard={annualReportCard} showPrintButton={false} />
             </div>
+            {informeCollapsed && (
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-slate-50 dark:from-slate-950 to-transparent print:hidden" />
+            )}
           </div>
 
+          {informeOverflows && (
+            <div className="flex justify-center print:hidden">
+              <button
+                type="button"
+                onClick={() => setInformeExpanded(v => !v)}
+                aria-expanded={informeExpanded}
+                className="inline-flex items-center gap-2 px-5 py-2 rounded-2xl bg-white dark:bg-slate-900 border border-indigo-200 dark:border-indigo-800 text-xs font-black text-indigo-600 dark:text-indigo-400 shadow-sm hover:bg-indigo-50 dark:hover:bg-indigo-950/50 transition-colors cursor-pointer"
+              >
+                <ChevronDown className={`w-4 h-4 transition-transform ${informeExpanded ? 'rotate-180' : ''}`} />
+                {informeExpanded ? 'Contraer informe' : 'Ver informe completo'}
+              </button>
+            </div>
+          )}
         </div>
       )}
 

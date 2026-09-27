@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
+import RootLoading from '@/app/loading';
 import { 
   UserProfile, 
   Student, 
@@ -2877,9 +2878,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     staffAttendances,
   ]);
 
+  // El estado inicial se lee de localStorage, que no existe en el servidor.
+  // Diferimos el render de los hijos hasta el montaje para evitar errores de hidratación.
+  const [hasMounted, setHasMounted] = useState(false);
+  useEffect(() => { setHasMounted(true); }, []);
+
   return (
     <AppContext.Provider value={contextValue}>
-      {children}
+      {hasMounted ? children : <RootLoading />}
     </AppContext.Provider>
   );
 }
