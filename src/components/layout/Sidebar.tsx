@@ -149,25 +149,20 @@ export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
   // Secciones Estructuradas para Estudiante (Secuencia Lógica de Aprendizaje Escolar)
   const estudianteNav: NavSection[] = [
     {
-      section: 'INICIO',
+      section: 'MI ESPACIO ESCOLAR',
       items: [
         { href: '/estudiante', label: 'Mi Panel de Aprendizaje', icon: LayoutDashboard },
+        { href: '/estudiante/carnet-qr', label: 'Mi Carnet Escolar QR', icon: QrCode, badge: 'Oficial' },
+        { href: '/estudiante/horario', label: 'Mi Horario & Clases', icon: Calendar },
+        { href: '/estudiante/asistencias', label: 'Asistencia & Racha', icon: Clock },
       ]
     },
     {
-      section: 'MI DÍA A DÍA EN EL COLEGIO',
+      section: 'MIS ESTUDIOS & METAS',
       items: [
-        { href: '/estudiante/carnet-qr', label: '1. Mi Carnet Escolar QR', icon: QrCode, badge: 'Oficial' },
-        { href: '/estudiante/horario', label: '2. Mi Horario de Clases', icon: Calendar },
-        { href: '/estudiante/asistencias', label: '3. Mi Asistencia & Puntualidad', icon: Clock },
-      ]
-    },
-    {
-      section: 'MIS ESTUDIOS & RENDIMIENTO',
-      items: [
-        { href: '/estudiante/tareas', label: '4. Mis Tareas & Entregas', icon: FileText },
-        { href: '/estudiante/evaluaciones', label: '5. Calendario de Exámenes', icon: CheckSquare },
-        { href: '/estudiante/libreta-notas', label: '6. Libreta Oficial de Notas', icon: Award, badge: 'CNEB' },
+        { href: '/estudiante/tareas', label: 'Mis Tareas & Misiones', icon: FileText },
+        { href: '/estudiante/evaluaciones', label: 'Calendario de Exámenes', icon: CalendarDays },
+        { href: '/estudiante/libreta-notas', label: 'Libreta Oficial CNEB', icon: Award, badge: 'CNEB', badgeColor: 'bg-purple-500/10 text-purple-600 dark:text-purple-400' },
       ]
     }
   ];
@@ -499,6 +494,26 @@ export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
           </div>
         )}
 
+        {/* Brújula de Aprendizaje (Solo Estudiante, visible en modo expandido) */}
+        {currentUser?.rol === 'estudiante' && !isDesktopCollapsed && (
+          <div className="p-3.5 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/60 space-y-2 animate-in fade-in duration-200">
+            <div className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider text-indigo-700 dark:text-indigo-300">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Brújula de Aprendizaje</span>
+            </div>
+            <p className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">
+              ¿Sabías que repasar con mapas mentales ayuda a fijar un 70% más lo aprendido?
+            </p>
+            <Link
+              href="/estudiante/tareas"
+              onClick={handleLinkClick}
+              className="block w-full text-center px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-indigo-200/80 dark:border-indigo-800 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-600 dark:hover:text-white transition-colors"
+            >
+              Ver Trucos de Estudio 💡
+            </Link>
+          </div>
+        )}
+
         {/* Mis Aulas Designadas (Solo Docente, visible en modo expandido) */}
         {currentUser?.rol === 'docente' && !isDesktopCollapsed && teacherSections.length > 0 && (
           <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 space-y-2 animate-in fade-in duration-200">
@@ -559,7 +574,7 @@ export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
             <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap animate-in fade-in duration-200">
               <span className="font-semibold">Año Escolar 2026</span>
               <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                II Bimestre
+                III Bimestre
               </span>
             </div>
             {currentUser?.rol === 'docente' && (
