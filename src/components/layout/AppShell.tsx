@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { AppProvider, useApp } from '@/context/AppContext';
 import { Navbar } from '@/components/layout/Navbar';
@@ -107,25 +107,9 @@ import { WhatsAppFloatingButton } from '@/components/ui/WhatsAppFloatingButton';
 // ─────────────────────────────────────────────────────────────────────────────
 function InnerShell({ children }: { children: React.ReactNode }) {
   const { toasts, removeToast } = useApp();
-  const { sendNotification } = usePushNotifications();
-  const prevToastsRef = useRef<typeof toasts>([]);
-
-  // When a new toast appears, also fire a push notification
-  useEffect(() => {
-    const prev = prevToastsRef.current;
-    const newToasts = toasts.filter((t) => !prev.find((p) => p.id === t.id));
-    if (newToasts.length > 0) {
-      newToasts.forEach(async (t) => {
-        await sendNotification({
-          title: t.titulo || 'ColeSistema',
-          body: t.mensaje,
-          tag: t.tipo,
-          url: '/',
-        });
-      });
-    }
-    prevToastsRef.current = toasts;
-  }, [toasts, sendNotification]);
+  // Solo registra el service worker (necesario para instalar la PWA).
+  // Los toasts ya no se reenvían como notificaciones del navegador.
+  usePushNotifications();
 
   return (
     <>

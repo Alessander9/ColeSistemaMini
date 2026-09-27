@@ -56,14 +56,8 @@ export function usePushNotifications() {
     if (typeof window === 'undefined') return;
     if (!('Notification' in window)) return;
 
-    // Auto-request permission if still 'default'
-    let perm = permissionRef.current;
-    if (perm === 'default') {
-      perm = await Notification.requestPermission();
-      permissionRef.current = perm;
-    }
-
-    if (perm !== 'granted') return;
+    // Nunca pedir permiso aquí: solo enviar si el usuario ya lo concedió (vía requestPermission)
+    if (Notification.permission !== 'granted') return;
 
     const sw = swRegistrationRef.current;
     if (sw && navigator.serviceWorker.controller) {

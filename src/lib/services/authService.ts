@@ -104,11 +104,12 @@ export async function loginWithCredentials(emailOrUsername: string, password: st
 }
 
 export async function logoutUser(): Promise<void> {
-  const supabase = createClient();
-  try {
-    await supabase.auth.signOut();
-  } catch {
-    /* ignore */
+  if (isSupabaseConfigured()) {
+    try {
+      await createClient().auth.signOut();
+    } catch {
+      /* ignore */
+    }
   }
 
   if (typeof document !== 'undefined') {
@@ -135,6 +136,7 @@ export async function logoutUser(): Promise<void> {
 }
 
 export async function getCurrentUserProfile(): Promise<UserProfile | null> {
+  if (!isSupabaseConfigured()) return null;
   const supabase = createClient();
   try {
     const { data: { user } } = await supabase.auth.getUser();

@@ -1,8 +1,12 @@
 'use client';
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useApp } from '@/context/AppContext';
+import Link from 'next/link';
 import { EvaluationExam } from '@/types';
+import { GradeBadge } from '@/components/notas/GradeBadge';
+import { getGradeMeta } from '@/lib/grades/calculations';
 import {
   Calendar,
   Clock,
@@ -14,7 +18,18 @@ import {
   History,
   Lightbulb,
   PartyPopper,
+  X,
+  ChevronRight,
+  MessageCircle,
 } from 'lucide-react';
+
+// Mensaje de ánimo según la nota obtenida
+const GRADE_CHEER = {
+  AD: '🌟 ¡Excelente! Superaste lo esperado. ¡Sigue así!',
+  A: '🎉 ¡Muy bien! Lograste lo que se esperaba.',
+  B: '💪 ¡Vas cerca! Repasa un poco más y lo lograrás.',
+  C: '🌱 Este tema necesita práctica. Pide ayuda a tu profesor, ¡tú puedes!',
+} as const;
 
 // ── Utilidades de fecha (fechas locales YYYY-MM-DD, sin desfase UTC) ──
 function parseLocalDate(iso: string) {
@@ -119,7 +134,16 @@ function ExamsIllustration({ className = '' }: { className?: string }) {
 }
 
 export default function EstudianteEvaluacionesPage() {
-  const { exams, courses, currentUser, students, enrollments } = useApp();
+  const { exams, courses, grades, currentUser, students, enrollments } = useApp();
+  const [selectedPastExam, setSelectedPastExam] = useState<EvaluationExam | null>(null);
+
+  // Cerrar el modal de detalle con Esc
+  useEffect(() => {
+    if (!selectedPastExam) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setSelectedPastExam(null); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [selectedPastExam]);
   const [typeFilter, setTypeFilter] = useState<'todos' | EvaluationExam['tipo']>('todos');
   const [openExamId, setOpenExamId] = useState<string | null>(null);
   const [showPast, setShowPast] = useState(false);
@@ -175,6 +199,17 @@ export default function EstudianteEvaluacionesPage() {
     [myExams, upcoming]
   );
 
+  // Nota de una evaluación: el registro de la competencia que evalúa, en su bimestre
+  // (el sistema no guarda notas por evaluación, sino por competencia y periodo)
+  const examGrade = (exam: EvaluationExam) => {
+    if (!exam.competencia_id || !currentEnrollment?.id) return null;
+    return grades.find(g =>
+      g.matricula_id === currentEnrollment.id &&
+      g.competencia_id === exam.competencia_id &&
+      g.periodo_evaluacion_id === exam.periodo_evaluacion_id
+    ) || null;
+  };
+
   const nextExam = upcoming[0] || null;
   const nextDays = nextExam ? daysFromToday(nextExam.fecha_programada) : null;
   const thisWeekCount = upcoming.filter(e => daysFromToday(e.fecha_programada) <= 7).length;
@@ -212,8 +247,7 @@ export default function EstudianteEvaluacionesPage() {
   return (
     <div className="space-y-4 max-w-6xl mx-auto animate-in fade-in-50 pb-12">
 
-      {/* ── CABECERA AMIGABLE CON DIBUJO (+ menú flotante de evaluaciones ya rendidas) ── */}
-      <div className="relative">
+      {/* ── CABECERA AMIGABLE CON DIBUJO ── */}
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-violet-100 via-sky-50 to-pink-100 dark:from-indigo-950/60 dark:via-slate-900 dark:to-purple-950/50 border border-violet-200/70 dark:border-indigo-900/60 px-5 py-4 sm:px-6">
         <div className="flex items-center justify-between gap-4">
           <div className="space-y-1">
@@ -230,63 +264,10 @@ export default function EstudianteEvaluacionesPage() {
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/80 dark:bg-slate-800/80 text-xs font-bold text-slate-700 dark:text-slate-200">
                 <Calendar className="w-3.5 h-3.5 text-sky-500" /> {thisWeekCount} en los próximos 7 días
               </span>
-              {past.length > 0 ? (
-                <button
-                  ref={pastButtonRef}
-                  type="button"
-                  onClick={() => setShowPast(v => !v)}
-                  aria-expanded={showPast}
-                  aria-haspopup="true"
-                  title="Ver las evaluaciones que ya rendiste"
-                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-colors cursor-pointer ${
-                    showPast
-                      ? 'bg-emerald-600 text-white'
-                      : 'bg-white/80 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-800'
-                  }`}
-                >
-                  <History className={`w-3.5 h-3.5 ${showPast ? 'text-white' : 'text-emerald-500'}`} /> {past.length} ya rendidas
-                  <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showPast ? 'rotate-180' : ''}`} />
-                </button>
-              ) : (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/80 dark:bg-slate-800/80 text-xs font-bold text-slate-700 dark:text-slate-200">
-                  <History className="w-3.5 h-3.5 text-emerald-500" /> 0 ya rendidas
-                </span>
-              )}
             </div>
           </div>
           <ExamsIllustration className="hidden sm:block w-36 h-28 shrink-0 animate-float" />
         </div>
-      </div>
-
-        {showPast && past.length > 0 && (
-          <div
-            ref={pastPanelRef}
-            role="dialog"
-            aria-label="Evaluaciones que ya rendiste"
-            className="absolute left-4 sm:left-6 top-full mt-2 z-30 w-[min(92vw,440px)] rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200 dark:border-slate-700 shadow-xl animate-in fade-in-50 slide-in-from-top-1"
-          >
-            <p className="px-4 pt-3 pb-2 text-xs font-black text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-              <History className="w-3.5 h-3.5 text-emerald-500" /> Evaluaciones que ya rendiste
-            </p>
-            <ul className="max-h-64 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800">
-              {past.map(exam => (
-                <li key={exam.id} className="px-4 py-2 flex items-center gap-2.5 text-xs">
-                  <span className="text-base" aria-hidden="true">{TYPE_META[exam.tipo].emoji}</span>
-                  <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: courseColor(exam) }} />
-                  <span className="flex-1 min-w-0">
-                    <span className="block truncate text-slate-800 dark:text-slate-200 font-semibold">{exam.titulo}</span>
-                    <span className="block text-[11px] text-slate-400">{courseName(exam)} · {longDate(exam.fecha_programada)}</span>
-                  </span>
-                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 ${
-                    exam.estado === 'calificada' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
-                  }`}>
-                    {exam.estado === 'calificada' ? 'Con nota' : 'Rendida'}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
       </div>
 
       {upcoming.length === 0 ? (
@@ -513,6 +494,224 @@ export default function EstudianteEvaluacionesPage() {
         </div>
       )}
 
+
+      {/* ── BOTÓN FLOTANTE: EVALUACIONES YA RENDIDAS (estilo botón de WhatsApp) ── */}
+      {past.length > 0 && createPortal(
+        <div className="fixed bottom-[9.5rem] md:bottom-24 right-4 md:right-6 z-[9989] flex flex-col items-end print:hidden">
+          {showPast && (
+            <div
+              ref={pastPanelRef}
+              role="dialog"
+              aria-label="Evaluaciones que ya rendiste"
+              className="mb-3 w-80 max-w-[calc(100vw-2rem)] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-200 origin-bottom-right"
+            >
+              <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-slate-100 dark:border-slate-800">
+                <div className="flex items-center gap-2.5">
+                  <span className="w-8 h-8 rounded-full bg-violet-500 text-white flex items-center justify-center">
+                    <History className="w-4 h-4" />
+                  </span>
+                  <div>
+                    <p className="text-xs font-black text-slate-900 dark:text-white">Evaluaciones que ya rendiste</p>
+                    <p className="text-[10px] font-semibold text-violet-600 dark:text-violet-400">
+                      {past.length} {past.length === 1 ? 'evaluación terminada' : 'evaluaciones terminadas'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowPast(false)}
+                  aria-label="Cerrar"
+                  className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <ul className="max-h-72 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800">
+                {past.map(exam => {
+                  const grade = examGrade(exam);
+                  return (
+                    <li key={exam.id}>
+                      <button
+                        type="button"
+                        onClick={() => { setSelectedPastExam(exam); setShowPast(false); }}
+                        className="w-full px-4 py-2.5 flex items-center gap-2.5 text-xs text-left hover:bg-violet-50/70 dark:hover:bg-violet-950/30 transition-colors cursor-pointer"
+                        title="Ver detalle de la evaluación"
+                      >
+                        <span className="text-base" aria-hidden="true">{TYPE_META[exam.tipo].emoji}</span>
+                        <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: courseColor(exam) }} />
+                        <span className="flex-1 min-w-0">
+                          <span className="block truncate text-slate-800 dark:text-slate-200 font-semibold">{exam.titulo}</span>
+                          <span className="block text-[11px] text-slate-400">{courseName(exam)} · {longDate(exam.fecha_programada)}</span>
+                        </span>
+                        {grade ? (
+                          <GradeBadge grade={grade.nota_letra} size="sm" />
+                        ) : (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                            Sin nota aún
+                          </span>
+                        )}
+                        <ChevronRight className="w-3.5 h-3.5 text-slate-300 shrink-0" />
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
+
+          <button
+            ref={pastButtonRef}
+            type="button"
+            onClick={() => setShowPast(v => !v)}
+            aria-expanded={showPast}
+            aria-label="Ver evaluaciones que ya rendiste"
+            title="Evaluaciones que ya rendiste"
+            className="relative w-12 h-12 rounded-full bg-gradient-to-tr from-violet-600 to-indigo-500 text-white flex items-center justify-center shadow-lg shadow-violet-500/30 opacity-80 hover:opacity-100 hover:scale-105 active:scale-95 transition-all cursor-pointer"
+          >
+            {showPast ? <X className="w-5 h-5" /> : <History className="w-5 h-5" />}
+            {!showPast && (
+              <span className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1 rounded-full bg-white text-violet-700 border-2 border-violet-500 text-[10px] font-black flex items-center justify-center">
+                {past.length}
+              </span>
+            )}
+          </button>
+        </div>,
+        document.body
+      )}
+
+      {/* ── MODAL: DETALLE DE UNA EVALUACIÓN YA RENDIDA ── */}
+      {selectedPastExam && (() => {
+        const exam = selectedPastExam;
+        const meta = TYPE_META[exam.tipo];
+        const grade = examGrade(exam);
+        const gradeMeta = grade ? getGradeMeta(grade.nota_letra) : null;
+        const competency = courseOf(exam)?.competencias?.find(c => c.id === exam.competencia_id);
+        const cheer = grade ? GRADE_CHEER[grade.nota_letra as keyof typeof GRADE_CHEER] : null;
+        // Portal al <body>: así el `space-y-4` de la página no le agrega margen superior a la capa fija
+        return createPortal(
+          <div
+            className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in-50"
+            onMouseDown={(e) => { if (e.target === e.currentTarget) setSelectedPastExam(null); }}
+          >
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-label={`Detalle de ${exam.titulo}`}
+              className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl animate-in zoom-in-95 duration-200"
+            >
+              {/* Cabecera con el color del curso */}
+              <div className={`relative px-5 pt-5 pb-4 bg-gradient-to-br ${meta.soft} border-b border-slate-100 dark:border-slate-800`}>
+                <button
+                  type="button"
+                  onClick={() => setSelectedPastExam(null)}
+                  aria-label="Cerrar"
+                  className="absolute top-3 right-3 p-1.5 rounded-xl bg-white/80 dark:bg-slate-800/80 text-slate-500 hover:text-slate-800 dark:hover:text-white cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+                <div className="flex items-start gap-3 pr-8">
+                  <span className={`w-12 h-12 rounded-2xl flex items-center justify-center text-2xl shrink-0 ${meta.chip}`} aria-hidden="true">{meta.emoji}</span>
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold text-white" style={{ backgroundColor: courseColor(exam) }}>
+                        {courseName(exam)}
+                      </span>
+                      <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${meta.chip}`}>{meta.label}</span>
+                    </div>
+                    <h2 className="mt-1.5 text-lg font-black text-slate-900 dark:text-white leading-snug">{exam.titulo}</h2>
+                    <p className="mt-1 text-xs text-slate-600 dark:text-slate-300 flex flex-wrap gap-x-3 gap-y-0.5">
+                      <span className="inline-flex items-center gap-1"><Calendar className="w-3.5 h-3.5 text-violet-500" /> {longDate(exam.fecha_programada)}</span>
+                      {exam.hora_inicio && <span className="inline-flex items-center gap-1"><Clock className="w-3.5 h-3.5 text-sky-500" /> {exam.hora_inicio}</span>}
+                      <span>⏱️ {durationText(exam.duracion_minutos)}</span>
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-5 space-y-4">
+                {/* Nota */}
+                {grade && gradeMeta ? (
+                  <div className="rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700 p-4">
+                    <p className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">Tu nota en la competencia evaluada</p>
+                    <div className="mt-2 flex items-center gap-3">
+                      <GradeBadge grade={grade.nota_letra} size="xl" />
+                      <div className="min-w-0">
+                        <p className="text-sm font-black text-slate-900 dark:text-white">{gradeMeta.label}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">{gradeMeta.desc}</p>
+                      </div>
+                    </div>
+                    {cheer && (
+                      <p className="mt-3 text-sm font-semibold text-slate-700 dark:text-slate-200">{cheer}</p>
+                    )}
+                    {grade.conclusion_descriptiva && (
+                      <p className="mt-2 text-xs italic text-slate-600 dark:text-slate-300 flex gap-1.5">
+                        <MessageCircle className="w-3.5 h-3.5 text-violet-500 shrink-0 mt-0.5" />
+                        <span>&ldquo;{grade.conclusion_descriptiva}&rdquo;</span>
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-dashed border-slate-300 dark:border-slate-700 p-4 flex items-center gap-3">
+                    <span className="text-3xl" aria-hidden="true">⏳</span>
+                    <div>
+                      <p className="text-sm font-black text-slate-900 dark:text-white">Sin nota aún</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">Tu profesor todavía no registra la nota de esta evaluación. ¡Pronto la verás aquí!</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Qué se evaluó */}
+                {competency && (
+                  <div>
+                    <p className="text-xs font-black text-slate-800 dark:text-slate-100">🎯 Competencia evaluada</p>
+                    <p className="mt-0.5 text-sm text-slate-600 dark:text-slate-300">{competency.descripcion}</p>
+                  </div>
+                )}
+                {exam.descripcion && (
+                  <div>
+                    <p className="text-xs font-black text-slate-800 dark:text-slate-100">📖 Qué entró</p>
+                    <p className="mt-0.5 text-sm text-slate-600 dark:text-slate-300">{exam.descripcion}</p>
+                  </div>
+                )}
+                {!!exam.rubrica_criterios?.length && (
+                  <div>
+                    <p className="text-xs font-black text-slate-800 dark:text-slate-100">✅ Lo que se revisó</p>
+                    <ul className="mt-1.5 flex flex-wrap gap-1.5">
+                      {exam.rubrica_criterios.map(c => (
+                        <li key={c.criterio} className="px-2.5 py-1 rounded-full bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 text-xs font-semibold">
+                          {c.criterio}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {!!exam.ponderacion && (
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Esta evaluación vale el <strong className="text-slate-700 dark:text-slate-200">{exam.ponderacion}%</strong> de la nota del bimestre en esta competencia.
+                  </p>
+                )}
+              </div>
+
+              <div className="px-5 pb-5 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedPastExam(null)}
+                  className="px-4 py-2 rounded-xl text-sm font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer"
+                >
+                  Cerrar
+                </button>
+                <Link
+                  href="/estudiante/libreta-notas"
+                  className="px-4 py-2 rounded-xl text-sm font-bold bg-violet-600 hover:bg-violet-700 text-white text-center"
+                >
+                  Ver mi libreta de notas
+                </Link>
+              </div>
+            </div>
+          </div>,
+          document.body
+        );
+      })()}
     </div>
   );
 }

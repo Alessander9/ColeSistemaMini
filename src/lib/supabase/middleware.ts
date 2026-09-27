@@ -1,5 +1,6 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+import { isSupabaseConfigured } from './config';
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({
@@ -13,12 +14,7 @@ export async function updateSession(request: NextRequest) {
 
   // Si Supabase no está configurado con credenciales reales, saltar verificación
   // y dejar que la cookie local maneje la sesión
-  if (
-    !supabaseUrl ||
-    !supabaseAnonKey ||
-    supabaseUrl.includes('demo.supabase.co') ||
-    supabaseAnonKey === 'demo-anon-key'
-  ) {
+  if (!supabaseUrl || !supabaseAnonKey || !isSupabaseConfigured()) {
     return { supabase: null, user: null, response };
   }
 

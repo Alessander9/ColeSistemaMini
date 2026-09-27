@@ -1,24 +1,30 @@
 import { createBrowserClient } from '@supabase/ssr';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { isSupabaseConfigured, SUPABASE_REQUEST_TIMEOUT_MS } from './config';
 
-export function isSupabaseConfigured(): boolean {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!supabaseUrl || !supabaseAnonKey) return false;
-  if (
-    supabaseUrl.includes('demo.supabase.co') ||
-    supabaseUrl.includes('placeholder') ||
-    supabaseAnonKey.includes('placeholder') ||
-    supabaseAnonKey.includes('demo-anon-key')
-  ) {
-    return false;
+export { isSupabaseConfigured };
+
+function fetchWithTimeout(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), SUPABASE_REQUEST_TIMEOUT_MS);
+  if (init?.signal) {
+    init.signal.addEventListener('abort', () => controller.abort(), { once: true });
   }
-  return true;
+  return fetch(input, { ...init, signal: controller.signal }).finally(() => clearTimeout(timer));
 }
 
-export function createClient() {
+let browserClient: SupabaseClient | null = null;
+
+export function createClient(): SupabaseClient {
+  if (browserClient) return browserClient;
+
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://demo.supabase.co';
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'demo-anon-key';
 
-  return createBrowserClient(supabaseUrl, supabaseAnonKey);
+  browserClient = createBrowserClient(supabaseUrl, supabaseAnonKey, {
+    // Sin reintentos automáticos: un fallo se informa enseguida en vez de esperar varios segundos
+    db: { retry: false },
+    global: { fetch: fetchWithTimeout },
+  }) as unknown as SupabaseClient;
+  return browserClient;
 }
-
