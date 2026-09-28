@@ -20,6 +20,13 @@ describe('API Endpoints & Academic Services Suite', () => {
     expect(result.count).toBe(3);
   });
 
+  it('returns no average letter (instead of C) when there are no grades yet', () => {
+    const result = calculateAverage([]);
+    expect(result.averageLetter).toBeNull();
+    expect(result.averageScore).toBe(0);
+    expect(result.count).toBe(0);
+  });
+
   it('determines annual student promotion status', () => {
     const annual = calculateAnnualStatus(['AD', 'A', 'AD', 'A']);
     expect(annual.status).toBe('PROMOVIDO');

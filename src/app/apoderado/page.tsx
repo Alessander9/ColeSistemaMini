@@ -1292,7 +1292,9 @@ export default function ApoderadoDashboardPage() {
                 <span>Estado de Rendimiento Anual</span>
               </div>
               <h3 className="text-xl font-black">
-                {currentChild?.nombre} tiene promedio cualitativo &quot;{averageLetter}&quot; ({annualStatus})
+                {averageLetter
+                  ? <>{currentChild?.nombre} tiene promedio cualitativo &quot;{averageLetter}&quot; ({annualStatus})</>
+                  : <>{currentChild?.nombre} aún no tiene notas registradas</>}
               </h3>
               <p className="text-xs text-slate-300 font-medium">
                 La evaluación formativa CNEB valora el desarrollo de competencias pedagógicas continuas. Puedes descargar la libreta oficial con firmas institucionales y sellos del MINEDU.

@@ -96,8 +96,9 @@ export default function Estudiante360Page() {
   }, [studentGrades]);
 
   const averageInfo = useMemo(() => {
-    if (gradeLetters.length === 0) return null;
-    return calculateAverage(gradeLetters);
+    const result = calculateAverage(gradeLetters);
+    if (!result.averageLetter) return null;
+    return { ...result, averageLetter: result.averageLetter };
   }, [gradeLetters]);
 
   const studentAttendances = useMemo(() => {
@@ -446,7 +447,10 @@ export default function Estudiante360Page() {
                     });
                     
                     const courseLetters = courseGrades.map(g => g.nota_letra);
-                    const courseAvg = courseLetters.length > 0 ? calculateAverage(courseLetters) : null;
+                    const courseResult = calculateAverage(courseLetters);
+                    const courseAvg = courseResult.averageLetter
+                      ? { ...courseResult, averageLetter: courseResult.averageLetter }
+                      : null;
 
                     return (
                       <tr key={course.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">

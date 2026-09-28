@@ -45,16 +45,17 @@ export function vigesimalToGrade(score: number): GradeLetter {
 }
 
 /**
- * Calcula el promedio de una serie de calificaciones cualitativas
+ * Calcula el promedio de una serie de calificaciones cualitativas.
+ * Sin notas registradas devuelve `averageLetter: null` (no "C"): no tener notas no es estar "En inicio".
  */
 export function calculateAverage(grades: GradeLetter[]): {
-  averageLetter: GradeLetter;
+  averageLetter: GradeLetter | null;
   averageScore: number;
   count: number;
 } {
   const validGrades = grades.filter((g) => ['AD', 'A', 'B', 'C'].includes(g));
   if (validGrades.length === 0) {
-    return { averageLetter: 'C', averageScore: 0, count: 0 };
+    return { averageLetter: null, averageScore: 0, count: 0 };
   }
 
   const sum = validGrades.reduce((acc, g) => acc + gradeToNumber(g), 0);
@@ -170,7 +171,7 @@ export function calculateCourseAnnualSummary(
 
   if (validGrades.length > 0) {
     const avg = calculateAverage(validGrades);
-    finalGrade = avg.averageLetter;
+    finalGrade = avg.averageLetter ?? 'C';
     finalScore = avg.averageScore;
   }
 
@@ -330,7 +331,8 @@ export function calculateStudentAnnualReportCard(params: {
     academicYear,
     tutorName,
     courses: effectiveCourses,
-    generalAverageGrade: avg.averageLetter,
+    // El reporte oficial necesita una letra: sin cursos evaluados se mantiene 'C' como antes
+    generalAverageGrade: avg.averageLetter ?? 'C',
     generalAverageScore: avg.averageScore,
     generalVigesimalScore: Number((avg.averageScore * 5).toFixed(1)),
     totalCourses,
@@ -369,7 +371,7 @@ export function calculateAnnualStatus(periodAverages: GradeLetter[]): {
   }
 
   return {
-    finalLetter: averageLetter,
+    finalLetter: averageLetter ?? 'C',
     finalScore: averageScore,
     status,
     statusColor,

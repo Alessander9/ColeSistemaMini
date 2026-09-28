@@ -153,16 +153,16 @@ export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
       items: [
         { href: '/estudiante', label: 'Mi Panel de Aprendizaje', icon: LayoutDashboard },
         { href: '/estudiante/carnet-qr', label: 'Mi Carnet Escolar QR', icon: QrCode, badge: 'Oficial' },
-        { href: '/estudiante/horario', label: 'Mi Horario & Clases', icon: Calendar },
-        { href: '/estudiante/asistencias', label: 'Asistencia & Racha', icon: Clock },
+        { href: '/estudiante/horario', label: 'Mi horario', icon: Calendar },
+        { href: '/estudiante/asistencias', label: 'Mi asistencia', icon: Clock },
       ]
     },
     {
       section: 'MIS ESTUDIOS & METAS',
       items: [
-        { href: '/estudiante/tareas', label: 'Mis Tareas & Misiones', icon: FileText },
-        { href: '/estudiante/evaluaciones', label: 'Calendario de Exámenes', icon: CalendarDays },
-        { href: '/estudiante/libreta-notas', label: 'Libreta Oficial CNEB', icon: Award, badge: 'CNEB', badgeColor: 'bg-purple-500/10 text-purple-600 dark:text-purple-400' },
+        { href: '/estudiante/tareas', label: 'Mis tareas', icon: FileText },
+        { href: '/estudiante/evaluaciones', label: 'Mis evaluaciones', icon: CalendarDays },
+        { href: '/estudiante/libreta-notas', label: 'Mi libreta de notas', icon: Award, badge: 'CNEB', badgeColor: 'bg-purple-500/10 text-purple-600 dark:text-purple-400' },
       ]
     }
   ];

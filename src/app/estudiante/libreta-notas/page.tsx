@@ -338,7 +338,7 @@ export default function EstudianteLibretaNotasPage() {
     { letter: 'C', label: 'En inicio', desc: 'Necesita apoyo para lograrlo', dot: 'bg-rose-500' },
   ] as const;
 
-  const barColor = (letter: string) =>
+  const barColor = (letter: string | null) =>
     letter === 'AD' ? 'bg-purple-500' : letter === 'A' ? 'bg-emerald-500' : letter === 'B' ? 'bg-amber-500' : 'bg-rose-500';
 
   const tabs = [

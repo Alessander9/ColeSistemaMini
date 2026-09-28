@@ -97,7 +97,7 @@ export default function EstudianteDashboardPage() {
   }, [grades, activeEnrollment]);
 
   const studentGradeLetters = myGrades.map(g => g.nota_letra);
-  const { averageLetter, averageScore } = calculateAverage(studentGradeLetters);
+  const { averageLetter } = calculateAverage(studentGradeLetters);
   const { status } = calculateAnnualStatus(studentGradeLetters);
 
   // Attendance calculation 100% real
@@ -419,10 +419,10 @@ export default function EstudianteDashboardPage() {
           <div className="my-3 flex items-center justify-between">
             <div className="flex items-baseline gap-2">
               <span className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">
-                {averageScore > 0 ? averageScore.toFixed(1) : (averageLetter || '—')}
+                {averageLetter || '—'}
               </span>
               <span className="px-2 py-0.5 rounded-lg bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 text-xs font-bold">
-                {averageScore > 0 ? '/20' : 'CNEB'}
+                {averageLetter ? 'CNEB' : 'Sin notas'}
               </span>
             </div>
             <div className="flex items-end gap-1 h-8">
