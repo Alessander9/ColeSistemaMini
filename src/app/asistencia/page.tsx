@@ -37,6 +37,7 @@ import {
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import confetti from 'canvas-confetti';
+import { findStudentByQr, parseQrPayload } from '@/lib/attendance/qrMatcher';
 
 export default function AsistenciaKioscoPage() {
   const router = useRouter();
@@ -262,30 +263,9 @@ export default function AsistenciaKioscoPage() {
 
   // ── Core Attendance Processor & Multi-Format QR Parser ────────────────────
   const handleProcessCode = useCallback((rawInput: string) => {
-    let rawClean = rawInput.trim();
+    // Mismo lector que registerAttendance: JSON, URL o texto plano
+    const rawClean = parseQrPayload(rawInput);
     if (!rawClean) return;
-
-    // Multi-format Parser (JSON payload, URL with params, or Raw Code)
-    if (rawClean.startsWith('{') && rawClean.endsWith('}')) {
-      try {
-        const parsed = JSON.parse(rawClean);
-        rawClean = parsed.token_qr || parsed.codigo || parsed.codigo_estudiante || parsed.dni || parsed.id || rawClean;
-      } catch {
-        /* fallback */
-      }
-    } else if (rawClean.includes('http://') || rawClean.includes('https://')) {
-      try {
-        const urlObj = new URL(rawClean);
-        rawClean = urlObj.searchParams.get('token') || 
-                   urlObj.searchParams.get('code') || 
-                   urlObj.searchParams.get('codigo') || 
-                   urlObj.searchParams.get('dni') || 
-                   urlObj.searchParams.get('id') || 
-                   rawClean;
-      } catch {
-        /* fallback */
-      }
-    }
 
     if (decodeCooldownRef.current && lastDecodeRef.current === rawClean) return;
     lastDecodeRef.current = rawClean;
@@ -310,27 +290,13 @@ export default function AsistenciaKioscoPage() {
     const calculatedStatus: AttendanceStatus = isLate ? 'tardanza' : 'presente';
 
     const normalize = (str?: string) =>
-      str ? str.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "";
+      str ? str.trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "") : "";
     const normClean = normalize(rawClean);
-
-    const codeMatch = rawClean.match(/EST-\d{4}-[\w-]+/i);
-    const extractedCode = codeMatch ? normalize(codeMatch[0]) : '';
-    const dniMatch = rawClean.match(/\b\d{8}\b/);
+    const dniMatch = rawClean.match(/(?<!\d)\d{8}(?!\d)/);
     const extractedDni = dniMatch ? dniMatch[0] : '';
 
-    const foundStudent = students.find((s) => {
-      const sToken = normalize(s.token_qr);
-      const sCode = normalize(s.codigo_estudiante);
-      const sDni = normalize(s.profile?.dni || s.dni);
-      return (
-        (sToken && (sToken === normClean || normClean.includes(sToken) || sToken.includes(normClean))) ||
-        (sCode && (sCode === normClean || normClean.includes(sCode) || sCode.includes(normClean) || (extractedCode && sCode === extractedCode))) ||
-        (sDni && (sDni === normClean || normClean.includes(sDni) || (extractedDni && sDni === extractedDni))) ||
-        s.id === rawClean ||
-        s.profile_id === rawClean ||
-        (normClean.includes(sCode) && sCode.length >= 4)
-      );
-    });
+    // Búsqueda exacta del estudiante (la misma que usa registerAttendance)
+    const foundStudent = findStudentByQr(students, rawClean);
 
     // ── Staff / Teacher Attendance Check ──
     if (!foundStudent) {
@@ -455,7 +421,7 @@ export default function AsistenciaKioscoPage() {
     alertTimeoutRef.current = setTimeout(() => {
       setActiveAlert(null);
     }, 4500);
-  }, [students, enrollments, registerAttendance, playTone]);
+  }, [students, enrollments, users, scanMode, registerAttendance, recordStaffAttendance, playTone]);
 
   // ── USB Barcode & QR Gun Scanner Global Listener ───────────────────────────
   useEffect(() => {

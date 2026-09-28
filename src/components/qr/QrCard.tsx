@@ -127,12 +127,23 @@ export function QrCard({
           <div className="space-y-4">
             <div className="flex items-center gap-4">
               <div className="relative shrink-0">
-                <img
-                  src={student.profile?.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150'}
-                  alt={fullName}
-                  className="w-[88px] h-[88px] rounded-3xl object-cover border-2 shadow-xl"
-                  style={{ borderColor: accentColor }}
-                />
+                {student.profile?.avatar_url ? (
+                  <img
+                    src={student.profile.avatar_url}
+                    alt={fullName}
+                    className="w-[88px] h-[88px] rounded-3xl object-cover border-2 shadow-xl"
+                    style={{ borderColor: accentColor }}
+                  />
+                ) : (
+                  // Sin foto: iniciales (antes se usaba una foto externa que no carga sin internet)
+                  <div
+                    className="w-[88px] h-[88px] rounded-3xl border-2 shadow-xl flex items-center justify-center text-3xl font-black text-white bg-white/10"
+                    style={{ borderColor: accentColor }}
+                    aria-label={fullName}
+                  >
+                    {`${(student.profile?.nombres || student.nombres || 'E')[0]}${(student.profile?.apellidos || student.apellidos || '')[0] || ''}`.toUpperCase()}
+                  </div>
+                )}
                 <div className="absolute -bottom-1 -right-1 text-white p-1.5 rounded-full shadow" style={{ backgroundColor: accentColor }}>
                   <ShieldCheck className="w-3.5 h-3.5" />
                 </div>
@@ -208,7 +219,7 @@ export function QrCard({
             className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl bg-slate-900 text-white hover:bg-slate-800 shadow-md transition-all active:scale-95 border border-slate-700"
           >
             <Download className="w-3.5 h-3.5 text-emerald-400" />
-            Descargar PNG
+            Guardar imagen
           </button>
           <button
             onClick={handlePrint}
@@ -216,7 +227,7 @@ export function QrCard({
             className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl bg-blue-600 text-white hover:bg-blue-700 shadow-md transition-all active:scale-95"
           >
             <Printer className="w-3.5 h-3.5" />
-            Imprimir Carnet
+            Imprimir carnet
           </button>
         </div>
       )}

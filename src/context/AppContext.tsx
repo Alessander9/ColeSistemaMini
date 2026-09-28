@@ -89,6 +89,8 @@ import * as scheduleService from '@/lib/services/scheduleService';
 import * as tasksService from '@/lib/services/tasksService';
 import * as notificationsService from '@/lib/services/notificationsService';
 import { logoutUser } from '@/lib/services/authService';
+import { isSupabaseConfigured } from '@/lib/supabase/config';
+import { findStudentByQr } from '@/lib/attendance/qrMatcher';
 import { gradeToNumber } from '@/lib/grades/calculations';
 import { generateStudentPassword, generateStudentEmail, generateStudentUsername } from '@/lib/auth/generateCredentials';
 
@@ -622,6 +624,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
 
   const refreshData = async () => {
+    // Sin un Supabase real, los servicios devuelven los datos de ejemplo de fábrica:
+    // sincronizar con ellos reemplazaría lo guardado en el navegador (cursos, asignaciones, etc.)
+    if (!isSupabaseConfigured()) return;
     setIsLoading(true);
     try {
       const [
@@ -1038,56 +1043,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     let targetEnrollment: Enrollment | undefined;
 
     if (studentQrToken) {
-      let rawToken = studentQrToken.trim();
-
-      // Multi-format Parser (JSON payload, URL with params, or Raw Code)
-      if (rawToken.startsWith('{') && rawToken.endsWith('}')) {
-        try {
-          const parsed = JSON.parse(rawToken);
-          rawToken = parsed.token_qr || parsed.codigo || parsed.codigo_estudiante || parsed.dni || parsed.id || rawToken;
-        } catch {
-          /* fallback */
-        }
-      } else if (rawToken.includes('http://') || rawToken.includes('https://')) {
-        try {
-          const urlObj = new URL(rawToken);
-          rawToken = urlObj.searchParams.get('token') || 
-                     urlObj.searchParams.get('code') || 
-                     urlObj.searchParams.get('codigo') || 
-                     urlObj.searchParams.get('dni') || 
-                     urlObj.searchParams.get('id') || 
-                     rawToken;
-        } catch {
-          /* fallback */
-        }
-      }
-
-      const normalize = (str?: string) =>
-        str ? str.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "";
-      const normToken = normalize(rawToken);
-
-      // Extraer posible código de estudiante (ej: EST-2026-123456) o DNI numérico de 8 dígitos
-      const codeMatch = rawToken.match(/EST-\d{4}-[\w-]+/i);
-      const extractedCode = codeMatch ? normalize(codeMatch[0]) : '';
-      const dniMatch = rawToken.match(/\b\d{8}\b/);
-      const extractedDni = dniMatch ? dniMatch[0] : '';
-
-      const student = students.find(s => {
-        const sToken = normalize(s.token_qr);
-        const sCode = normalize(s.codigo_estudiante);
-        const sDni = normalize(s.profile?.dni || s.dni);
-        const sId = s.id;
-        const pId = s.profile_id;
-        
-        return (
-          (sToken && (sToken === normToken || normToken.includes(sToken) || sToken.includes(normToken))) ||
-          (sCode && (sCode === normToken || normToken.includes(sCode) || sCode.includes(normToken) || (extractedCode && sCode === extractedCode))) ||
-          (sDni && (sDni === normToken || normToken.includes(sDni) || (extractedDni && sDni === extractedDni))) ||
-          sId === rawToken ||
-          pId === rawToken ||
-          (normToken.includes(sCode) && sCode.length >= 4)
-        );
-      });
+      // Búsqueda exacta compartida con el kiosco (nunca coincidencias parciales)
+      const student = findStudentByQr(students, studentQrToken);
       if (!student) {
         return { success: false, message: 'Código QR no reconocido o estudiante inexistente' };
       }

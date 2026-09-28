@@ -26,7 +26,51 @@ import {
   MessageCircle,
   Download,
   ChevronDown,
+  Sparkles,
 } from 'lucide-react';
+
+// Dibujo y mensaje de ánimo para cada nota (pensado para estudiantes)
+const GRADE_EMOJI = { AD: '🌟', A: '🎉', B: '💪', C: '🌱' } as const;
+const GRADE_CHEER = {
+  AD: '¡Vas excelente! Estás superando lo esperado. Sigue así. 🏆',
+  A: '¡Muy bien! Estás logrando lo que se espera. Puedes llegar a AD. 🚀',
+  B: '¡Vas cerca! Repasa un poco cada día y verás cómo subes. 💪',
+  C: 'Este bimestre es para aprender: pide ayuda a tus profesores, ¡tú puedes! 🌱',
+} as const;
+
+function courseEmoji(name?: string) {
+  const n = (name || '').toLowerCase();
+  if (n.includes('matem')) return '🔢';
+  if (n.includes('comunic')) return '📖';
+  if (n.includes('cienc') || n.includes('tecnol')) return '🌱';
+  if (n.includes('social') || n.includes('historia')) return '🌎';
+  if (n.includes('arte') || n.includes('cultura')) return '🎨';
+  if (n.includes('ingl')) return '🗣️';
+  if (n.includes('físic') || n.includes('fisic')) return '⚽';
+  if (n.includes('relig')) return '🙏';
+  if (n.includes('comput') || n.includes('robot')) return '💻';
+  return '📘';
+}
+
+// Dibujo amigable: libreta con estrella y medalla
+function ReportCardIllustration({ className = '' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 160 120" className={className} aria-hidden="true">
+      <circle cx="80" cy="62" r="50" className="fill-white/60 dark:fill-white/5" />
+      <rect x="42" y="20" width="64" height="86" rx="10" className="fill-white dark:fill-slate-800" stroke="#a855f7" strokeWidth="3" />
+      <rect x="52" y="34" width="30" height="6" rx="3" fill="#d8b4fe" />
+      <rect x="52" y="48" width="44" height="5" rx="2.5" fill="#e9d5ff" />
+      <rect x="52" y="60" width="44" height="5" rx="2.5" fill="#e9d5ff" />
+      <rect x="52" y="72" width="30" height="5" rx="2.5" fill="#e9d5ff" />
+      <rect x="84" y="30" width="14" height="14" rx="4" fill="#10b981" />
+      <text x="91" y="41" textAnchor="middle" fontSize="10" fontWeight="900" fill="#fff">A</text>
+      <circle cx="118" cy="82" r="16" fill="#fbbf24" />
+      <path d="M118 72 l3 6.5 l7 1 l-5 5 l1.2 7 l-6.2 -3.3 l-6.2 3.3 l1.2 -7 l-5 -5 l7 -1 Z" fill="#fff" />
+      <path d="M108 96 l-4 16 l8 -4 l6 6 l2 -14 Z" fill="#f472b6" />
+      <path d="M24 30 l3 6 l6 1 l-4.5 4.5 l1 6.5 l-5.5 -3 l-5.5 3 l1 -6.5 l-4.5 -4.5 l6 -1 Z" fill="#a855f7" />
+    </svg>
+  );
+}
 
 export default function EstudianteLibretaNotasPage() {
   const { 
@@ -332,10 +376,10 @@ export default function EstudianteLibretaNotasPage() {
   const informeCollapsed = informeOverflows && !informeExpanded && informeMaxHeight !== null;
 
   const SCALE = [
-    { letter: 'AD', label: 'Logro destacado', desc: 'Supera lo esperado para su grado', dot: 'bg-purple-500' },
-    { letter: 'A', label: 'Logro esperado', desc: 'Logra lo que se espera en su grado', dot: 'bg-emerald-500' },
-    { letter: 'B', label: 'En proceso', desc: 'Está cerca; necesita practicar un poco más', dot: 'bg-amber-500' },
-    { letter: 'C', label: 'En inicio', desc: 'Necesita apoyo para lograrlo', dot: 'bg-rose-500' },
+    { letter: 'AD', label: 'Logro destacado', desc: 'Supera lo esperado para su grado', kid: '¡Lo haces genial!', dot: 'bg-purple-500' },
+    { letter: 'A', label: 'Logro esperado', desc: 'Logra lo que se espera en su grado', kid: '¡Lo lograste!', dot: 'bg-emerald-500' },
+    { letter: 'B', label: 'En proceso', desc: 'Está cerca; necesita practicar un poco más', kid: 'Ya casi, practica un poco más', dot: 'bg-amber-500' },
+    { letter: 'C', label: 'En inicio', desc: 'Necesita apoyo para lograrlo', kid: 'Pide ayuda, ¡tú puedes!', dot: 'bg-rose-500' },
   ] as const;
 
   const barColor = (letter: string | null) =>
@@ -350,43 +394,65 @@ export default function EstudianteLibretaNotasPage() {
   return (
     <div className="space-y-4 max-w-6xl mx-auto animate-in fade-in duration-200">
 
-      {/* ── ENCABEZADO: título + acciones ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 print:hidden">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-pink-500 text-white flex items-center justify-center shadow-lg shadow-indigo-500/25 shrink-0">
-            <Award className="w-5 h-5" />
-          </div>
-          <div>
-            <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
-              {isApoderadoOrAdmin ? `Libreta de notas de ${studentFirstName}` : 'Mi libreta de notas'}
+      {/* ── CABECERA AMIGABLE: título, resumen en chips y acciones ── */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-purple-100 via-amber-50 to-sky-100 dark:from-purple-950/50 dark:via-slate-900 dark:to-sky-950/40 border border-purple-200/70 dark:border-purple-900/60 px-5 py-4 sm:px-6 print:hidden">
+        <div className="flex items-center justify-between gap-4">
+          <div className="space-y-1 min-w-0">
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-white">
+              {isApoderadoOrAdmin ? 'Libreta de notas de ' : 'Mi libreta de notas'}
+              <span className="text-purple-600 dark:text-purple-300">{isApoderadoOrAdmin ? studentFirstName : ` · ${studentFirstName}`}</span>
             </h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Año escolar {annualReportCard.academicYear} · {classroomName} · Escala CNEB (MINEDU)
+            <p className="text-sm text-slate-600 dark:text-slate-300">
+              {isApoderadoOrAdmin ? 'Así va en cada curso.' : 'Aquí ves cómo vas en cada curso y qué puedes mejorar.'} Año {annualReportCard.academicYear} · {classroomName}
+              {tutorDisplayName !== 'No asignado' ? ` · Tutor(a): ${tutorDisplayName}` : ''}
             </p>
+            <div className="flex flex-wrap gap-2 pt-1.5">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/80 dark:bg-slate-800/80 text-xs font-bold text-slate-700 dark:text-slate-200">
+                {hasAnyGrades ? <>{GRADE_EMOJI[averageLetter as keyof typeof GRADE_EMOJI]} Promedio {averageLetter} · {averageMeta.label.replace(/^\w+ \((.*)\)$/, '$1')}</> : <>⏳ Aún sin notas</>}
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/80 dark:bg-slate-800/80 text-xs font-bold text-slate-700 dark:text-slate-200">
+                📚 {gradedCourses.length} de {analyzedCourses.length} cursos con nota
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/80 dark:bg-slate-800/80 text-xs font-bold text-slate-700 dark:text-slate-200">
+                ✅ Asistencia {hasAttendance ? `${attendanceShown}%` : 'sin registros'}
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/80 dark:bg-slate-800/80 text-xs font-bold text-slate-700 dark:text-slate-200">
+                🎓 {hasAnyGrades ? annualReportCard.finalAcademicStatus : 'Año en curso'}
+              </span>
+            </div>
           </div>
-        </div>
 
-        <div className="flex items-center gap-2 self-start sm:self-center">
-          <button
-            type="button"
-            onClick={() => window.print()}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-            title="Imprimir la libreta"
-          >
-            <Printer className="w-4 h-4" />
-            <span>Imprimir</span>
-          </button>
-          <button
-            type="button"
-            onClick={handleDownloadPdf}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-black rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/20 transition-all active:scale-95 cursor-pointer"
-            title="Descargar la libreta oficial CNEB en PDF"
-          >
-            <Download className="w-4 h-4" />
-            <span>Descargar PDF</span>
-          </button>
+          <div className="flex flex-col items-end gap-2 shrink-0">
+            <ReportCardIllustration className="hidden md:block w-28 h-20 animate-float" />
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl bg-white/80 dark:bg-slate-800/80 hover:bg-white dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition-colors cursor-pointer"
+                title="Imprimir la libreta"
+              >
+                <Printer className="w-3.5 h-3.5" /> Imprimir
+              </button>
+              <button
+                type="button"
+                onClick={handleDownloadPdf}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-black rounded-xl bg-purple-600 hover:bg-purple-700 text-white shadow-sm transition-all active:scale-95 cursor-pointer"
+                title="Descargar la libreta oficial en PDF"
+              >
+                <Download className="w-3.5 h-3.5" /> Descargar PDF
+              </button>
+            </div>
+          </div>
         </div>
       </div>
+
+      {/* Mensaje de ánimo según el promedio */}
+      <p className="px-1 text-sm font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-1.5 print:hidden">
+        <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
+        {!hasAnyGrades
+          ? 'Cuando tus profesores registren tus notas, aparecerán aquí. ¡Sigue esforzándote!'
+          : GRADE_CHEER[averageLetter as keyof typeof GRADE_CHEER]}
+      </p>
 
       {/* ── SELECTOR DE HIJO (apoderado / admin) ── */}
       {isApoderadoOrAdmin && availableChildren.length > 1 && (
@@ -407,12 +473,14 @@ export default function EstudianteLibretaNotasPage() {
                     : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-indigo-300'
                 }`}
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={child.avatar_url || 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150'}
-                  alt={child.nombre}
-                  className="w-7 h-7 rounded-full object-cover"
-                />
+                {child.avatar_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={child.avatar_url} alt={child.nombre} className="w-7 h-7 rounded-full object-cover" />
+                ) : (
+                  <span className="w-7 h-7 rounded-full bg-purple-200 text-purple-800 flex items-center justify-center text-[10px] font-black">
+                    {`${child.nombre?.[0] || ''}${child.apellidos?.[0] || ''}`.toUpperCase()}
+                  </span>
+                )}
                 <span>{child.nombre}</span>
                 <span className={`text-[10px] font-medium ${isSelected ? 'text-indigo-100' : 'text-slate-400'}`}>
                   {child.grado_nombre} &quot;{child.seccion_letra}&quot;
@@ -423,72 +491,17 @@ export default function EstudianteLibretaNotasPage() {
         </div>
       )}
 
-      {/* ── RESUMEN DEL AÑO: 4 datos clave ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className="col-span-2 lg:col-span-1 flex items-center gap-3 p-3 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={studentProfile?.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150'}
-            alt={studentProfile?.nombres || 'Estudiante'}
-            className="w-12 h-12 rounded-2xl object-cover border-2 border-indigo-500 shrink-0"
-          />
-          <div className="min-w-0">
-            <p className="text-sm font-black text-slate-900 dark:text-white truncate">
-              {studentProfile?.nombres} {studentProfile?.apellidos}
-            </p>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">Tutor(a): {tutorDisplayName}</p>
-            <p className="text-[11px] text-slate-400 font-mono truncate">Código {activeStudent?.codigo_estudiante || '—'}</p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3 p-3 rounded-3xl bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200/70 dark:border-indigo-900/60">
-          {hasAnyGrades ? <GradeBadge grade={averageLetter} size="lg" /> : (
-            <span className="w-11 h-9 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400 font-black flex items-center justify-center">—</span>
-          )}
-          <div className="min-w-0">
-            <p className="text-[10px] font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400">Promedio general</p>
-            <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
-              {hasAnyGrades ? averageMeta.label.replace(/^\w+ \((.*)\)$/, '$1') : 'Aún sin notas'}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3 p-3 rounded-3xl bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200/70 dark:border-emerald-900/60">
-          <span className="w-11 h-9 rounded-lg bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-            <Calendar className="w-5 h-5" />
-          </span>
-          <div className="min-w-0">
-            <p className="text-[10px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Asistencia</p>
-            <p className="text-base font-black text-emerald-700 dark:text-emerald-300 leading-tight">
-              {hasAttendance ? `${attendanceShown}%` : 'Sin registros'}
-            </p>
-          </div>
-        </div>
-
-        <div className="col-span-2 lg:col-span-1 flex items-center gap-3 p-3 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm">
-          <span className="w-11 h-9 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-            <ShieldCheck className="w-5 h-5" />
-          </span>
-          <div className="min-w-0">
-            <p className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">Situación del año</p>
-            <p className="text-sm font-black text-slate-900 dark:text-white leading-tight">{hasAnyGrades ? annualReportCard.finalAcademicStatus : 'Año en curso'}</p>
-            {hasAnyGrades && (
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">Conducta: {annualReportCard.conductGrade}</p>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* ── LEYENDA SIEMPRE VISIBLE: qué significa cada nota ── */}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 px-4 py-2.5 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/70 dark:border-slate-800 text-xs print:hidden">
-        <span className="font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-          <HelpCircle className="w-4 h-4 text-indigo-500" /> ¿Qué significa cada nota?
-        </span>
+      {/* ── LEYENDA CON DIBUJOS: qué significa cada nota ── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 print:hidden">
         {SCALE.map(s => (
-          <span key={s.letter} className="inline-flex items-center gap-1.5 text-slate-700 dark:text-slate-300" title={s.desc}>
+          <div key={s.letter} className="flex items-center gap-2.5 px-3 py-2 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800" title={s.desc}>
+            <span className="text-2xl" aria-hidden="true">{GRADE_EMOJI[s.letter]}</span>
             <GradeBadge grade={s.letter} size="sm" />
-            <span className="font-semibold">{s.label}</span>
-          </span>
+            <span className="min-w-0">
+              <span className="block text-xs font-black text-slate-800 dark:text-slate-100 truncate">{s.label}</span>
+              <span className="block text-[11px] text-slate-500 dark:text-slate-400 leading-tight">{s.kid}</span>
+            </span>
+          </div>
         ))}
       </div>
 
@@ -621,10 +634,10 @@ export default function EstudianteLibretaNotasPage() {
                       className="w-full flex items-center gap-3 px-3.5 py-3 text-left cursor-pointer"
                     >
                       <span
-                        className="w-9 h-9 rounded-xl flex items-center justify-center font-black text-white text-xs shrink-0"
-                        style={{ backgroundColor: course.color_hex || '#4f46e5' }}
+                        className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                        style={{ backgroundColor: `${course.color_hex || '#8b5cf6'}22` }}
                       >
-                        {course.nombre.substring(0, 2).toUpperCase()}
+                        <span className="text-xl" aria-hidden="true">{courseEmoji(course.nombre)}</span>
                       </span>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-black text-slate-900 dark:text-white truncate">{course.nombre}</p>
