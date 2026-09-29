@@ -1,1137 +1,720 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
-import { useApp } from '@/context/AppContext';
-import { 
-  QrCode, 
-  Award, 
-  BookOpen, 
-  Users, 
-  ArrowRight, 
-  CheckCircle2, 
-  FileText, 
-  Calendar, 
-  Clock, 
-  Sparkles, 
-  MapPin, 
-  Check, 
-  ChevronRight, 
-  GraduationCap, 
-  Plus, 
-  Layers, 
-  FileCheck,
-  AlertCircle,
-  Play,
-  Search,
-  CheckCheck,
-  UserCheck,
-  School,
-  XCircle,
-  HelpCircle,
-  ShieldCheck,
-  CheckSquare
-} from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import confetti from 'canvas-confetti';
-import { AttendanceStatus } from '@/types';
+import { useApp } from '@/context/AppContext';
+import { AttendanceStatus, DayOfWeek, ScheduleSlot } from '@/types';
+import {
+  Award,
+  Bell,
+  Calendar,
+  Check,
+  CheckCheck,
+  CheckCircle2,
+  ChevronDown,
+  ChevronRight,
+  Clock,
+  FileCheck,
+  Hourglass,
+  Lock,
+  MapPin,
+  Plus,
+  Search,
+  UserCheck,
+  XCircle,
+} from 'lucide-react';
+import { getSectionClassStatus, nextClassStart, timeLeftInWords } from '@/lib/schedule/attendanceWindow';
+import { Modal } from '@/components/ui/Modal';
+import { useAulaColors } from '@/hooks/useAulaColors';
+
+const WEEKDAY_KEYS: (DayOfWeek | null)[] = [null, 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', null];
+const DAY_LABELS: Record<string, string> = { lunes: 'Lunes', martes: 'Martes', miercoles: 'Miércoles', jueves: 'Jueves', viernes: 'Viernes' };
+
+// Botones de asistencia: letra, nombre completo y colores
+const STATUS_BUTTONS: { status: AttendanceStatus; letter: string; label: string; on: string; hover: string; row: string }[] = [
+  { status: 'presente', letter: 'P', label: 'Presente', on: 'bg-emerald-600 text-white', hover: 'hover:bg-emerald-100 dark:hover:bg-emerald-950/40', row: 'bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800' },
+  { status: 'tardanza', letter: 'T', label: 'Tardanza', on: 'bg-amber-500 text-white', hover: 'hover:bg-amber-100 dark:hover:bg-amber-950/40', row: 'bg-amber-50/80 dark:bg-amber-950/30 border-amber-300 dark:border-amber-800/60' },
+  { status: 'falta', letter: 'F', label: 'Falta', on: 'bg-rose-600 text-white', hover: 'hover:bg-rose-100 dark:hover:bg-rose-950/40', row: 'bg-rose-50/80 dark:bg-rose-950/30 border-rose-300 dark:border-rose-800/60' },
+  { status: 'justificado', letter: 'J', label: 'Justificada', on: 'bg-sky-600 text-white', hover: 'hover:bg-sky-100 dark:hover:bg-sky-950/40', row: 'bg-sky-50/80 dark:bg-sky-950/30 border-sky-300 dark:border-sky-800/60' },
+];
+
+// Cuenta regresiva en vivo (se actualiza cada segundo mientras la ventana está abierta)
+function Countdown({ target, onReady }: { target: Date; onReady: () => void }) {
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  const readyRef = useRef(false);
+  useEffect(() => {
+    const id = setInterval(() => setNowMs(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const left = Math.max(0, target.getTime() - nowMs);
+  useEffect(() => {
+    if (left === 0 && !readyRef.current) { readyRef.current = true; onReady(); }
+  }, [left, onReady]);
+  const h = Math.floor(left / 3_600_000);
+  const m = Math.floor((left % 3_600_000) / 60_000);
+  const sec = Math.floor((left % 60_000) / 1000);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return (
+    <div className="text-center space-y-1">
+      <p className="text-sm font-bold text-slate-600 dark:text-slate-300">Faltan</p>
+      <p className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white">{timeLeftInWords(left)}</p>
+      {left < 86_400_000 && (
+        <p className="font-mono text-2xl font-black tracking-widest text-slate-500 dark:text-slate-400" aria-hidden="true">{pad(h)}:{pad(m)}:{pad(sec)}</p>
+      )}
+    </div>
+  );
+}
+
+function localIso(d = new Date()) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function timeText(hhmm: string) {
+  const [h, m] = hhmm.split(':').map(Number);
+  const d = new Date();
+  d.setHours(h, m || 0, 0, 0);
+  return d.toLocaleTimeString('es-PE', { hour: 'numeric', minute: '2-digit' });
+}
 
 export default function DocenteDashboardPage() {
-  const { 
-    courses, 
-    students, 
-    enrollments, 
-    attendances, 
-    tasks, 
-    submissions, 
-    exams, 
-    currentUser, 
-    getCurrentOrNextClass, 
+  const {
+    courses,
+    sections,
+    enrollments,
+    attendances,
+    tasks,
+    submissions,
+    exams,
+    evaluationPeriods,
+    currentUser,
+    getTeacherSchedule,
     getTeacherSections,
     saveClassAttendanceQuickly,
-    registerAttendance,
     announcements,
     confirmAnnouncement,
-    showToast 
   } = useApp();
+  const aulaColor = useAulaColors();
 
-  const { currentSlot, nextSlot, todaySlots = [] } = currentUser?.id ? getCurrentOrNextClass(currentUser.id) : { currentSlot: null, nextSlot: null, todaySlots: [] };
-  
-  // Aulas designadas del profesor 100% reales
-  const teacherSections = useMemo(() => {
-    return currentUser?.id ? (getTeacherSections(currentUser.id) || []) : [];
-  }, [getTeacherSections, currentUser]);
+  // Hora actual que se actualiza sola cada 30 s (habilita/deshabilita la asistencia sin recargar)
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 30000);
+    return () => clearInterval(id);
+  }, []);
+  const todayStr = localIso(now);
+  const todayKey = WEEKDAY_KEYS[now.getDay()];
+  const nowHHMM = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
-  // Aula seleccionada para el pase de asistencia rápido en el dashboard
-  const [selectedSectionId, setSelectedSectionId] = useState<string>(
-    teacherSections[0]?.seccion.id || ''
+  // ── Horario del docente ──
+  const mySlots = useMemo(() => (currentUser?.id ? getTeacherSchedule(currentUser.id) : []), [getTeacherSchedule, currentUser?.id]);
+  const todaySlots = useMemo(
+    () => (todayKey ? mySlots.filter(s => s.dia === todayKey).sort((a, b) => a.hora_inicio.localeCompare(b.hora_inicio)) : []),
+    [mySlots, todayKey]
+  );
+  const currentSlot = todaySlots.find(s => s.hora_inicio <= nowHHMM && nowHHMM < s.hora_fin) || null;
+  const nextToday = todaySlots.find(s => s.hora_inicio > nowHHMM) || null;
+  // Si hoy ya no hay clases, la primera del próximo día con clases
+  const nextDaySlot = useMemo(() => {
+    if (currentSlot || nextToday) return null;
+    const order: DayOfWeek[] = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes'];
+    const start = todayKey ? order.indexOf(todayKey) + 1 : 0;
+    for (let i = 0; i < order.length; i++) {
+      const key = order[(start + i) % order.length];
+      const first = mySlots.filter(s => s.dia === key).sort((a, b) => a.hora_inicio.localeCompare(b.hora_inicio))[0];
+      if (first) return first;
+    }
+    return null;
+  }, [currentSlot, nextToday, mySlots, todayKey]);
+  const featured: ScheduleSlot | null = currentSlot || nextToday || nextDaySlot;
+
+  const courseName = (id?: string) => courses.find(c => c.id === id)?.nombre || 'Curso';
+  const sectionOf = (id?: string) => sections.find(s => s.id === id);
+  const sectionLabel = (id?: string) => {
+    const s = sectionOf(id);
+    return s ? `${s.grado?.nombre || 'Grado'} "${s.letra}"` : 'Aula';
+  };
+
+  // ── Aulas del docente y asistencia ──
+  const teacherSections = useMemo(() => (currentUser?.id ? getTeacherSections(currentUser.id) || [] : []), [getTeacherSections, currentUser?.id]);
+  const [selectedSectionId, setSelectedSectionId] = useState('');
+  // Desde "Mi horario" se llega con ?aula=<id> para abrir esa aula directamente (tiene prioridad)
+  const aulaFromUrlRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (aulaFromUrlRef.current !== null || teacherSections.length === 0) return;
+    const aula = new URLSearchParams(window.location.search).get('aula') || '';
+    aulaFromUrlRef.current = aula;
+    if (aula && teacherSections.some(t => t.seccion.id === aula)) {
+      setSelectedSectionId(aula);
+      setTimeout(() => document.getElementById('tomar-asistencia')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150);
+    }
+  }, [teacherSections]);
+  useEffect(() => {
+    if (aulaFromUrlRef.current) return;
+    if (!selectedSectionId && teacherSections.length > 0) {
+      setSelectedSectionId(featured?.seccion_id && teacherSections.some(t => t.seccion.id === featured.seccion_id) ? featured.seccion_id : teacherSections[0].seccion.id);
+    }
+  }, [teacherSections, featured?.seccion_id, selectedSectionId]);
+
+  const [draft, setDraft] = useState<Record<string, AttendanceStatus>>({});
+  const [search, setSearch] = useState('');
+  const [showLockedList, setShowLockedList] = useState(false);
+  useEffect(() => { setDraft({}); setSearch(''); setShowLockedList(false); }, [selectedSectionId]);
+
+  const sectionEnrollments = useMemo(
+    () => enrollments
+      .filter(e => e.seccion_id === selectedSectionId && e.estado === 'activo')
+      .sort((a, b) => (a.estudiante?.profile?.apellidos || a.estudiante?.apellidos || '').localeCompare(b.estudiante?.profile?.apellidos || b.estudiante?.apellidos || '')),
+    [enrollments, selectedSectionId]
+  );
+  const savedStatus = (matriculaId: string) =>
+    attendances.find(a => a.matricula_id === matriculaId && a.fecha === todayStr && a.tipo_registro !== 'salida')?.estado;
+  const statusOf = (matriculaId: string): AttendanceStatus => draft[matriculaId] || savedStatus(matriculaId) || 'presente';
+  // Un cambio es una marca distinta de lo que se ve sin tocar nada (lo guardado o "Presente" por defecto)
+  const baseStatus = (matriculaId: string): AttendanceStatus => savedStatus(matriculaId) || 'presente';
+  const pendingChanges = Object.entries(draft).filter(([id, st]) => st !== baseStatus(id)).length;
+
+  const isSectionTaken = (secId: string) => {
+    const list = enrollments.filter(e => e.seccion_id === secId && e.estado === 'activo');
+    return list.length > 0 && list.every(e => !!attendances.find(a => a.matricula_id === e.id && a.fecha === todayStr && a.tipo_registro !== 'salida'));
+  };
+  const takenToday = isSectionTaken(selectedSectionId);
+
+  // Regla: la asistencia de un aula solo se toma durante la hora de su clase (la misma de "Mi horario")
+  const classStatusOf = (secId: string): { open: boolean; chip: string; message: string; slot?: ScheduleSlot } => {
+    const st = getSectionClassStatus(mySlots, secId, todayKey, nowHHMM);
+    if (st.kind === 'open') {
+      return { open: true, slot: st.slot, chip: '🟢 En clase ahora', message: `Clase de ${courseName(st.slot.curso_id)} en curso · puedes tomar la asistencia hasta las ${timeText(st.slot.hora_fin)}` };
+    }
+    if (st.kind === 'later-today') {
+      return { open: false, slot: st.slot, chip: `Hoy a las ${timeText(st.slot.hora_inicio)}`, message: `Se habilita hoy a las ${timeText(st.slot.hora_inicio)}` };
+    }
+    if (st.kind === 'next-day') {
+      return {
+        open: false,
+        slot: st.slot,
+        chip: st.hadClassToday ? 'Hoy ya terminó' : 'Sin clase hoy',
+        message: `${st.hadClassToday ? 'La clase de hoy ya terminó. ' : ''}Se habilita el ${(DAY_LABELS[st.slot.dia] || '').toLowerCase()} a las ${timeText(st.slot.hora_inicio)}`,
+      };
+    }
+    return { open: false, chip: 'Sin horario', message: 'Esta aula aún no tiene clases en tu horario' };
+  };
+  const selectedStatus = selectedSectionId ? classStatusOf(selectedSectionId) : null;
+  const canEdit = !!selectedStatus?.open;
+
+  const counts = sectionEnrollments.reduce(
+    (acc, e) => { acc[statusOf(e.id)]++; return acc; },
+    { presente: 0, tardanza: 0, falta: 0, justificado: 0 } as Record<AttendanceStatus, number>
   );
 
-  // Active or upcoming class details
-  const featuredClass = currentSlot || nextSlot || todaySlots[0];
+  const visibleStudents = sectionEnrollments.filter(e => {
+    const name = `${e.estudiante?.profile?.apellidos || e.estudiante?.apellidos || ''} ${e.estudiante?.profile?.nombres || e.estudiante?.nombres || ''}`.toLowerCase();
+    return name.includes(search.trim().toLowerCase());
+  });
 
-  // Fix 1.1: Sincronizar selectedSectionId cuando teacherSections o featuredClass carga
-  useEffect(() => {
-    if (featuredClass?.seccion?.id && !selectedSectionId) {
-      setSelectedSectionId(featuredClass.seccion.id);
-    } else if (teacherSections.length > 0 && !selectedSectionId) {
-      setSelectedSectionId(teacherSections[0].seccion.id);
-    }
-  }, [featuredClass, teacherSections, selectedSectionId]);
-
-  // Estados locales para el pase rápido de asistencia en el dashboard
-  const [studentSearchQuery, setStudentSearchQuery] = useState('');
-  const [statusOverrides, setStatusOverrides] = useState<Record<string, AttendanceStatus>>({});
-  const [isSavingAttendance, setIsSavingAttendance] = useState(false);
-  const [closedSections, setClosedSections] = useState<Record<string, boolean>>({});
-  const [attendanceFilterMode, setAttendanceFilterMode] = useState<'todos' | 'ausentes'>('todos');
-
-  const todayStr = new Date().toISOString().split('T')[0];
-
-  // Matrículas reales del aula seleccionada
-  const selectedSectionEnrollments = useMemo(() => {
-    return enrollments.filter(e => e.seccion_id === selectedSectionId && e.estado === 'activo');
-  }, [enrollments, selectedSectionId]);
-
-  // Alumnos filtrados por búsqueda y por modo dentro del aula
-  const displayedStudents = useMemo(() => {
-    return selectedSectionEnrollments.filter(enr => {
-      const currentSt = statusOverrides[enr.id] || attendances.find(a => a.matricula_id === enr.id && a.fecha === todayStr)?.estado || 'presente';
-      if (attendanceFilterMode === 'ausentes' && currentSt === 'presente') {
-        return false;
-      }
-      const fullName = `${enr.estudiante?.profile?.apellidos || ''} ${enr.estudiante?.profile?.nombres || ''} ${enr.estudiante?.codigo_estudiante || ''}`.toLowerCase();
-      return fullName.includes(studentSearchQuery.toLowerCase());
-    });
-  }, [selectedSectionEnrollments, studentSearchQuery, attendanceFilterMode, statusOverrides, attendances, todayStr]);
-
-  // Obtener estado actual de un estudiante
-  const getStudentCurrentStatus = (matriculaId: string): AttendanceStatus => {
-    if (statusOverrides[matriculaId]) return statusOverrides[matriculaId];
-    const existing = attendances.find(a => a.matricula_id === matriculaId && a.fecha === todayStr);
-    return existing ? existing.estado : 'presente';
+  const markAllPresent = () => {
+    if (!canEdit) return;
+    const next: Record<string, AttendanceStatus> = {};
+    sectionEnrollments.forEach(e => { next[e.id] = 'presente'; });
+    setDraft(next);
   };
 
-  // Cambiar estado individual de un alumno en 1 toque
-  const handleToggleStatus = (matriculaId: string, status: AttendanceStatus) => {
-    setStatusOverrides(prev => ({ ...prev, [matriculaId]: status }));
-    registerAttendance({
-      matriculaId,
-      status,
-      metodo: 'manual',
-    });
-  };
-
-  // Marcar todos presentes en 1 click
-  const handleMarkAllPresent = () => {
-    const overrides: Record<string, AttendanceStatus> = {};
-    selectedSectionEnrollments.forEach(enr => {
-      overrides[enr.id] = 'presente';
-      registerAttendance({
-        matriculaId: enr.id,
-        status: 'presente',
-        metodo: 'manual',
-      });
-    });
-    setStatusOverrides(overrides);
-    showToast('Todos los alumnos del aula marcados como PRESENTES', 'success', '✓ Asistencia Rápida');
-  };
-
-  // Guardar y cerrar asistencia de la sección seleccionada
-  const handleSaveSectionAttendance = () => {
-    setIsSavingAttendance(true);
-    
-    const exceptions = selectedSectionEnrollments
-      .map(enr => ({
-        matriculaId: enr.id,
-        estado: getStudentCurrentStatus(enr.id)
-      }));
-
-    saveClassAttendanceQuickly(selectedSectionId, todayStr, exceptions);
-    setClosedSections(prev => ({ ...prev, [selectedSectionId]: true }));
-    setIsSavingAttendance(false);
-
+  const saveAttendance = () => {
+    if (!canEdit || !selectedSectionId || sectionEnrollments.length === 0) return;
+    saveClassAttendanceQuickly(
+      selectedSectionId,
+      todayStr,
+      sectionEnrollments.map(e => ({ matriculaId: e.id, estado: statusOf(e.id) }))
+    );
+    setDraft({});
     confetti({ particleCount: 40, spread: 60, origin: { y: 0.7 } });
-    showToast('Asistencia del aula guardada y sincronizada exitosamente.', 'success', '✓ Asistencia Cerrada');
   };
 
-  // Contadores de asistencia en vivo para el aula activa
-  const attendanceStats = useMemo(() => {
-    let present = 0;
-    let late = 0;
-    let absent = 0;
-    let justified = 0;
+  const listRef = useRef<HTMLDivElement>(null);
 
-    selectedSectionEnrollments.forEach(enr => {
-      const st = getStudentCurrentStatus(enr.id);
-      if (st === 'presente') present++;
-      else if (st === 'tardanza') late++;
-      else if (st === 'falta') absent++;
-      else if (st === 'justificado') justified++;
-    });
+  // ── Pendientes ──
+  const myTaskIds = useMemo(() => new Set(tasks.filter(t => t.docente_id === currentUser?.id).map(t => t.id)), [tasks, currentUser?.id]);
+  const toGrade = submissions.filter(s => myTaskIds.has(s.tarea_id) && !s.calificacion_letra).length;
+  // Solo las evaluaciones de los cursos que dicta en cada aula
+  const myCoursePairs = new Set(teacherSections.flatMap(t => t.cursos.map(c => `${t.seccion.id}|${c.id}`)));
+  const upcomingExams = exams
+    .filter(e => myCoursePairs.has(`${e.seccion_id}|${e.curso_id}`) && e.fecha_programada >= todayStr && e.estado !== 'borrador')
+    .sort((a, b) => a.fecha_programada.localeCompare(b.fecha_programada));
+  const currentPeriod = evaluationPeriods.find(p => p.fecha_inicio <= todayStr && todayStr <= p.fecha_fin);
+  const daysToClose = currentPeriod
+    ? Math.round((new Date(`${currentPeriod.fecha_fin}T00:00:00`).getTime() - new Date(`${todayStr}T00:00:00`).getTime()) / 86400000)
+    : null;
 
-    const total = selectedSectionEnrollments.length || 1;
-    const rate = Math.round((present / total) * 100);
+  // ── Comunicados para docentes ──
+  const [showAllNotices, setShowAllNotices] = useState(false);
+  const teacherNotices = announcements
+    .filter(a => !a.destinatarios_rol || a.destinatarios_rol === 'todos' || a.destinatarios_rol === 'docente')
+    .map(a => ({ a, needsConfirm: !!a.requiere_confirmacion && !(currentUser?.id && a.confirmado_por?.includes(currentUser.id)) }))
+    .sort((x, y) => Number(y.needsConfirm) - Number(x.needsConfirm));
+  const noticesToConfirm = teacherNotices.filter(n => n.needsConfirm).length;
+  const shownNotices = showAllNotices ? teacherNotices : teacherNotices.slice(0, 2);
 
-    return { present, late, absent, justified, total: selectedSectionEnrollments.length, rate };
-  }, [selectedSectionEnrollments, statusOverrides, attendances, todayStr]);
+  const hour = now.getHours();
+  const greeting = hour < 12 ? 'Buenos días' : hour < 18 ? 'Buenas tardes' : 'Buenas noches';
+  const firstName = currentUser?.nombres?.split(' ')[0] || 'Docente';
+  const longDate = (() => {
+    const t = now.toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long' });
+    return t.charAt(0).toUpperCase() + t.slice(1);
+  })();
+  const selectedLabel = sectionLabel(selectedSectionId);
 
-  // Tareas pendientes
-  const myTasks = useMemo(() => {
-    if (!currentUser?.id) return [];
-    return tasks.filter(t => t.docente_id === currentUser.id);
-  }, [tasks, currentUser]);
+  // "Tomar asistencia" siempre se puede tocar: si la clase está en curso va a la lista; si no, explica cuánto falta
+  const [waitSlot, setWaitSlot] = useState<ScheduleSlot | null>(null);
+  const openClass = (slot: ScheduleSlot) => {
+    if (currentSlot && slot.id === currentSlot.id) scrollToAttendance(slot.seccion_id);
+    else setWaitSlot(slot);
+  };
+  // Al llegar la hora, se actualiza el reloj del panel y la ventana muestra "Tomar asistencia ahora"
+  const onClassReady = useCallback(() => setNow(new Date()), []);
+  const toMinutes = (hhmm: string) => { const [h, m] = hhmm.split(':').map(Number); return h * 60 + (m || 0); };
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  const minutesText = (mins: number) => timeLeftInWords(Math.max(0, mins) * 60_000);
+  // Tiempo exacto hasta una hora de hoy (mismo cálculo que la cuenta regresiva)
+  const untilToday = (hhmm: string) => { const [h, m] = hhmm.split(':').map(Number); const t = new Date(now); t.setHours(h, m || 0, 0, 0); return timeLeftInWords(Math.max(0, t.getTime() - now.getTime())); };
+  const featuredStart = featured && !currentSlot ? nextClassStart(featured, now) : null;
+  const classProgress = currentSlot
+    ? Math.min(100, Math.max(0, Math.round(((nowMinutes - toMinutes(currentSlot.hora_inicio)) / Math.max(1, toMinutes(currentSlot.hora_fin) - toMinutes(currentSlot.hora_inicio))) * 100)))
+    : 0;
 
-  const pendingReviewSubmissions = useMemo(() => {
-    return submissions.filter(s => {
-      const isMyTask = myTasks.some(t => t.id === s.tarea_id);
-      return isMyTask && !s.calificacion_letra;
-    });
-  }, [submissions, myTasks]);
-
-  const teacherFirstName = currentUser?.nombres?.split(' ')[0] || 'Docente';
-
-  // Cálculos dinámicos 100% reales para el profesor
-  const totalAssignedStudentsCount = useMemo(() => {
-    const teacherSecIds = teacherSections.map(ts => ts.seccion.id);
-    return enrollments.filter(e => teacherSecIds.includes(e.seccion_id) && e.estado === 'activo').length;
-  }, [teacherSections, enrollments]);
-
-  const teacherAverageAttendance = useMemo(() => {
-    const teacherSecIds = teacherSections.map(ts => ts.seccion.id);
-    const teacherEnrollments = enrollments.filter(e => teacherSecIds.includes(e.seccion_id));
-    const enrIds = teacherEnrollments.map(e => e.id);
-    const teacherAtts = attendances.filter(a => enrIds.includes(a.matricula_id));
-    if (teacherAtts.length === 0) return '0%';
-    const presents = teacherAtts.filter(a => a.estado === 'presente').length;
-    return `${Math.round((presents / teacherAtts.length) * 100)}%`;
-  }, [teacherSections, enrollments, attendances]);
-
-  // Saludo dinámico según la hora
-  const currentHour = new Date().getHours();
-  const greeting = currentHour < 12 ? 'Buenos días' : currentHour < 18 ? 'Buenas tardes' : 'Buenas noches';
-
-  const featuredCourse = courses.find(c => c.id === featuredClass?.curso_id);
-  const activeSelectedSection = teacherSections.find(ts => ts.seccion.id === selectedSectionId) || teacherSections[0];
+  const scrollToAttendance = (secId?: string) => {
+    if (secId && teacherSections.some(t => t.seccion.id === secId)) setSelectedSectionId(secId);
+    document.getElementById('tomar-asistencia')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto pb-16 font-sans">
-      
-      {/* ── 1. HERO COCKPIT PEDAGÓGICO (CLASE EN CURSO / ACCIÓN INMEDIATA) ── */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-900 via-slate-900 to-indigo-950 text-white p-6 sm:p-8 shadow-xl shadow-blue-950/20 border border-blue-700/30">
-        <div className="absolute top-0 right-0 -mt-8 -mr-8 w-96 h-96 bg-blue-500/15 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-1/3 -mb-12 w-64 h-64 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
+    <div className="space-y-5 max-w-7xl mx-auto pb-10 animate-in fade-in-50">
 
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-          <div className="space-y-2 max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-blue-200 text-xs font-semibold">
-              <GraduationCap className="w-3.5 h-3.5 text-blue-400" />
-              <span>Gestión Pedagógica Docente • Año Escolar 2026</span>
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse ml-1" />
-            </div>
-
-            <h1 className="text-2xl sm:text-4xl font-black tracking-tight text-white flex items-center gap-2.5">
-              <span suppressHydrationWarning>{greeting}</span>, Prof. <span suppressHydrationWarning>{teacherFirstName}</span> <span className="inline-block animate-wave origin-bottom-right">👋</span>
-            </h1>
-            <p className="text-xs sm:text-sm text-slate-300 font-normal leading-relaxed">
-              Tienes <strong className="text-white font-bold">{todaySlots.length} sesiones programadas</strong> y <strong className="text-white font-bold">{teacherSections.length} aulas designadas</strong> para el pase de asistencia rápido.
-            </p>
-
-            {/* Banner de Clase Activa / Próxima */}
-            {featuredClass && (
-              <div className="mt-4 p-4 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-3.5">
-                  <div className={`w-12 h-12 rounded-2xl flex flex-col items-center justify-center font-black text-xs shrink-0 shadow-md ${
-                    currentSlot 
-                      ? 'bg-emerald-500 text-white shadow-emerald-500/30 ring-2 ring-white/30 animate-pulse' 
-                      : 'bg-indigo-600 text-white shadow-indigo-600/30'
-                  }`}>
-                    <span>{featuredClass.hora_inicio}</span>
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-sm sm:text-base font-bold text-white">
-                        {featuredCourse?.nombre || 'Matemática'}
-                      </h3>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                        currentSlot 
-                          ? 'bg-emerald-500/30 text-emerald-300 border border-emerald-400/40' 
-                          : 'bg-blue-500/30 text-blue-200 border border-blue-400/40'
-                      }`}>
-                        {currentSlot ? '● En Curso Ahora' : 'Próxima Clase'}
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-300 mt-0.5 flex items-center gap-2">
-                      <span>{featuredClass.seccion?.grado?.nombre || '3° Primaria'} — Sección &quot;{featuredClass.seccion?.letra || 'A'}&quot;</span>
-                      <span>•</span>
-                      <span className="flex items-center gap-1"><MapPin className="w-3 h-3 text-slate-400" /> {featuredClass.aula || 'Aula 204'}</span>
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (featuredClass.seccion?.id) {
-                        setSelectedSectionId(featuredClass.seccion.id);
-                        document.getElementById('pase-asistencia-rapido')?.scrollIntoView({ behavior: 'smooth' });
-                      }
-                    }}
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-white text-xs font-bold shadow-md shadow-emerald-500/30 transition-all active:scale-95 cursor-pointer"
-                  >
-                    <UserCheck className="w-4 h-4" />
-                    <span>Tomar Asistencia</span>
-                  </button>
-                  <Link
-                    href="/docente/notas"
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/15 hover:bg-white/25 border border-white/20 text-white text-xs font-bold transition-all"
-                  >
-                    <Award className="w-4 h-4 text-amber-300" />
-                    <span>Notas</span>
-                  </Link>
-                </div>
-              </div>
-            )}
-
-            {/* Alerta de Tareas Pendientes de Revisión */}
-            {pendingReviewSubmissions.length > 0 && (
-              <div className="mt-3 p-3 rounded-2xl bg-amber-500/20 border border-amber-400/30 backdrop-blur-md flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2.5">
-                  <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-                  <span className="text-xs text-amber-100 font-medium">
-                    Tienes <strong className="text-white font-bold">{pendingReviewSubmissions.length} entregas de estudiantes</strong> pendientes de corrección y nota.
-                  </span>
-                </div>
-                <Link
-                  href="/docente/tareas"
-                  className="px-3 py-1 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-[11px] font-black shrink-0 transition-colors"
-                >
-                  Revisar Tareas
-                </Link>
-              </div>
-            )}
-          </div>
-
-          {/* Quick Actions Grid Docente */}
-          <div className="grid grid-cols-2 gap-2 shrink-0">
-            <Link
-              href="/docente/asistencia"
-              className="flex flex-col items-center justify-center p-3 rounded-2xl bg-emerald-600/90 hover:bg-emerald-500 text-white border border-emerald-400/30 shadow-md shadow-emerald-600/20 transition-all hover:scale-102"
-            >
-              <QrCode className="w-5 h-5 mb-1 text-emerald-200" />
-              <span className="text-xs font-bold">Lector QR</span>
-            </Link>
-            <Link
-              href="/docente/notas"
-              className="flex flex-col items-center justify-center p-3 rounded-2xl bg-indigo-600/90 hover:bg-indigo-500 text-white border border-indigo-400/30 shadow-md shadow-indigo-600/20 transition-all hover:scale-102"
-            >
-              <Award className="w-5 h-5 mb-1 text-indigo-200" />
-              <span className="text-xs font-bold">Registro Notas</span>
-            </Link>
-            <Link
-              href="/docente/tareas"
-              className="flex flex-col items-center justify-center p-3 rounded-2xl bg-white/10 hover:bg-white/20 text-white border border-white/20 transition-all hover:scale-102"
-            >
-              <Plus className="w-5 h-5 mb-1 text-purple-300" />
-              <span className="text-xs font-bold">+ Nueva Tarea</span>
-            </Link>
-            <Link
-              href="/docente/horario"
-              className="flex flex-col items-center justify-center p-3 rounded-2xl bg-white/10 hover:bg-white/20 text-white border border-white/20 transition-all hover:scale-102"
-            >
-              <Calendar className="w-5 h-5 mb-1 text-sky-300" />
-              <span className="text-xs font-bold">Mi Horario</span>
-            </Link>
-          </div>
+      {/* ── 1. SALUDO ── */}
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-white">{greeting}, Prof. {firstName} 👋</h1>
+          <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 mt-0.5">{longDate}</p>
         </div>
-      </div>
-
-      {/* ── 2. BARRA DE FLUJO PEDAGÓGICO SECUENCIAL (JORNADA DOCENTE) ── */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 shadow-sm">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
-          <div className="flex items-center gap-2">
-            <span className="flex h-2 w-2 rounded-full bg-indigo-500 animate-pulse" />
-            <h3 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">
-              Secuencia Lógica de Trabajo Docente
-            </h3>
-          </div>
-          <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-            Flujo diario recomendado para aula
-          </span>
-        </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 pt-3">
-          <Link
-            href="/docente/horario"
-            className="group flex flex-col p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 border border-slate-200/60 dark:border-slate-700/60 hover:border-indigo-300 transition-all text-left"
-          >
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300">
-                Paso 1
-              </span>
-              <Calendar className="w-3.5 h-3.5 text-indigo-500 group-hover:scale-110 transition-transform" />
-            </div>
-            <span className="text-xs font-bold text-slate-900 dark:text-white">Mi Horario</span>
-            <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate">Bloques y aulas</span>
+        <div className="flex gap-2">
+          <Link href="/docente/notas" className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 hover:border-indigo-400 shadow-sm text-sm font-black text-slate-800 dark:text-slate-100">
+            <Award className="w-5 h-5 text-indigo-600" /> Registrar notas
           </Link>
-
-          <Link
-            href="/docente/asistencia"
-            className="group flex flex-col p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 border border-slate-200/60 dark:border-slate-700/60 hover:border-emerald-300 transition-all text-left"
-          >
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300">
-                Paso 2
-              </span>
-              <QrCode className="w-3.5 h-3.5 text-emerald-500 group-hover:scale-110 transition-transform" />
-            </div>
-            <span className="text-xs font-bold text-slate-900 dark:text-white">Pase Asistencia</span>
-            <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate">Lista o lector QR</span>
-          </Link>
-
-          <Link
-            href="/docente/notas"
-            className="group flex flex-col p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 hover:bg-amber-50 dark:hover:bg-amber-950/40 border border-slate-200/60 dark:border-slate-700/60 hover:border-amber-300 transition-all text-left"
-          >
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300">
-                Paso 3
-              </span>
-              <Award className="w-3.5 h-3.5 text-amber-500 group-hover:scale-110 transition-transform" />
-            </div>
-            <span className="text-xs font-bold text-slate-900 dark:text-white">Notas CNEB</span>
-            <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate">Escala AD, A, B, C</span>
-          </Link>
-
-          <Link
-            href="/docente/tareas"
-            className="group flex flex-col p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 hover:bg-purple-50 dark:hover:bg-purple-950/40 border border-slate-200/60 dark:border-slate-700/60 hover:border-purple-300 transition-all text-left"
-          >
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-purple-100 dark:bg-purple-900/60 text-purple-700 dark:text-purple-300">
-                Paso 4
-              </span>
-              <FileText className="w-3.5 h-3.5 text-purple-500 group-hover:scale-110 transition-transform" />
-            </div>
-            <span className="text-xs font-bold text-slate-900 dark:text-white">Tareas & LMS</span>
-            <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate">Publicar y calificar</span>
-          </Link>
-
-          <Link
-            href="/docente/evaluaciones"
-            className="group flex flex-col p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 hover:bg-blue-50 dark:hover:bg-blue-950/40 border border-slate-200/60 dark:border-slate-700/60 hover:border-blue-300 transition-all text-left"
-          >
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300">
-                Paso 5
-              </span>
-              <CheckSquare className="w-3.5 h-3.5 text-blue-500 group-hover:scale-110 transition-transform" />
-            </div>
-            <span className="text-xs font-bold text-slate-900 dark:text-white">Evaluaciones</span>
-            <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate">Exámenes y actas</span>
+          <Link href="/docente/tareas" className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 hover:border-purple-400 shadow-sm text-sm font-black text-slate-800 dark:text-slate-100">
+            <Plus className="w-5 h-5 text-purple-600" /> Nueva tarea
           </Link>
         </div>
       </div>
 
-      {/* ── 3. SECCIÓN PRINCIPAL: SELECTOR DE AULAS DESIGNADAS & PASE DE ASISTENCIA RÁPIDO ── */}
-      <div id="pase-asistencia-rapido" className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm space-y-6">
-        
-        {/* Cabecera de la Sección */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
-          <div>
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold">
-                <UserCheck className="w-4 h-4" />
-              </div>
-              <h2 className="text-lg font-black tracking-tight text-slate-900 dark:text-white">
-                Pase de Asistencia Rápido de Aula
-              </h2>
-            </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 pl-10">
-              Selecciona cualquiera de tus aulas designadas para registrar la asistencia diaria en un solo toque.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              type="button"
-              onClick={handleMarkAllPresent}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 text-xs font-bold hover:bg-emerald-100 transition-colors shadow-2xs cursor-pointer"
-              title="Marcar todos los estudiantes de esta aula en estado PRESENTE"
-            >
-              <CheckCheck className="w-4 h-4 text-emerald-600" />
-              <span>Marcar Todos Presentes</span>
-            </button>
-
-            <Link
-              href="/docente/asistencia"
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-xs transition-colors"
-            >
-              <QrCode className="w-4 h-4" />
-              <span>Modo Carnet QR</span>
-            </Link>
-          </div>
-        </div>
-
-        {/* ── SELECTOR VISUAL DE AULAS DESIGNADAS ── */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-black uppercase tracking-wider text-slate-600 dark:text-slate-400">
-              Mis Aulas Asignadas ({teacherSections.length})
-            </span>
-            <span className="text-[11px] text-slate-400">
-              Haz clic en cualquier aula para cargar su padrón
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {teacherSections.map((ts) => {
-              const sec = ts.seccion;
-              const isSelected = selectedSectionId === sec.id;
-              const isClosed = closedSections[sec.id];
-              const coursesList = ts.cursos.map(c => c.nombre).join(', ') || 'Matemática';
-
-              return (
-                <div
-                  key={sec.id}
-                  onClick={() => setSelectedSectionId(sec.id)}
-                  className={`p-4 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between gap-3 ${
-                    isSelected
-                      ? 'bg-gradient-to-br from-emerald-50/90 to-indigo-50/50 dark:from-emerald-950/40 dark:to-indigo-950/30 border-emerald-500 ring-2 ring-emerald-500/20 shadow-md scale-101'
-                      : 'bg-slate-50/70 dark:bg-slate-800/40 border-slate-200/80 dark:border-slate-800 hover:border-emerald-300 dark:hover:border-emerald-800'
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md border ${
-                        isSelected 
-                          ? 'bg-emerald-600 text-white border-emerald-600' 
-                          : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700'
-                      }`}>
-                        {sec.grado?.nivel || 'Primaria'}
-                      </span>
-                      <h3 className="text-sm font-black text-slate-900 dark:text-white mt-1.5">
-                        {sec.grado?.nombre || 'Grado'} — Sección &quot;{sec.letra}&quot;
-                      </h3>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate max-w-[180px] mt-0.5">
-                        {coursesList}
-                      </p>
+          {/* ── 2. MI DÍA: clase actual o siguiente + fichas de las clases de hoy ── */}
+          {featured ? (() => {
+            const fc = aulaColor(featured.seccion_id);
+            const status = currentSlot
+              ? '● En clase ahora'
+              : nextToday
+                ? `Tu próxima clase · empieza en ${untilToday(featured.hora_inicio)}`
+                : `Tu próxima clase · el ${(DAY_LABELS[featured.dia] || '').toLowerCase()}`;
+            return (
+              <section className={`rounded-3xl border-2 ${currentSlot ? 'border-emerald-400 dark:border-emerald-700' : fc.border} bg-white dark:bg-slate-900 overflow-hidden`}>
+                <div className={`p-5 sm:p-6 flex flex-col md:flex-row md:items-center gap-5 ${currentSlot ? 'bg-emerald-50 dark:bg-emerald-950/30' : fc.soft}`}>
+                  <div className="flex-1 min-w-0 space-y-2">
+                    <p className={`text-sm font-black uppercase tracking-wider ${currentSlot ? 'text-emerald-700 dark:text-emerald-300' : fc.text}`}>{status}</p>
+                    <p className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white leading-tight">{courseName(featured.curso_id)}</p>
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm text-slate-700 dark:text-slate-200">
+                      <span className={`px-3 py-0.5 rounded-full font-black ${fc.chip}`}>{sectionLabel(featured.seccion_id)}</span>
+                      <span className="inline-flex items-center gap-1 font-bold"><Clock className="w-4 h-4" /> {timeText(featured.hora_inicio)} – {timeText(featured.hora_fin)}</span>
+                      <span className="inline-flex items-center gap-1 text-slate-500 dark:text-slate-400"><MapPin className="w-4 h-4" /> {featured.aula || sectionOf(featured.seccion_id)?.aula || 'Aula por confirmar'}</span>
                     </div>
-
-                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
-                      isSelected ? 'bg-emerald-500 text-white shadow-xs' : 'bg-white dark:bg-slate-700 text-slate-400'
-                    }`}>
-                      <School className="w-4 h-4" />
-                    </div>
-                  </div>
-
-                  <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700/50 flex items-center justify-between text-[11px]">
-                    <span className="text-slate-500 dark:text-slate-400 font-medium">
-                      {sec.aula || 'Aula 201'}
-                    </span>
-                    
-                    {isClosed ? (
-                      <span className="font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                        <CheckCircle2 className="w-3.5 h-3.5" /> Cerrada Hoy
-                      </span>
-                    ) : (
-                      <span className="font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-                        Pendiente
-                      </span>
+                    {currentSlot && (
+                      <div className="pt-2 max-w-lg">
+                        <div className="h-3 rounded-full bg-white/80 dark:bg-slate-800 overflow-hidden">
+                          <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${classProgress}%` }} />
+                        </div>
+                        <p className="text-sm font-bold text-emerald-700 dark:text-emerald-300 mt-1.5">Quedan {minutesText(toMinutes(currentSlot.hora_fin) - nowMinutes)} de clase</p>
+                      </div>
                     )}
                   </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
 
-        {/* ── COCKPIT DE TOMA DE ASISTENCIA DEL AULA SELECCIONADA ── */}
-        <div className="p-5 rounded-2xl bg-slate-50/70 dark:bg-slate-800/30 border border-slate-200/80 dark:border-slate-800 space-y-4">
-          
-          {/* Header del Aula Activa */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase">
-                  Padrón de Estudiantes:
-                </span>
-                <span className="text-sm font-black text-slate-900 dark:text-white">
-                  {activeSelectedSection?.seccion?.grado?.nombre || 'Aula Asignada'} — Sección &quot;{activeSelectedSection?.seccion?.letra || '-'}&quot; ({attendanceStats.total} alumnos)
-                </span>
-              </div>
-              <div className="flex items-center gap-3 text-xs text-slate-500 mt-1">
-                <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                  {attendanceStats.present} Presentes
-                </span>
-                <span>•</span>
-                <span className="font-semibold text-amber-600 dark:text-amber-400">
-                  {attendanceStats.late} Tardanzas
-                </span>
-                <span>•</span>
-                <span className="font-semibold text-rose-600 dark:text-rose-400">
-                  {attendanceStats.absent} Faltas
-                </span>
-                <span>•</span>
-                <span className="font-semibold text-blue-600 dark:text-blue-400">
-                  {attendanceStats.justified} Justificadas
-                </span>
-              </div>
-            </div>
-
-            {/* Buscador de Alumnos en el aula */}
-            <div className="relative w-full sm:w-64">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                value={studentSearchQuery}
-                onChange={(e) => setStudentSearchQuery(e.target.value)}
-                placeholder="Buscar alumno en este salón..."
-                className="w-full pl-9 pr-8 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden"
-              />
-              {studentSearchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setStudentSearchQuery('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
-                >
-                  <XCircle className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Sub-barra de Filtro Rápido: Todos vs Solo Ausentes/Tardanzas */}
-          <div className="flex items-center justify-between pt-1 border-t border-slate-200/50 dark:border-slate-700/50">
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setAttendanceFilterMode('todos')}
-                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  attendanceFilterMode === 'todos'
-                    ? 'bg-indigo-600 text-white shadow-xs'
-                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-50'
-                }`}
-              >
-                Todos ({selectedSectionEnrollments.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setAttendanceFilterMode('ausentes')}
-                className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                  attendanceFilterMode === 'ausentes'
-                    ? 'bg-amber-600 text-white shadow-xs'
-                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-50'
-                }`}
-              >
-                <span>Solo Ausentes / Tardanzas</span>
-                <span className="px-1.5 py-0.2 rounded-md bg-black/20 text-[10px]">
-                  {attendanceStats.absent + attendanceStats.late + attendanceStats.justified}
-                </span>
-              </button>
-            </div>
-
-            <span className="text-[11px] text-slate-400 hidden sm:inline">
-              {attendanceFilterMode === 'todos' 
-                ? `Mostrando ${displayedStudents.length} alumnos`
-                : `${displayedStudents.length} pendientes de ajuste`}
-            </span>
-          </div>
-
-          {/* Grid de Estudiantes con Selector de 1 Toque */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 max-h-[420px] overflow-y-auto pr-1 scrollbar-thin">
-            {displayedStudents.map((enr) => {
-              const currentStatus = getStudentCurrentStatus(enr.id);
-              const fullName = `${enr.estudiante?.profile?.apellidos || 'Alumno'}, ${enr.estudiante?.profile?.nombres || 'Estudiante'}`;
-              const dni = enr.estudiante?.profile?.dni || enr.estudiante?.codigo_estudiante || 'DNI';
-
-              return (
-                <div
-                  key={enr.id}
-                  className={`p-3 rounded-xl border transition-all flex items-center justify-between gap-3 ${
-                    currentStatus === 'presente'
-                      ? 'bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800'
-                      : currentStatus === 'tardanza'
-                        ? 'bg-amber-50/80 dark:bg-amber-950/30 border-amber-300 dark:border-amber-800/60'
-                        : currentStatus === 'falta'
-                          ? 'bg-rose-50/80 dark:bg-rose-950/30 border-rose-300 dark:border-rose-800/60'
-                          : 'bg-blue-50/80 dark:bg-blue-950/30 border-blue-300 dark:border-blue-800/60'
-                  }`}
-                >
-                  {/* Foto y Datos */}
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <img
-                      src={enr.estudiante?.profile?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&background=6366f1&color=fff&size=80`}
-                      alt={fullName}
-                      className="w-8 h-8 rounded-lg object-cover ring-1 ring-slate-200 dark:ring-slate-700 shrink-0"
-                    />
-                    <div className="min-w-0">
-                      <div className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                        {fullName}
-                      </div>
-                      <div className="text-[10px] text-slate-400 font-mono">
-                        {dni}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Botones de Estado Rápido (P / T / F / J) */}
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => handleToggleStatus(enr.id, 'presente')}
-                      className={`min-w-[32px] sm:min-w-[28px] h-8 flex items-center justify-center rounded-xl text-xs font-black transition-all cursor-pointer active:scale-95 ${
-                        currentStatus === 'presente'
-                          ? 'bg-emerald-600 text-white shadow-xs scale-105'
-                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-emerald-100 dark:hover:bg-emerald-950/40'
-                      }`}
-                      title="Presente"
-                    >
-                      P
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleToggleStatus(enr.id, 'tardanza')}
-                      className={`min-w-[32px] sm:min-w-[28px] h-8 flex items-center justify-center rounded-xl text-xs font-black transition-all cursor-pointer active:scale-95 ${
-                        currentStatus === 'tardanza'
-                          ? 'bg-amber-500 text-white shadow-xs scale-105'
-                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-amber-100 dark:hover:bg-amber-950/40'
-                      }`}
-                      title="Tardanza"
-                    >
-                      T
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleToggleStatus(enr.id, 'falta')}
-                      className={`min-w-[32px] sm:min-w-[28px] h-8 flex items-center justify-center rounded-xl text-xs font-black transition-all cursor-pointer active:scale-95 ${
-                        currentStatus === 'falta'
-                          ? 'bg-rose-600 text-white shadow-xs scale-105'
-                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-rose-100 dark:hover:bg-rose-950/40'
-                      }`}
-                      title="Falta injustificada"
-                    >
-                      F
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleToggleStatus(enr.id, 'justificado')}
-                      className={`min-w-[32px] sm:min-w-[28px] h-8 flex items-center justify-center rounded-xl text-xs font-black transition-all cursor-pointer active:scale-95 ${
-                        currentStatus === 'justificado'
-                          ? 'bg-blue-600 text-white shadow-xs scale-105'
-                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-blue-100 dark:hover:bg-blue-950/40'
-                      }`}
-                      title="Falta Justificada"
-                    >
-                      J
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Botón Principal Guardar Asistencia */}
-          <div className="pt-3 border-t border-slate-200/80 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="text-xs text-slate-500 dark:text-slate-400">
-              Índice de asistencia de este salón hoy: <strong className="text-slate-900 dark:text-white font-bold">{attendanceStats.rate}%</strong>
-            </div>
-
-            <button
-              type="button"
-              onClick={handleSaveSectionAttendance}
-              disabled={isSavingAttendance}
-              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-black text-xs shadow-md shadow-emerald-600/20 transition-all cursor-pointer"
-            >
-              <Check className="w-4 h-4" />
-              <span>Guardar Asistencia de {activeSelectedSection?.seccion?.grado?.nombre || 'Aula'} &quot;{activeSelectedSection?.seccion?.letra || '-'}&quot;</span>
-            </button>
-          </div>
-
-        </div>
-
-      </div>
-
-      {/* ── 3. KPIS DOCENTES DEL DÍA ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        
-        {/* KPI 1: Clases Hoy */}
-        <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-md transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold tracking-wider text-slate-500 dark:text-slate-400 uppercase">
-              Clases de Hoy
-            </span>
-            <div className="w-9 h-9 rounded-2xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center shadow-xs">
-              <Clock className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">
-              {todaySlots.length}
-            </span>
-            <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">
-              sesiones programadas
-            </span>
-          </div>
-          <div className="mt-3 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-800">
-            <span>Aulas asignadas:</span>
-            <span className="font-bold text-slate-800 dark:text-slate-200">{teacherSections.length} secciones</span>
-          </div>
-        </div>
-
-        {/* KPI 2: Entregas por Calificar */}
-        <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-md transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold tracking-wider text-slate-500 dark:text-slate-400 uppercase">
-              Tareas por Calificar
-            </span>
-            <div className="w-9 h-9 rounded-2xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center shadow-xs">
-              <FileCheck className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-3xl font-black tracking-tight text-purple-600 dark:text-purple-400">
-              {pendingReviewSubmissions.length}
-            </span>
-            <span className="text-xs text-slate-500">entregas de alumnos</span>
-          </div>
-          <div className="mt-3 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-800">
-            <span>Tareas activas en LMS:</span>
-            <span className="font-bold text-purple-600 dark:text-purple-400">{myTasks.length} creadas</span>
-          </div>
-        </div>
-
-        {/* KPI 3: Alumnos a Cargo */}
-        <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-md transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold tracking-wider text-slate-500 dark:text-slate-400 uppercase">
-              Alumnos a Cargo
-            </span>
-            <div className="w-9 h-9 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shadow-xs">
-              <Users className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">
-              {totalAssignedStudentsCount}
-            </span>
-            <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-              estudiantes
-            </span>
-          </div>
-          <div className="mt-3 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-800">
-            <span>Asistencia promedio:</span>
-            <span className="font-bold text-emerald-600 dark:text-emerald-400">{teacherAverageAttendance}</span>
-          </div>
-        </div>
-
-        {/* KPI 4: Cierre Bimestral */}
-        <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-md transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold tracking-wider text-slate-500 dark:text-slate-400 uppercase">
-              Cierre II Bimestre
-            </span>
-            <div className="w-9 h-9 rounded-2xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center shadow-xs">
-              <Award className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-3xl font-black tracking-tight text-amber-600 dark:text-amber-400">
-              7 días
-            </span>
-            <span className="text-xs text-slate-500">para registrar notas</span>
-          </div>
-          <div className="mt-3 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-800">
-            <span>Competencias CNEB:</span>
-            <span className="font-bold text-slate-800 dark:text-slate-200">En proceso</span>
-          </div>
-        </div>
-
-      </div>
-
-      {/* ── 4. GRID: TIMELINE DE CLASES & BANDEJA DE REVISIÓN ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        
-        {/* Mis Clases de Hoy (Columna 7) */}
-        <div className="lg:col-span-7 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm space-y-5">
-          <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
-            <div>
-              <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <Clock className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-                Mis Clases de Hoy (Cronograma en Vivo)
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Sesiones pedagógicas asignadas para el día
-              </p>
-            </div>
-            <Link
-              href="/docente/horario"
-              className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
-            >
-              Ver Horario Semanal
-            </Link>
-          </div>
-
-          <div className="space-y-3">
-            {todaySlots.length === 0 ? (
-              <div className="py-12 text-center text-slate-400 text-xs">
-                No tienes sesiones programadas para hoy. Puedes consultar tu horario semanal.
-              </div>
-            ) : (
-              todaySlots.map((slot) => {
-                const course = courses.find(c => c.id === slot.curso_id);
-                const section = slot.seccion;
-                const isCurrent = currentSlot?.id === slot.id;
-
-                return (
-                  <div
-                    key={slot.id}
-                    className={`p-4 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
-                      isCurrent
-                        ? 'bg-indigo-50/80 dark:bg-indigo-950/40 border-indigo-300 dark:border-indigo-700 shadow-md ring-2 ring-indigo-500/20'
-                        : 'bg-slate-50/60 dark:bg-slate-800/30 border-slate-100 dark:border-slate-800 hover:border-slate-200'
+                  <button
+                    type="button"
+                    onClick={() => openClass(featured)}
+                    aria-label={currentSlot ? `Tomar asistencia de ${sectionLabel(featured.seccion_id)}` : `Tomar asistencia de ${sectionLabel(featured.seccion_id)}: ver cuánto falta`}
+                    className={`md:w-72 shrink-0 flex items-center gap-3 px-4 py-4 rounded-2xl text-left cursor-pointer transition-all hover:-translate-y-0.5 hover:shadow-lg ${
+                      currentSlot ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-md' : `bg-white dark:bg-slate-900 border-2 ${fc.border} text-slate-800 dark:text-slate-100`
                     }`}
                   >
-                    <div className="flex items-center gap-3.5">
-                      <div className={`w-12 h-12 rounded-2xl flex flex-col items-center justify-center font-black text-xs shrink-0 ${
-                        isCurrent 
-                          ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' 
-                          : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
-                      }`}>
-                        <span>{slot.hora_inicio}</span>
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h4 className="text-sm font-bold text-slate-900 dark:text-white">
-                            {course?.nombre || 'Curso'}
-                          </h4>
-                          {isCurrent && (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500 text-white animate-pulse">
-                              ● En Curso
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                          {section?.grado?.nombre || 'Grado'} — Sección &quot;{section?.letra || 'A'}&quot; • {slot.aula || 'Aula 204'}
-                        </p>
-                      </div>
-                    </div>
+                    <span className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${currentSlot ? 'bg-white/20' : `${fc.dot} text-white`}`}>
+                      {currentSlot ? <UserCheck className="w-6 h-6" /> : <Lock className="w-5 h-5" />}
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block text-lg font-black leading-tight">Tomar asistencia</span>
+                      <span className={`block text-sm font-bold mt-0.5 ${currentSlot ? 'text-emerald-100' : fc.text}`}>
+                        {currentSlot ? `${sectionLabel(featured.seccion_id)} · hasta las ${timeText(featured.hora_fin)}` : featuredStart ? `${sectionLabel(featured.seccion_id)} · en ${timeLeftInWords(featuredStart.getTime() - now.getTime())}` : sectionLabel(featured.seccion_id)}
+                      </span>
+                    </span>
+                  </button>
+                </div>
 
-                    {/* Botones de acción directa por clase */}
-                    <div className="flex items-center gap-2 shrink-0">
+                {/* Clases de hoy en fichas */}
+                <div className="px-5 sm:px-6 py-4 border-t border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center justify-between gap-2 mb-2.5">
+                    <p className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                      {todaySlots.length > 0 ? `Hoy tienes ${todaySlots.length} ${todaySlots.length === 1 ? 'clase' : 'clases'}` : todayKey ? 'Hoy no tienes clases' : 'Hoy no hay clases · ¡buen descanso!'}
+                    </p>
+                    <Link href="/docente/horario" className="text-sm font-bold text-blue-600 dark:text-blue-400 hover:underline">Ver mi horario →</Link>
+                  </div>
+                  {todaySlots.length > 0 && (
+                    <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-2.5">
+                      {todaySlots.map(sl => {
+                        const c = aulaColor(sl.seccion_id);
+                        const isNow = currentSlot?.id === sl.id;
+                        const past = toMinutes(sl.hora_fin) <= nowMinutes;
+                        const taken = isSectionTaken(sl.seccion_id);
+                        return (
+                          <button
+                            key={sl.id}
+                            type="button"
+                            onClick={() => openClass(sl)}
+                            className={`text-left px-3 py-2.5 rounded-2xl border-2 cursor-pointer transition-all hover:-translate-y-0.5 ${
+                              isNow ? 'bg-emerald-600 border-emerald-600 text-white shadow-md' : past ? 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400' : `bg-white dark:bg-slate-900 ${c.border} text-slate-800 dark:text-slate-100`
+                            }`}
+                          >
+                            <span className="flex items-center justify-between gap-1">
+                              <span className="text-base font-black">{timeText(sl.hora_inicio)}</span>
+                              <span className={`w-3 h-3 rounded-full ${isNow ? 'bg-white' : c.dot}`} />
+                            </span>
+                            <span className="block text-sm font-bold truncate mt-0.5">{courseName(sl.curso_id)}</span>
+                            <span className="block text-xs truncate opacity-90">{sectionLabel(sl.seccion_id)}</span>
+                            <span className={`block text-xs font-black mt-1.5 ${isNow ? 'text-emerald-100' : past ? (taken ? 'text-emerald-600' : 'text-amber-600') : c.text}`}>
+                              {isNow ? '● Ahora · toca para marcar' : past ? (taken ? '✅ Asistencia tomada' : '⚠️ Sin asistencia') : `🔒 En ${untilToday(sl.hora_inicio)}`}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </section>
+            );
+          })() : (
+            <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-5 text-sm text-slate-500 dark:text-slate-400">
+              Aún no tienes clases en tu horario. Cuando Coordinación publique tu horario, aquí verás tu próxima clase.
+            </div>
+          )}
+
+
+      {/* ── 3. PENDIENTES: tarjetas de color, fáciles de ver ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {[
+          {
+            href: '/docente/tareas',
+            icon: FileCheck,
+            count: toGrade,
+            title: toGrade === 1 ? 'entrega por calificar' : 'entregas por calificar',
+            detail: toGrade > 0 ? 'Tus alumnos esperan su nota' : '¡Todo calificado!',
+            action: toGrade > 0 ? 'Calificar ahora' : 'Ver tareas',
+            tone: toGrade > 0 ? 'bg-purple-600 text-white border-purple-600' : 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 border-purple-200 dark:border-purple-900',
+            iconTone: toGrade > 0 ? 'bg-white/20 text-white' : 'bg-purple-100 dark:bg-purple-950/60 text-purple-600',
+          },
+          {
+            href: '/docente/evaluaciones',
+            icon: Calendar,
+            count: upcomingExams.length,
+            title: upcomingExams.length === 1 ? 'evaluación próxima' : 'evaluaciones próximas',
+            detail: upcomingExams[0] ? `La siguiente: ${upcomingExams[0].titulo}` : 'No hay evaluaciones programadas',
+            action: upcomingExams.length > 0 ? 'Ver evaluaciones' : 'Programar una',
+            tone: upcomingExams.length > 0 ? 'bg-blue-600 text-white border-blue-600' : 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 border-blue-200 dark:border-blue-900',
+            iconTone: upcomingExams.length > 0 ? 'bg-white/20 text-white' : 'bg-blue-100 dark:bg-blue-950/60 text-blue-600',
+          },
+          ...(currentPeriod && daysToClose !== null ? [{
+            href: '/docente/notas',
+            icon: Award,
+            count: daysToClose,
+            title: daysToClose === 1 ? `día para cerrar el ${currentPeriod.nombre}` : `días para cerrar el ${currentPeriod.nombre}`,
+            detail: daysToClose <= 7 ? '¡Ya casi! Registra tus notas' : 'Registra tus notas a tiempo',
+            action: 'Registrar notas',
+            tone: daysToClose <= 7 ? 'bg-rose-600 text-white border-rose-600' : 'bg-amber-500 text-white border-amber-500',
+            iconTone: 'bg-white/20 text-white',
+          }] : []),
+        ].map(t => {
+          const Icon = t.icon;
+          return (
+            <Link key={t.href} href={t.href} className={`group rounded-3xl border-2 p-4 flex items-center gap-3 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all ${t.tone}`}>
+              <span className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${t.iconTone}`}><Icon className="w-6 h-6" /></span>
+              <span className="flex-1 min-w-0">
+                <span className="flex items-baseline gap-1.5">
+                  <span className="text-3xl font-black leading-none">{t.count}</span>
+                  <span className="text-sm font-black leading-tight">{t.title}</span>
+                </span>
+                <span className="block text-xs font-semibold opacity-80 truncate mt-1">{t.detail}</span>
+                <span className="inline-flex items-center gap-0.5 text-xs font-black mt-1.5 underline-offset-2 group-hover:underline">{t.action} <ChevronRight className="w-3.5 h-3.5" /></span>
+              </span>
+            </Link>
+          );
+        })}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+
+        {/* ── COLUMNA PRINCIPAL ── */}
+        <div className="lg:col-span-8 space-y-5">
+
+          {/* ── TOMAR ASISTENCIA ── */}
+          <section id="tomar-asistencia" className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-5 space-y-4 scroll-mt-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <h2 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+                <UserCheck className="w-5 h-5 text-emerald-600" /> Asistencia de hoy
+              </h2>
+              <p className="text-sm text-slate-500 dark:text-slate-400">Todos empiezan como <strong>Presente</strong>: marca solo a quien faltó o llegó tarde.</p>
+            </div>
+
+            {teacherSections.length === 0 ? (
+              <p className="py-6 text-center text-sm text-slate-500 dark:text-slate-400">No tienes aulas asignadas todavía.</p>
+            ) : (
+              <>
+                {/* Aulas */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-2">
+                  {teacherSections.map(ts => {
+                    const active = ts.seccion.id === selectedSectionId;
+                    const taken = isSectionTaken(ts.seccion.id);
+                    const cls = classStatusOf(ts.seccion.id);
+                    return (
                       <button
+                        key={ts.seccion.id}
                         type="button"
-                        onClick={() => {
-                          if (section?.id) {
-                            setSelectedSectionId(section.id);
-                            document.getElementById('pase-asistencia-rapido')?.scrollIntoView({ behavior: 'smooth' });
-                          }
-                        }}
-                        className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 shadow-2xs transition-colors cursor-pointer"
+                        onClick={() => setSelectedSectionId(ts.seccion.id)}
+                        className={`text-left px-3 py-2.5 rounded-2xl border-2 transition-colors cursor-pointer ${
+                          active ? `${aulaColor(ts.seccion.id).solid} shadow-md` : `bg-white dark:bg-slate-800/60 ${aulaColor(ts.seccion.id).border} text-slate-700 dark:text-slate-200 ${aulaColor(ts.seccion.id).hover}`
+                        }`}
                       >
-                        Pase Rápido
+                        <span className="flex items-center gap-1.5 text-sm font-black">{!active && <span className={`w-2.5 h-2.5 rounded-full ${aulaColor(ts.seccion.id).dot}`} />}{ts.seccion.grado?.nombre || 'Grado'} &quot;{ts.seccion.letra}&quot;</span>
+                        <span className={`block text-xs font-bold mt-0.5 ${active ? aulaColor(ts.seccion.id).solidSub : taken ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                          {cls.open ? '🟢 En clase ahora' : taken ? '✅ Tomada hoy' : `🔒 ${cls.chip}`}
+                        </span>
                       </button>
-                      <Link
-                        href="/docente/notas"
-                        className="px-3 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 text-xs font-bold text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 shadow-2xs transition-colors"
-                      >
-                        Notas
-                      </Link>
+                    );
+                  })}
+                </div>
+
+                {/* Bloqueada: explica cuándo se abre en lugar de mostrar una lista gris */}
+                {!canEdit && selectedStatus && (
+                  <div className={`rounded-2xl border-2 ${aulaColor(selectedSectionId).border} ${aulaColor(selectedSectionId).soft} p-4 flex flex-col sm:flex-row sm:items-center gap-3`}>
+                    <span className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 text-white ${aulaColor(selectedSectionId).dot}`}><Lock className="w-5 h-5" /></span>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-base font-black ${aulaColor(selectedSectionId).text}`}>{selectedLabel}: aún no es hora de clase</p>
+                      <p className="text-sm text-slate-700 dark:text-slate-200">{selectedStatus.message}.</p>
+                    </div>
+                    <div className="flex gap-2 shrink-0">
+                      {selectedStatus.slot && (
+                        <button type="button" onClick={() => setWaitSlot(selectedStatus.slot!)} className={`inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl ${aulaColor(selectedSectionId).btn} text-sm font-black cursor-pointer`}>
+                          <Hourglass className="w-4 h-4" /> ¿Cuánto falta?
+                        </button>
+                      )}
+                      {sectionEnrollments.length > 0 && (
+                        <button type="button" onClick={() => setShowLockedList(v => !v)} aria-expanded={showLockedList} className="inline-flex items-center gap-1 px-3 py-2.5 rounded-xl bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-700 dark:text-slate-200 cursor-pointer">
+                          <ChevronDown className={`w-4 h-4 transition-transform ${showLockedList ? 'rotate-180' : ''}`} /> {showLockedList ? 'Ocultar lista' : 'Ver lista'}
+                        </button>
+                      )}
                     </div>
                   </div>
-                );
-              })
+                )}
+
+                {/* Herramientas (solo con la clase en curso) */}
+                {canEdit && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-100 dark:bg-emerald-950/50 text-xs font-black text-emerald-800 dark:text-emerald-200">
+                      <Clock className="w-3.5 h-3.5" /> {selectedStatus?.message}
+                    </span>
+                    {STATUS_BUTTONS.filter(b => b.status !== 'presente' && counts[b.status] > 0).map(b => (
+                      <span key={b.status} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-50 dark:bg-slate-800/60 text-xs font-bold text-slate-700 dark:text-slate-200">
+                        <span className={`w-5 h-5 rounded-md text-[10px] font-black flex items-center justify-center ${b.on}`}>{b.letter}</span>
+                        {counts[b.status]} {b.label.toLowerCase()}
+                      </span>
+                    ))}
+                    <div className="flex items-center gap-1.5 ml-auto">
+                      <button type="button" onClick={markAllPresent} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 text-xs font-bold cursor-pointer">
+                        <CheckCheck className="w-4 h-4" /> Todos presentes
+                      </button>
+                      <div className="relative">
+                        <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar alumno" className="w-36 pl-8 pr-7 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/30" />
+                        {search && (
+                          <button type="button" onClick={() => setSearch('')} aria-label="Borrar búsqueda" className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 cursor-pointer"><XCircle className="w-3.5 h-3.5" /></button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Lista de alumnos */}
+                {(canEdit || showLockedList) && (<>
+                <div ref={listRef} className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                  {visibleStudents.length === 0 ? (
+                    <p className="md:col-span-2 py-6 text-center text-sm text-slate-500 dark:text-slate-400">
+                      {sectionEnrollments.length === 0 ? 'Esta aula aún no tiene alumnos matriculados.' : 'No hay alumnos con ese nombre.'}
+                    </p>
+                  ) : visibleStudents.map(enr => {
+                    const st = statusOf(enr.id);
+                    const meta = STATUS_BUTTONS.find(b => b.status === st)!;
+                    const nombres = enr.estudiante?.profile?.nombres || enr.estudiante?.nombres || '';
+                    const apellidos = enr.estudiante?.profile?.apellidos || enr.estudiante?.apellidos || '';
+                    const changed = draft[enr.id] !== undefined && draft[enr.id] !== baseStatus(enr.id);
+                    return (
+                      <div key={enr.id} className={`p-3 rounded-2xl border flex items-center justify-between gap-2 ${meta.row}`}>
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <span className="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 text-xs font-black flex items-center justify-center shrink-0">
+                            {`${nombres[0] || ''}${apellidos[0] || ''}`.toUpperCase()}
+                          </span>
+                          <span className="min-w-0">
+                            <span className="block text-sm font-bold text-slate-900 dark:text-white truncate">{apellidos}, {nombres}</span>
+                            <span className="block text-xs text-slate-400">{changed ? '● Sin guardar' : savedStatus(enr.id) ? 'Guardado' : 'Aún no registrado'}</span>
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {STATUS_BUTTONS.map(b => (
+                            <button
+                              key={b.status}
+                              type="button"
+                              onClick={() => canEdit && setDraft(prev => ({ ...prev, [enr.id]: b.status }))}
+                              disabled={!canEdit}
+                              title={b.label}
+                              aria-label={`${b.label}: ${nombres} ${apellidos}`}
+                              aria-pressed={st === b.status}
+                              className={`w-10 h-10 rounded-xl text-sm font-black transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 ${st === b.status ? b.on : `bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-300 ${b.hover}`}`}
+                            >
+                              {b.letter}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Guardar */}
+                {canEdit && (
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                    {pendingChanges > 0
+                      ? <><strong className="text-amber-600">{pendingChanges} {pendingChanges === 1 ? 'cambio sin guardar' : 'cambios sin guardar'}</strong> en {selectedLabel}.</>
+                      : takenToday ? <>✅ La asistencia de {selectedLabel} ya está guardada hoy. Puedes corregirla y volver a guardar.</>
+                      : <>Aún no guardas la asistencia de {selectedLabel} hoy.</>}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={saveAttendance}
+                    disabled={!canEdit || sectionEnrollments.length === 0}
+                    className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 dark:disabled:bg-slate-700 disabled:cursor-not-allowed text-white text-sm font-black shadow-md cursor-pointer"
+                  >
+                    <Check className="w-5 h-5" /> Guardar asistencia de {selectedLabel}
+                  </button>
+                </div>
+                )}
+                </>)}
+              </>
+            )}
+          </section>
+        </div>
+
+        {/* ── COLUMNA LATERAL ── */}
+        <div className="lg:col-span-4 space-y-5">
+
+          {/* Comunicados */}
+          <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-5">
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2"><Bell className="w-5 h-5 text-indigo-500" /> Comunicados</h3>
+              {noticesToConfirm > 0 && <span className="px-2 py-0.5 rounded-full bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 text-[11px] font-bold">{noticesToConfirm} por confirmar</span>}
+            </div>
+            {teacherNotices.length === 0 ? (
+              <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">No hay comunicados nuevos.</p>
+            ) : (
+              <ul className="mt-3 space-y-3">
+                {shownNotices.map(({ a, needsConfirm }) => (
+                  <li key={a.id} className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60">
+                    <p className="text-sm font-black text-slate-900 dark:text-white leading-snug">{a.titulo}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 mt-0.5">{a.contenido}</p>
+                    {(a.fecha_citacion || a.lugar_citacion) && (
+                      <p className="text-[11px] font-semibold text-purple-700 dark:text-purple-300 mt-0.5">📅 {a.fecha_citacion} {a.hora_citacion || ''} {a.lugar_citacion ? `· ${a.lugar_citacion}` : ''}</p>
+                    )}
+                    {needsConfirm ? (
+                      <button type="button" onClick={() => currentUser?.id && confirmAnnouncement(a.id, currentUser.id)} className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-black cursor-pointer">
+                        <Check className="w-3.5 h-3.5" /> Confirmar que lo leí
+                      </button>
+                    ) : a.requiere_confirmacion ? (
+                      <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600"><CheckCircle2 className="w-3.5 h-3.5" /> Confirmado</span>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {teacherNotices.length > 2 && (
+              <button type="button" onClick={() => setShowAllNotices(v => !v)} className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-indigo-600 dark:text-indigo-400 cursor-pointer">
+                <ChevronDown className={`w-4 h-4 transition-transform ${showAllNotices ? 'rotate-180' : ''}`} />
+                {showAllNotices ? 'Ver menos' : `Ver todos (${teacherNotices.length})`}
+              </button>
             )}
           </div>
         </div>
-
-        {/* Pendientes de Revisión & Evaluaciones (Columna 5) */}
-        <div className="lg:col-span-5 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm space-y-5">
-          <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
-            <div>
-              <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <FileCheck className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-                Bandeja de Pendientes
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Entregas por corregir y cierres pedagógicos
-              </p>
-            </div>
-            <span className="px-2.5 py-1 rounded-xl bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 font-bold text-xs border border-purple-200/60 dark:border-purple-800/40">
-              {pendingReviewSubmissions.length} {pendingReviewSubmissions.length === 1 ? 'entrega' : 'entregas'}
-            </span>
-          </div>
-
-          <div className="space-y-3">
-            <div className="p-4 rounded-2xl bg-purple-50/60 dark:bg-purple-950/20 border border-purple-100 dark:border-purple-900/40 space-y-2">
-              <div className="flex items-center justify-between text-xs font-bold text-slate-800 dark:text-slate-200">
-                <span>Tareas por Calificar</span>
-                <span className="text-purple-600 dark:text-purple-400 font-black">{pendingReviewSubmissions.length} {pendingReviewSubmissions.length === 1 ? 'entrega' : 'entregas'}</span>
-              </div>
-              <p className="text-xs text-slate-600 dark:text-slate-400">
-                {pendingReviewSubmissions.length > 0 
-                  ? `Tienes ${pendingReviewSubmissions.length} actividades entregadas por estudiantes esperando calificación.`
-                  : 'No tienes entregas pendientes de calificación en este momento.'}
-              </p>
-              <Link
-                href="/docente/tareas"
-                className="inline-flex items-center gap-1.5 text-xs font-bold text-purple-600 dark:text-purple-400 hover:underline pt-1"
-              >
-                Revisar Entregas <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
-            </div>
-
-            <div className="p-4 rounded-2xl bg-amber-50/60 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/40 space-y-2">
-              <div className="flex items-center justify-between text-xs font-bold text-slate-800 dark:text-slate-200">
-                <span>Cierre de Notas II Bimestre</span>
-                <span className="text-amber-600 dark:text-amber-400 font-black">7 Días Restantes</span>
-              </div>
-              <p className="text-xs text-slate-600 dark:text-slate-400">
-                Recuerda registrar la conclusión descriptiva en la competencia C2 para alumnos con nota C o B.
-              </p>
-              <Link
-                href="/docente/notas"
-                className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-600 dark:text-amber-400 hover:underline pt-1"
-              >
-                Completar Registro <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
-            </div>
-
-            <div className="p-4 rounded-2xl bg-blue-50/60 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/40 space-y-2">
-              <div className="flex items-center justify-between text-xs font-bold text-slate-800 dark:text-slate-200">
-                <span>Banco de Evaluaciones</span>
-                <span className="text-blue-600 dark:text-blue-400 font-black">{exams.length} programadas</span>
-              </div>
-              <p className="text-xs text-slate-600 dark:text-slate-400">
-                Revisa el calendario oficial de prácticas calificadas y exámenes bimestrales.
-              </p>
-              <Link
-                href="/docente/evaluaciones"
-                className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline pt-1"
-              >
-                Ver Evaluaciones <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
-            </div>
-          </div>
-        </div>
       </div>
-
-      {/* ── 5. SECCIÓN DE COMUNICADOS & CITACIONES INSTITUCIONALES PARA DOCENTES ── */}
-      <div className="bg-white dark:bg-slate-900 p-6 sm:p-7 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-black">
-              <School className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="font-black text-base text-slate-900 dark:text-white flex items-center gap-2">
-                <span>Circular Institucional &amp; Convocatorias a Docentes</span>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 font-bold border border-indigo-200">
-                  Plana Docente 2026
+      {/* ── Ventana: estado de una clase (cuánto falta / ya terminó / ya empezó) ── */}
+      {waitSlot && (() => {
+        const ws = waitSlot;
+        const c = aulaColor(ws.seccion_id);
+        const isNow = !!currentSlot && currentSlot.id === ws.id;
+        const endedToday = ws.dia === todayKey && toMinutes(ws.hora_fin) <= nowMinutes;
+        // Si ya terminó hoy, la cuenta regresiva es hasta la siguiente clase con esa misma aula
+        const nextSt = endedToday ? getSectionClassStatus(mySlots, ws.seccion_id, todayKey, nowHHMM) : null;
+        const target: ScheduleSlot | null = endedToday ? (nextSt && 'slot' in nextSt ? nextSt.slot : null) : ws;
+        const targetStart = target && !isNow ? nextClassStart(target, now) : null;
+        const taken = isSectionTaken(ws.seccion_id);
+        const dayWord = (sl: ScheduleSlot) => (sl.dia === todayKey && toMinutes(sl.hora_inicio) > nowMinutes ? 'hoy' : `el ${(DAY_LABELS[sl.dia] || '').toLowerCase()}`);
+        return (
+          <Modal isOpen onClose={() => setWaitSlot(null)} title={isNow ? '¡Ya puedes tomar asistencia!' : endedToday ? 'Esta clase ya terminó' : 'Aún no es hora de tomar asistencia'} maxWidth="md">
+            <div className="space-y-4">
+              <div className={`flex items-center gap-3 p-3 rounded-2xl border-2 ${c.border} ${c.soft}`}>
+                <span className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${c.dot} text-white`}>
+                  {isNow ? <UserCheck className="w-6 h-6" /> : endedToday ? <CheckCircle2 className="w-6 h-6" /> : <Hourglass className="w-6 h-6" />}
                 </span>
-              </h3>
-              <p className="text-xs text-slate-500 font-medium">Disposiciones pedagógicas emitidas por Dirección y Coordinación Académica</p>
-            </div>
-          </div>
-        </div>
+                <div className="min-w-0">
+                  <p className={`text-lg font-black ${c.text}`}>{sectionLabel(ws.seccion_id)} · {courseName(ws.curso_id)}</p>
+                  <p className="text-sm text-slate-700 dark:text-slate-200">
+                    {ws.dia === todayKey ? 'Hoy' : `El ${(DAY_LABELS[ws.dia] || '').toLowerCase()}`} de {timeText(ws.hora_inicio)} a {timeText(ws.hora_fin)}
+                  </p>
+                </div>
+              </div>
 
-        {announcements.filter(a => !a.destinatarios_rol || a.destinatarios_rol === 'todos' || a.destinatarios_rol === 'docente').length === 0 ? (
-          <div className="py-8 text-center text-xs text-slate-400 bg-slate-50/50 dark:bg-slate-800/30 rounded-2xl border border-slate-100 dark:border-slate-800">
-            No hay comunicados o citaciones docentes pendientes en este momento.
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
-            {announcements
-              .filter(a => !a.destinatarios_rol || a.destinatarios_rol === 'todos' || a.destinatarios_rol === 'docente')
-              .map((ann) => {
-                const isConfirmed = currentUser?.id && ann.confirmado_por?.includes(currentUser.id);
-                const isCitacion = ann.categoria === 'citacion' || ann.tipo === 'citacion';
-                const isUrgente = ann.tipo === 'urgente';
-
-                return (
-                  <div key={ann.id} className="p-4 sm:p-5 rounded-2xl border bg-slate-50/60 dark:bg-slate-800/30 border-slate-200/80 dark:border-slate-800 space-y-3 flex flex-col justify-between">
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className={`text-[10px] font-black uppercase px-2.5 py-0.5 rounded-md ${
-                          isCitacion ? 'bg-purple-100 text-purple-800' : isUrgente ? 'bg-rose-100 text-rose-800' : 'bg-blue-100 text-blue-800'
-                        }`}>
-                          {isCitacion ? '📅 Convocatoria Docente' : isUrgente ? '⚠️ Urgente' : '📢 Circular Interna'}
-                        </span>
-                        <span className="text-[10px] text-slate-400 font-bold">
-                          {ann.fecha_publicacion || ann.creado_en?.substring(0, 10) || '2026'}
-                        </span>
-                      </div>
-
-                      <h4 className="text-sm font-black text-slate-900 dark:text-white leading-snug">
-                        {ann.titulo}
-                      </h4>
-
-                      <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-line font-medium">
-                        {ann.contenido}
-                      </p>
-
-                      {isCitacion && (ann.fecha_citacion || ann.lugar_citacion || ann.enlace_reunion) && (
-                        <div className="p-2.5 rounded-xl bg-purple-50/60 dark:bg-purple-950/40 border border-purple-200/60 space-y-1 text-xs text-purple-950 dark:text-purple-200">
-                          {ann.fecha_citacion && (
-                            <div className="flex items-center gap-1.5 font-bold">
-                              <Calendar className="w-3.5 h-3.5 text-purple-600" />
-                              <span>Reunión: {ann.fecha_citacion} {ann.hora_citacion ? `(${ann.hora_citacion})` : ''}</span>
-                            </div>
-                          )}
-                          {ann.lugar_citacion && (
-                            <div className="flex items-center gap-1.5 font-medium text-[11px] text-slate-600 dark:text-slate-400">
-                              <MapPin className="w-3.5 h-3.5 text-slate-500" />
-                              <span>Lugar: {ann.lugar_citacion}</span>
-                            </div>
-                          )}
-                          {ann.enlace_reunion && (
-                            <a
-                              href={ann.enlace_reunion}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="inline-flex items-center gap-1 text-[11px] font-black text-blue-600 hover:underline pt-1"
-                            >
-                              <span>🔗 Sala Virtual (Google Meet / Zoom)</span>
-                            </a>
-                          )}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between gap-2">
-                      <div className="text-[10px] text-slate-400">
-                        {ann.requiere_confirmacion ? 'Requiere acuse de recibo' : 'Aviso informativo'}
-                      </div>
-
-                      {ann.requiere_confirmacion && (
-                        isConfirmed ? (
-                          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-xl bg-emerald-100 text-emerald-800 text-xs font-black">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                            <span>Recibido y Leído</span>
-                          </span>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => confirmAnnouncement(ann.id, currentUser?.id || 'docente-user')}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs shadow-xs cursor-pointer"
-                          >
-                            <CheckSquare className="w-3.5 h-3.5" />
-                            <span>Confirmar Recepción</span>
-                          </button>
-                        )
-                      )}
-                    </div>
+              {isNow ? (
+                <button type="button" onClick={() => { setWaitSlot(null); scrollToAttendance(ws.seccion_id); }} className="w-full inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-base font-black cursor-pointer">
+                  <UserCheck className="w-5 h-5" /> Tomar asistencia ahora
+                </button>
+              ) : (
+                <>
+                  {endedToday && (
+                    <p className={`p-3 rounded-2xl text-sm font-bold text-center ${taken ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200' : 'bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-200'}`}>
+                      {taken ? '✅ La asistencia de esta clase quedó guardada.' : '⚠️ En esta clase no se tomó asistencia. Si necesitas registrarla, comunícate con Coordinación.'}
+                    </p>
+                  )}
+                  {target && targetStart && (
+                    <>
+                      {endedToday && <p className="text-sm font-bold text-slate-600 dark:text-slate-300 text-center">Tu próxima clase con {sectionLabel(ws.seccion_id)} es {dayWord(target)} a las {timeText(target.hora_inicio)}.</p>}
+                      <Countdown key={targetStart.getTime()} target={targetStart} onReady={onClassReady} />
+                    </>
+                  )}
+                  <p className="text-sm text-slate-600 dark:text-slate-300 text-center">
+                    La asistencia se toma <strong>solo durante la hora de clase</strong>. El botón se abre solo, no hace falta recargar la página.
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Link href="/docente/horario" className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border-2 border-slate-300 dark:border-slate-600 text-sm font-bold text-slate-700 dark:text-slate-200">
+                      <Calendar className="w-4 h-4" /> Ver mi horario
+                    </Link>
+                    <button type="button" onClick={() => setWaitSlot(null)} className="flex-1 px-4 py-2.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-sm font-black cursor-pointer">
+                      Entendido
+                    </button>
                   </div>
-                );
-              })}
-          </div>
-        )}
-      </div>
-
+                </>
+              )}
+            </div>
+          </Modal>
+        );
+      })()}
     </div>
   );
 }

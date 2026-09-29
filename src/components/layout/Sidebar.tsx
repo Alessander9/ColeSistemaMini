@@ -4,8 +4,9 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
-import { 
-  LayoutDashboard, 
+import { useAulaColors } from '@/hooks/useAulaColors';
+import {
+  LayoutDashboard,
   Users, 
   UserPlus, 
   BookOpen, 
@@ -62,6 +63,7 @@ export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
   const [isPrimariaOpen, setIsPrimariaOpen] = useState(true);
   const [isSecundariaOpen, setIsSecundariaOpen] = useState(false);
   const [isTeacherAulasOpen, setIsTeacherAulasOpen] = useState(true);
+  const aulaColor = useAulaColors();
 
   const teacherSections = React.useMemo(() => {
     if (currentUser?.rol !== 'docente') return [];
@@ -530,10 +532,11 @@ export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
               {teacherSections.map((ts) => (
                 <div
                   key={ts.seccion.id}
-                  className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-700 transition-all text-xs"
+                  className={`p-2 pl-3 rounded-xl bg-white dark:bg-slate-900 border border-l-4 ${aulaColor(ts.seccion.id).border} transition-all text-xs`}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-slate-800 dark:text-white text-[11px]">
+                    <span className={`flex items-center gap-1.5 font-bold text-[11px] ${aulaColor(ts.seccion.id).text}`}>
+                      <span className={`w-2 h-2 rounded-full ${aulaColor(ts.seccion.id).dot}`} />
                       {ts.seccion.grado?.nombre} &quot;{ts.seccion.letra}&quot;
                     </span>
                     <span className="text-[9px] font-semibold text-slate-400 uppercase">
@@ -551,7 +554,7 @@ export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
                     </Link>
                     <span className="text-slate-300 dark:text-slate-700">•</span>
                     <Link
-                      href="/docente/notas"
+                      href={`/docente/notas?aula=${ts.seccion.id}`}
                       onClick={handleLinkClick}
                       className="font-bold text-blue-600 dark:text-blue-400 hover:underline"
                     >

@@ -1,1560 +1,609 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import { Modal } from '@/components/ui/Modal';
-import { GradeSelector } from '@/components/notas/GradeSelector';
-import { GradeBadge } from '@/components/notas/GradeBadge';
-import { TaskAssignment, TaskSubmission, GradeLetter, Course, Section } from '@/types';
-import { 
-  Plus, 
-  PlusCircle, 
-  BookOpen, 
-  Clock, 
-  Calendar, 
-  CheckCircle2, 
-  User, 
-  Award, 
-  Paperclip, 
-  FileText, 
-  School, 
-  AlignLeft,
-  Search,
-  Filter,
-  ArrowUpDown,
-  MoreVertical,
-  Eye,
-  Edit3,
-  Copy,
-  Trash2,
-  Sparkles,
+import { GRADE_OPTIONS, gradeOption } from '@/components/notas/gradeOptions';
+import { TaskAssignment, GradeLetter, Course, Section } from '@/types';
+import {
   AlertCircle,
-  X,
+  CalendarClock,
+  CheckCircle2,
+  ChevronDown,
   ChevronRight,
-  ChevronLeft,
-  Download,
-  Check,
-  Calculator,
-  FlaskConical,
-  Activity,
-  Users,
-  Globe2,
-  ArrowUpRight,
-  ShieldCheck,
+  ClipboardCheck,
+  FileText,
   Link as LinkIcon,
-  LayoutGrid,
-  List as ListIcon,
-  Laptop,
-  Palette
+  Paperclip,
+  Plus,
+  Search,
+  Send,
+  Users,
+  X,
+  XCircle,
 } from 'lucide-react';
-import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import confetti from 'canvas-confetti';
+import { useAulaColors } from '@/hooks/useAulaColors';
 
-type TaskStatusType = 'completada' | 'en_proceso' | 'pendiente' | 'vencida';
+type TabKey = 'por_calificar' | 'abiertas' | 'vencidas' | 'todas';
+
+// Fecha local "YYYY-MM-DD" (sin pasar por UTC)
+const localIso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const addDays = (d: Date, n: number) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+const timeText = (d: Date) => d.toLocaleTimeString('es-PE', { hour: 'numeric', minute: '2-digit', hour12: true });
+const dateText = (d: Date) => d.toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long' });
+
+// "Vence hoy a las 6:00 p. m.", "Vence mañana…", "Venció hace 3 días"
+function dueInWords(due: Date, now: Date) {
+  const days = Math.round((new Date(due.getFullYear(), due.getMonth(), due.getDate()).getTime() - new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()) / 86400000);
+  if (due < now) {
+    if (days === 0) return { text: `Venció hoy a las ${timeText(due)}`, tone: 'late' as const };
+    const ago = Math.abs(days);
+    return { text: `Venció hace ${ago} ${ago === 1 ? 'día' : 'días'}`, tone: 'late' as const };
+  }
+  if (days === 0) return { text: `Vence hoy a las ${timeText(due)}`, tone: 'soon' as const };
+  if (days === 1) return { text: `Vence mañana a las ${timeText(due)}`, tone: 'soon' as const };
+  if (days <= 3) return { text: `Vence en ${days} días (${dateText(due)})`, tone: 'soon' as const };
+  return { text: `Vence el ${dateText(due)}`, tone: 'ok' as const };
+}
+
+const emptyForm = (sectionId: string, courseId: string) => ({
+  seccionId: sectionId,
+  cursoId: courseId,
+  titulo: '',
+  descripcion: '',
+  fecha: localIso(addDays(new Date(), 7)),
+  hora: '18:00',
+  materialUrl: '',
+});
 
 export default function DocenteTareasPage() {
-  const { 
-    tasks, 
-    addTask, 
-    submissions, 
-    gradeTask, 
-    courses, 
-    enrollments, 
-    sections,
-    currentUser, 
-    getTeacherSections,
-    showToast 
-  } = useApp();
+  const { tasks, addTask, submissions, gradeTask, courses, enrollments, sections, currentUser, getTeacherSections } = useApp();
+  const aulaColor = useAulaColors();
+  // Botón de aula con su color fijo (elegido = color sólido; sin elegir = borde de color)
+  const aulaBtnCls = (secId: string, active: boolean) =>
+    active ? `${aulaColor(secId).solid} shadow-md` : `bg-white dark:bg-slate-800 ${aulaColor(secId).border} text-slate-800 dark:text-slate-100 ${aulaColor(secId).hover}`;
+  const aulaDot = (secId: string) => <span className={`inline-block w-2.5 h-2.5 rounded-full ${aulaColor(secId).dot}`} />;
+  const now = new Date();
+  const isAdmin = currentUser?.rol === 'admin';
 
-  // Dual View Mode: Grid (Active by default) & List
-  const [viewMode, setViewMode] = useState<'grid' | 'lista'>('grid');
+  // Aulas y cursos del docente (el admin ve todo)
+  const teacherSections = useMemo<{ seccion: Section; cursos: Course[] }[]>(() => {
+    if (isAdmin) return sections.map(s => ({ seccion: s, cursos: courses }));
+    return currentUser?.id ? getTeacherSections(currentUser.id) || [] : [];
+  }, [isAdmin, sections, courses, getTeacherSections, currentUser?.id]);
 
-  // Scoped assignments: Admins have full access to all sections/courses; teachers have their assigned classes or all classes
-  const teacherSections = useMemo(() => {
-    if (currentUser?.rol === 'admin') {
-      return sections.map(s => ({ seccion: s, cursos: courses }));
-    }
-    const fromContext = getTeacherSections(currentUser.id);
-    if (fromContext && fromContext.length > 0) return fromContext;
-    return sections.map(s => ({ seccion: s, cursos: courses }));
-  }, [getTeacherSections, currentUser?.id, currentUser?.rol, sections, courses]);
+  const sectionOf = (id?: string) => sections.find(s => s.id === id) || teacherSections.find(t => t.seccion.id === id)?.seccion;
+  const sectionLabel = (id?: string) => { const s = sectionOf(id); return s ? `${s.grado?.nombre || ''} "${s.letra}"` : 'Aula'; };
+  const courseOf = (t: TaskAssignment) => t.curso || courses.find(c => c.id === t.curso_id);
+  const studentsOf = (secId?: string) => enrollments.filter(e => e.seccion_id === secId && e.estado === 'activo');
 
-  const teacherCourses = useMemo(() => {
-    if (currentUser?.rol === 'admin') return courses;
-    const list: Course[] = [];
-    teacherSections.forEach(ts => {
-      ts.cursos.forEach(c => {
-        if (!list.some(existing => existing.id === c.id)) {
-          list.push(c);
-        }
+  // Solo las tareas del docente: las que creó o las de sus aulas y cursos
+  const myTasks = useMemo(() => {
+    if (isAdmin) return tasks;
+    const pairs = new Set(teacherSections.flatMap(ts => ts.cursos.map(c => `${ts.seccion.id}|${c.id}`)));
+    return tasks.filter(t => t.docente_id === currentUser?.id || pairs.has(`${t.seccion_id}|${t.curso_id}`));
+  }, [isAdmin, tasks, teacherSections, currentUser?.id]);
+
+  const metricsOf = (task: TaskAssignment) => {
+    const total = studentsOf(task.seccion_id).length;
+    const subs = submissions.filter(s => s.tarea_id === task.id);
+    const graded = subs.filter(s => !!s.calificacion_letra).length;
+    const due = new Date(task.fecha_limite);
+    return { total, delivered: subs.length, graded, toGrade: subs.length - graded, missing: Math.max(total - subs.length, 0), due, isPastDue: due < now };
+  };
+
+  const inTab = (task: TaskAssignment, tab: TabKey) => {
+    const m = metricsOf(task);
+    if (tab === 'por_calificar') return m.toGrade > 0;
+    if (tab === 'abiertas') return !m.isPastDue;
+    if (tab === 'vencidas') return m.isPastDue;
+    return true;
+  };
+  const tabCount = (tab: TabKey) => myTasks.filter(t => inTab(t, tab)).length;
+  const totalToGrade = myTasks.reduce((acc, t) => acc + metricsOf(t).toGrade, 0);
+
+  const [tab, setTab] = useState<TabKey>(() => (myTasks.some(t => inTab(t, 'por_calificar')) ? 'por_calificar' : 'todas'));
+  const [sectionFilter, setSectionFilter] = useState('todas');
+  const [search, setSearch] = useState('');
+  const [visibleCount, setVisibleCount] = useState(8);
+
+  const filteredTasks = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return myTasks
+      .filter(t => inTab(t, tab))
+      .filter(t => sectionFilter === 'todas' || t.seccion_id === sectionFilter)
+      .filter(t => !q || `${t.titulo} ${t.descripcion} ${courseOf(t)?.nombre || ''}`.toLowerCase().includes(q))
+      .sort((a, b) => {
+        // Primero las que tienen entregas por calificar, luego las más próximas a vencer
+        const pa = metricsOf(a).toGrade > 0 ? 0 : 1;
+        const pb = metricsOf(b).toGrade > 0 ? 0 : 1;
+        if (pa !== pb) return pa - pb;
+        const da = new Date(a.fecha_limite).getTime();
+        const db = new Date(b.fecha_limite).getTime();
+        const aPast = da < now.getTime(), bPast = db < now.getTime();
+        if (aPast !== bPast) return aPast ? 1 : -1;
+        return aPast ? db - da : da - db;
       });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myTasks, tab, sectionFilter, search, submissions, enrollments]);
+
+  // ── Crear tarea ──
+  const firstSection = teacherSections[0];
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [form, setForm] = useState(() => emptyForm(firstSection?.seccion.id || '', firstSection?.cursos[0]?.id || ''));
+  const formCourses = teacherSections.find(ts => ts.seccion.id === form.seccionId)?.cursos || [];
+
+  const openCreate = () => {
+    setForm(emptyForm(firstSection?.seccion.id || '', firstSection?.cursos[0]?.id || ''));
+    setIsCreateOpen(true);
+  };
+  const pickFormSection = (secId: string) => {
+    const cursos = teacherSections.find(ts => ts.seccion.id === secId)?.cursos || [];
+    setForm(f => ({ ...f, seccionId: secId, cursoId: cursos.some(c => c.id === f.cursoId) ? f.cursoId : cursos[0]?.id || '' }));
+  };
+  const formDue = new Date(`${form.fecha}T${form.hora || '23:59'}`);
+  const formDueInvalid = isNaN(formDue.getTime()) || formDue <= now;
+  const canPublish = !!form.seccionId && !!form.cursoId && form.titulo.trim() !== '' && form.descripcion.trim() !== '' && !formDueInvalid;
+
+  const handleCreate = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!canPublish) return;
+    addTask({
+      cursoId: form.cursoId,
+      seccionId: form.seccionId,
+      titulo: form.titulo.trim(),
+      descripcion: form.descripcion.trim(),
+      fechaLimite: formDue.toISOString(),
+      archivoUrl: form.materialUrl.trim() || undefined,
     });
-    return list.length > 0 ? list : courses;
-  }, [teacherSections, courses, currentUser?.rol]);
+    confetti({ particleCount: 40, spread: 60, origin: { y: 0.7 } });
+    setIsCreateOpen(false);
+    setTab('abiertas');
+    setSectionFilter('todas');
+  };
 
-  // Search, Filter & Sorting States
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCourseFilter, setSelectedCourseFilter] = useState('todos');
-  const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>('todos');
-  const [sortBy, setSortBy] = useState<'fecha_limite' | 'recientes' | 'antiguas' | 'estado' | 'materia'>('fecha_limite');
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = viewMode === 'grid' ? 9 : 6;
+  // ── Revisar entregas ──
+  const [reviewTask, setReviewTask] = useState<TaskAssignment | null>(null);
+  const [reviewView, setReviewView] = useState<'entregaron' | 'faltan'>('entregaron');
+  const [showInstructions, setShowInstructions] = useState(false);
+  const [gradingId, setGradingId] = useState<string | null>(null); // matricula en calificación
+  const [gradeDraft, setGradeDraft] = useState<GradeLetter | undefined>(undefined);
+  const [feedbackDraft, setFeedbackDraft] = useState('');
 
-  // Active Modals & Drawers
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [selectedTaskForReview, setSelectedTaskForReview] = useState<TaskAssignment | null>(null);
-  const [selectedTaskForDetail, setSelectedTaskForDetail] = useState<TaskAssignment | null>(null);
-  const [activeMenuTaskId, setActiveMenuTaskId] = useState<string | null>(null);
+  const openReview = (task: TaskAssignment) => {
+    setReviewTask(task);
+    setReviewView(metricsOf(task).delivered > 0 ? 'entregaron' : 'faltan');
+    setShowInstructions(false);
+    setGradingId(null);
+  };
 
-  // New Task Form State
-  const [formData, setFormData] = useState({
-    cursoId: teacherCourses[0]?.id || courses[0]?.id || 'course-mat',
-    seccionId: teacherSections[0]?.seccion.id || 'sec-3pri-a',
-    titulo: '',
-    descripcion: '',
-    fechaLimite: '2026-09-28T18:59',
-    materialUrl: '',
-    permiteArchivos: true,
+  const reviewStudents = reviewTask ? studentsOf(reviewTask.seccion_id) : [];
+  const nameOf = (enr: typeof enrollments[number]) => ({
+    nombres: enr.estudiante?.profile?.nombres || enr.estudiante?.nombres || '',
+    apellidos: enr.estudiante?.profile?.apellidos || enr.estudiante?.apellidos || '',
   });
+  const subOf = (tareaId: string, matriculaId: string) => submissions.find(s => s.tarea_id === tareaId && s.matricula_id === matriculaId);
+  const delivered = reviewTask
+    ? reviewStudents.filter(e => subOf(reviewTask.id, e.id)).sort((a, b) => Number(!!subOf(reviewTask.id, a.id)?.calificacion_letra) - Number(!!subOf(reviewTask.id, b.id)?.calificacion_letra))
+    : [];
+  const missing = reviewTask ? reviewStudents.filter(e => !subOf(reviewTask.id, e.id)) : [];
 
-  // Grading Modal State
-  const [gradingSubmission, setGradingSubmission] = useState<{
-    tareaId: string;
-    matriculaId: string;
-    studentName: string;
-    studentAvatar?: string;
-    currentGrade?: GradeLetter;
-    retroalimentacion?: string;
-    comentarioEstudiante?: string;
-    archivoUrl?: string;
-    archivoNombre?: string;
-    archivoTamano?: string;
-  } | null>(null);
+  const startGrading = (matriculaId: string) => {
+    if (!reviewTask) return;
+    const sub = subOf(reviewTask.id, matriculaId);
+    setGradingId(matriculaId);
+    setGradeDraft(sub?.calificacion_letra);
+    setFeedbackDraft(sub?.retroalimentacion_docente || '');
+  };
 
-  // Sample student avatars for the overlap stack
-  const studentAvatarsSample = [
-    'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
-    'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150',
-    'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150',
+  const saveGrading = (goNext: boolean) => {
+    if (!reviewTask || !gradingId || !gradeDraft) return;
+    gradeTask({ tareaId: reviewTask.id, matriculaId: gradingId, calificacionLetra: gradeDraft, retroalimentacion: feedbackDraft.trim() || undefined });
+    // Siguiente alumno que entregó y aún no tiene nota
+    const next = goNext ? delivered.find(e => e.id !== gradingId && !subOf(reviewTask.id, e.id)?.calificacion_letra) : undefined;
+    if (next) startGrading(next.id);
+    else {
+      setGradingId(null);
+      confetti({ particleCount: 25, spread: 45, origin: { y: 0.8 } });
+    }
+  };
+
+  const TABS: { key: TabKey; label: string; hint: string }[] = [
+    { key: 'por_calificar', label: 'Por calificar', hint: 'Tienen entregas sin nota' },
+    { key: 'abiertas', label: 'Abiertas', hint: 'Los alumnos aún pueden entregar' },
+    { key: 'vencidas', label: 'Vencidas', hint: 'Ya pasó la fecha de entrega' },
+    { key: 'todas', label: 'Todas', hint: 'Todas mis tareas' },
   ];
 
-  // Helper to compute task status and delivery metrics
-  const getTaskMetrics = (task: TaskAssignment) => {
-    const targetSectionId = task.seccion_id || 'sec-3pri-a';
-    const sectionStudents = enrollments.filter(e => e.seccion_id === targetSectionId && e.estado === 'activo');
-    const totalStudents = sectionStudents.length > 0 ? sectionStudents.length : 11;
-    
-    const taskSubs = submissions.filter(s => s.tarea_id === task.id);
-    const gradedSubs = taskSubs.filter(s => !!s.calificacion_letra);
-    const subCount = taskSubs.length;
-
-    const dueDate = new Date(task.fecha_limite);
-    const now = new Date('2026-09-16T19:40:00Z'); // Simulation baseline
-    const isPastDue = dueDate < now;
-
-    let computedStatus: TaskStatusType = 'pendiente';
-    if (subCount === totalStudents && gradedSubs.length === totalStudents) {
-      computedStatus = 'completada';
-    } else if (isPastDue) {
-      computedStatus = 'vencida';
-    } else if (subCount > 0) {
-      computedStatus = 'en_proceso';
-    } else {
-      computedStatus = 'pendiente';
-    }
-
-    // Relative due date text
-    const diffTime = dueDate.getTime() - now.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-    let relativeDueText = '';
-    let relativeDueClass = '';
-    if (computedStatus === 'completada') {
-      relativeDueText = 'Completada';
-      relativeDueClass = 'text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 border-emerald-200/80 dark:border-emerald-900';
-    } else if (isPastDue) {
-      const pastDays = Math.abs(diffDays);
-      relativeDueText = 'Vencida';
-      relativeDueClass = 'text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/60 border-rose-200/80 dark:border-rose-900';
-    } else if (diffDays === 0) {
-      relativeDueText = 'Vence hoy';
-      relativeDueClass = 'text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/60 border-rose-200/80 dark:border-rose-900 font-bold';
-    } else if (diffDays <= 4) {
-      relativeDueText = `Faltan ${diffDays} días`;
-      relativeDueClass = 'text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 border-amber-200/80 dark:border-amber-900 font-semibold';
-    } else if (computedStatus === 'en_proceso') {
-      relativeDueText = 'En proceso';
-      relativeDueClass = 'text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 border-blue-200/80 dark:border-blue-900 font-semibold';
-    } else {
-      relativeDueText = `Faltan ${diffDays} días`;
-      relativeDueClass = 'text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 border-amber-200/80 dark:border-amber-900 font-semibold';
-    }
-
-    const progressPct = totalStudents > 0 ? Math.round((subCount / totalStudents) * 100) : 0;
-
-    return {
-      totalStudents,
-      subCount,
-      gradedCount: gradedSubs.length,
-      status: computedStatus,
-      isPastDue,
-      relativeDueText,
-      relativeDueClass,
-      dueDate,
-      progressPct,
-      diffDays,
-    };
-  };
-
-  // Helper for subject visual badges & icons matching reference
-  const getSubjectVisual = (courseName?: string) => {
-    const name = (courseName || '').toLowerCase();
-    if (name.includes('matemática') || name.includes('matematica') || name.includes('álgebra') || name.includes('geometría')) {
-      return {
-        icon: Calculator,
-        badgeClass: 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/70 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800',
-        iconContainer: 'bg-indigo-50 text-indigo-600 dark:bg-indigo-950/80 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-900/60',
-      };
-    }
-    if (name.includes('comunicación') || name.includes('comunicacion') || name.includes('lenguaje') || name.includes('lectora')) {
-      return {
-        icon: BookOpen,
-        badgeClass: 'bg-pink-50 text-pink-700 dark:bg-pink-950/70 dark:text-pink-300 border-pink-200 dark:border-pink-800',
-        iconContainer: 'bg-pink-50 text-pink-600 dark:bg-pink-950/80 dark:text-pink-300 border border-pink-100 dark:border-pink-900/60',
-      };
-    }
-    if (name.includes('ciencia') || name.includes('tecnología') || name.includes('cta') || name.includes('química') || name.includes('física')) {
-      return {
-        icon: FlaskConical,
-        badgeClass: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/70 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
-        iconContainer: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-100 dark:border-emerald-900/60',
-      };
-    }
-    if (name.includes('computación') || name.includes('robótica') || name.includes('computacion') || name.includes('scratch')) {
-      return {
-        icon: Laptop,
-        badgeClass: 'bg-amber-50 text-amber-700 dark:bg-amber-950/70 dark:text-amber-300 border-amber-200 dark:border-amber-800',
-        iconContainer: 'bg-amber-50 text-amber-600 dark:bg-amber-950/80 dark:text-amber-300 border border-amber-100 dark:border-amber-900/60',
-      };
-    }
-    if (name.includes('física') || name.includes('educación física') || name.includes('educ. física') || name.includes('deporte')) {
-      return {
-        icon: Activity,
-        badgeClass: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/70 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
-        iconContainer: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-100 dark:border-emerald-900/60',
-      };
-    }
-    if (name.includes('social') || name.includes('personal') || name.includes('historia') || name.includes('cívica')) {
-      return {
-        icon: Users,
-        badgeClass: 'bg-purple-50 text-purple-700 dark:bg-purple-950/70 dark:text-purple-300 border-purple-200 dark:border-purple-800',
-        iconContainer: 'bg-purple-50 text-purple-600 dark:bg-purple-950/80 dark:text-purple-300 border border-purple-100 dark:border-purple-900/60',
-      };
-    }
-    if (name.includes('arte') || name.includes('cultura') || name.includes('dibujo')) {
-      return {
-        icon: Palette,
-        badgeClass: 'bg-pink-50 text-pink-700 dark:bg-pink-950/70 dark:text-pink-300 border-pink-200 dark:border-pink-800',
-        iconContainer: 'bg-pink-50 text-pink-600 dark:bg-pink-950/80 dark:text-pink-300 border border-pink-100 dark:border-pink-900/60',
-      };
-    }
-    return {
-      icon: Globe2,
-      badgeClass: 'bg-blue-50 text-blue-700 dark:bg-blue-950/70 dark:text-blue-300 border-blue-200 dark:border-blue-800',
-      iconContainer: 'bg-blue-50 text-blue-600 dark:bg-blue-950/80 dark:text-blue-300 border border-blue-100 dark:border-blue-900/60',
-    };
-  };
-
-  // KPIs Calculations
-  const kpis = useMemo(() => {
-    let total = tasks.length;
-    let completadas = 0;
-    let enProceso = 0;
-    let pendientes = 0;
-    let vencidas = 0;
-
-    tasks.forEach(t => {
-      const { status } = getTaskMetrics(t);
-      if (status === 'completada') completadas++;
-      else if (status === 'en_proceso') enProceso++;
-      else if (status === 'pendiente') pendientes++;
-      else if (status === 'vencida') vencidas++;
-    });
-
-    const completadasPct = total > 0 ? Math.round((completadas / total) * 100) : 0;
-    const enProcesoPct = total > 0 ? Math.round((enProceso / total) * 100) : 0;
-    const pendientesPct = total > 0 ? Math.round((pendientes / total) * 100) : 0;
-    const vencidasPct = total > 0 ? Math.round((vencidas / total) * 100) : 0;
-
-    return {
-      total,
-      completadas,
-      completadasPct,
-      enProceso,
-      enProcesoPct,
-      pendientes,
-      pendientesPct,
-      vencidas,
-      vencidasPct,
-    };
-  }, [tasks, submissions]);
-
-  // Filtered & Sorted Tasks List
-  const filteredTasks = useMemo(() => {
-    let list = tasks.filter(t => {
-      const matchQuery = !searchQuery || 
-        `${t.titulo} ${t.descripcion} ${t.curso?.nombre || ''}`.toLowerCase().includes(searchQuery.toLowerCase());
-      
-      const matchCourse = selectedCourseFilter === 'todos' || t.curso_id === selectedCourseFilter;
-      
-      const { status } = getTaskMetrics(t);
-      const matchStatus = selectedStatusFilter === 'todos' || status === selectedStatusFilter;
-
-      return matchQuery && matchCourse && matchStatus;
-    });
-
-    // Sorting
-    list.sort((a, b) => {
-      if (sortBy === 'fecha_limite') {
-        return new Date(a.fecha_limite).getTime() - new Date(b.fecha_limite).getTime();
-      }
-      if (sortBy === 'recientes') {
-        return new Date(b.created_at || b.fecha_limite).getTime() - new Date(a.created_at || a.fecha_limite).getTime();
-      }
-      if (sortBy === 'antiguas') {
-        return new Date(a.created_at || a.fecha_limite).getTime() - new Date(b.created_at || b.fecha_limite).getTime();
-      }
-      if (sortBy === 'materia') {
-        return (a.curso?.nombre || '').localeCompare(b.curso?.nombre || '');
-      }
-      if (sortBy === 'estado') {
-        return getTaskMetrics(a).status.localeCompare(getTaskMetrics(b).status);
-      }
-      return 0;
-    });
-
-    return list;
-  }, [tasks, searchQuery, selectedCourseFilter, selectedStatusFilter, sortBy, submissions]);
-
-  // Paginated tasks
-  const paginatedTasks = useMemo(() => {
-    const start = (currentPage - 1) * itemsPerPage;
-    return filteredTasks.slice(start, start + itemsPerPage);
-  }, [filteredTasks, currentPage, itemsPerPage]);
-
-  const totalPages = Math.ceil(filteredTasks.length / itemsPerPage) || 1;
-
-  // Handle New Task Submission
-  const handleCreateTask = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.titulo || !formData.descripcion) return;
-
-    addTask({
-      cursoId: formData.cursoId,
-      seccionId: formData.seccionId,
-      titulo: formData.titulo,
-      descripcion: formData.descripcion,
-      fechaLimite: new Date(formData.fechaLimite).toISOString(),
-      archivoUrl: formData.materialUrl || undefined,
-    });
-
-    confetti({
-      particleCount: 35,
-      spread: 50,
-      origin: { y: 0.7 },
-    });
-
-    showToast(`Tarea "${formData.titulo}" publicada exitosamente.`, 'success', '✓ Tarea Creada');
-    setIsAddModalOpen(false);
-
-    setFormData({
-      cursoId: teacherCourses[0]?.id || courses[0]?.id || 'course-mat',
-      seccionId: teacherSections[0]?.seccion.id || 'sec-3pri-a',
-      titulo: '',
-      descripcion: '',
-      fechaLimite: '2026-09-28T18:59',
-      materialUrl: '',
-      permiteArchivos: true,
-    });
-  };
-
-  // Handle Save Grade
-  const handleSaveGrade = (grade: GradeLetter, retro?: string) => {
-    if (!gradingSubmission) return;
-
-    gradeTask({
-      tareaId: gradingSubmission.tareaId,
-      matriculaId: gradingSubmission.matriculaId,
-      calificacionLetra: grade,
-      retroalimentacion: retro,
-    });
-
-    confetti({
-      particleCount: 25,
-      spread: 45,
-      origin: { y: 0.8 },
-    });
-
-    showToast(`Calificación guardada para ${gradingSubmission.studentName}`, 'success', '✓ Nota Registrada');
-    setGradingSubmission(null);
-  };
-
-  // Quick subject chips
-  const subjectFilterChips = useMemo(() => {
-    return [
-      { id: 'todos', label: 'Todas mis Materias', count: tasks.length },
-      ...teacherCourses.map(c => ({
-        id: c.id,
-        label: c.nombre,
-        count: tasks.filter(t => t.curso_id === c.id).length,
-      })),
-    ];
-  }, [teacherCourses, tasks]);
+  const inputCls = 'w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-800 border-2 border-slate-300 dark:border-slate-600 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500';
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto animate-in fade-in-50 pb-16 font-sans select-none">
-      
-      {/* ─────────────────────────────────────────────────────────────────────────────
-          1. ENCABEZADO PRINCIPAL (MATCHING SCREENSHOT)
-          ───────────────────────────────────────────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
-        <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center text-white shadow-md shadow-indigo-500/25 shrink-0">
-            <FileText className="w-6 h-6" />
-          </div>
-          <div>
-            <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
-              Gestión de Tareas Escolares
-            </h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 max-w-xl">
-              Publica asignaciones para tus secciones, recibe entregas y califica con retroalimentación cualitativa.
-            </p>
-          </div>
+    <div className="space-y-4 max-w-6xl mx-auto animate-in fade-in-50 pb-16">
+      {/* Encabezado */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+            <FileText className="w-7 h-7 text-indigo-600" /> Mis tareas
+          </h1>
+          <p className="text-sm text-slate-600 dark:text-slate-300">Crea tareas para tus aulas, mira quién entregó y ponles nota.</p>
         </div>
-
-        <div className="flex flex-wrap items-center gap-3 self-end sm:self-center">
-          {/* Current Date & Time Badge */}
-          <div className="hidden lg:flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/70 dark:border-slate-700/80 text-xs">
-            <Calendar className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-            <div className="text-left">
-              <p className="text-[10px] font-semibold text-slate-400 leading-none">Martes, 16 de septiembre de 2026</p>
-              <p className="font-mono font-bold text-slate-700 dark:text-slate-200 text-xs mt-0.5 leading-none">08:24 AM</p>
-            </div>
-          </div>
-
-          {/* Primary CTA Button */}
-          <button
-            type="button"
-            onClick={() => setIsAddModalOpen(true)}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-600/25 active:scale-95 transition-all cursor-pointer"
-          >
-            <Plus className="w-4 h-4 stroke-[3]" />
-            <span>Crear Nueva Tarea</span>
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={openCreate}
+          disabled={teacherSections.length === 0}
+          className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-base font-black shadow-md disabled:opacity-40 cursor-pointer shrink-0"
+        >
+          <Plus className="w-5 h-5 stroke-[3]" /> Crear tarea nueva
+        </button>
       </div>
 
-      {/* ─────────────────────────────────────────────────────────────────────────────
-          2. RESUMEN DE TAREAS / KPIS (MATCHING SCREENSHOT)
-          ───────────────────────────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5 sm:gap-4">
-        {/* Total de Tareas */}
-        <div className="bg-white dark:bg-slate-900 rounded-3xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 border border-blue-100 dark:border-blue-900/50">
-            <FileText className="w-6 h-6" />
-          </div>
-          <div>
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Total de Tareas</span>
-            <div className="flex items-baseline gap-2 mt-0.5">
-              <span className="text-2xl font-black text-slate-900 dark:text-white">{kpis.total}</span>
-              <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-0.5">
-                ↑ +2 <span className="text-slate-400 font-normal hidden xl:inline">Este período</span>
-              </span>
-            </div>
-          </div>
-        </div>
+      {/* Aviso de entregas por calificar */}
+      {totalToGrade > 0 && tab !== 'por_calificar' && (
+        <button
+          type="button"
+          onClick={() => setTab('por_calificar')}
+          className="w-full flex items-center gap-3 p-3 rounded-2xl bg-purple-50 dark:bg-purple-950/40 border-2 border-purple-200 dark:border-purple-800 text-left cursor-pointer hover:border-purple-400"
+        >
+          <ClipboardCheck className="w-6 h-6 text-purple-600 shrink-0" />
+          <span className="flex-1 text-sm text-purple-900 dark:text-purple-100">
+            Tienes <strong>{totalToGrade} {totalToGrade === 1 ? 'entrega' : 'entregas'} por calificar</strong>. Toca aquí para verlas.
+          </span>
+          <ChevronRight className="w-5 h-5 text-purple-500" />
+        </button>
+      )}
 
-        {/* Completadas */}
-        <div className="bg-white dark:bg-slate-900 rounded-3xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-100 dark:border-emerald-900/50">
-            <CheckCircle2 className="w-6 h-6" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Completadas</span>
-            <div className="flex items-baseline gap-2 mt-0.5">
-              <span className="text-2xl font-black text-slate-900 dark:text-white">{kpis.completadas}</span>
-              <span className="text-[11px] font-medium text-slate-400">{kpis.completadasPct}%</span>
-            </div>
-            <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full mt-1.5 overflow-hidden">
-              <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${kpis.completadasPct}%` }} />
-            </div>
-          </div>
-        </div>
-
-        {/* En proceso */}
-        <div className="bg-white dark:bg-slate-900 rounded-3xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/60 text-amber-500 dark:text-amber-400 flex items-center justify-center shrink-0 border border-amber-100 dark:border-amber-900/50">
-            <Clock className="w-6 h-6" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">En proceso</span>
-            <div className="flex items-baseline gap-2 mt-0.5">
-              <span className="text-2xl font-black text-slate-900 dark:text-white">{kpis.enProceso}</span>
-              <span className="text-[11px] font-medium text-slate-400">{kpis.enProcesoPct}%</span>
-            </div>
-            <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full mt-1.5 overflow-hidden">
-              <div className="h-full bg-amber-500 rounded-full transition-all" style={{ width: `${kpis.enProcesoPct}%` }} />
-            </div>
-          </div>
-        </div>
-
-        {/* Pendientes / Vencidas */}
-        <div className="bg-white dark:bg-slate-900 rounded-3xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-950/60 text-rose-500 dark:text-rose-400 flex items-center justify-center shrink-0 border border-rose-100 dark:border-rose-900/50">
-            <AlertCircle className="w-6 h-6" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Pendientes</span>
-            <div className="flex items-baseline gap-2 mt-0.5">
-              <span className="text-2xl font-black text-slate-900 dark:text-white">{kpis.pendientes}</span>
-              <span className="text-[11px] font-medium text-slate-400">{kpis.pendientesPct}%</span>
-            </div>
-            <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full mt-1.5 overflow-hidden">
-              <div className="h-full bg-rose-500 rounded-full transition-all" style={{ width: `${kpis.pendientesPct}%` }} />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ─────────────────────────────────────────────────────────────────────────────
-          2. BÚSQUEDA, FILTROS Y SELECTOR DE VISTA (GRID / LISTA)
-          ───────────────────────────────────────────────────────────────────────────── */}
-      <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-4">
-        
-        {/* Search input + Dropdowns row */}
-        <div className="flex flex-col lg:flex-row items-center justify-between gap-3">
-          {/* Search Box */}
-          <div className="relative w-full lg:flex-1">
-            <Search className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setCurrentPage(1);
-              }}
-              placeholder="Buscar tarea por título, descripción o palabra clave..."
-              className="w-full pl-11 pr-4 py-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 text-xs text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-            {searchQuery && (
-              <button 
-                onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            )}
-          </div>
-
-          {/* Filter Dropdowns */}
-          <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto justify-end">
-            {/* Materias Select */}
-            <div className="relative">
-              <select
-                value={selectedCourseFilter}
-                onChange={(e) => {
-                  setSelectedCourseFilter(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="appearance-none pl-9 pr-8 py-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 text-xs font-semibold text-slate-700 dark:text-slate-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              >
-                <option value="todos">📖 Todas las materias</option>
-                {teacherCourses.map(c => (
-                  <option key={c.id} value={c.id}>{c.nombre}</option>
-                ))}
-              </select>
-              <BookOpen className="w-3.5 h-3.5 text-indigo-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-            </div>
-
-            {/* Estados Select */}
-            <div className="relative">
-              <select
-                value={selectedStatusFilter}
-                onChange={(e) => {
-                  setSelectedStatusFilter(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="appearance-none pl-9 pr-8 py-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 text-xs font-semibold text-slate-700 dark:text-slate-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              >
-                <option value="todos">📊 Todos los estados</option>
-                <option value="en_proceso">🟢 En proceso</option>
-                <option value="pendiente">🔵 Pendiente</option>
-                <option value="completada">🟢 Completada</option>
-                <option value="vencida">🔴 Vencida</option>
-              </select>
-              <Filter className="w-3.5 h-3.5 text-indigo-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-            </div>
-
-            {/* Ordenar por Select */}
-            <div className="relative">
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as any)}
-                className="appearance-none pl-9 pr-8 py-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 text-xs font-semibold text-slate-700 dark:text-slate-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              >
-                <option value="fecha_limite">Fecha límite</option>
-                <option value="recientes">Más recientes</option>
-                <option value="antiguas">Más antiguas</option>
-                <option value="materia">Materia</option>
-                <option value="estado">Estado</option>
-              </select>
-              <ArrowUpDown className="w-3.5 h-3.5 text-indigo-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-            </div>
-          </div>
-        </div>
-
-        {/* Quick Subject Chips Bar + View Mode Switcher */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1 border-t border-slate-100 dark:border-slate-800">
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-1 scrollbar-thin">
-            {subjectFilterChips.map((chip) => {
-              const isSelected = selectedCourseFilter === chip.id;
-              return (
-                <button
-                  key={chip.id}
-                  onClick={() => {
-                    setSelectedCourseFilter(chip.id);
-                    setCurrentPage(1);
-                  }}
-                  className={`px-3.5 py-1.5 rounded-2xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
-                    isSelected
-                      ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/25'
-                      : 'bg-slate-100/90 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200/80 dark:hover:bg-slate-700'
-                  }`}
-                >
-                  <span>{chip.label}</span>
-                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-extrabold ${
-                    isSelected 
-                      ? 'bg-white/25 text-white' 
-                      : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
-                  }`}>
-                    {chip.count}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* View Switcher: Lista vs Grid */}
-          <div className="flex items-center p-1 bg-slate-100 dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700 shrink-0 self-end sm:self-center">
-            <button
-              type="button"
-              onClick={() => setViewMode('lista')}
-              className={`p-1.5 rounded-xl transition-all ${
-                viewMode === 'lista'
-                  ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-xs'
-                  : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
-              }`}
-              title="Vista en Lista / Tabla"
-              aria-label="Vista Lista"
-            >
-              <ListIcon className="w-4 h-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('grid')}
-              className={`p-1.5 rounded-xl transition-all ${
-                viewMode === 'grid'
-                  ? 'bg-indigo-600 text-white shadow-xs'
-                  : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
-              }`}
-              title="Vista en Cuadrícula (Grid)"
-              aria-label="Vista Grid"
-            >
-              <LayoutGrid className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* ─────────────────────────────────────────────────────────────────────────────
-          3. RENDERIZADO: VISTA EN GRID O VISTA EN TABLA
-          ───────────────────────────────────────────────────────────────────────────── */}
-      {paginatedTasks.length === 0 ? (
-        <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-12 text-center space-y-3 shadow-xs">
-          <div className="w-14 h-14 rounded-2xl bg-indigo-50 text-indigo-500 flex items-center justify-center mx-auto">
-            <FileText className="w-7 h-7" />
-          </div>
-          <h3 className="font-extrabold text-slate-800 dark:text-white text-base">
-            TODAVÍA NO TIENES TAREAS
-          </h3>
-          <p className="text-xs text-slate-400 max-w-sm mx-auto">
-            No encontramos tareas con estos filtros o aún no has creado asignaciones para este periodo.
-          </p>
-          <div className="flex items-center justify-center gap-2 pt-2">
-            <button
-              onClick={() => {
-                setSearchQuery('');
-                setSelectedCourseFilter('todos');
-                setSelectedStatusFilter('todos');
-              }}
-              className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-200"
-            >
-              Limpiar filtros
-            </button>
-            <button
-              onClick={() => setIsAddModalOpen(true)}
-              className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 shadow-sm"
-            >
-              + Crear Nueva Tarea
-            </button>
-          </div>
-        </div>
-      ) : viewMode === 'grid' ? (
-        
-        /* ═══════════════════════════════════════════════════════════════════════════
-           MODALIDAD 1: VISTA EN GRID (3 COLUMNAS RESPONSIVE MATCHING SCREENSHOT)
-           ═══════════════════════════════════════════════════════════════════════════ */
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 animate-in fade-in zoom-in-95 duration-150">
-          {paginatedTasks.map((task) => {
-            const { 
-              subCount, 
-              totalStudents, 
-              status, 
-              relativeDueText, 
-              relativeDueClass, 
-              dueDate,
-              progressPct 
-            } = getTaskMetrics(task);
-
-            const visual = getSubjectVisual(task.curso?.nombre);
-            const IconComponent = visual.icon;
-            const remainingAvatarsCount = Math.max(totalStudents - 3, 0);
-
+      {/* Pestañas + filtros */}
+      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-4 space-y-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          {TABS.map(t => {
+            const active = tab === t.key;
+            const count = tabCount(t.key);
             return (
-              <div
-                key={task.id}
-                className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-xs hover:shadow-md hover:border-indigo-200 dark:hover:border-indigo-800/80 transition-all duration-200 flex flex-col justify-between group relative"
+              <button
+                key={t.key}
+                type="button"
+                onClick={() => { setTab(t.key); setVisibleCount(8); }}
+                aria-pressed={active}
+                className={`text-left px-4 py-2.5 rounded-2xl border-2 transition-colors cursor-pointer ${
+                  active ? 'bg-indigo-600 border-indigo-600 text-white shadow-md' : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-100 hover:border-indigo-400'
+                }`}
               >
-                {/* ── Top Row: Subject, Date, Status & Menu ── */}
-                <div>
-                  <div className="flex items-start justify-between gap-2 mb-3">
-                    {/* Subject Icon + Name Badge */}
-                    <div className="flex items-center gap-2 min-w-0">
-                      <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${visual.iconContainer}`}>
-                        <IconComponent className="w-4 h-4" />
-                      </div>
-                      <span className={`px-2.5 py-0.8 rounded-xl text-[11px] font-bold border truncate ${visual.badgeClass}`}>
-                        {task.curso?.nombre || 'General'}
-                      </span>
-                    </div>
-
-                    {/* Deadline & Status Badge + Menu */}
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <span className="text-[11px] font-medium text-slate-400 whitespace-nowrap" suppressHydrationWarning>
-                        {dueDate.toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' })}
-                      </span>
-                      
-                      <span className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border whitespace-nowrap ${relativeDueClass}`}>
-                        {relativeDueText}
-                      </span>
-
-                      {/* Dropdown Menu Trigger */}
-                      <div className="relative">
-                        <button
-                          type="button"
-                          onClick={() => setActiveMenuTaskId(activeMenuTaskId === task.id ? null : task.id)}
-                          className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                        >
-                          <MoreVertical className="w-3.5 h-3.5" />
-                        </button>
-
-                        {activeMenuTaskId === task.id && (
-                          <div className="absolute right-0 top-full mt-1 w-44 bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-700 py-1.5 z-30 animate-in fade-in zoom-in-95 duration-150">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSelectedTaskForDetail(task);
-                                setActiveMenuTaskId(null);
-                              }}
-                              className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2"
-                            >
-                              <FileText className="w-3.5 h-3.5 text-slate-400" />
-                              <span>Ver Detalle</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSelectedTaskForReview(task);
-                                setActiveMenuTaskId(null);
-                              }}
-                              className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2"
-                            >
-                              <Award className="w-3.5 h-3.5 text-blue-500" />
-                              <span>Calificar Entregas</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                showToast('Función de duplicar tarea en preparación', 'info');
-                                setActiveMenuTaskId(null);
-                              }}
-                              className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2"
-                            >
-                              <Copy className="w-3.5 h-3.5 text-slate-400" />
-                              <span>Duplicar Tarea</span>
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* ── Card Body: Title & Short Description ── */}
-                  <div className="space-y-1.5 mb-5">
-                    <button
-                      type="button"
-                      onClick={() => setSelectedTaskForDetail(task)}
-                      className="font-extrabold text-sm text-slate-900 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-400 text-left line-clamp-1 transition-colors leading-snug cursor-pointer block w-full"
-                    >
-                      {task.titulo}
-                    </button>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed">
-                      {task.descripcion}
-                    </p>
-                  </div>
-                </div>
-
-                {/* ── Card Bottom: Progress Bar & Student Avatars & CTA ── */}
-                <div className="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-800/80">
-                  {/* Progress Line */}
-                  <div>
-                    <div className="flex items-center justify-between text-[11px] mb-1.5">
-                      <span className="font-bold text-slate-600 dark:text-slate-300 flex items-center gap-1">
-                        <Users className="w-3 h-3 text-indigo-500" />
-                        <span>{subCount} de {totalStudents} entregas</span>
-                      </span>
-                      <span className="font-extrabold text-slate-800 dark:text-slate-200">
-                        {progressPct}%
-                      </span>
-                    </div>
-
-                    <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all duration-500 ${
-                          progressPct === 100 
-                            ? 'bg-emerald-500' 
-                            : progressPct > 0 
-                            ? 'bg-indigo-600' 
-                            : status === 'vencida'
-                            ? 'bg-rose-500'
-                            : 'bg-slate-300 dark:bg-slate-700'
-                        }`}
-                        style={{ width: `${progressPct}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Avatars Overlap Stack & Action Button */}
-                  <div className="flex items-center justify-between gap-2">
-                    {/* Avatars Stack */}
-                    <div className="flex items-center">
-                      <div className="flex -space-x-2 overflow-hidden">
-                        {studentAvatarsSample.map((src, idx) => (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            key={idx}
-                            src={src}
-                            alt="Estudiante"
-                            className="inline-block h-6 w-6 rounded-full ring-2 ring-white dark:ring-slate-900 object-cover"
-                          />
-                        ))}
-                      </div>
-                      <span className="text-[10px] font-bold text-slate-500 ml-1.5">
-                        +{remainingAvatarsCount}
-                      </span>
-                    </div>
-
-                    {/* Action Button */}
-                    <button
-                      type="button"
-                      onClick={() => setSelectedTaskForReview(task)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50/80 hover:bg-blue-100 dark:bg-blue-950/60 dark:hover:bg-blue-900 text-blue-700 dark:text-blue-300 border border-blue-200/80 dark:border-blue-800 text-xs font-bold transition-all shadow-2xs cursor-pointer active:scale-95"
-                    >
-                      <Eye className="w-3.5 h-3.5" />
-                      <span>Revisar Entregas</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
+                <span className="flex items-center justify-between gap-2">
+                  <span className="text-base font-black">{t.label}</span>
+                  <span className={`min-w-[28px] text-center px-2 py-0.5 rounded-full text-sm font-black ${active ? 'bg-white/25' : t.key === 'por_calificar' && count > 0 ? 'bg-purple-600 text-white' : 'bg-slate-100 dark:bg-slate-700'}`}>{count}</span>
+                </span>
+                <span className={`block text-xs ${active ? 'text-indigo-100' : 'text-slate-500 dark:text-slate-400'}`}>{t.hint}</span>
+              </button>
             );
           })}
         </div>
-      ) : (
 
-        /* ═══════════════════════════════════════════════════════════════════════════
-           MODALIDAD 2: VISTA EN TABLA / LISTA TRADICIONAL
-           ═══════════════════════════════════════════════════════════════════════════ */
-        <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="border-b border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 text-[10px] font-black uppercase tracking-wider text-slate-400">
-                  <th className="py-4 px-6 min-w-[280px]">
-                    <div className="flex items-center gap-1.5 cursor-pointer hover:text-slate-600">
-                      <span>TAREA / ASIGNACIÓN</span>
-                      <ArrowUpDown className="w-3 h-3" />
-                    </div>
-                  </th>
-                  <th className="py-4 px-4 min-w-[120px]">CURSO</th>
-                  <th className="py-4 px-4 min-w-[170px]">
-                    <div className="flex items-center gap-1.5 cursor-pointer hover:text-slate-600">
-                      <span>FECHA LÍMITE</span>
-                      <ArrowUpDown className="w-3 h-3" />
-                    </div>
-                  </th>
-                  <th className="py-4 px-4 min-w-[130px]">
-                    <div className="flex items-center gap-1.5 cursor-pointer hover:text-slate-600">
-                      <span>ENTREGAS</span>
-                      <ArrowUpDown className="w-3 h-3" />
-                    </div>
-                  </th>
-                  <th className="py-4 px-4 min-w-[130px]">
-                    <div className="flex items-center gap-1.5 cursor-pointer hover:text-slate-600">
-                      <span>ESTADO</span>
-                      <ArrowUpDown className="w-3 h-3" />
-                    </div>
-                  </th>
-                  <th className="py-4 px-6 text-right min-w-[140px]">ACCIONES</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {paginatedTasks.map((task) => {
-                  const { 
-                    subCount, 
-                    totalStudents, 
-                    status, 
-                    relativeDueText, 
-                    relativeDueClass, 
-                    dueDate 
-                  } = getTaskMetrics(task);
-
-                  const visual = getSubjectVisual(task.curso?.nombre);
-                  const IconComponent = visual.icon;
-
-                  return (
-                    <tr 
-                      key={task.id}
-                      className="hover:bg-slate-50/60 dark:hover:bg-slate-800/30 transition-colors group"
-                    >
-                      {/* Tarea / Asignación */}
-                      <td className="py-4 px-6">
-                        <div className="flex items-center gap-3.5">
-                          {/* Subject Icon Box */}
-                          <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 ${visual.iconContainer}`}>
-                            <IconComponent className="w-5 h-5" />
-                          </div>
-
-                          <div className="min-w-0">
-                            <button
-                              type="button"
-                              onClick={() => setSelectedTaskForDetail(task)}
-                              className="font-extrabold text-xs text-slate-900 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-400 text-left line-clamp-1 transition-colors cursor-pointer"
-                            >
-                              {task.titulo}
-                            </button>
-                            <p className="text-[11px] text-slate-400 line-clamp-1 mt-0.5 max-w-sm">
-                              {task.descripcion}
-                            </p>
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* Curso / Materia */}
-                      <td className="py-4 px-4">
-                        <span className={`inline-flex items-center px-3 py-1 rounded-xl text-[11px] font-bold border ${visual.badgeClass}`}>
-                          {task.curso?.nombre || 'General'}
-                        </span>
-                      </td>
-
-                      {/* Fecha Límite */}
-                      <td className="py-4 px-4">
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-1.5 text-xs text-slate-700 dark:text-slate-200 font-bold" suppressHydrationWarning>
-                            <Calendar className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
-                            <span>
-                              {dueDate.toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' })}
-                            </span>
-                            <span className="text-[10px] font-normal text-slate-400">
-                              06:59 p. m.
-                            </span>
-                          </div>
-
-                          <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-lg border ${relativeDueClass}`}>
-                            <Clock className="w-2.5 h-2.5" />
-                            <span>{relativeDueText}</span>
-                          </span>
-                        </div>
-                      </td>
-
-                      {/* Entregas */}
-                      <td className="py-4 px-4">
-                        <div className="space-y-1">
-                          <span className={`inline-flex items-center px-2.5 py-1 rounded-xl text-xs font-black ${
-                            subCount > 0 
-                              ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300' 
-                              : status === 'vencida'
-                              ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300'
-                              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
-                          }`}>
-                            {subCount} de {totalStudents} entregas
-                          </span>
-                          
-                          {/* Mini Progress Bar */}
-                          <div className="w-24 h-1 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                            <div 
-                              className={`h-full rounded-full transition-all ${
-                                subCount === totalStudents 
-                                  ? 'bg-emerald-500' 
-                                  : subCount > 0 
-                                  ? 'bg-indigo-500' 
-                                  : 'bg-slate-300 dark:bg-slate-700'
-                              }`}
-                              style={{ width: `${(subCount / totalStudents) * 100}%` }}
-                            />
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* Estado */}
-                      <td className="py-4 px-4">
-                        {status === 'en_proceso' && (
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800">
-                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                            <span>En proceso</span>
-                          </span>
-                        )}
-                        {status === 'pendiente' && (
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200/80 dark:border-blue-800">
-                            <span className="w-2 h-2 rounded-full bg-blue-500" />
-                            <span>Pendiente</span>
-                          </span>
-                        )}
-                        {status === 'vencida' && (
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200/80 dark:border-rose-800">
-                            <span className="w-2 h-2 rounded-full bg-rose-500" />
-                            <span>Vencida</span>
-                          </span>
-                        )}
-                        {status === 'completada' && (
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800">
-                            <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                            <span>Completada</span>
-                          </span>
-                        )}
-                      </td>
-
-                      {/* Acciones */}
-                      <td className="py-4 px-6 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setSelectedTaskForReview(task)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/60 dark:hover:bg-blue-900 text-blue-700 dark:text-blue-300 border border-blue-200/80 dark:border-blue-800 text-xs font-bold transition-all cursor-pointer shadow-2xs"
-                          >
-                            <Eye className="w-3.5 h-3.5" />
-                            <span>Revisar</span>
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+        <div className="flex flex-col md:flex-row md:items-center gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 flex-1">
+            <span className="text-sm font-bold text-slate-600 dark:text-slate-300 shrink-0 mr-1">Aula:</span>
+            {[{ id: 'todas', label: 'Todas' }, ...teacherSections.map(ts => ({ id: ts.seccion.id, label: sectionLabel(ts.seccion.id) }))].map(opt => (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => { setSectionFilter(opt.id); setVisibleCount(8); }}
+                aria-pressed={sectionFilter === opt.id}
+                className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border-2 text-sm font-bold cursor-pointer ${
+                  opt.id === 'todas'
+                    ? sectionFilter === opt.id ? 'bg-slate-900 dark:bg-white border-slate-900 dark:border-white text-white dark:text-slate-900' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-slate-400'
+                    : aulaBtnCls(opt.id, sectionFilter === opt.id)
+                }`}
+              >
+                {opt.id !== 'todas' && sectionFilter !== opt.id && aulaDot(opt.id)}{opt.label}
+              </button>
+            ))}
           </div>
-        </div>
-      )}
-
-      {/* ─────────────────────────────────────────────────────────────────────────────
-          PAGINACIÓN & FOOTER (MATCHING SCREENSHOT)
-          ───────────────────────────────────────────────────────────────────────────── */}
-      <div className="p-4 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-        <div>
-          Mostrando <span className="font-bold text-slate-700 dark:text-slate-200">{paginatedTasks.length}</span> de{' '}
-          <span className="font-bold text-slate-700 dark:text-slate-200">{filteredTasks.length}</span> tareas
-        </div>
-
-        <div className="flex items-center gap-1.5">
-          <button
-            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-            disabled={currentPage === 1}
-            className="p-2 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            <ChevronLeft className="w-3.5 h-3.5" />
-          </button>
-
-          {Array.from({ length: totalPages }).map((_, idx) => (
-            <button
-              key={idx + 1}
-              onClick={() => setCurrentPage(idx + 1)}
-              className={`w-8 h-8 rounded-xl font-bold text-xs transition-all ${
-                currentPage === idx + 1
-                  ? 'bg-indigo-600 text-white shadow-xs'
-                  : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100'
-              }`}
-            >
-              {idx + 1}
-            </button>
-          ))}
-
-          <button
-            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-            disabled={currentPage === totalPages}
-            className="p-2 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            <ChevronRight className="w-3.5 h-3.5" />
-          </button>
+          <div className="relative md:w-64">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar una tarea" className="w-full pl-9 pr-8 py-2 rounded-xl bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500" />
+            {search && (
+              <button type="button" onClick={() => setSearch('')} aria-label="Borrar búsqueda" className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 cursor-pointer"><X className="w-4 h-4" /></button>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* ─────────────────────────────────────────────────────────────────────────────
-          4. MODAL: CREAR NUEVA TAREA (FLUIDO, MODERNO Y PASO A PASO)
-          ───────────────────────────────────────────────────────────────────────────── */}
-      <Modal
-        isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-        title="Publicar Nueva Asignación Escolar"
-        maxWidth="2xl"
-      >
-        <form onSubmit={handleCreateTask} className="space-y-4 text-xs">
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Título */}
-            <div className="sm:col-span-2">
-              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
-                <FileText className="w-3.5 h-3.5 text-indigo-500" />
-                Título de la Tarea / Actividad *
-              </label>
-              <input
-                required
-                type="text"
-                placeholder="Ej. Guía de Fracciones y Números Mixtos"
-                value={formData.titulo}
-                onChange={(e) => setFormData({ ...formData, titulo: e.target.value })}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
-
-            {/* Materia Scoped */}
-            <div>
-              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
-                <BookOpen className="w-3.5 h-3.5 text-indigo-500" />
-                Curso o Materia Asignada *
-              </label>
-              <SearchableSelect
-                value={formData.cursoId}
-                onChange={(val) => setFormData({ ...formData, cursoId: val })}
-                icon={<BookOpen className="w-4 h-4" />}
-                options={teacherCourses.map((c) => ({
-                  value: c.id,
-                  label: c.nombre,
-                  sublabel: `Código: ${c.codigo}`,
-                }))}
-                placeholder="Buscar materia..."
-              />
-            </div>
-
-            {/* Sección Scoped */}
-            <div>
-              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
-                <School className="w-3.5 h-3.5 text-indigo-500" />
-                Salón / Sección Asignada *
-              </label>
-              <SearchableSelect
-                value={formData.seccionId}
-                onChange={(val) => setFormData({ ...formData, seccionId: val })}
-                icon={<School className="w-4 h-4" />}
-                options={teacherSections.map((ts) => ({
-                  value: ts.seccion.id,
-                  label: `${ts.seccion.grado?.nombre || ''} "${ts.seccion.letra}"`,
-                  sublabel: `Nivel ${ts.seccion.grado?.nivel || 'General'}`,
-                }))}
-                placeholder="Buscar salón..."
-              />
-            </div>
-
-            {/* Fecha y Hora Límite */}
-            <div>
-              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
-                <Clock className="w-3.5 h-3.5 text-indigo-500" />
-                Fecha y Hora Límite *
-              </label>
-              <input
-                required
-                type="datetime-local"
-                value={formData.fechaLimite}
-                onChange={(e) => setFormData({ ...formData, fechaLimite: e.target.value })}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
-
-            {/* Material Adjunto / URL */}
-            <div>
-              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
-                <Paperclip className="w-3.5 h-3.5 text-indigo-500" />
-                Enlace a Material de Apoyo (Opcional)
-              </label>
-              <input
-                type="url"
-                placeholder="https://drive.google.com/..."
-                value={formData.materialUrl}
-                onChange={(e) => setFormData({ ...formData, materialUrl: e.target.value })}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
-          </div>
-
-          {/* Instrucciones */}
-          <div>
-            <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
-              <AlignLeft className="w-3.5 h-3.5 text-indigo-500" />
-              Instrucciones y Descripción para los Estudiantes *
-            </label>
-            <textarea
-              required
-              rows={4}
-              placeholder="Describe detalladamente los ejercicios o actividades que deben realizar los alumnos..."
-              value={formData.descripcion}
-              onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
-              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 resize-none font-normal"
-            />
-          </div>
-
-          <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-            <button
-              type="button"
-              onClick={() => {
-                showToast('Borrador guardado localmente', 'info');
-                setIsAddModalOpen(false);
-              }}
-              className="px-4 py-2 font-bold text-slate-500 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl"
-            >
-              Guardar Borrador
+      {/* Lista de tareas */}
+      {filteredTasks.length === 0 ? (
+        <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-10 text-center space-y-3">
+          <div className="w-14 h-14 rounded-2xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-500 flex items-center justify-center mx-auto"><FileText className="w-7 h-7" /></div>
+          <h3 className="font-black text-slate-900 dark:text-white text-lg">
+            {myTasks.length === 0 ? 'Todavía no creaste tareas' : tab === 'por_calificar' ? '¡Todo calificado! 🎉' : 'No hay tareas aquí'}
+          </h3>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            {myTasks.length === 0 ? 'Toca "Crear tarea nueva" para enviar la primera a tus alumnos.' : tab === 'por_calificar' ? 'No tienes entregas pendientes de nota.' : 'Prueba con otra pestaña, otra aula o borra la búsqueda.'}
+          </p>
+          {myTasks.length === 0 && (
+            <button type="button" onClick={openCreate} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-black cursor-pointer">
+              <Plus className="w-4 h-4" /> Crear tarea nueva
             </button>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-2.5">
+          {filteredTasks.slice(0, visibleCount).map(task => {
+            const m = metricsOf(task);
+            const course = courseOf(task);
+            const due = dueInWords(m.due, now);
+            const pct = m.total > 0 ? Math.round((m.delivered / m.total) * 100) : 0;
+            return (
+              <div key={task.id} className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-4 flex flex-col md:flex-row md:items-center gap-4 hover:border-indigo-300 dark:hover:border-indigo-700 transition-colors">
+                <span className="hidden md:block w-2 self-stretch rounded-full shrink-0" style={{ backgroundColor: course?.color_hex || '#6366f1' }} />
+                <div className="flex-1 min-w-0 space-y-1">
+                  <div className="flex flex-wrap items-center gap-1.5 text-xs font-bold">
+                    <span className="px-2.5 py-0.5 rounded-full text-white" style={{ backgroundColor: course?.color_hex || '#6366f1' }}>{course?.nombre || 'Curso'}</span>
+                    <span className={`px-2.5 py-0.5 rounded-full ${aulaColor(task.seccion_id).chip}`}>{sectionLabel(task.seccion_id)}</span>
+                  </div>
+                  <h3 className="text-lg font-black text-slate-900 dark:text-white leading-snug">{task.titulo}</h3>
+                  <p className={`text-sm font-bold flex items-center gap-1.5 ${due.tone === 'late' ? 'text-rose-600 dark:text-rose-400' : due.tone === 'soon' ? 'text-amber-600 dark:text-amber-400' : 'text-slate-600 dark:text-slate-300'}`} suppressHydrationWarning>
+                    <CalendarClock className="w-4 h-4" /> {due.text}
+                  </p>
+                </div>
 
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setIsAddModalOpen(false)}
-                className="px-4 py-2 font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl"
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md shadow-indigo-600/25 transition-all active:scale-95 cursor-pointer"
-              >
-                Publicar Tarea
+                <div className="md:w-56 space-y-1.5">
+                  <p className="text-sm text-slate-700 dark:text-slate-200"><strong>{m.delivered} de {m.total}</strong> entregaron</p>
+                  <div className="h-2.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                    <div className={`h-full rounded-full ${pct === 100 ? 'bg-emerald-500' : 'bg-indigo-500'}`} style={{ width: `${pct}%` }} />
+                  </div>
+                  <p className="text-xs font-bold">
+                    {m.toGrade > 0
+                      ? <span className="text-purple-700 dark:text-purple-300">● {m.toGrade} por calificar</span>
+                      : m.delivered > 0 ? <span className="text-emerald-600 dark:text-emerald-400">✓ Todas las entregas calificadas</span>
+                      : <span className="text-slate-400">Aún nadie entregó</span>}
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => openReview(task)}
+                  className={`inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl text-sm font-black cursor-pointer shrink-0 md:w-48 ${
+                    m.toGrade > 0 ? 'bg-purple-600 hover:bg-purple-700 text-white shadow-md' : 'bg-white dark:bg-slate-800 border-2 border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-100 hover:border-indigo-500'
+                  }`}
+                >
+                  {m.toGrade > 0 ? <><ClipboardCheck className="w-5 h-5" /> Calificar ({m.toGrade})</> : <><Users className="w-5 h-5" /> Ver entregas</>}
+                </button>
+              </div>
+            );
+          })}
+          {filteredTasks.length > visibleCount && (
+            <button type="button" onClick={() => setVisibleCount(c => c + 8)} className="w-full py-3 rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-700 text-sm font-bold text-slate-600 dark:text-slate-300 hover:border-indigo-400 cursor-pointer">
+              Ver más tareas ({filteredTasks.length - visibleCount} más)
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* ───────── Ventana: crear tarea ───────── */}
+      <Modal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} title="Crear tarea nueva" maxWidth="2xl">
+        <form onSubmit={handleCreate} className="space-y-4">
+          <div>
+            <p className="text-sm font-black text-slate-800 dark:text-slate-100 mb-1.5">1. ¿Para qué aula?</p>
+            <div className="flex flex-wrap gap-2">
+              {teacherSections.map(ts => (
+                <button key={ts.seccion.id} type="button" onClick={() => pickFormSection(ts.seccion.id)} aria-pressed={form.seccionId === ts.seccion.id}
+                  className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border-2 text-sm font-black cursor-pointer ${aulaBtnCls(ts.seccion.id, form.seccionId === ts.seccion.id)}`}>
+                  {form.seccionId !== ts.seccion.id && aulaDot(ts.seccion.id)}{sectionLabel(ts.seccion.id)}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <p className="text-sm font-black text-slate-800 dark:text-slate-100 mb-1.5">2. ¿De qué curso?</p>
+            {formCourses.length === 0 ? (
+              <p className="text-sm text-amber-600 font-semibold">No dictas cursos en esta aula.</p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {formCourses.map(c => (
+                  <button key={c.id} type="button" onClick={() => setForm(f => ({ ...f, cursoId: c.id }))} aria-pressed={form.cursoId === c.id}
+                    className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border-2 text-sm font-black cursor-pointer ${form.cursoId === c.id ? 'bg-slate-900 dark:bg-white border-slate-900 dark:border-white text-white dark:text-slate-900' : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-100 hover:border-slate-500'}`}>
+                    <span className="w-3 h-3 rounded-full" style={{ backgroundColor: c.color_hex || '#3b82f6' }} /> {c.nombre}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <label className="block">
+            <span className="block text-sm font-black text-slate-800 dark:text-slate-100 mb-1.5">3. Título de la tarea</span>
+            <input required type="text" value={form.titulo} onChange={e => setForm(f => ({ ...f, titulo: e.target.value }))} placeholder="Ej. Resolver los ejercicios de fracciones" className={inputCls} />
+          </label>
+
+          <label className="block">
+            <span className="block text-sm font-black text-slate-800 dark:text-slate-100 mb-1.5">4. ¿Qué deben hacer los alumnos?</span>
+            <textarea required rows={4} value={form.descripcion} onChange={e => setForm(f => ({ ...f, descripcion: e.target.value }))} placeholder="Ej. Resuelvan los ejercicios 1 al 10 de la página 45 y tomen foto de su cuaderno." className={`${inputCls} resize-none`} />
+          </label>
+
+          <div>
+            <p className="text-sm font-black text-slate-800 dark:text-slate-100 mb-1.5">5. ¿Hasta cuándo pueden entregar?</p>
+            <div className="flex flex-wrap gap-2 mb-2">
+              {[{ label: 'Mañana', d: 1 }, { label: 'En 3 días', d: 3 }, { label: 'En 1 semana', d: 7 }, { label: 'En 2 semanas', d: 14 }].map(q => {
+                const iso = localIso(addDays(now, q.d));
+                return (
+                  <button key={q.d} type="button" onClick={() => setForm(f => ({ ...f, fecha: iso }))} aria-pressed={form.fecha === iso}
+                    className={`px-3 py-1.5 rounded-xl border-2 text-sm font-bold cursor-pointer ${form.fecha === iso ? 'bg-amber-500 border-amber-500 text-white' : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:border-amber-400'}`}>
+                    {q.label}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <label className="block">
+                <span className="block text-xs font-bold text-slate-500 mb-1">Día</span>
+                <input required type="date" min={localIso(now)} value={form.fecha} onChange={e => setForm(f => ({ ...f, fecha: e.target.value }))} className={inputCls} />
+              </label>
+              <label className="block">
+                <span className="block text-xs font-bold text-slate-500 mb-1">Hora</span>
+                <input required type="time" value={form.hora} onChange={e => setForm(f => ({ ...f, hora: e.target.value }))} className={inputCls} />
+              </label>
+            </div>
+            {formDueInvalid ? (
+              <p className="mt-1.5 text-sm font-bold text-rose-600 flex items-center gap-1"><AlertCircle className="w-4 h-4" /> La fecha de entrega debe ser después de ahora.</p>
+            ) : (
+              <p className="mt-1.5 text-sm text-slate-600 dark:text-slate-300" suppressHydrationWarning>Los alumnos pueden entregar hasta el <strong>{dateText(formDue)} a las {timeText(formDue)}</strong></p>
+            )}
+          </div>
+
+          <label className="block">
+            <span className="block text-sm font-black text-slate-800 dark:text-slate-100 mb-1.5">6. Enlace a material de apoyo <span className="font-normal text-slate-500">(opcional)</span></span>
+            <input type="url" value={form.materialUrl} onChange={e => setForm(f => ({ ...f, materialUrl: e.target.value }))} placeholder="https://drive.google.com/…" className={inputCls} />
+          </label>
+
+          <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+            <p className="text-sm text-slate-600 dark:text-slate-300">
+              Se enviará a <strong>{studentsOf(form.seccionId).length} {studentsOf(form.seccionId).length === 1 ? 'alumno' : 'alumnos'}</strong> de {sectionLabel(form.seccionId)}.
+            </p>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => setIsCreateOpen(false)} className="px-4 py-2.5 rounded-xl border-2 border-slate-300 dark:border-slate-600 text-sm font-bold text-slate-700 dark:text-slate-200 cursor-pointer">Cancelar</button>
+              <button type="submit" disabled={!canPublish} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-black shadow-md disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer">
+                <Send className="w-4 h-4" /> Enviar tarea
               </button>
             </div>
           </div>
         </form>
       </Modal>
 
-      {/* ─────────────────────────────────────────────────────────────────────────────
-          5. MODAL: DETALLE Y REVISIÓN DE ENTREGAS (LISTA DE ESTUDIANTES)
-          ───────────────────────────────────────────────────────────────────────────── */}
-      {selectedTaskForReview && (
-        <Modal
-          isOpen={!!selectedTaskForReview}
-          onClose={() => setSelectedTaskForReview(null)}
-          title={`Entregas: ${selectedTaskForReview.titulo}`}
-          maxWidth="2xl"
-        >
-          <div className="space-y-4 text-xs">
-            {/* Task Info Pill */}
-            <div className="p-4 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/50 space-y-1.5">
-              <div className="flex items-center justify-between">
-                <span className="font-extrabold text-indigo-900 dark:text-indigo-200">
-                  {selectedTaskForReview.curso?.nombre}
-                </span>
-                <span className="text-[11px] font-semibold text-slate-500" suppressHydrationWarning>
-                  Límite: {new Date(selectedTaskForReview.fecha_limite).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                </span>
-              </div>
-              <p className="text-slate-600 dark:text-slate-300">
-                {selectedTaskForReview.descripcion}
-              </p>
-            </div>
-
-            {/* Students Deliveries Table */}
-            <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
-              {(
-                enrollments.filter(e => !selectedTaskForReview.seccion_id || e.seccion_id === selectedTaskForReview.seccion_id).length > 0
-                  ? enrollments.filter(e => !selectedTaskForReview.seccion_id || e.seccion_id === selectedTaskForReview.seccion_id)
-                  : enrollments.slice(0, 11)
-              ).map((enr) => {
-                const sub = submissions.find(
-                  s => s.tarea_id === selectedTaskForReview.id && s.matricula_id === enr.id
-                );
-                const studentName = `${enr.estudiante?.profile?.apellidos || ''}, ${enr.estudiante?.profile?.nombres || ''}`;
-
-                return (
-                  <div
-                    key={enr.id}
-                    className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-                  >
-                    <div className="flex items-start gap-3">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={enr.estudiante?.profile?.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150'}
-                        alt={studentName}
-                        className="w-9 h-9 rounded-xl object-cover shrink-0 border border-slate-200 dark:border-slate-700"
-                      />
-                      <div className="space-y-1">
-                        <p className="font-extrabold text-slate-800 dark:text-white">{studentName}</p>
-                        <p className="text-[10px] text-slate-400">
-                          {sub ? `Entregado el ${new Date(sub.fecha_entrega).toLocaleString('es-PE')}` : 'Sin entrega registrada'}
-                        </p>
-
-                        {sub?.archivo_nombre && (
-                          <a
-                            href={sub.archivo_url || '#'}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 text-[11px] font-bold hover:bg-blue-100"
-                          >
-                            <Paperclip className="w-3 h-3 text-blue-600" />
-                            <span className="truncate max-w-[180px]">{sub.archivo_nombre}</span>
-                          </a>
-                        )}
-
-                        {sub?.comentario_estudiante && (
-                          <p className="text-[11px] text-slate-500 italic max-w-sm">
-                            &quot;{sub.comentario_estudiante}&quot;
-                          </p>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
-                      {sub?.calificacion_letra ? (
-                        <GradeBadge grade={sub.calificacion_letra} size="sm" />
-                      ) : (
-                        <span className="text-[10px] text-amber-600 font-bold bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-lg border border-amber-200">
-                          Pendiente
-                        </span>
-                      )}
-
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setGradingSubmission({
-                            tareaId: selectedTaskForReview.id,
-                            matriculaId: enr.id,
-                            studentName,
-                            studentAvatar: enr.estudiante?.profile?.avatar_url,
-                            currentGrade: sub?.calificacion_letra,
-                            retroalimentacion: sub?.retroalimentacion_docente,
-                            comentarioEstudiante: sub?.comentario_estudiante,
-                            archivoUrl: sub?.archivo_url,
-                            archivoNombre: sub?.archivo_nombre,
-                            archivoTamano: sub?.archivo_tamano,
-                          })
-                        }
-                        className="px-3.5 py-1.5 rounded-xl font-bold bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 text-[11px] transition-all cursor-pointer"
-                      >
-                        Calificar
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </Modal>
-      )}
-
-      {/* ─────────────────────────────────────────────────────────────────────────────
-          6. MODAL: CALIFICAR Y EVALUAR ENTREGA ESPECÍFICA
-          ───────────────────────────────────────────────────────────────────────────── */}
-      {gradingSubmission && (
-        <Modal
-          isOpen={!!gradingSubmission}
-          onClose={() => setGradingSubmission(null)}
-          title={`Calificar Entrega: ${gradingSubmission.studentName}`}
-          maxWidth="md"
-        >
-          <div className="space-y-4 text-xs">
-            <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 flex items-center gap-3">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={gradingSubmission.studentAvatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150'}
-                alt={gradingSubmission.studentName}
-                className="w-10 h-10 rounded-xl object-cover"
-              />
-              <div>
-                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Estudiante</span>
-                <p className="text-xs font-bold text-slate-800 dark:text-white">{gradingSubmission.studentName}</p>
-              </div>
-            </div>
-
-            {/* Student Attached File and Comment */}
-            {(gradingSubmission.archivoNombre || gradingSubmission.comentarioEstudiante) && (
-              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-2">
-                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">
-                  Material Entregado
-                </span>
-                {gradingSubmission.archivoNombre && (
-                  <div className="flex items-center justify-between gap-2 p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <Paperclip className="w-4 h-4 text-indigo-600 shrink-0" />
-                      <span className="font-bold text-slate-800 dark:text-slate-200 truncate">
-                        {gradingSubmission.archivoNombre}
-                      </span>
-                    </div>
-                    {gradingSubmission.archivoUrl && (
-                      <a
-                        href={gradingSubmission.archivoUrl}
-                        download={gradingSubmission.archivoNombre}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="px-2.5 py-1 rounded-lg bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 font-bold text-[11px] hover:bg-blue-100 shrink-0 flex items-center gap-1"
-                      >
-                        Descargar
-                      </a>
+      {/* ───────── Ventana: entregas y calificación ───────── */}
+      {reviewTask && (() => {
+        const m = metricsOf(reviewTask);
+        const course = courseOf(reviewTask);
+        return (
+          <Modal isOpen={!!reviewTask} onClose={() => setReviewTask(null)} title="Entregas de la tarea" maxWidth="2xl">
+            <div className="space-y-3">
+              <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+                <div className="flex flex-wrap items-center gap-1.5 text-xs font-bold mb-1">
+                  <span className="px-2.5 py-0.5 rounded-full text-white" style={{ backgroundColor: course?.color_hex || '#6366f1' }}>{course?.nombre || 'Curso'}</span>
+                  <span className={`px-2.5 py-0.5 rounded-full ${aulaColor(reviewTask.seccion_id).chip}`}>{sectionLabel(reviewTask.seccion_id)}</span>
+                </div>
+                <p className="text-lg font-black text-slate-900 dark:text-white">{reviewTask.titulo}</p>
+                <p className="text-sm text-slate-600 dark:text-slate-300" suppressHydrationWarning>{dueInWords(m.due, now).text}</p>
+                <button type="button" onClick={() => setShowInstructions(v => !v)} className="mt-1 inline-flex items-center gap-1 text-sm font-bold text-indigo-700 dark:text-indigo-300 cursor-pointer" aria-expanded={showInstructions}>
+                  {showInstructions ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />} Ver instrucciones
+                </button>
+                {showInstructions && (
+                  <div className="mt-1 space-y-1">
+                    <p className="text-sm text-slate-700 dark:text-slate-200 whitespace-pre-line">{reviewTask.descripcion}</p>
+                    {reviewTask.archivo_url && (
+                      <a href={reviewTask.archivo_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm font-bold text-blue-700 dark:text-blue-300 underline"><LinkIcon className="w-4 h-4" /> Material de apoyo</a>
                     )}
                   </div>
                 )}
-                {gradingSubmission.comentarioEstudiante && (
-                  <p className="text-xs text-slate-600 dark:text-slate-300 italic">
-                    &quot;{gradingSubmission.comentarioEstudiante}&quot;
-                  </p>
-                )}
               </div>
-            )}
 
-            {/* Escala CNEB Selector */}
-            <div>
-              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-2 text-center">
-                Calificación Oficial MINEDU (Escala AD, A, B, C):
-              </label>
-              <div className="flex justify-center">
-                <GradeSelector
-                  value={gradingSubmission.currentGrade}
-                  onChange={(grade) => handleSaveGrade(grade, gradingSubmission.retroalimentacion)}
-                />
+              <div className="grid grid-cols-2 gap-2">
+                {([
+                  { key: 'entregaron', label: 'Entregaron', count: delivered.length, icon: CheckCircle2, on: 'bg-emerald-600 border-emerald-600 text-white' },
+                  { key: 'faltan', label: 'No entregaron', count: missing.length, icon: XCircle, on: 'bg-rose-600 border-rose-600 text-white' },
+                ] as const).map(v => (
+                  <button key={v.key} type="button" onClick={() => setReviewView(v.key)} aria-pressed={reviewView === v.key}
+                    className={`flex items-center justify-center gap-2 py-2.5 rounded-2xl border-2 text-sm font-black cursor-pointer ${reviewView === v.key ? v.on : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200'}`}>
+                    <v.icon className="w-4 h-4" /> {v.label} ({v.count})
+                  </button>
+                ))}
               </div>
-            </div>
 
-            {/* Retroalimentación Cualitativa */}
-            <div>
-              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Retroalimentación Docente:
-              </label>
-              <textarea
-                rows={3}
-                placeholder="Escribe tus observaciones pedagógicas o recomendaciones de mejora..."
-                value={gradingSubmission.retroalimentacion || ''}
-                onChange={(e) =>
-                  setGradingSubmission({
-                    ...gradingSubmission,
-                    retroalimentacion: e.target.value,
+              <div className="space-y-2 max-h-[48vh] overflow-y-auto pr-1">
+                {reviewView === 'faltan' ? (
+                  missing.length === 0 ? (
+                    <p className="py-6 text-center text-sm text-emerald-600 font-bold">¡Todos entregaron! 🎉</p>
+                  ) : missing.map(enr => {
+                    const { nombres, apellidos } = nameOf(enr);
+                    return (
+                      <div key={enr.id} className="flex items-center gap-3 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+                        <span className="w-9 h-9 rounded-xl bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-black flex items-center justify-center shrink-0">{`${nombres[0] || ''}${apellidos[0] || ''}`.toUpperCase()}</span>
+                        <span className="flex-1 text-sm font-bold text-slate-800 dark:text-slate-100">{apellidos}, {nombres}</span>
+                        <span className="text-xs font-bold text-rose-600">{m.isPastDue ? 'No entregó' : 'Aún no entrega'}</span>
+                      </div>
+                    );
                   })
-                }
-                className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
-              />
-            </div>
+                ) : delivered.length === 0 ? (
+                  <p className="py-6 text-center text-sm text-slate-500">Todavía nadie entregó esta tarea.</p>
+                ) : delivered.map(enr => {
+                  const { nombres, apellidos } = nameOf(enr);
+                  const sub = subOf(reviewTask.id, enr.id)!;
+                  const opt = gradeOption(sub.calificacion_letra);
+                  const late = new Date(sub.fecha_entrega) > m.due;
+                  const isGrading = gradingId === enr.id;
+                  return (
+                    <div key={enr.id} className={`p-3 rounded-2xl border-2 ${isGrading ? 'border-purple-400 bg-purple-50/50 dark:bg-purple-950/20' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900'}`}>
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                        <div className="flex items-start gap-3 flex-1 min-w-0">
+                          <span className="w-9 h-9 rounded-xl bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 text-xs font-black flex items-center justify-center shrink-0">{`${nombres[0] || ''}${apellidos[0] || ''}`.toUpperCase()}</span>
+                          <div className="min-w-0 space-y-1">
+                            <p className="text-sm font-black text-slate-900 dark:text-white">{apellidos}, {nombres}</p>
+                            <p className="text-xs text-slate-500" suppressHydrationWarning>
+                              Entregó el {new Date(sub.fecha_entrega).toLocaleDateString('es-PE', { day: 'numeric', month: 'long' })} a las {timeText(new Date(sub.fecha_entrega))}
+                              {late && <span className="ml-1 font-bold text-amber-600">· Fuera de fecha</span>}
+                            </p>
+                            {sub.archivo_nombre && (
+                              <a href={sub.archivo_url || '#'} target="_blank" rel="noopener noreferrer" download={sub.archivo_nombre} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 text-xs font-bold hover:bg-blue-100">
+                                <Paperclip className="w-3.5 h-3.5" /> <span className="truncate max-w-[220px]">Abrir: {sub.archivo_nombre}</span>
+                              </a>
+                            )}
+                            {sub.enlace_entrega && (
+                              <a href={sub.enlace_entrega} target="_blank" rel="noopener noreferrer" className="ml-1 inline-flex items-center gap-1 text-xs font-bold text-blue-700 dark:text-blue-300 underline"><LinkIcon className="w-3.5 h-3.5" /> Enlace</a>
+                            )}
+                            {sub.comentario_estudiante && <p className="text-xs text-slate-600 dark:text-slate-300 italic">&quot;{sub.comentario_estudiante}&quot;</p>}
+                          </div>
+                        </div>
+                        {!isGrading && (
+                          opt ? (
+                            <button type="button" onClick={() => startGrading(enr.id)} aria-label={`Cambiar nota ${opt.letter} de ${nombres} ${apellidos}`}
+                              className={`inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl border-2 text-base font-black cursor-pointer shrink-0 ${opt.solid}`}>
+                              {opt.letter} <span className="text-xs font-bold opacity-90">Cambiar</span>
+                            </button>
+                          ) : (
+                            <button type="button" onClick={() => startGrading(enr.id)} className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-sm font-black cursor-pointer shrink-0">
+                              <ClipboardCheck className="w-4 h-4" /> Poner nota
+                            </button>
+                          )
+                        )}
+                      </div>
 
-            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-              <button
-                type="button"
-                onClick={() => setGradingSubmission(null)}
-                className="px-4 py-2 font-bold text-slate-600 rounded-xl"
-              >
-                Cerrar
-              </button>
-              <button
-                type="button"
-                onClick={() =>
-                  handleSaveGrade(
-                    gradingSubmission.currentGrade || 'A',
-                    gradingSubmission.retroalimentacion
-                  )
-                }
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow cursor-pointer"
-              >
-                Guardar Evaluación
-              </button>
-            </div>
-          </div>
-        </Modal>
-      )}
-
-      {/* ─────────────────────────────────────────────────────────────────────────────
-          7. DRAWER / MODAL: DETALLE COMPLETO DE TAREA
-          ───────────────────────────────────────────────────────────────────────────── */}
-      {selectedTaskForDetail && (
-        <Modal
-          isOpen={!!selectedTaskForDetail}
-          onClose={() => setSelectedTaskForDetail(null)}
-          title="Ficha Detallada de la Asignación"
-          maxWidth="md"
-        >
-          <div className="space-y-4 text-xs">
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-2">
-              <span className="font-bold text-xs px-2.5 py-1 rounded-xl bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
-                {selectedTaskForDetail.curso?.nombre}
-              </span>
-              <h3 className="font-extrabold text-slate-900 dark:text-white text-sm">
-                {selectedTaskForDetail.titulo}
-              </h3>
-              <p className="text-slate-600 dark:text-slate-300">
-                {selectedTaskForDetail.descripcion}
-              </p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2 text-[11px]">
-              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-800">
-                <span className="text-slate-400 block">Fecha Límite:</span>
-                <span className="font-bold text-slate-800 dark:text-slate-200">
-                  {new Date(selectedTaskForDetail.fecha_limite).toLocaleString('es-PE')}
-                </span>
+                      {isGrading && (
+                        <div className="mt-3 pt-3 border-t border-purple-200 dark:border-purple-900 space-y-2.5">
+                          <p className="text-sm font-bold text-slate-700 dark:text-slate-200">Elige la nota:</p>
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                            {GRADE_OPTIONS.map(o => (
+                              <button key={o.letter} type="button" onClick={() => setGradeDraft(o.letter)} aria-pressed={gradeDraft === o.letter}
+                                className={`p-2 rounded-xl border-2 text-left cursor-pointer ${gradeDraft === o.letter ? `${o.solid} ring-4 ring-purple-200 dark:ring-purple-900` : o.soft}`}>
+                                <span className="block text-lg font-black leading-none">{o.letter}</span>
+                                <span className="block text-[11px] font-bold mt-0.5">{o.label}</span>
+                              </button>
+                            ))}
+                          </div>
+                          <textarea rows={2} value={feedbackDraft} onChange={e => setFeedbackDraft(e.target.value)} placeholder="Comentario para el alumno (opcional). Ej. ¡Buen trabajo! Revisa el ejercicio 4." className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border-2 border-slate-300 dark:border-slate-600 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-purple-500" />
+                          <div className="flex flex-wrap justify-end gap-2">
+                            <button type="button" onClick={() => setGradingId(null)} className="px-4 py-2 rounded-xl border-2 border-slate-300 dark:border-slate-600 text-sm font-bold text-slate-700 dark:text-slate-200 cursor-pointer">Cancelar</button>
+                            <button type="button" disabled={!gradeDraft} onClick={() => saveGrading(false)} className="px-4 py-2 rounded-xl border-2 border-purple-600 text-purple-700 dark:text-purple-300 text-sm font-black disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer">Guardar</button>
+                            {delivered.some(e => e.id !== enr.id && !subOf(reviewTask.id, e.id)?.calificacion_letra) && (
+                              <button type="button" disabled={!gradeDraft} onClick={() => saveGrading(true)} className="inline-flex items-center gap-1 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-sm font-black disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer">
+                                Guardar y siguiente <ChevronRight className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
 
-              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-800">
-                <span className="text-slate-400 block">Entregas Recibidas:</span>
-                <span className="font-bold text-emerald-600 dark:text-emerald-400">
-                  {submissions.filter(s => s.tarea_id === selectedTaskForDetail.id).length} estudiantes
-                </span>
+              <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
+                <p className="text-sm text-slate-600 dark:text-slate-300">
+                  {m.toGrade > 0 ? <><strong className="text-purple-700 dark:text-purple-300">{m.toGrade}</strong> por calificar</> : m.delivered > 0 ? '✓ Todas las entregas tienen nota' : ''}
+                </p>
+                <button type="button" onClick={() => setReviewTask(null)} className="px-5 py-2.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-sm font-black cursor-pointer">Listo</button>
               </div>
             </div>
-
-            <div className="flex justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setSelectedTaskForDetail(null)}
-                className="px-4 py-2 font-bold text-slate-500 rounded-xl hover:bg-slate-100"
-              >
-                Cerrar
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  const t = selectedTaskForDetail;
-                  setSelectedTaskForDetail(null);
-                  setSelectedTaskForReview(t);
-                }}
-                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow cursor-pointer"
-              >
-                Ver Entregas
-              </button>
-            </div>
-          </div>
-        </Modal>
-      )}
-
+          </Modal>
+        );
+      })()}
     </div>
   );
 }
-

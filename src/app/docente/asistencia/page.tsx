@@ -1,357 +1,332 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
-import { useApp } from '@/context/AppContext';
-import { PageHeader } from '@/components/ui/PageHeader';
-import { AttendanceStatus } from '@/types';
-import { 
-  CheckCircle2, 
-  Clock, 
-  XCircle, 
-  FileText, 
-  QrCode, 
-  Search, 
-  CheckCheck,
-  Check,
-  Sparkles,
-  ShieldCheck,
-  AlertCircle,
-  FileDown
-} from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
 import confetti from 'canvas-confetti';
+import { useApp } from '@/context/AppContext';
+import { AttendanceStatus, DayOfWeek, ScheduleSlot } from '@/types';
+import { DAYS } from '@/lib/constants/schedule';
+import { getSectionClassStatus } from '@/lib/schedule/attendanceWindow';
+import { useAulaColors } from '@/hooks/useAulaColors';
 import { generateRegistroAuxiliarPdf } from '@/lib/pdf/registroAuxiliarPdfGenerator';
-
 import { QrScanner } from '@/components/qr/QrScanner';
+import { Check, CheckCheck, Clock, FileDown, ListChecks, Lock, QrCode, Search, XCircle } from 'lucide-react';
+
+const WEEKDAY_KEYS: (DayOfWeek | null)[] = [null, 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', null];
+
+const STATUS_BUTTONS: { status: AttendanceStatus; label: string; on: string; row: string }[] = [
+  { status: 'presente', label: 'Presente', on: 'bg-emerald-600 text-white border-emerald-600', row: '' },
+  { status: 'tardanza', label: 'Tardanza', on: 'bg-amber-500 text-white border-amber-500', row: 'bg-amber-50/80 dark:bg-amber-950/20' },
+  { status: 'falta', label: 'Falta', on: 'bg-rose-600 text-white border-rose-600', row: 'bg-rose-50/80 dark:bg-rose-950/20' },
+  { status: 'justificado', label: 'Justificada', on: 'bg-sky-600 text-white border-sky-600', row: 'bg-sky-50/80 dark:bg-sky-950/20' },
+];
+
+function localIso(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function timeText(hhmm: string) {
+  const [h, m] = hhmm.split(':').map(Number);
+  const d = new Date();
+  d.setHours(h, m || 0, 0, 0);
+  return d.toLocaleTimeString('es-PE', { hour: 'numeric', minute: '2-digit' });
+}
 
 export default function DocenteAsistenciaPage() {
-  const { 
-    students, 
-    enrollments, 
-    attendances, 
-    registerAttendance, 
-    currentUser, 
+  const {
+    students,
+    enrollments,
+    attendances,
+    courses,
+    currentUser,
     getTeacherSections,
+    getTeacherSchedule,
     saveClassAttendanceQuickly,
-    showToast,
     brandingConfig,
   } = useApp();
+  const aulaColor = useAulaColors();
 
-  const teacherSections = useMemo(() => {
-    // Obtener secciones reales asignadas al docente
-    return currentUser?.id ? (getTeacherSections(currentUser.id) || []) : [];
-  }, [getTeacherSections, currentUser]);
+  // Hora actual que se actualiza sola cada 30 s (habilita/deshabilita sin recargar)
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 30000);
+    return () => clearInterval(id);
+  }, []);
+  const todayStr = localIso(now);
+  const todayKey = WEEKDAY_KEYS[now.getDay()];
+  const nowHHMM = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
-  const [selectedSectionId, setSelectedSectionId] = useState<string>(
-    teacherSections[0]?.seccion.id || ''
-  );
+  const teacherSections = useMemo(() => (currentUser?.id ? getTeacherSections(currentUser.id) || [] : []), [getTeacherSections, currentUser?.id]);
+  const mySchedule = useMemo(() => (currentUser?.id ? getTeacherSchedule(currentUser.id) : []), [getTeacherSchedule, currentUser?.id]);
+  const courseName = (id?: string) => courses.find(c => c.id === id)?.nombre || 'Curso';
+  const dayLabel = (key: string) => DAYS.find(d => d.key === key)?.label || key;
+
+  // Estado de la clase de un aula respecto a la hora actual
+  const classInfo = (secId: string): { open: boolean; slot: ScheduleSlot | null; message: string; chip: string } => {
+    const st = getSectionClassStatus(mySchedule, secId, todayKey, nowHHMM);
+    if (st.kind === 'open') {
+      return { open: true, slot: st.slot, message: `Clase de ${courseName(st.slot.curso_id)} en curso · puedes tomar la asistencia hasta las ${timeText(st.slot.hora_fin)}`, chip: '🟢 En clase ahora' };
+    }
+    if (st.kind === 'later-today') {
+      return { open: false, slot: st.slot, message: `Se habilita hoy a las ${timeText(st.slot.hora_inicio)} (clase de ${courseName(st.slot.curso_id)})`, chip: `Hoy a las ${timeText(st.slot.hora_inicio)}` };
+    }
+    if (st.kind === 'next-day') {
+      return {
+        open: false,
+        slot: st.slot,
+        message: `${st.hadClassToday ? 'La clase de hoy ya terminó. ' : ''}Se habilita el ${dayLabel(st.slot.dia).toLowerCase()} a las ${timeText(st.slot.hora_inicio)}`,
+        chip: st.hadClassToday ? 'Hoy ya terminó' : 'Sin clase hoy',
+      };
+    }
+    return { open: false, slot: null, message: 'Esta aula aún no tiene clases en tu horario', chip: 'Sin horario' };
+  };
+
+  // Aula elegida: la que tiene clase ahora; si no, la de la siguiente clase; si no, la primera
+  const [selectedSectionId, setSelectedSectionId] = useState('');
+  useEffect(() => {
+    if (selectedSectionId || teacherSections.length === 0) return;
+    const withOpen = teacherSections.find(t => classInfo(t.seccion.id).open);
+    const withNext = teacherSections.find(t => classInfo(t.seccion.id).chip.startsWith('Hoy a las'));
+    setSelectedSectionId((withOpen || withNext || teacherSections[0]).seccion.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [teacherSections, selectedSectionId]);
+
+  const info = selectedSectionId ? classInfo(selectedSectionId) : null;
+  const canEdit = !!info?.open;
+  const activeSection = teacherSections.find(t => t.seccion.id === selectedSectionId)?.seccion;
+  const sectionLabel = activeSection ? `${activeSection.grado?.nombre || 'Grado'} "${activeSection.letra}"` : '';
 
   const [viewMode, setViewMode] = useState<'lista' | 'qr'>('lista');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isSavedFeedback, setIsSavedFeedback] = useState(false);
-  const [isClosed, setIsClosed] = useState(false);
+  const [search, setSearch] = useState('');
+  const [draft, setDraft] = useState<Record<string, AttendanceStatus>>({});
+  useEffect(() => { setDraft({}); setSearch(''); }, [selectedSectionId]);
+  // Si la clase termina con cambios sin guardar o con la cámara abierta, se bloquea todo
+  useEffect(() => { if (!canEdit) setViewMode('lista'); }, [canEdit]);
 
-  const activeSectionInfo = useMemo(() => {
-    return teacherSections.find(ts => ts.seccion.id === selectedSectionId)?.seccion 
-      || enrollments.find(e => e.seccion_id === selectedSectionId)?.seccion;
-  }, [teacherSections, selectedSectionId, enrollments]);
+  const sectionEnrollments = useMemo(
+    () => enrollments
+      .filter(e => e.seccion_id === selectedSectionId && e.estado === 'activo')
+      .sort((a, b) => (a.estudiante?.profile?.apellidos || a.estudiante?.apellidos || '').localeCompare(b.estudiante?.profile?.apellidos || b.estudiante?.apellidos || '')),
+    [enrollments, selectedSectionId]
+  );
+  const savedStatus = (id: string) => attendances.find(a => a.matricula_id === id && a.fecha === todayStr && a.tipo_registro !== 'salida')?.estado;
+  const baseStatus = (id: string): AttendanceStatus => savedStatus(id) || 'presente';
+  const statusOf = (id: string): AttendanceStatus => draft[id] || baseStatus(id);
+  const pendingChanges = Object.entries(draft).filter(([id, st]) => st !== baseStatus(id)).length;
+  const takenToday = sectionEnrollments.length > 0 && sectionEnrollments.every(e => !!savedStatus(e.id));
+  const counts = sectionEnrollments.reduce(
+    (acc, e) => { acc[statusOf(e.id)]++; return acc; },
+    { presente: 0, tardanza: 0, falta: 0, justificado: 0 } as Record<AttendanceStatus, number>
+  );
+  const visible = sectionEnrollments.filter(e =>
+    `${e.estudiante?.profile?.apellidos || e.estudiante?.apellidos || ''} ${e.estudiante?.profile?.nombres || e.estudiante?.nombres || ''} ${e.estudiante?.codigo_estudiante || ''}`
+      .toLowerCase().includes(search.trim().toLowerCase())
+  );
 
-  const filteredEnrollments = useMemo(() => {
-    return enrollments.filter(e => e.seccion_id === selectedSectionId && e.estado === 'activo');
-  }, [enrollments, selectedSectionId]);
-
-  const activeEnrollments = filteredEnrollments;
-  const todayStr = new Date().toISOString().split('T')[0];
-
-  // Local exception map for ultra-fast modification
-  const [statusOverrides, setStatusOverrides] = useState<Record<string, AttendanceStatus>>({});
-
-  const getStudentStatus = (matriculaId: string): AttendanceStatus => {
-    if (statusOverrides[matriculaId]) return statusOverrides[matriculaId];
-    const existing = attendances.find(a => a.matricula_id === matriculaId && a.fecha === todayStr);
-    return existing ? existing.estado : 'presente';
+  const markAll = (status: AttendanceStatus) => {
+    if (!canEdit) return;
+    const next: Record<string, AttendanceStatus> = {};
+    sectionEnrollments.forEach(e => { next[e.id] = status; });
+    setDraft(next);
+  };
+  const save = () => {
+    if (!canEdit || sectionEnrollments.length === 0) return;
+    saveClassAttendanceQuickly(selectedSectionId, todayStr, sectionEnrollments.map(e => ({ matriculaId: e.id, estado: statusOf(e.id) })));
+    setDraft({});
+    confetti({ particleCount: 40, spread: 60, origin: { y: 0.7 } });
   };
 
-  const handleSetStatus = (matriculaId: string, status: AttendanceStatus) => {
-    setStatusOverrides(prev => ({ ...prev, [matriculaId]: status }));
-    
-    registerAttendance({
-      matriculaId,
-      status,
-      metodo: 'manual',
+  const downloadTemplate = () => {
+    if (!activeSection) return;
+    const doc = generateRegistroAuxiliarPdf({
+      section: activeSection,
+      teacherName: currentUser ? `${currentUser.nombres} ${currentUser.apellidos}` : 'Docente',
+      students,
+      enrollments,
+      brandingConfig,
     });
-
-    setIsSavedFeedback(true);
-    setTimeout(() => setIsSavedFeedback(false), 1500);
-
-    if (status === 'presente') {
-      confetti({ particleCount: 15, spread: 35, origin: { y: 0.8 } });
-    }
+    doc.save(`Asistencia_${activeSection.grado?.nombre || 'Grado'}_${activeSection.letra}.pdf`);
   };
-
-  const handleMarkAll = (status: AttendanceStatus) => {
-    const newOverrides: Record<string, AttendanceStatus> = {};
-    activeEnrollments.forEach(enr => {
-      newOverrides[enr.id] = status;
-      registerAttendance({
-        matriculaId: enr.id,
-        status,
-        metodo: 'manual',
-      });
-    });
-    setStatusOverrides(newOverrides);
-    setIsSavedFeedback(true);
-    setTimeout(() => setIsSavedFeedback(false), 1500);
-    showToast(`Todos los alumnos marcados como ${status.toUpperCase()}`, 'success', '✓ Asistencia Actualizada');
-  };
-
-  const handleCloseAttendance = () => {
-    setIsClosed(true);
-    confetti({ particleCount: 50, spread: 60, origin: { y: 0.7 } });
-    showToast('La sesión de asistencia ha sido cerrada y sincronizada.', 'success', '✓ Asistencia Cerrada');
-  };
-
-  const displayedEnrollments = useMemo(() => {
-    return activeEnrollments.filter(enr => {
-      const fullName = `${enr.estudiante?.profile?.apellidos || ''} ${enr.estudiante?.profile?.nombres || ''} ${enr.estudiante?.codigo_estudiante || ''}`.toLowerCase();
-      return fullName.includes(searchQuery.toLowerCase());
-    });
-  }, [activeEnrollments, searchQuery]);
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto pb-12">
-      
-      {/* Header */}
-      <PageHeader
-        title="Toma de Asistencia Ultrarrápida"
-        description="Por defecto todos los estudiantes figuran en estado PRESENTE. Modifica excepciones o escanea los carnets QR."
-        badge={activeSectionInfo ? `${activeSectionInfo.grado?.nombre || ''} "${activeSectionInfo.letra}"` : "Aula 3° 'A'"}
-      >
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Mode Switcher */}
-          <div className="flex items-center p-1 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
-            <button
-              type="button"
-              onClick={() => setViewMode('lista')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                viewMode === 'lista'
-                  ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
-                  : 'text-slate-500 hover:text-slate-900 dark:text-slate-400'
-              }`}
-            >
-              📋 Lista de Aula
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('qr')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                viewMode === 'qr'
-                  ? 'bg-emerald-600 text-white shadow-xs'
-                  : 'text-slate-500 hover:text-slate-900 dark:text-slate-400'
-              }`}
-            >
-              <QrCode className="w-3.5 h-3.5" /> 📷 Lector QR
-            </button>
-          </div>
+    <div className="space-y-5 max-w-6xl mx-auto pb-10 animate-in fade-in-50">
 
-          {isSavedFeedback && (
-            <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/60 px-3 py-1.5 rounded-xl border border-emerald-500/20 animate-fade-in">
-              <Check className="w-3.5 h-3.5" /> ✓ Guardado
-            </span>
-          )}
-          {activeSectionInfo && (
-            <button
-              onClick={() => {
-                const doc = generateRegistroAuxiliarPdf({
-                  section: activeSectionInfo,
-                  teacherName: currentUser ? `${currentUser.nombres} ${currentUser.apellidos}` : 'Docente',
-                  students,
-                  enrollments,
-                  brandingConfig,
-                });
-                doc.save(`Asistencia_Fisica_${activeSectionInfo.grado?.nombre || 'Grado'}_${activeSectionInfo.letra}.pdf`);
-              }}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold transition-colors cursor-pointer border border-slate-200 dark:border-slate-700"
-              title="Descargar registro auxiliar de asistencia física"
-            >
-              <FileDown className="w-4 h-4 text-emerald-500" />
-              <span>Plantilla Física (PDF)</span>
-            </button>
-          )}
+      {/* ── CABECERA ── */}
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+        <div>
+          <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-slate-900 dark:text-white">Tomar asistencia</h1>
+          <p className="text-base text-slate-600 dark:text-slate-300 mt-1">
+            Se puede tomar solo durante la hora de tu clase. Todos empiezan como <strong>Presente</strong>: marca solo a quien faltó o llegó tarde.
+          </p>
+        </div>
+        {activeSection && (
           <button
-            onClick={handleCloseAttendance}
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold text-xs shadow-sm active:scale-95 transition-all"
+            type="button"
+            onClick={downloadTemplate}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl bg-white dark:bg-slate-900 border-2 border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-100 text-sm font-bold hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer shrink-0"
+            title="Descargar la lista en papel para tomar asistencia a mano"
           >
-            <ShieldCheck className="w-4 h-4" />
-            {isClosed ? '✓ Cerrada' : 'Cerrar Asistencia'}
+            <FileDown className="w-5 h-5 text-emerald-600" /> Lista en papel (PDF)
           </button>
-        </div>
-      </PageHeader>
-
-      {/* Salones & Acciones Rápidas */}
-      <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
-        {/* Selector de salón */}
-        <div className="flex items-center gap-2 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0 scrollbar-thin">
-          <span className="text-xs font-bold text-slate-400 shrink-0">Aula:</span>
-          {teacherSections.map(ts => (
-            <button
-              key={ts.seccion.id}
-              onClick={() => setSelectedSectionId(ts.seccion.id)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
-                selectedSectionId === ts.seccion.id
-                  ? 'bg-indigo-600 text-white shadow-sm'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-              }`}
-            >
-              {ts.seccion.grado?.nombre} &quot;{ts.seccion.letra}&quot;
-            </button>
-          ))}
-        </div>
-
-        {/* Botones de acción masiva */}
-        {viewMode === 'lista' && (
-          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-            <button
-              onClick={() => handleMarkAll('presente')}
-              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 font-bold text-xs hover:bg-emerald-100 transition-colors"
-            >
-              <CheckCheck className="w-3.5 h-3.5" /> <span className="hidden xs:inline">Marcar</span> Todos Presentes
-            </button>
-            <button
-              onClick={() => handleMarkAll('falta')}
-              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 font-bold text-xs hover:bg-rose-100 transition-colors"
-            >
-              <XCircle className="w-3.5 h-3.5" /> <span className="hidden xs:inline">Marcar</span> Ausentes
-            </button>
-          </div>
         )}
       </div>
 
-      {/* RENDER SEGÚN MODO: QR SCANNER O LISTA */}
-      {viewMode === 'qr' ? (
-        <div className="space-y-6 animate-in fade-in zoom-in-95 duration-150">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-4 sm:p-6 shadow-sm">
-            <div className="max-w-lg mx-auto">
-              <div className="mb-4 text-center">
-                <h3 className="font-extrabold text-base text-slate-900 dark:text-white">
-                  Lector de Carnets para {activeSectionInfo?.grado?.nombre} &quot;{activeSectionInfo?.letra}&quot;
-                </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Apunta la cámara al carnet de cada estudiante para registrar su asistencia en vivo
-                </p>
-              </div>
-              <QrScanner autoStart={true} variant="embedded" showHeader={false} />
-            </div>
-          </div>
+      {teacherSections.length === 0 ? (
+        <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-8 text-center">
+          <p className="text-xl font-black text-slate-900 dark:text-white">Aún no tienes aulas asignadas</p>
+          <p className="text-base text-slate-600 dark:text-slate-300 mt-2">Cuando Coordinación Académica te asigne aulas, aparecerán aquí.</p>
         </div>
       ) : (
-        /* Lista Interactiva de Alumnos */
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden divide-y divide-slate-100 dark:divide-slate-800/60">
-          {/* Search */}
-          <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center gap-3">
-          <Search className="w-4 h-4 text-slate-400 shrink-0" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            placeholder="Filtrar alumno por nombre o DNI..."
-            className="w-full bg-transparent text-xs text-slate-800 dark:text-slate-200 placeholder-slate-400 outline-none"
-          />
-        </div>
-
-        {displayedEnrollments.length === 0 ? (
-          <div className="p-8 text-center text-xs text-slate-400">
-            No se encontraron estudiantes matriculados en esta sección asignada.
+        <>
+          {/* ── AULAS ── */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
+            {teacherSections.map(ts => {
+              const active = ts.seccion.id === selectedSectionId;
+              const ci = classInfo(ts.seccion.id);
+              return (
+                <button
+                  key={ts.seccion.id}
+                  type="button"
+                  onClick={() => setSelectedSectionId(ts.seccion.id)}
+                  className={`text-left rounded-2xl border-2 px-3 py-2.5 transition-colors cursor-pointer ${
+                    active ? `${aulaColor(ts.seccion.id).solid} shadow-md` : `bg-white dark:bg-slate-900 ${aulaColor(ts.seccion.id).border} text-slate-800 dark:text-slate-100 ${aulaColor(ts.seccion.id).hover}`
+                  }`}
+                >
+                  <span className="flex items-center gap-2 text-base font-black">{!active && <span className={`w-3 h-3 rounded-full ${aulaColor(ts.seccion.id).dot}`} />}{ts.seccion.grado?.nombre || 'Grado'} &quot;{ts.seccion.letra}&quot;</span>
+                  <span className={`block text-sm font-semibold ${active ? 'opacity-90' : ci.open ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}>{ci.chip}</span>
+                </button>
+              );
+            })}
           </div>
-        ) : (
-          displayedEnrollments.map((enr) => {
-          const st = getStudentStatus(enr.id);
-          const student = enr.estudiante;
-          const fullName = `${student?.profile?.apellidos || ''}, ${student?.profile?.nombres || ''}`;
 
-          return (
-            <div
-              key={enr.id}
-              className="p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 overflow-hidden border border-slate-200 dark:border-slate-700 shrink-0">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={student?.profile?.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150'}
-                    alt={fullName}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-slate-900 dark:text-white">
-                    {fullName}
-                  </h4>
-                  <p className="text-[10px] font-mono text-slate-400">
-                    DNI: {student?.profile?.dni} • Código: {student?.codigo_estudiante}
-                  </p>
-                </div>
-              </div>
-
-              {/* Botones de Selección de Estado (4 Estados) - Responsive en Celular */}
-              <div className="grid grid-cols-2 sm:flex sm:items-center gap-1.5 w-full sm:w-auto shrink-0">
-                <button
-                  type="button"
-                  onClick={() => handleSetStatus(enr.id, 'presente')}
-                  className={`px-2.5 sm:px-3 py-2 sm:py-1.5 rounded-xl text-xs font-bold transition-all text-center flex items-center justify-center gap-1 active:scale-95 ${
-                    st === 'presente'
-                      ? 'bg-emerald-600 text-white shadow-sm'
-                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-emerald-50 hover:text-emerald-700'
-                  }`}
-                >
-                  <Check className="w-3.5 h-3.5" />
-                  <span>Presente</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleSetStatus(enr.id, 'tardanza')}
-                  className={`px-2.5 sm:px-3 py-2 sm:py-1.5 rounded-xl text-xs font-bold transition-all text-center flex items-center justify-center gap-1 active:scale-95 ${
-                    st === 'tardanza'
-                      ? 'bg-amber-500 text-white shadow-sm'
-                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-amber-50 hover:text-amber-700'
-                  }`}
-                >
-                  <Clock className="w-3.5 h-3.5" />
-                  <span>Tardanza</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleSetStatus(enr.id, 'justificado')}
-                  className={`px-2.5 sm:px-3 py-2 sm:py-1.5 rounded-xl text-xs font-bold transition-all text-center flex items-center justify-center gap-1 active:scale-95 ${
-                    st === 'justificado'
-                      ? 'bg-blue-600 text-white shadow-sm'
-                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-blue-50 hover:text-blue-700'
-                  }`}
-                >
-                  <FileText className="w-3.5 h-3.5" />
-                  <span>Justificada</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleSetStatus(enr.id, 'falta')}
-                  className={`px-2.5 sm:px-3 py-2 sm:py-1.5 rounded-xl text-xs font-bold transition-all text-center flex items-center justify-center gap-1 active:scale-95 ${
-                    st === 'falta'
-                      ? 'bg-rose-600 text-white shadow-sm'
-                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-rose-50 hover:text-rose-700'
-                  }`}
-                >
-                  <XCircle className="w-3.5 h-3.5" />
-                  <span>Injustificada</span>
-                </button>
+          {/* ── ESTADO DE LA CLASE ── */}
+          {info && (
+            <div className={`rounded-2xl border-2 px-4 py-3 flex items-start gap-3 ${canEdit ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30' : 'border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900'}`}>
+              {canEdit ? <Clock className="w-6 h-6 text-emerald-600 shrink-0 mt-0.5" /> : <Lock className="w-6 h-6 text-slate-500 shrink-0 mt-0.5" />}
+              <div>
+                <p className={`text-lg font-black ${canEdit ? 'text-emerald-800 dark:text-emerald-200' : 'text-slate-800 dark:text-slate-100'}`}>
+                  {canEdit ? `Asistencia habilitada para ${sectionLabel}` : `La asistencia de ${sectionLabel} está deshabilitada`}
+                </p>
+                <p className="text-base text-slate-700 dark:text-slate-300">{info.message}</p>
               </div>
             </div>
-          );
-        }))}
-        </div>
-      )}
+          )}
 
+          {/* ── HERRAMIENTAS ── */}
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex p-1 bg-slate-100 dark:bg-slate-800 rounded-2xl">
+              <button type="button" onClick={() => setViewMode('lista')} className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-black cursor-pointer ${viewMode === 'lista' ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-600 dark:text-slate-300'}`}>
+                <ListChecks className="w-5 h-5" /> Lista del aula
+              </button>
+              <button
+                type="button"
+                onClick={() => canEdit && setViewMode('qr')}
+                disabled={!canEdit}
+                title={canEdit ? 'Leer los carnets con la cámara' : 'El lector se habilita durante la hora de la clase'}
+                className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-black ${viewMode === 'qr' ? 'bg-emerald-600 text-white' : canEdit ? 'text-slate-600 dark:text-slate-300 cursor-pointer' : 'text-slate-400 cursor-not-allowed'}`}
+              >
+                <QrCode className="w-5 h-5" /> Lector de carnets
+              </button>
+            </div>
+            {viewMode === 'lista' && (
+              <>
+                <button type="button" onClick={() => markAll('presente')} disabled={!canEdit} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl border-2 border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200 text-sm font-black disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer">
+                  <CheckCheck className="w-5 h-5" /> Todos presentes
+                </button>
+                <div className="relative ml-auto">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar alumno" className="w-48 pl-9 pr-8 py-2.5 rounded-2xl bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500" />
+                  {search && <button type="button" onClick={() => setSearch('')} aria-label="Borrar búsqueda" className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 cursor-pointer"><XCircle className="w-4 h-4" /></button>}
+                </div>
+              </>
+            )}
+          </div>
+
+          {viewMode === 'qr' && canEdit ? (
+            <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5">
+              <div className="max-w-lg mx-auto text-center space-y-3">
+                <p className="text-lg font-black text-slate-900 dark:text-white">Acerca el carnet de cada alumno a la cámara</p>
+                <p className="text-base text-slate-600 dark:text-slate-300">Cada lectura registra su asistencia de hoy en {sectionLabel}.</p>
+                <QrScanner autoStart={true} variant="embedded" showHeader={false} />
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Resumen */}
+              <div className="flex flex-wrap gap-2">
+                {STATUS_BUTTONS.map(b => (
+                  <span key={b.status} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-base font-bold text-slate-800 dark:text-slate-100">
+                    <span className={`w-3 h-3 rounded-full ${b.on.split(' ')[0]}`} /> {b.label}: {counts[b.status]}
+                  </span>
+                ))}
+              </div>
+
+              {/* Lista */}
+              <div className={`rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800 ${canEdit ? '' : 'opacity-70'}`}>
+                {visible.length === 0 ? (
+                  <p className="p-8 text-center text-base text-slate-500 dark:text-slate-400">
+                    {sectionEnrollments.length === 0 ? 'Esta aula aún no tiene alumnos matriculados.' : 'No hay alumnos con ese nombre.'}
+                  </p>
+                ) : visible.map(enr => {
+                  const st = statusOf(enr.id);
+                  const nombres = enr.estudiante?.profile?.nombres || enr.estudiante?.nombres || '';
+                  const apellidos = enr.estudiante?.profile?.apellidos || enr.estudiante?.apellidos || '';
+                  const changed = draft[enr.id] !== undefined && draft[enr.id] !== baseStatus(enr.id);
+                  return (
+                    <div key={enr.id} className={`px-4 py-3 flex flex-col md:flex-row md:items-center justify-between gap-3 ${STATUS_BUTTONS.find(b => b.status === st)?.row || ''}`}>
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className="w-11 h-11 rounded-xl bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 text-sm font-black flex items-center justify-center shrink-0">
+                          {`${nombres[0] || ''}${apellidos[0] || ''}`.toUpperCase()}
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block text-base font-black text-slate-900 dark:text-white truncate">{apellidos}, {nombres}</span>
+                          <span className="block text-sm text-slate-500 dark:text-slate-400">
+                            {changed ? '● Sin guardar' : savedStatus(enr.id) ? 'Guardado' : 'Aún no registrado'}
+                          </span>
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-4 gap-1.5 shrink-0">
+                        {STATUS_BUTTONS.map(b => (
+                          <button
+                            key={b.status}
+                            type="button"
+                            disabled={!canEdit}
+                            onClick={() => setDraft(prev => ({ ...prev, [enr.id]: b.status }))}
+                            aria-pressed={st === b.status}
+                            aria-label={`${b.label}: ${nombres} ${apellidos}`}
+                            className={`px-3 py-2 rounded-xl border-2 text-sm font-black transition-colors ${
+                              st === b.status ? b.on : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
+                            } ${canEdit ? 'cursor-pointer hover:border-slate-400' : 'cursor-not-allowed'}`}
+                          >
+                            {b.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Guardar */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <p className="text-base text-slate-600 dark:text-slate-300">
+                  {!canEdit ? (takenToday ? `✅ La asistencia de ${sectionLabel} de hoy ya está guardada.` : `🔒 Podrás guardar la asistencia durante la hora de la clase.`)
+                    : pendingChanges > 0 ? <strong className="text-amber-600">{pendingChanges} {pendingChanges === 1 ? 'cambio sin guardar' : 'cambios sin guardar'}</strong>
+                    : takenToday ? `✅ Ya guardaste la asistencia de ${sectionLabel} hoy. Puedes corregirla y volver a guardar.`
+                    : `Aún no guardas la asistencia de ${sectionLabel} hoy.`}
+                </p>
+                <button
+                  type="button"
+                  onClick={save}
+                  disabled={!canEdit || sectionEnrollments.length === 0}
+                  title={canEdit ? undefined : info?.message}
+                  className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-base font-black shadow-sm disabled:bg-slate-300 disabled:text-slate-500 dark:disabled:bg-slate-800 dark:disabled:text-slate-500 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  {canEdit ? <Check className="w-5 h-5" /> : <Lock className="w-5 h-5" />} Guardar asistencia de {sectionLabel}
+                </button>
+              </div>
+            </>
+          )}
+        </>
+      )}
     </div>
   );
 }

@@ -2,58 +2,53 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
-import { PageHeader } from '@/components/ui/PageHeader';
 import { GradeMatrixTable } from '@/components/notas/GradeMatrixTable';
-import { Award, BookOpen, Layers, Lock, ShieldCheck, AlertCircle, Sparkles, FileDown } from 'lucide-react';
+import { Award, BookOpen, FileDown, Layers, Lock } from 'lucide-react';
+import { useAulaColors } from '@/hooks/useAulaColors';
 import { generateRegistroAuxiliarPdf } from '@/lib/pdf/registroAuxiliarPdfGenerator';
 
+// Permite abrir la página ya elegida: /docente/notas?aula=ID&curso=ID&periodo=ID (desde Evaluaciones)
+const urlParam = (key: string) => (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get(key) || '' : '');
+
 export default function DocenteNotasPage() {
-  const { courses, evaluationPeriods, sections, currentUser, getTeacherSections, students, enrollments, brandingConfig } = useApp();
+  const { evaluationPeriods, currentUser, getTeacherSections, students, enrollments, brandingConfig } = useApp();
+  const aulaColor = useAulaColors();
 
-  // Obtener salones y cursos asignados estrictamente a este docente
-  const teacherSections = useMemo(() => {
-    // Obtener secciones y cursos reales asignados al docente
-    return currentUser?.id ? (getTeacherSections(currentUser.id) || []) : [];
-  }, [getTeacherSections, currentUser]);
-
-  const availableSections = useMemo(() => {
-    return teacherSections.map(ts => ts.seccion);
-  }, [teacherSections]);
-
-  const [selectedSectionId, setSelectedSectionId] = useState<string>(
-    availableSections[0]?.id || ''
+  // Solo las aulas y cursos asignados a este docente
+  const teacherSections = useMemo(
+    () => (currentUser?.id ? getTeacherSections(currentUser.id) || [] : []),
+    [getTeacherSections, currentUser]
   );
+  const availableSections = useMemo(() => teacherSections.map(ts => ts.seccion), [teacherSections]);
 
-  const [selectedPeriodId, setSelectedPeriodId] = useState<string>(
-    evaluationPeriods[0]?.id || 'eval-bim-1'
-  );
-
-  // Cursos asignados para el salón seleccionado
-  const currentAssignment = useMemo(() => {
-    return teacherSections.find(ts => ts.seccion.id === selectedSectionId);
-  }, [teacherSections, selectedSectionId]);
-
-  const availableCourses = useMemo(() => {
-    return currentAssignment?.cursos || [];
-  }, [currentAssignment]);
-
-  const [selectedCourseId, setSelectedCourseId] = useState<string>(
-    availableCourses[0]?.id || courses[0]?.id || 'course-mat'
-  );
-
-  // Auto-ajustar el curso seleccionado si no pertenece a la nueva sección elegida
+  const [selectedSectionId, setSelectedSectionId] = useState<string>(() => urlParam('aula') || availableSections[0]?.id || '');
   useEffect(() => {
-    if (availableCourses.length > 0) {
-      const exists = availableCourses.some(c => c.id === selectedCourseId);
-      if (!exists) {
-        setSelectedCourseId(availableCourses[0].id);
-      }
+    if (!availableSections.some(s => s.id === selectedSectionId) && availableSections[0]) {
+      setSelectedSectionId(availableSections[0].id);
+    }
+  }, [availableSections, selectedSectionId]);
+
+  // Por defecto se abre el bimestre en curso (el primero que no está cerrado)
+  const [selectedPeriodId, setSelectedPeriodId] = useState<string>(
+    () => (evaluationPeriods.find(p => p.id === urlParam('periodo')) || evaluationPeriods.find(p => p.activo && !p.cerrado) || evaluationPeriods.find(p => !p.cerrado) || evaluationPeriods[0])?.id || ''
+  );
+
+  const availableCourses = useMemo(
+    () => teacherSections.find(ts => ts.seccion.id === selectedSectionId)?.cursos || [],
+    [teacherSections, selectedSectionId]
+  );
+  const [selectedCourseId, setSelectedCourseId] = useState<string>(() => urlParam('curso') || availableCourses[0]?.id || '');
+  useEffect(() => {
+    if (availableCourses.length > 0 && !availableCourses.some(c => c.id === selectedCourseId)) {
+      setSelectedCourseId(availableCourses[0].id);
     }
   }, [availableCourses, selectedCourseId]);
 
   const activeSection = availableSections.find(s => s.id === selectedSectionId) || availableSections[0];
   const activeCourse = availableCourses.find(c => c.id === selectedCourseId) || availableCourses[0];
   const activePeriod = evaluationPeriods.find(p => p.id === selectedPeriodId) || evaluationPeriods[0];
+
+  const studentsIn = (secId: string) => enrollments.filter(e => e.seccion_id === secId && e.estado === 'activo').length;
 
   const handleDownloadRegistroAuxiliar = () => {
     if (!activeSection) return;
@@ -69,147 +64,143 @@ export default function DocenteNotasPage() {
     doc.save(`Registro_Auxiliar_${activeSection.grado?.nombre || 'Grado'}_${activeSection.letra}_${activeCourse?.nombre || 'Curso'}.pdf`);
   };
 
-  return (
-    <div className="space-y-6 max-w-6xl mx-auto animate-in fade-in-50 pb-12">
-      <PageHeader
-        title="Registro de Calificaciones (AD – A – B – C)"
-        description="Ingresa y modifica las notas de tus alumnos por competencias. Visualización restringida a tus salones y materias asignadas."
-        badge={activeSection ? `${activeSection.grado?.nombre || ''} "${activeSection.letra}"` : 'Sin Asignación'}
-      >
-        <div className="flex items-center gap-2">
-          {activeSection && (
-            <button
-              onClick={handleDownloadRegistroAuxiliar}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold transition-colors cursor-pointer border border-slate-700 shadow-xs"
-              title="Descargar plantilla PDF para toma de notas físicas"
-            >
-              <FileDown className="w-4 h-4 text-emerald-400" />
-              <span>Registro Físico (PDF)</span>
-            </button>
-          )}
-          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 text-xs font-bold shadow-xs">
-            <ShieldCheck className="w-4 h-4 text-indigo-600" />
-            <span>Acceso Docente</span>
-          </div>
-        </div>
-      </PageHeader>
+  const stepTitle = (n: number, icon: React.ReactNode, text: string) => (
+    <p className="flex items-center gap-2 text-sm font-black text-slate-800 dark:text-slate-100 mb-2">
+      <span className="w-6 h-6 rounded-full bg-indigo-600 text-white text-xs font-black flex items-center justify-center">{n}</span>
+      {icon} {text}
+    </p>
+  );
 
-      {/* Selector de Salones y Cursos Asignados */}
+  return (
+    <div className="space-y-4 max-w-6xl mx-auto animate-in fade-in-50 pb-12">
+      {/* Encabezado */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+            <Award className="w-7 h-7 text-indigo-600" /> Notas de mis alumnos
+          </h1>
+          <p className="text-sm text-slate-600 dark:text-slate-300">Elige el aula, el curso y el bimestre. Luego toca un casillero para poner la nota.</p>
+        </div>
+        {activeSection && (
+          <button
+            type="button"
+            onClick={handleDownloadRegistroAuxiliar}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white dark:bg-slate-900 border-2 border-slate-300 dark:border-slate-600 hover:border-emerald-500 text-slate-800 dark:text-slate-100 text-sm font-bold cursor-pointer shrink-0"
+            title="Descarga una hoja para anotar las notas a mano"
+          >
+            <FileDown className="w-5 h-5 text-emerald-600" /> Hoja para anotar a mano (PDF)
+          </button>
+        )}
+      </div>
+
       {availableSections.length === 0 ? (
         <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 border border-slate-200 dark:border-slate-800 text-center space-y-3">
           <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center mx-auto">
             <Lock className="w-6 h-6" />
           </div>
-          <h3 className="font-extrabold text-slate-900 dark:text-white text-base">
-            No tienes salones ni cursos asignados
-          </h3>
-          <p className="text-xs text-slate-500 max-w-md mx-auto">
-            El administrador aún no ha vinculado materias a tu perfil de docente. Comunícate con la dirección académica.
-          </p>
+          <h3 className="font-black text-slate-900 dark:text-white text-lg">Aún no tienes aulas asignadas</h3>
+          <p className="text-sm text-slate-500 max-w-md mx-auto">Coordinación todavía no te asignó cursos. Comunícate con la dirección académica.</p>
         </div>
       ) : (
-        <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
-          {/* Selector de Salón Asignado */}
+        <div className="bg-white dark:bg-slate-900 rounded-3xl p-4 sm:p-5 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+          {/* Paso 1: aula */}
           <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1">
-                <Layers className="w-3.5 h-3.5 text-indigo-500" />
-                Tus Salones Asignados ({availableSections.length}):
-              </label>
-              <span className="text-[10px] font-semibold text-slate-400">
-                Solo puedes calificar tus aulas designadas
-              </span>
-            </div>
-            <div className="flex flex-wrap items-center gap-1.5">
-              {availableSections.map((sec) => (
-                <button
-                  key={sec.id}
-                  onClick={() => setSelectedSectionId(sec.id)}
-                  className={`px-3.5 py-1.5 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 ${
-                    selectedSectionId === sec.id
-                      ? 'bg-indigo-600 text-white shadow-sm'
-                      : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-                  }`}
-                >
-                  <span>{sec.grado?.nombre} &quot;{sec.letra}&quot;</span>
-                  <span className="text-[10px] opacity-75 font-normal">({sec.grado?.nivel})</span>
-                </button>
-              ))}
+            {stepTitle(1, <Layers className="w-4 h-4 text-indigo-500" />, 'Elige el aula')}
+            <div className="flex flex-wrap gap-2">
+              {availableSections.map(sec => {
+                const active = selectedSectionId === sec.id;
+                const c = aulaColor(sec.id);
+                return (
+                  <button
+                    key={sec.id}
+                    type="button"
+                    onClick={() => setSelectedSectionId(sec.id)}
+                    aria-pressed={active}
+                    className={`text-left px-4 py-2.5 rounded-2xl border-2 transition-colors cursor-pointer ${
+                      active
+                        ? `${c.solid} shadow-md`
+                        : `bg-white dark:bg-slate-800 ${c.border} text-slate-800 dark:text-slate-100 ${c.hover}`
+                    }`}
+                  >
+                    <span className="flex items-center gap-2 text-base font-black">{!active && <span className={`w-3 h-3 rounded-full ${c.dot}`} />}{sec.grado?.nombre} &quot;{sec.letra}&quot;</span>
+                    <span className={`block text-xs font-semibold ${active ? c.solidSub : 'text-slate-500 dark:text-slate-400'}`}>
+                      {sec.grado?.nivel} · {studentsIn(sec.id)} {studentsIn(sec.id) === 1 ? 'alumno' : 'alumnos'}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-3 border-t border-slate-100 dark:border-slate-800">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-4 w-full">
-              {/* Selector de Curso Asignado en el Salón */}
-              <div className="w-full sm:w-auto">
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 flex items-center gap-1">
-                  <BookOpen className="w-3.5 h-3.5 text-blue-500" />
-                  Materia que Dictas en este Salón:
-                </label>
-                {availableCourses.length === 0 ? (
-                  <span className="text-xs text-amber-500 font-semibold italic">
-                    Sin cursos asignados en este salón
-                  </span>
-                ) : (
-                  <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-x-auto max-w-full scrollbar-thin">
-                    {availableCourses.map((course) => (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+            {/* Paso 2: curso */}
+            <div>
+              {stepTitle(2, <BookOpen className="w-4 h-4 text-blue-500" />, 'Elige el curso')}
+              {availableCourses.length === 0 ? (
+                <p className="text-sm text-amber-600 font-semibold">No dictas cursos en esta aula.</p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {availableCourses.map(course => {
+                    const active = selectedCourseId === course.id;
+                    return (
                       <button
                         key={course.id}
+                        type="button"
                         onClick={() => setSelectedCourseId(course.id)}
-                        className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all shrink-0 flex items-center gap-1.5 ${
-                          selectedCourseId === course.id
-                            ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
-                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                        aria-pressed={active}
+                        className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl border-2 text-sm font-black transition-colors cursor-pointer ${
+                          active
+                            ? 'bg-slate-900 dark:bg-white border-slate-900 dark:border-white text-white dark:text-slate-900 shadow-md'
+                            : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-100 hover:border-slate-500'
                         }`}
                       >
-                        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: course.color_hex || '#3b82f6' }} />
+                        <span className="w-3 h-3 rounded-full" style={{ backgroundColor: course.color_hex || '#3b82f6' }} />
                         {course.nombre}
                       </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
 
-              {/* Selector de Bimestre */}
-              <div className="w-full sm:w-auto">
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 flex items-center gap-1">
-                  <Award className="w-3.5 h-3.5 text-amber-500" />
-                  Periodo / Bimestre de Evaluación:
-                </label>
-                <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-x-auto max-w-full scrollbar-thin">
-                  {evaluationPeriods.map((period) => (
+            {/* Paso 3: bimestre */}
+            <div>
+              {stepTitle(3, <Award className="w-4 h-4 text-amber-500" />, 'Elige el bimestre')}
+              <div className="flex flex-wrap gap-2">
+                {evaluationPeriods.map(period => {
+                  const active = selectedPeriodId === period.id;
+                  return (
                     <button
                       key={period.id}
+                      type="button"
                       onClick={() => setSelectedPeriodId(period.id)}
-                      className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all shrink-0 ${
-                        selectedPeriodId === period.id
-                          ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm'
-                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                      aria-pressed={active}
+                      className={`inline-flex flex-col items-start px-4 py-2 rounded-2xl border-2 transition-colors cursor-pointer ${
+                        active
+                          ? 'bg-amber-500 border-amber-500 text-white shadow-md'
+                          : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-100 hover:border-amber-500'
                       }`}
                     >
-                      {period.nombre}
+                      <span className="text-sm font-black">{period.nombre}</span>
+                      <span className={`text-[11px] font-semibold flex items-center gap-1 ${active ? 'text-amber-50' : period.cerrado ? 'text-slate-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                        {period.cerrado ? <><Lock className="w-3 h-3" /> Cerrado</> : '● Abierto'}
+                      </span>
                     </button>
-                  ))}
-                </div>
+                  );
+                })}
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Matriz Interactiva de Notas */}
       {activeCourse && activePeriod && activeSection ? (
-        <GradeMatrixTable
-          course={activeCourse}
-          evaluationPeriod={activePeriod}
-          section={activeSection}
-        />
-      ) : (
-        <div className="p-8 rounded-3xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 text-center text-xs text-slate-500">
-          Selecciona una sección y materia asignada para cargar el padrón de alumnos y la matriz de notas.
+        <GradeMatrixTable course={activeCourse} evaluationPeriod={activePeriod} section={activeSection} />
+      ) : availableSections.length > 0 ? (
+        <div className="p-8 rounded-3xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 text-center text-sm text-slate-500">
+          Elige un aula y un curso para ver la lista de alumnos.
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
-

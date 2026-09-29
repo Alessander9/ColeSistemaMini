@@ -390,11 +390,14 @@ interface AppContextType {
     periodoEvaluacionId: string;
     competenciaId: string;
     titulo: string;
-    tipo: 'examen' | 'practica' | 'proyecto';
+    tipo: 'examen' | 'practica' | 'bimestral' | 'proyecto';
     fechaProgramada: string;
     horaInicio?: string;
     duracionMinutos: number;
+    descripcion?: string;
   }) => EvaluationExam;
+  updateExam: (examId: string, changes: Partial<Pick<EvaluationExam, 'fecha_programada' | 'hora_inicio' | 'duracion_minutos' | 'periodo_evaluacion_id' | 'titulo' | 'descripcion'>>) => void;
+  deleteExam: (examId: string) => void;
 
   notifications: AppNotification[];
   markNotificationRead: (id: string) => void;
@@ -1524,7 +1527,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     competenciaId?: string;
     archivoUrl?: string;
   }) => {
-    const course = MOCK_COURSES.find(c => c.id === data.cursoId);
+    const course = courses.find(c => c.id === data.cursoId) || MOCK_COURSES.find(c => c.id === data.cursoId);
     const newTask: TaskAssignment = {
       id: `task-${Date.now()}`,
       curso_id: data.cursoId,
@@ -1680,12 +1683,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     periodoEvaluacionId: string;
     competenciaId: string;
     titulo: string;
-    tipo: 'examen' | 'practica' | 'proyecto';
+    tipo: 'examen' | 'practica' | 'bimestral' | 'proyecto';
     fechaProgramada: string;
     horaInicio?: string;
     duracionMinutos: number;
+    descripcion?: string;
   }) => {
-    const course = MOCK_COURSES.find(c => c.id === data.cursoId);
+    const course = courses.find(c => c.id === data.cursoId) || MOCK_COURSES.find(c => c.id === data.cursoId);
     const newExam: EvaluationExam = {
       id: `exam-${Date.now()}`,
       curso_id: data.cursoId,
@@ -1697,7 +1701,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       fecha_programada: data.fechaProgramada,
       hora_inicio: data.horaInicio,
       duracion_minutos: data.duracionMinutos,
+      descripcion: data.descripcion,
       ponderacion: 1.0,
+      estado: 'programada',
       curso: course,
     };
 
@@ -1722,6 +1728,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     );
 
     return newExam;
+  };
+
+  const updateExam = (examId: string, changes: Partial<Pick<EvaluationExam, 'fecha_programada' | 'hora_inicio' | 'duracion_minutos' | 'periodo_evaluacion_id' | 'titulo' | 'descripcion'>>) => {
+    const exam = exams.find(e => e.id === examId);
+    setExams(prev => prev.map(e => (e.id === examId ? { ...e, ...changes } : e)));
+    // Avisar a los alumnos si cambió la fecha u hora
+    if (exam && (changes.fecha_programada || changes.hora_inicio)) {
+      enrollments.filter(e => e.seccion_id === exam.seccion_id).forEach(enr => {
+        if (enr.estudiante?.profile_id) {
+          addNotification({
+            user_id: enr.estudiante.profile_id,
+            tipo: 'nota',
+            titulo: 'Evaluación reprogramada',
+            mensaje: `${exam.titulo}: nueva fecha ${changes.fecha_programada || exam.fecha_programada}`,
+            url_redireccion: '/estudiante/evaluaciones'
+          });
+        }
+      });
+    }
+  };
+
+  const deleteExam = (examId: string) => {
+    setExams(prev => prev.filter(e => e.id !== examId));
   };
 
   // ── Asignación de Materias y Docentes por Salón ──
@@ -2018,15 +2047,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const uniqueSecIds = Array.from(new Set(assignments.map(a => a.seccion_id)));
     return uniqueSecIds
       .map(secId => {
-        const seccion = MOCK_SECTIONS.find(s => s.id === secId);
+        // Primero las secciones y cursos guardados; los de ejemplo solo como respaldo
+        const seccion = sections.find(s => s.id === secId) || MOCK_SECTIONS.find(s => s.id === secId);
         const cursos = assignments
           .filter(a => a.seccion_id === secId)
-          .map(a => a.curso || MOCK_COURSES.find(c => c.id === a.curso_id))
+          .map(a => courses.find(c => c.id === a.curso_id) || a.curso || MOCK_COURSES.find(c => c.id === a.curso_id))
           .filter((c): c is Course => !!c);
         return seccion ? { seccion, cursos } : null;
       })
       .filter((item): item is { seccion: Section; cursos: Course[] } => item !== null);
-  }, [sectionCourses]);
+  }, [sectionCourses, sections, courses]);
 
   // ── Validación Anti-Cruce de Horarios ──
   const checkTeacherConflict = useCallback((
@@ -2556,6 +2586,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     gradeTask,
     exams,
     addExam,
+    updateExam,
+    deleteExam,
     childrenList,
     selectedChildId,
     setSelectedChildId,
@@ -2616,12 +2648,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       
       const newRecords: AttendanceRecord[] = sectionEnrollments.map(enr => {
         const exc = exceptionMap.get(enr.id);
+        const estado = exc ? exc.estado : 'presente';
+        // Si el alumno ya tenía registro con el mismo estado (p. ej. marcó con su carnet QR), se conserva su hora real
+        const existing = attendances.find(a => a.matricula_id === enr.id && a.fecha === fecha && a.tipo_registro !== 'salida');
+        if (existing && existing.estado === estado) return existing;
         return {
           id: `att-quick-${enr.id}-${fecha}`,
           matricula_id: enr.id,
           fecha,
-          hora_registro: '08:00',
-          estado: exc ? exc.estado : 'presente',
+          // Faltas sin hora de entrada; asistencias conservan la hora real si ya existía
+          hora_registro: estado === 'falta' || estado === 'justificado'
+            ? '—'
+            : existing?.hora_registro && existing.hora_registro !== '—' ? existing.hora_registro : '08:00',
+          estado,
           metodo: 'manual',
           observacion: exc?.observacion || (exc ? 'Excepción registrada por docente' : 'Presente automático'),
           registrado_por: currentUser.nombres,
