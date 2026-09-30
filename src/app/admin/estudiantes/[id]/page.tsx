@@ -5,7 +5,6 @@ import { useParams, useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import { GradeBadge } from '@/components/notas/GradeBadge';
 import { calculateAverage, GRADE_SCALE } from '@/lib/grades/calculations';
-import { downloadEnrollmentFichaPdf } from '@/lib/pdf/generateEnrollmentFichaPdf';
 import { 
   User, 
   GraduationCap, 
@@ -31,6 +30,10 @@ import {
   Inbox
 } from 'lucide-react';
 import Link from 'next/link';
+
+// Se carga solo al generar el PDF (así jsPDF no pesa en la carga inicial de la página)
+const downloadEnrollmentFichaPdf = async (...args: Parameters<typeof import('@/lib/pdf/generateEnrollmentFichaPdf').downloadEnrollmentFichaPdf>) =>
+  (await import('@/lib/pdf/generateEnrollmentFichaPdf')).downloadEnrollmentFichaPdf(...args);
 
 export default function Estudiante360Page() {
   const params = useParams();

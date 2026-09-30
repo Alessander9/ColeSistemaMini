@@ -3,31 +3,31 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
 import { SystemBrandingConfig, SitemapUrlEntry } from '@/types';
-import { 
-  THEME_PRESETS, 
+import {
+  THEME_PRESETS,
   FONT_OPTIONS,
-  DEFAULT_BRANDING_CONFIG, 
-  generateRobotsTxt, 
-  generateSitemapXml 
+  DEFAULT_BRANDING_CONFIG,
+  generateRobotsTxt,
+  generateSitemapXml
 } from '@/lib/services/brandingService';
-import { 
-  Palette, 
-  Sparkles, 
-  Globe, 
-  Search, 
-  Bot, 
-  Image as ImageIcon, 
-  Upload, 
-  Check, 
-  Copy, 
-  RotateCcw, 
-  Save, 
-  ExternalLink, 
-  Eye, 
+import {
+  Palette,
+  Sparkles,
+  Globe,
+  Search,
+  Bot,
+  Image as ImageIcon,
+  Upload,
+  Check,
+  Copy,
+  RotateCcw,
+  Save,
+  ExternalLink,
+  Eye,
   EyeOff,
   Mail,
   Send,
-  CheckCircle2, 
+  CheckCircle2,
   AlertTriangle,
   School,
   FileText,
@@ -54,12 +54,12 @@ import {
 import { compressFile, formatFileSize } from '@/lib/services/compressionService';
 import { Modal } from '@/components/ui/Modal';
 import { sendBrevoAttendanceEmail } from '@/lib/services/brevoService';
-import { 
-  sendResendEmail, 
-  ResendEmailType, 
-  buildReportCardEmailHtml, 
-  buildWelcomeEnrollmentEmailHtml, 
-  buildTuitionReminderEmailHtml 
+import {
+  sendResendEmail,
+  ResendEmailType,
+  buildReportCardEmailHtml,
+  buildWelcomeEnrollmentEmailHtml,
+  buildTuitionReminderEmailHtml
 } from '@/lib/services/resendService';
 
 // Logos predefinidos en SVG de alta calidad para pruebas rápidas
@@ -86,17 +86,17 @@ const LOGO_PRESETS = [
   },
 ];
 
-type ActiveTab = 
-  | 'identidad' 
-  | 'colores' 
-  | 'documentos' 
-  | 'carnets' 
-  | 'diplomas' 
-  | 'sonidos' 
-  | 'correos' 
-  | 'login' 
-  | 'seo' 
-  | 'robots' 
+type ActiveTab =
+  | 'identidad'
+  | 'colores'
+  | 'documentos'
+  | 'carnets'
+  | 'diplomas'
+  | 'sonidos'
+  | 'correos'
+  | 'login'
+  | 'seo'
+  | 'robots'
   | 'canales';
 
 export default function AdminBrandingPage() {
@@ -118,7 +118,7 @@ export default function AdminBrandingPage() {
   const [showResendApiKey, setShowResendApiKey] = useState(false);
   const [testEmailRecipient, setTestEmailRecipient] = useState('padre.familia@ejemplo.com');
   const [isSendingBrevoTest, setIsSendingBrevoTest] = useState(false);
-  
+
   // Resend Test State
   const [selectedResendTemplate, setSelectedResendTemplate] = useState<ResendEmailType>('libreta_notas');
   const [isSendingResendTest, setIsSendingResendTest] = useState(false);
@@ -153,13 +153,13 @@ export default function AdminBrandingPage() {
 
   const handleSelectFont = (fontId: string) => {
     handleChange('fontFamily', fontId);
-    
+
     // Inyección dinámica de Google Font en el DOM en tiempo real
     const fontOption = FONT_OPTIONS.find(f => f.id === fontId);
     const category = fontOption?.category || 'sans-serif';
     const fontUrlParam = fontId.replace(/ /g, '+');
     const fontLinkId = `google-font-${fontId.toLowerCase().replace(/\s+/g, '-')}`;
-    
+
     if (typeof document !== 'undefined') {
       if (!document.getElementById(fontLinkId)) {
         const link = document.createElement('link');
@@ -514,221 +514,134 @@ export default function AdminBrandingPage() {
   // Contenidos generados en tiempo real
   const generatedRobots = generateRobotsTxt(formData);
 
+  // ¿Hay cambios sin guardar?
+  const hasChanges = JSON.stringify(formData) !== JSON.stringify(brandingConfig);
+
+  // Secciones de la configuración en palabras sencillas
+  const SECTION_GROUPS: { title: string; items: { id: ActiveTab; label: string; hint: string; icon: React.ElementType; tone: string }[] }[] = [
+    {
+      title: 'Imagen del colegio',
+      items: [
+        { id: 'identidad', label: 'Nombre y logo', hint: 'Nombre, siglas y escudo', icon: School, tone: 'bg-indigo-100 text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-300' },
+        { id: 'colores', label: 'Colores y letra', hint: 'Color principal, tipo de letra y menú', icon: Palette, tone: 'bg-pink-100 text-pink-600 dark:bg-pink-950/60 dark:text-pink-300' },
+        { id: 'documentos', label: 'Documentos PDF', hint: 'Membrete, sello y marca de agua', icon: Stamp, tone: 'bg-amber-100 text-amber-600 dark:bg-amber-950/60 dark:text-amber-300' },
+        { id: 'carnets', label: 'Carnets', hint: 'Diseño del carnet con QR', icon: CreditCard, tone: 'bg-sky-100 text-sky-600 dark:bg-sky-950/60 dark:text-sky-300' },
+        { id: 'diplomas', label: 'Diplomas', hint: 'Diplomas de honor y mérito', icon: Award, tone: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950/60 dark:text-yellow-300' },
+      ],
+    },
+    {
+      title: 'Comunicación y acceso',
+      items: [
+        { id: 'sonidos', label: 'Sonidos del kiosco', hint: 'Lo que suena al marcar asistencia', icon: Volume2, tone: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-300' },
+        { id: 'correos', label: 'Correos', hint: 'Avisos y libretas por correo', icon: Mail, tone: 'bg-blue-100 text-blue-600 dark:bg-blue-950/60 dark:text-blue-300' },
+        { id: 'login', label: 'Pantalla de ingreso', hint: 'Cómo se ve el inicio de sesión', icon: Lock, tone: 'bg-violet-100 text-violet-600 dark:bg-violet-950/60 dark:text-violet-300' },
+        { id: 'canales', label: 'WhatsApp y app', hint: 'Botón de WhatsApp e instalar app', icon: MessageCircle, tone: 'bg-green-100 text-green-600 dark:bg-green-950/60 dark:text-green-300' },
+        { id: 'seo', label: 'Buscadores', hint: 'Avanzado · cómo aparece en Google', icon: Search, tone: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300' },
+      ],
+    },
+  ];
+  const activeSection = SECTION_GROUPS.flatMap(g => g.items).find(i => i.id === activeTab);
+
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-16 animate-in fade-in duration-300">
-      
-      {/* ── HEADER PRINCIPAL ── */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden border border-indigo-500/20">
-        <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute right-32 top-0 w-48 h-48 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
-        
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-          <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-400/30 text-xs font-semibold">
-              <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-              Suite White-Label 360° & Correo Dual (Brevo + Resend)
+    <div className="space-y-5 max-w-7xl mx-auto pb-28 animate-in fade-in duration-300">
+
+      {/* ── ENCABEZADO (claro) ── */}
+      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden">
+        <div className="h-1.5" style={{ background: `linear-gradient(90deg, ${formData.primaryColor || '#4f46e5'}, #10b981)` }} />
+        <div className="p-5 sm:p-6 space-y-4">
+          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+            <div className="space-y-2 max-w-2xl">
+              <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
+                <Palette className="w-8 h-8 text-indigo-600" /> Personalización del colegio
+              </h1>
+              <p className="text-sm text-slate-600 dark:text-slate-300">
+                Pon el nombre, el logo y los colores de tu colegio. Se usarán en todo el sistema, en los carnets, libretas, diplomas y correos. Elige abajo qué quieres cambiar y luego toca <strong>Guardar cambios</strong>.
+              </p>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-              Personalización de Branding Institucional
-            </h1>
-            <p className="text-slate-300 text-sm max-w-2xl leading-relaxed">
-              Configura la marca oficial, paletas de colores, marca de agua en PDFs, diseñador de carnets QR, diplomas de honor, sonidos de asistencia y canales de correo transaccional.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3">
-            <button
-              id="btn-restablecer-configuracion"
-              type="button"
-              onClick={() => setIsResetConfirmOpen(true)}
-              className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-slate-200 border border-white/10 text-xs font-bold transition-all flex items-center gap-2 cursor-pointer active:scale-95"
-            >
-              <RotateCcw className="w-4 h-4" />
-              Restablecer
-            </button>
-
-            <button
-              id="btn-guardar-configuracion"
-              type="button"
-              onClick={handleSaveAll}
-              disabled={isSaving}
-              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white text-xs font-bold shadow-lg shadow-emerald-500/30 transition-all flex items-center gap-2 cursor-pointer active:scale-95 disabled:opacity-50"
-            >
-              <Save className="w-4 h-4" />
-              {isSaving ? 'Aplicando cambios...' : 'Guardar Configuración'}
-            </button>
-          </div>
-        </div>
-
-        {/* Mini Preview Bar */}
-        <div className="mt-6 pt-6 border-t border-white/10 flex flex-wrap items-center gap-4 text-xs text-slate-300">
-          <div className="flex items-center gap-2">
-            <span className="text-slate-400">Colegio:</span>
-            <span className="font-bold text-white bg-white/10 px-2.5 py-0.5 rounded-md">{formData.nombreInstitucion || 'No definido'}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-slate-400">Fuente:</span>
-            <span className="font-semibold text-indigo-300 bg-white/10 px-2 py-0.5 rounded-md">{formData.fontFamily || 'Plus Jakarta Sans'}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-slate-400">Color Primario:</span>
-            <div className="flex items-center gap-1.5 bg-white/10 px-2 py-0.5 rounded-md">
-              <span className="w-3 h-3 rounded-full border border-white/40 shadow-xs" style={{ backgroundColor: formData.primaryColor }} />
-              <span className="font-mono text-slate-200">{formData.primaryColor}</span>
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
+              <button
+                id="btn-restablecer-configuracion"
+                type="button"
+                onClick={() => setIsResetConfirmOpen(true)}
+                className="px-4 py-2.5 rounded-xl border-2 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-slate-400 text-sm font-bold flex items-center gap-2 cursor-pointer"
+              >
+                <RotateCcw className="w-4 h-4" /> Restablecer
+              </button>
+              <button
+                id="btn-guardar-configuracion"
+                type="button"
+                onClick={handleSaveAll}
+                disabled={isSaving || !hasChanges}
+                className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-black shadow-md shadow-emerald-600/20 flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Save className="w-4 h-4" /> {isSaving ? 'Guardando...' : hasChanges ? 'Guardar cambios' : 'Todo guardado'}
+              </button>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-slate-400">Correos:</span>
-            <span className="px-2 py-0.5 rounded-md font-semibold bg-emerald-500/20 text-emerald-300">
-              Brevo (Asistencias) + Resend (Libretas/Tesorería)
+
+          {/* Vista rápida de cómo está configurado */}
+          <div className="flex flex-wrap items-center gap-2 pt-4 border-t border-slate-100 dark:border-slate-800 text-xs">
+            <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
+              {formData.logoUrl
+                // eslint-disable-next-line @next/next/no-img-element
+                ? <img src={formData.logoUrl} alt="" className="w-5 h-5 rounded object-contain" />
+                : <School className="w-4 h-4 text-indigo-500" />}
+              <span className="font-bold text-slate-800 dark:text-slate-100">{formData.nombreInstitucion || 'Sin nombre'}</span>
             </span>
+            <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
+              <span className="w-4 h-4 rounded-full border border-white shadow" style={{ backgroundColor: formData.primaryColor }} />
+              <span className="font-semibold text-slate-700 dark:text-slate-200">Color principal</span>
+            </span>
+            <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
+              <span className="font-black text-slate-700 dark:text-slate-200" style={{ fontFamily: formData.fontFamily }}>Aa</span>
+              <span className="font-semibold text-slate-700 dark:text-slate-200">{formData.fontFamily || 'Plus Jakarta Sans'}</span>
+            </span>
+            {hasChanges && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 font-bold">
+                <span className="w-2 h-2 rounded-full bg-amber-500" /> Tienes cambios sin guardar
+              </span>
+            )}
           </div>
         </div>
       </div>
 
-      {/* ── NAVEGACIÓN POR PESTAÑAS ── */}
-      <div className="flex overflow-x-auto gap-2 p-1.5 bg-slate-200/70 dark:bg-slate-900/80 rounded-2xl border border-slate-200 dark:border-slate-800 scrollbar-none">
-        
-        <button
-          id="tab-identidad"
-          type="button"
-          onClick={() => setActiveTab('identidad')}
-          className={`flex items-center gap-2 px-3 py-2 rounded-xl font-bold text-xs transition-all whitespace-nowrap cursor-pointer ${
-            activeTab === 'identidad'
-              ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-          }`}
-        >
-          <School className="w-4 h-4" />
-          1. Identidad & Logo
-        </button>
-
-        <button
-          id="tab-colores"
-          type="button"
-          onClick={() => setActiveTab('colores')}
-          className={`flex items-center gap-2 px-3 py-2 rounded-xl font-bold text-xs transition-all whitespace-nowrap cursor-pointer ${
-            activeTab === 'colores'
-              ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-          }`}
-        >
-          <Palette className="w-4 h-4" />
-          2. Colores & UI Global
-        </button>
-
-        <button
-          id="tab-documentos"
-          type="button"
-          onClick={() => setActiveTab('documentos')}
-          className={`flex items-center gap-2 px-3 py-2 rounded-xl font-bold text-xs transition-all whitespace-nowrap cursor-pointer ${
-            activeTab === 'documentos'
-              ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-          }`}
-        >
-          <Stamp className="w-4 h-4" />
-          3. Documentos & Marca de Agua
-        </button>
-
-        <button
-          id="tab-carnets"
-          type="button"
-          onClick={() => setActiveTab('carnets')}
-          className={`flex items-center gap-2 px-3 py-2 rounded-xl font-bold text-xs transition-all whitespace-nowrap cursor-pointer ${
-            activeTab === 'carnets'
-              ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-          }`}
-        >
-          <CreditCard className="w-4 h-4" />
-          4. Carnets QR & Reverso
-        </button>
-
-        <button
-          id="tab-diplomas"
-          type="button"
-          onClick={() => setActiveTab('diplomas')}
-          className={`flex items-center gap-2 px-3 py-2 rounded-xl font-bold text-xs transition-all whitespace-nowrap cursor-pointer ${
-            activeTab === 'diplomas'
-              ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-          }`}
-        >
-          <Award className="w-4 h-4" />
-          5. Diplomas de Honor
-        </button>
-
-        <button
-          id="tab-sonidos"
-          type="button"
-          onClick={() => setActiveTab('sonidos')}
-          className={`flex items-center gap-2 px-3 py-2 rounded-xl font-bold text-xs transition-all whitespace-nowrap cursor-pointer ${
-            activeTab === 'sonidos'
-              ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-          }`}
-        >
-          <Volume2 className="w-4 h-4" />
-          6. Sonidos Kiosco QR
-        </button>
-
-        <button
-          id="tab-correos"
-          type="button"
-          onClick={() => setActiveTab('correos')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl font-extrabold text-xs transition-all whitespace-nowrap cursor-pointer ${
-            activeTab === 'correos'
-              ? 'bg-indigo-600 text-white shadow-md ring-2 ring-indigo-500/30'
-              : 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 hover:bg-indigo-100'
-          }`}
-        >
-          <Mail className="w-4 h-4" />
-          7. Correos (Brevo + Resend)
-        </button>
-
-        <button
-          id="tab-login"
-          type="button"
-          onClick={() => setActiveTab('login')}
-          className={`flex items-center gap-2 px-3 py-2 rounded-xl font-bold text-xs transition-all whitespace-nowrap cursor-pointer ${
-            activeTab === 'login'
-              ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-          }`}
-        >
-          <Lock className="w-4 h-4" />
-          8. Login & White-Label
-        </button>
-
-        <button
-          id="tab-seo"
-          type="button"
-          onClick={() => setActiveTab('seo')}
-          className={`flex items-center gap-2 px-3 py-2 rounded-xl font-bold text-xs transition-all whitespace-nowrap cursor-pointer ${
-            activeTab === 'seo'
-              ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-          }`}
-        >
-          <Search className="w-4 h-4" />
-          9. SEO & Robots
-        </button>
-
-        <button
-          id="tab-canales"
-          type="button"
-          onClick={() => setActiveTab('canales')}
-          className={`flex items-center gap-2 px-3 py-2 rounded-xl font-bold text-xs transition-all whitespace-nowrap cursor-pointer ${
-            activeTab === 'canales'
-              ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-          }`}
-        >
-          <MessageCircle className="w-4 h-4" />
-          10. WhatsApp & PWA
-        </button>
+      {/* ── ¿QUÉ QUIERES CAMBIAR? ── */}
+      <div className="space-y-3">
+        {SECTION_GROUPS.map(group => (
+          <div key={group.title} className="space-y-2">
+            <p className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">{group.title}</p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+              {group.items.map(item => {
+                const active = activeTab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    id={`tab-${item.id}`}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => setActiveTab(item.id)}
+                    className={`flex items-start gap-2.5 p-3 rounded-2xl border text-left transition-all cursor-pointer ${active ? 'bg-white dark:bg-slate-900 border-transparent ring-2 ring-indigo-500 shadow-md' : 'bg-white/70 dark:bg-slate-900/60 border-slate-200/80 dark:border-slate-800 hover:bg-white dark:hover:bg-slate-900 hover:shadow-sm'}`}
+                  >
+                    <span className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${item.tone}`}><item.icon className="w-4 h-4" /></span>
+                    <span className="min-w-0">
+                      <span className={`block text-sm font-bold leading-tight ${active ? 'text-indigo-700 dark:text-indigo-300' : 'text-slate-800 dark:text-slate-100'}`}>{item.label}</span>
+                      <span className="block text-[11px] text-slate-500 dark:text-slate-400 leading-snug mt-0.5">{item.hint}</span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </div>
+
+      {activeSection && (
+        <div className="flex items-center gap-2 pt-1">
+          <span className={`w-8 h-8 rounded-lg flex items-center justify-center ${activeSection.tone}`}><activeSection.icon className="w-4 h-4" /></span>
+          <h2 className="text-lg font-black text-slate-900 dark:text-white">{activeSection.label}</h2>
+          <span className="text-sm text-slate-500 dark:text-slate-400 hidden sm:inline">· {activeSection.hint}</span>
+        </div>
+      )}
 
       {/* ── TAB 1: IDENTIDAD & LOGO ── */}
       {activeTab === 'identidad' && (
@@ -859,7 +772,7 @@ export default function AdminBrandingPage() {
       {activeTab === 'colores' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in fade-in duration-200">
           <div className="lg:col-span-7 space-y-6">
-            
+
             {/* Curvatura de Bordes & Estilo de Sidebar */}
             <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm space-y-5">
               <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -1057,7 +970,7 @@ export default function AdminBrandingPage() {
                   <span>Previsualización de Barra Lateral:</span>
                   <span className="text-indigo-600 dark:text-indigo-400 capitalize">{formData.sidebarStyle || 'Oscuro'}</span>
                 </div>
-                <div 
+                <div
                   className={`p-4 rounded-2xl border transition-all duration-300 shadow-sm ${
                     formData.sidebarStyle === 'gradient'
                       ? 'bg-gradient-to-b from-slate-900 via-indigo-950 to-slate-950 text-white border-indigo-500/30'
@@ -1067,7 +980,7 @@ export default function AdminBrandingPage() {
                   }`}
                 >
                   <div className="flex items-center gap-2.5 pb-3 border-b border-white/10">
-                    <div 
+                    <div
                       className="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-white text-xs"
                       style={{ backgroundColor: formData.primaryColor }}
                     >
@@ -1095,7 +1008,7 @@ export default function AdminBrandingPage() {
                   <span>Muestrario de Tipografía:</span>
                   <span className="text-indigo-600 dark:text-indigo-400 font-mono text-[11px]">{formData.fontFamily || 'Plus Jakarta Sans'}</span>
                 </div>
-                <div 
+                <div
                   className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-2"
                   style={{ fontFamily: formData.fontFamily || 'Plus Jakarta Sans' }}
                 >
@@ -1115,7 +1028,7 @@ export default function AdminBrandingPage() {
               </div>
 
               {/* Botón con Radio Dinámico */}
-              <div 
+              <div
                 className="p-4 border space-y-3"
                 style={{
                   borderRadius: formData.borderRadiusMode === 'sharp' ? '4px' : formData.borderRadiusMode === 'rounded' ? '20px' : '12px',
@@ -1149,7 +1062,7 @@ export default function AdminBrandingPage() {
       {activeTab === 'documentos' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in fade-in duration-200">
           <div className="lg:col-span-7 space-y-6">
-            
+
             {/* Membrete SIAGIE */}
             <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
               <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -1266,7 +1179,7 @@ export default function AdminBrandingPage() {
 
               <div className="p-5 rounded-2xl bg-white border-2 border-slate-300 text-slate-900 shadow-md relative overflow-hidden text-xs">
                 {/* Marca de agua de fondo */}
-                <div 
+                <div
                   className="absolute inset-0 flex items-center justify-center pointer-events-none"
                   style={{ opacity: formData.watermarkOpacity || 0.12 }}
                 >
@@ -1377,7 +1290,7 @@ export default function AdminBrandingPage() {
               {/* Reverso del Carnet */}
               <div className="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-800">
                 <h3 className="text-xs font-extrabold uppercase text-slate-500">Datos del Reverso del Carnet</h3>
-                
+
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Normas de Convivencia Institucional</label>
                   <textarea
@@ -1447,7 +1360,7 @@ export default function AdminBrandingPage() {
                   /* Formato Horizontal (Tarjeta Billetera) */
                   carnetViewSide === 'front' ? (
                     <div className="w-full max-w-[360px] h-[210px] rounded-2xl overflow-hidden bg-white shadow-xl border border-slate-200 text-slate-900 flex flex-col justify-between font-sans animate-in zoom-in-95 duration-200">
-                      <div 
+                      <div
                         className="px-3.5 py-2 text-white flex items-center justify-between shadow-sm"
                         style={{ backgroundColor: formData.carnetFranjaNivelColor || formData.primaryColor }}
                       >
@@ -1513,7 +1426,7 @@ export default function AdminBrandingPage() {
                   /* Formato Vertical (Credencial) */
                   carnetViewSide === 'front' ? (
                     <div className="w-64 rounded-2xl overflow-hidden bg-white shadow-xl border border-slate-200 text-slate-900 text-center font-sans animate-in zoom-in-95 duration-200">
-                      <div 
+                      <div
                         className="p-3 text-white text-center shadow-sm"
                         style={{ backgroundColor: formData.carnetFranjaNivelColor || formData.primaryColor }}
                       >
@@ -1833,12 +1746,12 @@ export default function AdminBrandingPage() {
                 <Sparkles className="w-4 h-4 text-emerald-500" />
                 Control de Feedback Kiosco
               </h3>
-              <div className="p-4 rounded-2xl bg-slate-900 text-white space-y-3 text-xs">
-                <div className="flex items-center gap-2 text-emerald-400 font-bold">
+              <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/50 space-y-3 text-xs">
+                <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-300 font-bold">
                   <CheckCircle2 className="w-4 h-4" />
                   <span>Configuración en Tiempo Real</span>
                 </div>
-                <p className="text-slate-300 text-[11px] leading-relaxed">
+                <p className="text-slate-600 dark:text-slate-300 text-[11px] leading-relaxed">
                   Cualquier ajuste de tono seleccionado se aplicará de inmediato al terminal de lectura de carnet QR en portería.
                 </p>
               </div>
@@ -1851,7 +1764,7 @@ export default function AdminBrandingPage() {
       {activeTab === 'correos' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in fade-in duration-200">
           <div className="lg:col-span-7 space-y-6">
-            
+
             {/* SECCIÓN 1: BREVO PARA ASISTENCIAS DIARIAS */}
             <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border-2 border-emerald-500/40 shadow-sm space-y-5">
               <div className="flex items-center justify-between">
@@ -2043,7 +1956,7 @@ export default function AdminBrandingPage() {
 
               {/* Render simulado de la plantilla seleccionada */}
               <div className="rounded-2xl border bg-slate-50 p-4 text-xs font-sans space-y-3">
-                <div 
+                <div
                   className="p-4 rounded-xl text-white text-center"
                   style={{ backgroundColor: formData.primaryColor }}
                 >
@@ -2057,7 +1970,7 @@ export default function AdminBrandingPage() {
 
                 <div className="p-3 bg-white rounded-xl border space-y-2">
                   <p className="font-bold text-slate-800">Estimado(a) Padre de Familia,</p>
-                  
+
                   {selectedResendTemplate === 'libreta_notas' && (
                     <div className="space-y-2">
                       <p className="text-slate-600">Compartimos el informe de calificaciones de <strong>Mateo Alejandro Torres</strong>:</p>
@@ -2246,6 +2159,20 @@ export default function AdminBrandingPage() {
           </div>
         </div>
       </Modal>
+
+      {/* ── BARRA DE CAMBIOS SIN GUARDAR ── */}
+      {hasChanges && (
+        <div className="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-[9980] w-[calc(100%-2rem)] max-w-xl animate-in slide-in-from-bottom-4 fade-in duration-200">
+          <div className="flex items-center gap-3 p-3 pl-4 rounded-2xl bg-white dark:bg-slate-900 border border-amber-200 dark:border-amber-900 shadow-2xl">
+            <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0" />
+            <p className="flex-1 text-sm font-bold text-slate-800 dark:text-slate-100">Tienes cambios sin guardar</p>
+            <button type="button" onClick={() => setFormData(brandingConfig)} className="px-3 py-2 rounded-xl text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">Descartar</button>
+            <button type="button" onClick={handleSaveAll} disabled={isSaving} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-black cursor-pointer disabled:opacity-50">
+              <Save className="w-4 h-4" /> {isSaving ? 'Guardando...' : 'Guardar'}
+            </button>
+          </div>
+        </div>
+      )}
 
     </div>
   );

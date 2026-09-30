@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { AppProvider, useApp } from '@/context/AppContext';
+import { useToasts, removeToast } from '@/lib/toastStore';
 import { Navbar } from '@/components/layout/Navbar';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { BottomNav } from '@/components/layout/BottomNav';
@@ -106,7 +107,8 @@ import { WhatsAppFloatingButton } from '@/components/ui/WhatsAppFloatingButton';
 // Inner shell (needs AppProvider context for toasts)
 // ─────────────────────────────────────────────────────────────────────────────
 function InnerShell({ children }: { children: React.ReactNode }) {
-  const { toasts, removeToast } = useApp();
+  // Los avisos se leen de su propio almacén: mostrarlos no vuelve a dibujar toda la página
+  const toasts = useToasts();
   // Solo registra el service worker (necesario para instalar la PWA).
   // Los toasts ya no se reenvían como notificaciones del navegador.
   usePushNotifications();

@@ -4,7 +4,6 @@ import React, { useState, useMemo, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
-import { PageHeader } from '@/components/ui/PageHeader';
 import { DataTable, Column, FilterChip } from '@/components/ui/DataTable';
 import { Modal } from '@/components/ui/Modal';
 import { Student, Enrollment } from '@/types';
@@ -38,8 +37,13 @@ import {
   CreditCard
 } from 'lucide-react';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
-import { downloadEnrollmentFichaPdf } from '@/lib/pdf/generateEnrollmentFichaPdf';
-import { generateBatchQrCardsPdf } from '@/lib/pdf/batchQrCardsPdfGenerator';
+
+// Se carga solo al generar el PDF (así jsPDF no pesa en la carga inicial de la página)
+const downloadEnrollmentFichaPdf = async (...args: Parameters<typeof import('@/lib/pdf/generateEnrollmentFichaPdf').downloadEnrollmentFichaPdf>) =>
+  (await import('@/lib/pdf/generateEnrollmentFichaPdf')).downloadEnrollmentFichaPdf(...args);
+// Se carga solo al generar el PDF (así jsPDF no pesa en la carga inicial de la página)
+const generateBatchQrCardsPdf = async (...args: Parameters<typeof import('@/lib/pdf/batchQrCardsPdfGenerator').generateBatchQrCardsPdf>) =>
+  (await import('@/lib/pdf/batchQrCardsPdfGenerator')).generateBatchQrCardsPdf(...args);
 
 function MatriculasContent() {
   const { enrollments, addStudent, sections, gradeLevels, students, showToast, brandingConfig } = useApp();
@@ -70,8 +74,8 @@ function MatriculasContent() {
     avatar_url: '',
     // Step 2: Académico
     nivel: 'primaria' as 'inicial' | 'primaria' | 'secundaria',
-    gradoId: 'grade-pri-3',
-    seccionId: 'sec-3pri-a',
+    gradoId: '',
+    seccionId: '',
     // Step 3: Apoderado
     nombreApoderado: '',
     dniApoderado: '',
@@ -118,6 +122,23 @@ function MatriculasContent() {
       }));
     }
   }, [searchParams]);
+
+  // Si no hay grado elegido (o no existe), usar el primero del nivel y su primera sección con vacantes
+  useEffect(() => {
+    if (!isWizardOpen) return;
+    if (gradeLevels.some(g => g.id === wizardData.gradoId)) return;
+    const g = gradeLevels.find(x => x.nivel === wizardData.nivel) || gradeLevels[0];
+    if (!g) return;
+    const sec = sections.find(x => x.grado_id === g.id);
+    setWizardData(prev => ({ ...prev, nivel: g.nivel as typeof prev.nivel, gradoId: g.id, seccionId: prev.seccionId || sec?.id || '' }));
+  }, [isWizardOpen, wizardData.gradoId, wizardData.nivel, gradeLevels, sections]);
+
+  // Vacantes libres reales por sección
+  const freeSeats = (secId: string) => {
+    const sec = sections.find(x => x.id === secId);
+    const taken = enrollments.filter(e => e.seccion_id === secId && e.estado === 'activo').length;
+    return Math.max(0, (sec?.capacidad_maxima || 30) - taken);
+  };
 
   // Available sections for chosen grade in wizard
   const availableSections = useMemo(
@@ -207,9 +228,23 @@ function MatriculasContent() {
         showToast('Por favor completa los nombres, apellidos y DNI', 'error');
         return;
       }
+      if (!/^\d{8}$/.test(wizardData.dni.trim())) {
+        showToast('El DNI del alumno debe tener 8 números', 'error');
+        return;
+      }
       const existingStudent = students.find(s => s.dni === wizardData.dni.trim());
       if (existingStudent) {
         showToast(`Ya existe un alumno registrado con el DNI ${wizardData.dni}: ${existingStudent.nombres} ${existingStudent.apellidos}`, 'error', 'DNI Duplicado');
+        return;
+      }
+    }
+    if (currentStep === 2) {
+      if (!wizardData.seccionId) {
+        showToast('Elige la sección donde estudiará el alumno', 'error');
+        return;
+      }
+      if (freeSeats(wizardData.seccionId) === 0) {
+        showToast('Esa sección ya no tiene vacantes. Elige otra.', 'error', 'Aula llena');
         return;
       }
     }
@@ -290,8 +325,8 @@ function MatriculasContent() {
       genero: 'M',
       avatar_url: '',
       nivel: 'primaria',
-      gradoId: 'grade-pri-3',
-      seccionId: 'sec-3pri-a',
+      gradoId: '',
+      seccionId: '',
       nombreApoderado: '',
       dniApoderado: '',
       telefonoApoderado: '',
@@ -350,238 +385,238 @@ function MatriculasContent() {
     }
   };
 
-  // DataTable Columns Definition
+  // Datos de apoyo para la lista
+  const LEVEL_LABEL: Record<string, string> = { inicial: 'Inicial', primaria: 'Primaria', secundaria: 'Secundaria' };
+  const studentName = (enr: Enrollment) => {
+    const st = enr.estudiante || students.find(x => x.id === enr.estudiante_id);
+    return {
+      nombres: st?.profile?.nombres || st?.nombres || '',
+      apellidos: st?.profile?.apellidos || st?.apellidos || '',
+      dni: st?.profile?.dni || st?.dni || '',
+      avatar: st?.profile?.avatar_url || '',
+      codigo: st?.codigo_estudiante || '',
+      apoderado: st?.nombre_apoderado || '',
+      telefono: st?.telefono_apoderado || '',
+    };
+  };
+  const sectionOfEnr = (enr: Enrollment) => enr.seccion || sections.find(x => x.id === enr.seccion_id);
+  const niceDate = (iso?: string) => {
+    if (!iso) return '—';
+    const [y, m, d] = iso.slice(0, 10).split('-').map(Number);
+    return new Date(y, (m || 1) - 1, d || 1).toLocaleDateString('es-PE', { day: 'numeric', month: 'short', year: 'numeric' });
+  };
+  const Avatar = ({ enr, size = 'w-10 h-10' }: { enr: Enrollment; size?: string }) => {
+    const n = studentName(enr);
+    return n.avatar ? (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img src={n.avatar} alt="" className={`${size} rounded-2xl object-cover shrink-0`} />
+    ) : (
+      <span className={`${size} rounded-2xl bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 text-sm font-black flex items-center justify-center shrink-0`}>
+        {`${n.nombres[0] || ''}${n.apellidos[0] || ''}`.toUpperCase() || '?'}
+      </span>
+    );
+  };
+  const actionButtons = (enr: Enrollment, compact = false) => (
+    <div className={`flex items-center gap-1.5 ${compact ? '' : 'flex-wrap'}`}>
+      <button type="button" onClick={() => handleDownloadExistingEnrollmentPdf(enr)} title="Descargar la ficha de matrícula en PDF"
+        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-indigo-400 cursor-pointer">
+        <FileText className="w-4 h-4 text-indigo-600" /> Ficha
+      </button>
+      {enr.estudiante && (
+        <button type="button" onClick={() => setSelectedEnrollmentForQr(enr)} title="Ver e imprimir el carnet con código QR"
+          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-indigo-400 cursor-pointer">
+          <QrCode className="w-4 h-4 text-indigo-600" /> Carnet
+        </button>
+      )}
+      {enr.estudiante_id && (
+        <Link href={`/admin/estudiantes/${enr.estudiante_id}`} className="inline-flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-black bg-indigo-600 hover:bg-indigo-700 text-white">
+          Ver alumno <ArrowRight className="w-3.5 h-3.5" />
+        </Link>
+      )}
+    </div>
+  );
+
   const columns: Column<Enrollment>[] = [
     {
-      header: 'Estudiante',
+      header: 'Alumno',
       cell: (enr) => {
-        const student = enr.estudiante;
-        const fullName = `${student?.profile?.apellidos || ''}, ${student?.profile?.nombres || ''}`.trim() || 'Estudiante';
-        const avatarUrl = student?.profile?.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150';
-
+        const n = studentName(enr);
         return (
           <div className="flex items-center gap-3">
-            <img
-              src={avatarUrl}
-              alt={fullName}
-              className="w-9 h-9 rounded-xl object-cover border border-slate-200 dark:border-slate-700 shrink-0"
-            />
+            <Avatar enr={enr} />
             <div className="min-w-0">
-              <p className="font-extrabold text-slate-800 dark:text-white truncate">
-                {fullName}
-              </p>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                <span className="text-[10px] font-mono font-bold text-slate-400">
-                  {student?.codigo_estudiante || 'EST-2026'}
-                </span>
-                {student?.profile?.dni && (
-                  <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-semibold">
-                    DNI {student.profile.dni}
-                  </span>
-                )}
-              </div>
+              <p className="text-sm font-black text-slate-900 dark:text-white truncate">{n.apellidos}, {n.nombres}</p>
+              <p className="text-xs text-slate-500">{n.dni ? `DNI ${n.dni}` : n.codigo}</p>
             </div>
           </div>
         );
       },
     },
     {
-      header: 'Nivel / Grado',
+      header: 'Aula',
       cell: (enr) => {
-        const nivel = enr.seccion?.grado?.nivel;
-        const gradoNombre = enr.seccion?.grado?.nombre || 'Grado 2026';
+        const sec = sectionOfEnr(enr);
+        const nivel = sec?.grado?.nivel || '';
         return (
-          <div className="flex flex-col gap-1 items-start">
-            <span
-              className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide border ${getLevelBadgeClass(nivel)}`}
-            >
-              {nivel === 'inicial' && '🧸 Inicial'}
-              {nivel === 'primaria' && '📚 Primaria'}
-              {nivel === 'secundaria' && '🎓 Secundaria'}
-              {!['inicial', 'primaria', 'secundaria'].includes(nivel || '') && (nivel || 'Académico')}
-            </span>
-            <span className="font-semibold text-slate-800 dark:text-slate-200 text-xs">
-              {gradoNombre}
-            </span>
+          <div>
+            <p className="text-sm font-bold text-slate-800 dark:text-slate-100">{sec?.grado?.nombre || 'Grado'} &quot;{sec?.letra || '?'}&quot;</p>
+            <span className={`inline-block mt-0.5 px-2 py-0.5 rounded-full text-[11px] font-black ${getLevelBadgeClass(nivel)}`}>{LEVEL_LABEL[nivel] || nivel || '—'}</span>
           </div>
         );
       },
     },
     {
-      header: 'Sección',
-      cell: (enr) => (
-        <div className="flex flex-col items-start gap-0.5">
-          <span className="font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded-lg border border-indigo-200/60 dark:border-indigo-800 text-xs">
-            Aula {enr.seccion?.letra || 'A'}
-          </span>
-          <span className="text-[10px] text-slate-400 font-medium">
-            {enr.seccion?.capacidad_maxima || 30} vacantes
-          </span>
-        </div>
-      ),
+      header: 'Apoderado',
+      cell: (enr) => {
+        const n = studentName(enr);
+        return (
+          <div className="text-sm">
+            <p className="font-bold text-slate-700 dark:text-slate-200">{n.apoderado || 'No registrado'}</p>
+            {n.telefono && <a href={`tel:${n.telefono}`} className="text-xs text-indigo-600 hover:underline inline-flex items-center gap-1"><Phone className="w-3 h-3" /> {n.telefono}</a>}
+          </div>
+        );
+      },
     },
     {
-      header: 'Apoderado / Contacto',
+      header: 'Matriculado',
       cell: (enr) => (
-        <div className="text-xs">
-          <p className="font-bold text-slate-700 dark:text-slate-300">
-            {enr.estudiante?.nombre_apoderado || 'No registrado'}
-          </p>
-          <p className="text-[11px] text-slate-400 flex items-center gap-1 mt-0.5">
-            <Phone className="w-3 h-3 text-slate-400" />
-            <span>{enr.estudiante?.telefono_apoderado || '-'}</span>
-          </p>
-        </div>
-      ),
-    },
-    {
-      header: 'Fecha Matrícula',
-      cell: (enr) => (
-        <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
-          <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-          <span className="font-medium">
-            {enr.fecha_matricula || '2026-02-15'}
+        <div className="text-sm">
+          <p className="text-slate-700 dark:text-slate-200">{niceDate(enr.fecha_matricula)}</p>
+          <span className={`inline-block mt-0.5 px-2 py-0.5 rounded-full text-[11px] font-black ${enr.estado === 'activo' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'}`}>
+            {enr.estado === 'activo' ? 'Estudiando' : enr.estado === 'retirado' ? 'Retirado' : enr.estado === 'trasladado' ? 'Trasladado' : enr.estado}
           </span>
         </div>
       ),
     },
-    {
-      header: 'Estado',
-      cell: (enr) => (
-        <span
-          className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
-            enr.estado === 'activo'
-              ? 'bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800'
-              : 'bg-slate-100 text-slate-600 border-slate-300 dark:bg-slate-800 dark:text-slate-400'
-          }`}
-        >
-          {enr.estado}
-        </span>
-      ),
-    },
-    {
-      header: 'Acciones',
-      cell: (enr) => (
-        <div className="flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={() => handleDownloadExistingEnrollmentPdf(enr)}
-            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-900 transition-all cursor-pointer active:scale-95"
-            title="Descargar Ficha Oficial de Matrícula y Constancia (PDF)"
-          >
-            <FileText className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-            <span>Ficha PDF</span>
-          </button>
-          {enr.estudiante && (
-            <button
-              type="button"
-              onClick={() => setSelectedEnrollmentForQr(enr)}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all cursor-pointer active:scale-95"
-              title="Ver Carnet Escolar QR"
-            >
-              <QrCode className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-              Carnet QR
-            </button>
-          )}
-          {enr.estudiante_id && (
-            <Link
-              href={`/admin/estudiantes/${enr.estudiante_id}`}
-              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all cursor-pointer active:scale-95"
-              title="Ver Perfil Completo del Estudiante"
-            >
-              Perfil
-              <ArrowRight className="w-3 h-3" />
-            </Link>
-          )}
-        </div>
-      ),
-    },
+    { header: '', cell: (enr) => actionButtons(enr, true) },
   ];
+
+  // Vacantes por nivel (matriculados activos frente a la capacidad de sus aulas)
+  const levelStats = (['inicial', 'primaria', 'secundaria'] as const).map(lvl => {
+    const secs = sections.filter(sec => sec.grado?.nivel === lvl || gradeLevels.find(g => g.id === sec.grado_id)?.nivel === lvl);
+    const ids = new Set(secs.map(x => x.id));
+    const enrolled = enrollments.filter(e => ids.has(e.seccion_id) && e.estado === 'activo').length;
+    const capacity = secs.reduce((a, x) => a + (x.capacidad_maxima || 30), 0);
+    return { lvl, enrolled, capacity, free: Math.max(0, capacity - enrolled), classrooms: secs.length };
+  });
+  const totalEnrolled = levelStats.reduce((a, l) => a + l.enrolled, 0);
+  const totalFree = levelStats.reduce((a, l) => a + l.free, 0);
+
+  const openWizard = () => { setIsWizardOpen(true); setCurrentStep(1); };
+  const printAllCards = async () => {
+    const activeEnrs = enrollments.filter(e => e.estado === 'activo' && (activeFilter === 'todos' || activeFilter === 'activo' || e.seccion?.grado?.nivel === activeFilter));
+    if (activeEnrs.length === 0) { showToast('No hay alumnos matriculados para imprimir', 'warning'); return; }
+    const items = activeEnrs.map(enr => ({
+      student: enr.estudiante || students.find(x => x.id === enr.estudiante_id)!,
+      enrollment: enr,
+      section: enr.seccion || sections.find(x => x.id === enr.seccion_id),
+    })).filter(item => Boolean(item.student));
+    const doc = await generateBatchQrCardsPdf({ items, brandingConfig, sectionName: activeFilter === 'todos' || activeFilter === 'activo' ? 'TODAS LAS SECCIONES' : (LEVEL_LABEL[activeFilter] || '').toUpperCase() });
+    doc.save('Carnets_Escolares.pdf');
+    showToast(`Se generaron ${items.length} carnets (8 por hoja A4)`, 'success', '📇 Carnets');
+  };
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12 animate-in fade-in-50">
       
-      {/* Page Header */}
-      <PageHeader
-        title="Gestión de Matrículas 2026"
-        description="Proceso de admisión, asignación de vacantes por nivel (Inicial, Primaria, Secundaria) y emisión de credenciales oficiales."
-        badge={`${enrollments.length} Matrículas Activas`}
-      >
+      {/* ══════════ Encabezado ══════════ */}
+      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
+            <UserPlus className="w-8 h-8 text-indigo-600" /> Matrículas
+          </h1>
+          <p className="text-sm text-slate-600 dark:text-slate-300 mt-1 max-w-2xl">
+            Inscribe a cada alumno en su aula. El sistema crea al instante su <strong>carnet con QR</strong>, sus <strong>accesos</strong> y los de su apoderado, y descarga la <strong>ficha de matrícula</strong>.
+          </p>
+        </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <button
-            onClick={async () => {
-              const activeEnrs = enrollments.filter(e => e.estado === 'activo');
-              if (activeEnrs.length === 0) {
-                showToast('No hay matrículas activas registradas', 'warning');
-                return;
-              }
-              const items = activeEnrs.map(enr => ({
-                student: enr.estudiante || students.find(s => s.id === enr.estudiante_id)!,
-                enrollment: enr,
-                section: enr.seccion || sections.find(s => s.id === enr.seccion_id),
-              })).filter(item => Boolean(item.student));
-
-              const doc = await generateBatchQrCardsPdf({
-                items,
-                brandingConfig,
-                sectionName: 'TODAS LAS SECCIONES',
-              });
-              doc.save('Planilla_Carnets_Escolares_2026.pdf');
-              showToast('Planilla de carnets generada con éxito (8 por página A4)', 'success', '📇 Carnets Escolares');
-            }}
-            className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs border border-slate-200 dark:border-slate-700 transition-all active:scale-95 cursor-pointer"
-            title="Descargar PDF con todos los carnets QR en planilla A4 listos para imprimir"
-          >
-            <CreditCard className="w-4 h-4 text-indigo-500" />
-            <span>Imprimir Carnets (Planilla A4)</span>
+          <button type="button" onClick={printAllCards} title="Descarga un PDF con los carnets listos para imprimir (8 por hoja)"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-700 dark:text-slate-200 hover:border-slate-400 cursor-pointer">
+            <CreditCard className="w-4 h-4 text-indigo-600" /> Imprimir carnets
           </button>
-
-          <button
-            onClick={() => setIsBatchImportOpen(true)}
-            className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 font-bold text-xs border border-emerald-200/80 dark:border-emerald-800 transition-all active:scale-95 cursor-pointer"
-            title="Importar lote masivo de estudiantes desde Excel o CSV"
-          >
-            <Upload className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-            <span>Importar CSV / Excel</span>
+          <button type="button" onClick={() => setIsBatchImportOpen(true)} title="Matricula a varios alumnos a la vez desde una hoja de Excel"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-700 dark:text-slate-200 hover:border-emerald-400 cursor-pointer">
+            <Upload className="w-4 h-4 text-emerald-600" /> Importar desde Excel
           </button>
-
-          <button
-            onClick={() => {
-              setIsWizardOpen(true);
-              setCurrentStep(1);
-            }}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-600/20 transition-all active:scale-95 cursor-pointer"
-          >
-            <UserPlus className="w-4 h-4" />
-            + Nueva Matrícula (Wizard)
+          <button type="button" onClick={openWizard} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-black shadow-md shadow-indigo-600/25 cursor-pointer">
+            <UserPlus className="w-4 h-4" /> Matricular alumno
           </button>
         </div>
-      </PageHeader>
+      </div>
+
+      {/* ══════════ ¿Qué pasa al matricular? ══════════ */}
+      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm p-5">
+        <p className="text-sm font-black text-slate-800 dark:text-slate-100 mb-3">¿Qué pasa cuando matriculas a un alumno?</p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {[
+            { n: 1, icon: User, color: 'bg-indigo-600', title: 'Registras sus datos', text: 'Nombre, DNI, el aula donde estudiará y los datos de su apoderado.' },
+            { n: 2, icon: FileText, color: 'bg-purple-600', title: 'Se descarga su ficha', text: 'Una ficha de matrícula en PDF lista para imprimir y firmar.' },
+            { n: 3, icon: QrCode, color: 'bg-emerald-600', title: 'Recibe carnet y accesos', text: 'Un carnet con QR para marcar asistencia, y usuario y contraseña para el alumno y su apoderado.' },
+          ].map(st => (
+            <div key={st.n} className="flex items-start gap-3 p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50">
+              <span className={`w-10 h-10 rounded-xl ${st.color} text-white flex items-center justify-center shrink-0`}><st.icon className="w-5 h-5" /></span>
+              <div>
+                <p className="text-sm font-black text-slate-900 dark:text-white">{st.n}. {st.title}</p>
+                <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mt-0.5">{st.text}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ══════════ Vacantes por nivel (también filtran la lista) ══════════ */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <button type="button" onClick={() => setActiveFilter('todos')} aria-pressed={activeFilter === 'todos'}
+          className={`text-left p-4 rounded-3xl border-2 cursor-pointer transition-all ${activeFilter === 'todos' ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30' : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-indigo-300'}`}>
+          <p className="text-xs font-black uppercase tracking-wider text-slate-500">Todo el colegio</p>
+          <p className="text-3xl font-black text-slate-900 dark:text-white mt-1">{totalEnrolled}</p>
+          <p className="text-sm text-slate-600 dark:text-slate-300">{totalEnrolled === 1 ? 'alumno matriculado' : 'alumnos matriculados'}</p>
+          <p className="text-xs font-bold text-emerald-600 mt-1">{totalFree} vacantes libres</p>
+        </button>
+        {levelStats.map(l => {
+          const pctUsed = l.capacity > 0 ? Math.round((l.enrolled / l.capacity) * 100) : 0;
+          const tone = { inicial: 'bg-amber-500', primaria: 'bg-blue-500', secundaria: 'bg-purple-500' }[l.lvl];
+          const active = activeFilter === l.lvl;
+          return (
+            <button key={l.lvl} type="button" onClick={() => setActiveFilter(active ? 'todos' : l.lvl)} aria-pressed={active}
+              className={`text-left p-4 rounded-3xl border-2 cursor-pointer transition-all ${active ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30' : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-indigo-300'}`}>
+              <p className="text-xs font-black uppercase tracking-wider text-slate-500 flex items-center gap-1.5"><span className={`w-2.5 h-2.5 rounded-full ${tone}`} /> {LEVEL_LABEL[l.lvl]}</p>
+              <p className="text-3xl font-black text-slate-900 dark:text-white mt-1">{l.enrolled}<span className="text-base text-slate-400"> / {l.capacity}</span></p>
+              <div className="h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden my-1.5"><div className={`h-full rounded-full ${tone}`} style={{ width: `${pctUsed}%` }} /></div>
+              <p className="text-xs text-slate-500"><strong className={l.free > 0 ? 'text-emerald-600' : 'text-rose-600'}>{l.free > 0 ? `${l.free} vacantes libres` : 'Sin vacantes'}</strong> · {l.classrooms} aulas</p>
+            </button>
+          );
+        })}
+      </div>
 
       {/* WIZARD MODAL */}
       {isWizardOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-fade-in">
           <div className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
             
-            {/* Wizard Header & Progress Bar */}
-            <div className="p-5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
-              <div className="flex items-center justify-between text-xs font-bold text-slate-500 mb-2">
-                <span>Paso {currentStep} de 6</span>
-                <span className="text-indigo-600 dark:text-indigo-400">
-                  {currentStep === 1 && '1. Datos del Estudiante'}
-                  {currentStep === 2 && '2. Grado y Sección'}
-                  {currentStep === 3 && '3. Datos del Apoderado'}
-                  {currentStep === 4 && '4. Documentación'}
-                  {currentStep === 5 && '5. Confirmación'}
-                  {currentStep === 6 && '6. Matrícula Exitosa'}
-                </span>
+            {/* Pasos del asistente */}
+            <div className="p-5 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-lg font-black text-slate-900 dark:text-white">{currentStep < 6 ? 'Matricular alumno' : '¡Matrícula lista!'}</p>
+                {currentStep < 6 && (
+                  <button type="button" onClick={resetWizard} aria-label="Cerrar" className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">✕</button>
+                )}
               </div>
-              <div className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-indigo-600 transition-all duration-300 rounded-full"
-                  style={{ width: `${(currentStep / 6) * 100}%` }}
-                />
-              </div>
+              <ol className="grid grid-cols-6 gap-1">
+                {['Alumno', 'Aula', 'Apoderado', 'Documentos', 'Revisar', 'Listo'].map((name, i) => {
+                  const n = i + 1;
+                  const done = n < currentStep;
+                  const current = n === currentStep;
+                  return (
+                    <li key={name} className="flex flex-col items-center gap-1 text-center">
+                      <span className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black ${done ? 'bg-emerald-500 text-white' : current ? 'bg-indigo-600 text-white ring-4 ring-indigo-100 dark:ring-indigo-900' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`}>
+                        {done ? <Check className="w-4 h-4" /> : n}
+                      </span>
+                      <span className={`text-[11px] font-bold leading-tight ${current ? 'text-indigo-700 dark:text-indigo-300' : done ? 'text-emerald-600' : 'text-slate-400'}`}>{name}</span>
+                    </li>
+                  );
+                })}
+              </ol>
             </div>
 
             {/* Wizard Body */}
@@ -592,7 +627,7 @@ function MatriculasContent() {
                 <div className="space-y-4 animate-in fade-in duration-200">
                   <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                     <User className="w-4 h-4 text-indigo-600" />
-                    Paso 1: Identificación y Foto del Estudiante
+                    ¿A quién vas a matricular?
                   </h3>
 
                   {/* Foto de Perfil del Estudiante */}
@@ -654,7 +689,7 @@ function MatriculasContent() {
                 <div className="space-y-4 animate-in fade-in duration-200">
                   <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                     <GraduationCap className="w-4 h-4 text-indigo-600" />
-                    Paso 2: Asignación Académica (2026)
+                    ¿En qué aula estudiará?
                   </h3>
 
                   {/* Nivel */}
@@ -725,13 +760,14 @@ function MatriculasContent() {
                           key={sec.id}
                           type="button"
                           onClick={() => setWizardData({ ...wizardData, seccionId: sec.id })}
+                          disabled={freeSeats(sec.id) === 0}
                           className={`flex-1 py-2 rounded-xl border text-xs font-bold transition-all ${
                             wizardData.seccionId === sec.id
                               ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
                               : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'
                           }`}
                         >
-                          Sección &quot;{sec.letra}&quot; ({sec.capacidad_maxima} vacantes)
+                          Sección &quot;{sec.letra}&quot; · {freeSeats(sec.id) === 0 ? 'llena' : `${freeSeats(sec.id)} vacantes libres`}
                         </button>
                       ))}
                     </div>
@@ -744,7 +780,7 @@ function MatriculasContent() {
                 <div className="space-y-4 animate-in fade-in duration-200">
                   <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                     <User className="w-4 h-4 text-indigo-600" />
-                    Paso 3: Datos del Apoderado Legal
+                    ¿Quién es su apoderado?
                   </h3>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -814,7 +850,7 @@ function MatriculasContent() {
                 <div className="space-y-4 animate-in fade-in duration-200">
                   <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                     <FileText className="w-4 h-4 text-indigo-600" />
-                    Paso 4: Verificación de Requisitos y Documentos
+                    ¿Qué documentos entregó?
                   </h3>
 
                   <div className="space-y-3">
@@ -847,7 +883,7 @@ function MatriculasContent() {
                 <div className="space-y-4 animate-in fade-in duration-200">
                   <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                     <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                    Paso 5: Resumen, Credenciales y Confirmación de Matrícula
+                    Revisa los datos antes de confirmar
                   </h3>
 
                   {/* Resumen */}
@@ -861,8 +897,8 @@ function MatriculasContent() {
                       <span className="font-mono font-bold">{wizardData.dni}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-slate-400">Nivel & Grado:</span>
-                      <span className="font-bold capitalize text-indigo-600">{wizardData.nivel} — {availableGrades.find(g => g.id === wizardData.gradoId)?.nombre}</span>
+                      <span className="text-slate-400">Aula:</span>
+                      <span className="font-bold capitalize text-indigo-600">{availableGrades.find(g => g.id === wizardData.gradoId)?.nombre} &quot;{sections.find(x => x.id === wizardData.seccionId)?.letra || '?'}&quot;</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-slate-400">Apoderado:</span>
@@ -876,7 +912,7 @@ function MatriculasContent() {
                       <div className="flex items-center gap-2">
                         <KeyRound className="w-4 h-4 text-indigo-600" />
                         <span className="font-bold text-xs text-indigo-950 dark:text-indigo-200">
-                          Credenciales de Acceso a la Plataforma Web
+                          Contraseñas para entrar a la plataforma (opcional: si las dejas vacías, se crean solas)
                         </span>
                       </div>
                       <button
@@ -955,7 +991,7 @@ function MatriculasContent() {
                   </div>
                   <div>
                     <h3 className="text-lg font-black text-slate-900 dark:text-white">
-                      ¡Matrícula 2026 Registrada Exitosamente!
+                      ¡Alumno matriculado!
                     </h3>
                     <p className="text-xs text-slate-500 max-w-md mx-auto mt-1">
                       Se descargó la Ficha Oficial en PDF y se habilitaron los accesos a la plataforma para el estudiante y el apoderado.
@@ -1093,7 +1129,7 @@ function MatriculasContent() {
                     onClick={handleNextStep}
                     className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-600/20 transition-all active:scale-95"
                   >
-                    {currentStep === 5 ? 'Confirmar Matrícula' : 'Siguiente'}
+                    {currentStep === 5 ? 'Confirmar matrícula' : 'Siguiente'}
                     <ArrowRight className="w-3.5 h-3.5" />
                   </button>
                 </>
@@ -1112,186 +1148,50 @@ function MatriculasContent() {
         </div>
       )}
 
-      {/* Enrollments DataTable with Search, Level Filters, Pagination and Grid/List Mode */}
+      {/* ══════════ Lista de alumnos matriculados ══════════ */}
       <DataTable
-        title="Padrón de Matrículas Activas (2026)"
+        title={activeFilter === 'todos' || activeFilter === 'activo' ? 'Alumnos matriculados' : `Alumnos matriculados en ${LEVEL_LABEL[activeFilter] || ''}`}
         data={filteredEnrollments}
         columns={columns}
-        filterChips={filterChips}
-        activeFilter={activeFilter}
-        onFilterChange={setActiveFilter}
-        searchPlaceholder="Buscar por estudiante, DNI, código, nivel, grado, aula o apoderado..."
-        itemsPerPage={10}
+        searchPlaceholder="Buscar por nombre, DNI, aula o apoderado"
+        emptyMessage={enrollments.length === 0 ? 'Aún no hay alumnos matriculados. Toca "Matricular alumno" para empezar.' : 'No hay alumnos con esa búsqueda.'}
+        itemsPerPage={12}
         gridClassName="grid-cols-1 md:grid-cols-2 2xl:grid-cols-3"
         searchFilter={(enr, q) => {
-          const student = enr.estudiante;
-          const profile = student?.profile;
-          const fullName = `${profile?.nombres || ''} ${profile?.apellidos || ''}`.toLowerCase();
-          const dni = (profile?.dni || '').toLowerCase();
-          const code = (student?.codigo_estudiante || '').toLowerCase();
-          const level = (enr.seccion?.grado?.nivel || '').toLowerCase();
-          const grade = (enr.seccion?.grado?.nombre || '').toLowerCase();
-          const section = `aula ${enr.seccion?.letra || ''}`.toLowerCase();
-          const guardian = (student?.nombre_apoderado || '').toLowerCase();
-          const phone = (student?.telefono_apoderado || '').toLowerCase();
-          const status = (enr.estado || '').toLowerCase();
-
-          return (
-            fullName.includes(q) ||
-            dni.includes(q) ||
-            code.includes(q) ||
-            level.includes(q) ||
-            grade.includes(q) ||
-            section.includes(q) ||
-            guardian.includes(q) ||
-            phone.includes(q) ||
-            status.includes(q)
-          );
+          const n = studentName(enr);
+          const sec = sectionOfEnr(enr);
+          return `${n.nombres} ${n.apellidos} ${n.dni} ${n.codigo} ${sec?.grado?.nombre || ''} ${sec?.letra || ''} ${sec?.grado?.nivel || ''} ${n.apoderado} ${n.telefono}`.toLowerCase().includes(q);
         }}
         gridItemRender={(enr) => {
-          const student = enr.estudiante;
-          const fullName = `${student?.profile?.apellidos || ''}, ${student?.profile?.nombres || ''}`.trim() || 'Estudiante';
-          const avatarUrl = student?.profile?.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150';
-          const nivel = enr.seccion?.grado?.nivel;
-
+          const n = studentName(enr);
+          const sec = sectionOfEnr(enr);
+          const nivel = sec?.grado?.nivel || '';
           return (
-            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 sm:p-4.5 flex flex-col justify-between h-full shadow-sm hover:shadow-lg hover:border-indigo-200 dark:hover:border-indigo-800 transition-all duration-200 group">
-              <div>
-                {/* 1. Header: Avatar, Name, Code & DNI */}
-                <div className="flex items-start justify-between gap-2.5">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <img
-                      src={avatarUrl}
-                      alt={fullName}
-                      className="w-12 h-12 rounded-full object-cover ring-2 ring-blue-100 dark:ring-blue-900/40 shadow-sm shrink-0"
-                    />
-                    <div className="min-w-0">
-                      <h4 className="font-extrabold text-slate-900 dark:text-white text-sm sm:text-base leading-tight tracking-tight truncate">
-                        {fullName}
-                      </h4>
-                      <p className="text-[11px] font-mono font-bold text-slate-400 mt-0.5">
-                        {student?.codigo_estudiante || 'Sin código'}
-                      </p>
-                    </div>
-                  </div>
-
-                  {student?.profile?.dni && (
-                    <div className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[11px] font-mono font-bold shrink-0 self-start border border-slate-200/60 dark:border-slate-700">
-                      <span className="text-[9px] text-slate-400 uppercase font-sans font-extrabold">DNI</span>
-                      <span>{student.profile.dni}</span>
-                    </div>
-                  )}
+            <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-4 flex flex-col gap-3 h-full shadow-sm hover:shadow-md transition-all">
+              <div className="flex items-start gap-3">
+                <Avatar enr={enr} size="w-12 h-12" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-base font-black text-slate-900 dark:text-white leading-tight truncate">{n.apellidos}, {n.nombres}</p>
+                  <p className="text-xs text-slate-500">{n.dni ? `DNI ${n.dni}` : n.codigo}</p>
                 </div>
-
-                {/* 2. Middle 2x2 Info Container - Compact with no dead space */}
-                <div className="my-3 rounded-xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/80 p-3">
-                  <div className="grid grid-cols-2 gap-x-3 gap-y-2.5">
-                    
-                    {/* Top-Left: Nivel y Grado */}
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
-                        <GraduationCap className="w-4 h-4" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[10px] text-slate-400 font-medium leading-none">Nivel y Grado:</p>
-                        <div className="flex items-center gap-1.5 flex-wrap mt-1 min-w-0">
-                          <span
-                            className={`px-1.5 py-0.2 rounded text-[9px] font-black uppercase tracking-wider border shrink-0 ${
-                              nivel === 'inicial'
-                                ? 'bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800'
-                                : nivel === 'primaria'
-                                ? 'bg-blue-50 text-blue-700 border-blue-300 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-800'
-                                : 'bg-purple-50 text-purple-700 border-purple-300 dark:bg-purple-950/60 dark:text-purple-300 dark:border-purple-800'
-                            }`}
-                          >
-                            {nivel || 'Primaria'}
-                          </span>
-                          <span className="font-bold text-slate-900 dark:text-white text-xs truncate">
-                            {enr.seccion?.grado?.nombre || 'Grado'}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Top-Right: Sección */}
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
-                        <Users className="w-4 h-4" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[10px] text-slate-400 font-medium leading-none">Sección:</p>
-                        <div className="mt-1">
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-lg bg-purple-100/80 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200/80 dark:border-purple-800 font-extrabold text-[11px]">
-                            Aula &quot;{enr.seccion?.letra || 'A'}&quot;
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Horizontal Divider across 2 columns */}
-                    <div className="col-span-2 border-t border-slate-200/60 dark:border-slate-700/50 -my-0.5" />
-
-                    {/* Bottom-Left: Apoderado */}
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-                        <User className="w-4 h-4" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[10px] text-slate-400 font-medium leading-none">Apoderado:</p>
-                        <p className="font-bold text-slate-900 dark:text-white text-xs truncate mt-1">
-                          {student?.nombre_apoderado || 'No registrado'}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Bottom-Right: Contacto */}
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="w-8 h-8 rounded-xl bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0">
-                        <Phone className="w-4 h-4" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[10px] text-slate-400 font-medium leading-none">Contacto:</p>
-                        <p className="font-bold text-slate-900 dark:text-white text-xs font-mono tracking-wider mt-1 truncate">
-                          {student?.telefono_apoderado || '-'}
-                        </p>
-                      </div>
-                    </div>
-
-                  </div>
+                <span className={`shrink-0 px-2 py-0.5 rounded-full text-[11px] font-black ${enr.estado === 'activo' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-slate-100 text-slate-600'}`}>
+                  {enr.estado === 'activo' ? 'Estudiando' : enr.estado}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div className="p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50">
+                  <p className="text-[11px] text-slate-500">Aula</p>
+                  <p className="font-black text-slate-800 dark:text-slate-100 truncate">{sec?.grado?.nombre || 'Grado'} &quot;{sec?.letra || '?'}&quot;</p>
+                  <span className={`inline-block mt-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-black ${getLevelBadgeClass(nivel)}`}>{LEVEL_LABEL[nivel] || '—'}</span>
+                </div>
+                <div className="p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 min-w-0">
+                  <p className="text-[11px] text-slate-500">Apoderado</p>
+                  <p className="font-bold text-slate-800 dark:text-slate-100 truncate">{n.apoderado || 'No registrado'}</p>
+                  {n.telefono && <a href={`tel:${n.telefono}`} className="text-xs text-indigo-600 hover:underline">{n.telefono}</a>}
                 </div>
               </div>
-
-              {/* 3. Bottom Action Buttons */}
-              <div className="grid grid-cols-3 gap-1.5 pt-0.5">
-                <button
-                  type="button"
-                  onClick={() => handleDownloadExistingEnrollmentPdf(enr)}
-                  className="w-full flex items-center justify-center gap-1 py-2 px-2 rounded-xl font-bold text-[11px] text-indigo-700 dark:text-indigo-300 bg-indigo-50/80 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/40 border border-indigo-200/80 dark:border-indigo-800 transition-all active:scale-95 cursor-pointer shadow-2xs"
-                  title="Descargar Ficha Oficial en PDF"
-                >
-                  <FileText className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                  <span>Ficha PDF</span>
-                </button>
-                {enr.estudiante && (
-                  <button
-                    type="button"
-                    onClick={() => setSelectedEnrollmentForQr(enr)}
-                    className="w-full flex items-center justify-center gap-1 py-2 px-2 rounded-xl font-bold text-[11px] text-blue-700 dark:text-blue-300 bg-blue-50/70 hover:bg-blue-100 dark:bg-blue-950/40 dark:hover:bg-blue-900/40 border border-blue-200/80 dark:border-blue-800 transition-all active:scale-95 cursor-pointer shadow-2xs"
-                  >
-                    <QrCode className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                    <span>QR</span>
-                  </button>
-                )}
-                {enr.estudiante_id && (
-                  <Link
-                    href={`/admin/estudiantes/${enr.estudiante_id}`}
-                    className="w-full flex items-center justify-center gap-1 py-2 px-2 rounded-xl font-bold text-[11px] text-white bg-indigo-600 hover:bg-indigo-700 transition-all active:scale-95 shadow-md shadow-indigo-600/20 cursor-pointer text-center"
-                  >
-                    <User className="w-3.5 h-3.5" />
-                    <span>Perfil</span>
-                  </Link>
-                )}
-              </div>
+              <p className="text-xs text-slate-500">Matriculado el {niceDate(enr.fecha_matricula)}</p>
+              <div className="mt-auto pt-3 border-t border-slate-100 dark:border-slate-800">{actionButtons(enr)}</div>
             </div>
           );
         }}
@@ -1302,12 +1202,12 @@ function MatriculasContent() {
         <Modal
           isOpen={isBatchImportOpen}
           onClose={() => setIsBatchImportOpen(false)}
-          title="📥 Importación Masiva de Estudiantes (Excel / CSV)"
+          title="Importar alumnos desde Excel"
           maxWidth="2xl"
         >
           <div className="space-y-4 text-xs">
             <p className="text-slate-600 dark:text-slate-300">
-              Pega los datos de tu archivo Excel o CSV para matricular estudiantes en lote automáticamente. Las credenciales de acceso y carnets QR se generarán de forma instantánea.
+              1) Descarga la plantilla. 2) Llénala en Excel con un alumno por fila. 3) Copia las filas y pégalas abajo. Cada alumno se matricula en el aula indicada (nivel, grado y sección) y recibe su carnet y sus accesos. Los DNI que ya existen se omiten.
             </p>
 
             <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
@@ -1364,6 +1264,8 @@ function MatriculasContent() {
                   const dataLines = lines[0].toLowerCase().includes('dni') ? lines.slice(1) : lines;
                   
                   let successCount = 0;
+                  let skipped = 0;
+                  const seenDni = new Set(students.map(s => s.dni));
                   const defaultSecId = sections[0]?.id || 'sec-3pri-a';
 
                   for (const line of dataLines) {
@@ -1373,7 +1275,14 @@ function MatriculasContent() {
                       const dni = parts[0] || `7${Math.floor(1000000 + Math.random() * 9000000)}`;
                       const nombres = parts[1] || 'Estudiante';
                       const apellidos = parts[2] || 'Nuevo';
-                      const secId = sections.find(s => parts[5] && s.letra.toLowerCase() === parts[5].toLowerCase())?.id || defaultSecId;
+                      if (seenDni.has(dni)) { skipped++; continue; }
+                      seenDni.add(dni);
+                      const nivelTxt = (parts[3] || '').toLowerCase();
+                      const gradoNum = parseInt((parts[4] || '').replace(/\D/g, ''), 10);
+                      const letra = (parts[5] || '').toLowerCase();
+                      const secId = sections.find(s => s.letra.toLowerCase() === letra && (!nivelTxt || s.grado?.nivel === nivelTxt) && (!gradoNum || s.grado?.numero_grado === gradoNum))?.id
+                        || sections.find(s => s.letra.toLowerCase() === letra && (!nivelTxt || s.grado?.nivel === nivelTxt))?.id
+                        || defaultSecId;
                       const nombreApod = parts[6] || `Apoderado de ${nombres}`;
                       const telApod = parts[7] || '999888777';
                       const emailApod = parts[8] || 'apoderado@gmail.com';
@@ -1398,7 +1307,7 @@ function MatriculasContent() {
                   setIsProcessingBatch(false);
                   setIsBatchImportOpen(false);
                   setBatchCsvText('');
-                  showToast(`Se matricularon ${successCount} estudiantes exitosamente con carnets y credenciales generadas`, 'success', '📥 Importación Completada');
+                  showToast(`Se matricularon ${successCount} estudiantes${skipped ? ` (${skipped} omitidos por DNI repetido)` : ''}`, 'success', '📥 Importación Completada');
                 }}
                 className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-md disabled:opacity-40"
               >

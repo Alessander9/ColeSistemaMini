@@ -13,7 +13,6 @@ import {
   UserRound,
   Phone,
 } from 'lucide-react';
-import html2canvas from 'html2canvas';
 import { useApp } from '@/context/AppContext';
 
 interface QrCardProps {
@@ -35,6 +34,7 @@ export function QrCard({
   const handleDownload = async () => {
     if (!cardRef.current) return;
     try {
+      const html2canvas = (await import('html2canvas')).default;
       const canvas = await html2canvas(cardRef.current, {
         scale: 3,
         useCORS: true,

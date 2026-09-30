@@ -75,6 +75,8 @@ export default function AdminAcademicoPage() {
   const [selectedLevel, setSelectedLevel] = useState<'todos' | 'inicial' | 'primaria' | 'secundaria'>('todos');
   const [activeMainTab, setActiveMainTab] = useState<'grados' | 'cursos' | 'periodos'>('grados');
   const [courseSearch, setCourseSearch] = useState('');
+  const [courseStatusFilter, setCourseStatusFilter] = useState<'todos' | 'sin_docente' | 'sin_competencias'>('todos');
+  const [expandedCourseId, setExpandedCourseId] = useState<string | null>(null);
 
   useEffect(() => {
     const tabParam = searchParams.get('tab');
@@ -83,6 +85,15 @@ export default function AdminAcademicoPage() {
     }
   }, [searchParams]);
   
+  // Cambia de pestaña y actualiza la dirección (?tab=) para que el menú lateral marque la opción correcta
+  const goToTab = (tab: 'grados' | 'cursos' | 'periodos') => {
+    setActiveMainTab(tab);
+    if (typeof window !== 'undefined') {
+      window.history.replaceState(window.history.state, '', `${window.location.pathname}?tab=${tab}`);
+      window.dispatchEvent(new Event('app:locationchange'));
+    }
+  };
+
   // Modal de Curso
   const [isCourseModalOpen, setIsCourseModalOpen] = useState(false);
   const [courseToEdit, setCourseToEdit] = useState<Course | null>(null);
@@ -458,7 +469,7 @@ export default function AdminAcademicoPage() {
       <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-2.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
         <div className="flex items-center gap-2 flex-wrap">
           <button
-            onClick={() => setActiveMainTab('grados')}
+            onClick={() => goToTab('grados')}
             className={`px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer ${
               activeMainTab === 'grados'
                 ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-md'
@@ -470,7 +481,7 @@ export default function AdminAcademicoPage() {
           </button>
 
           <button
-            onClick={() => setActiveMainTab('cursos')}
+            onClick={() => goToTab('cursos')}
             className={`px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer ${
               activeMainTab === 'cursos'
                 ? 'bg-purple-600 text-white shadow-md shadow-purple-600/25'
@@ -482,7 +493,7 @@ export default function AdminAcademicoPage() {
           </button>
 
           <button
-            onClick={() => setActiveMainTab('periodos')}
+            onClick={() => goToTab('periodos')}
             className={`px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer ${
               activeMainTab === 'periodos'
                 ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/25'
@@ -933,225 +944,274 @@ export default function AdminAcademicoPage() {
             </div>
           )}
         </div>
-      ) : (
-        /* ── VISTA: CATÁLOGO DE CURSOS Y MATERIAS ── */
-        <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-6">
-          {/* Header de Cursos */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-6">
-            <div>
-              <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2">
-                <BookOpen className="w-6 h-6 text-purple-600" />
-                Catálogo de Cursos & Asignaturas Escolares
-              </h2>
-              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1 font-medium">
-                Gestiona las materias oficiales, sus competencias CNEB y los profesores asignados por nivel.
-              </p>
-            </div>
+      ) : activeMainTab === 'cursos' ? (
+        /* ── VISTA: CURSOS QUE SE DICTAN EN EL COLEGIO ── */
+        (() => {
+          const levelLabel: Record<string, string> = { inicial: 'Inicial', primaria: 'Primaria', secundaria: 'Secundaria' };
+          const levelStyle: Record<string, string> = {
+            inicial: 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300',
+            primaria: 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300',
+            secundaria: 'bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300',
+          };
+          const levelOfGradeId = new Map(gradeLevels.map(g => [g.id, g.nivel]));
+          const sectionsOfLevel = (lvl: string) => sections.filter(sec => (sec.grado?.nivel || levelOfGradeId.get(sec.grado_id)) === lvl);
 
-            {/* Buscador de Cursos */}
-            <div className="relative w-full md:w-72">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-              <input
-                type="text"
-                value={courseSearch}
-                onChange={(e) => setCourseSearch(e.target.value)}
-                placeholder="Buscar por nombre, código o área..."
-                className="w-full pl-9 pr-4 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-purple-500"
-              />
-            </div>
-          </div>
+          // Datos de cada curso en lenguaje simple
+          const info = (course: Course) => {
+            const assignments = sectionCourses.filter(sc => sc.curso_id === course.id);
+            const teacherIds = Array.from(new Set(assignments.map(a => a.docente_id).filter(Boolean)));
+            const courseTeachers = teacherIds.map(id => teachers.find(t => t.id === id)).filter(Boolean) as typeof teachers;
+            const classroomIds = new Set(assignments.map(a => a.seccion_id));
+            const levelClassrooms = sectionsOfLevel(course.nivel).length;
+            const comps = [...(course.competencias || [])].sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0));
+            const missingTeacher = courseTeachers.length === 0;
+            const missingComps = comps.length === 0;
+            return { courseTeachers, classrooms: classroomIds.size, levelClassrooms, comps, missingTeacher, missingComps, ready: !missingTeacher && !missingComps };
+          };
 
-          {/* Grid de Cursos */}
-          {(() => {
-            const filtered = courses.filter((c) => {
-              const matchesLvl = selectedLevel === 'todos' || c.nivel === selectedLevel;
-              const matchesQ = 
-                c.nombre.toLowerCase().includes(courseSearch.toLowerCase()) ||
-                c.codigo.toLowerCase().includes(courseSearch.toLowerCase()) ||
-                (c.area_curricular || '').toLowerCase().includes(courseSearch.toLowerCase());
-              return matchesLvl && matchesQ;
-            });
+          const inLevel = courses.filter(c => selectedLevel === 'todos' || c.nivel === selectedLevel);
+          const q = courseSearch.trim().toLowerCase();
+          const filtered = inLevel.filter(c => {
+            const i = info(c);
+            const matchesStatus = courseStatusFilter === 'todos' || (courseStatusFilter === 'sin_docente' ? i.missingTeacher : i.missingComps);
+            const matchesQ = !q || c.nombre.toLowerCase().includes(q) || c.codigo.toLowerCase().includes(q) || (c.area_curricular || '').toLowerCase().includes(q);
+            return matchesStatus && matchesQ;
+          });
+          const withoutTeacher = inLevel.filter(c => info(c).missingTeacher).length;
+          const withoutComps = inLevel.filter(c => info(c).missingComps).length;
+          const totalComps = inLevel.reduce((a, c) => a + (c.competencias?.length || 0), 0);
+          const readyCount = inLevel.length - inLevel.filter(c => !info(c).ready).length;
+          const groups = (['inicial', 'primaria', 'secundaria'] as const)
+            .map(lvl => ({ lvl, items: filtered.filter(c => c.nivel === lvl) }))
+            .filter(g => g.items.length > 0);
 
-            if (filtered.length === 0) {
-              return (
-                <div className="p-12 text-center rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-dashed border-slate-200 dark:border-slate-700 space-y-3">
-                  <BookOpen className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto" />
-                  <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">No se encontraron cursos</h4>
-                  <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                    {courseSearch ? 'No hay asignaturas que coincidan con la búsqueda.' : 'Aún no hay cursos registrados para este nivel.'}
-                  </p>
+          return (
+            <div className="space-y-5">
+              {/* Encabezado + explicación en 3 pasos */}
+              <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 sm:p-7 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-5">
+                <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+                  <div>
+                    <h2 className="text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+                      <BookOpen className="w-7 h-7 text-purple-600" /> Cursos del colegio
+                    </h2>
+                    <p className="text-sm text-slate-600 dark:text-slate-300 mt-1 max-w-2xl">
+                      Aquí defines <strong>qué materias se enseñan</strong> en cada nivel, <strong>qué se evalúa</strong> en cada una y <strong>quién las dicta</strong>. Con esto, los docentes pueden registrar notas y los padres ven la libreta completa.
+                    </p>
+                  </div>
                   <button
-                    onClick={() => {
-                      setCourseToEdit(null);
-                      setIsCourseModalOpen(true);
-                    }}
-                    className="px-4 py-2 text-xs font-bold text-white bg-purple-600 hover:bg-purple-700 rounded-xl shadow transition-all cursor-pointer"
+                    type="button"
+                    onClick={() => { setCourseToEdit(null); setIsCourseModalOpen(true); }}
+                    className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-purple-600 hover:bg-purple-700 text-white text-sm font-black shadow-md shadow-purple-600/25 cursor-pointer shrink-0"
                   >
-                    + Crear Primer Curso
+                    <Plus className="w-5 h-5" /> Agregar curso
                   </button>
                 </div>
-              );
-            }
 
-            return (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                {filtered.map((course) => {
-                  const assignedTeachers = sectionCourses
-                    .filter(sc => sc.curso_id === course.id)
-                    .map(sc => {
-                      const doc = teachers.find(t => t.id === sc.docente_id);
-                      const sec = sections.find(s => s.id === sc.seccion_id);
-                      return { doc, sec, sc };
-                    });
-
-                  const uniqueTeachers = Array.from(
-                    new Set(assignedTeachers.map(a => a.doc?.id).filter(Boolean))
-                  ).map(id => teachers.find(t => t.id === id)).filter(Boolean);
-
-                  const courseColor = course.color_hex || course.color || '#4f46e5';
-
-                  return (
-                    <div
-                      key={course.id}
-                      className="p-5 rounded-3xl bg-slate-50/60 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700/80 hover:border-purple-300 dark:hover:border-purple-700 shadow-xs hover:shadow-md transition-all flex flex-col justify-between space-y-4"
-                    >
-                      {/* Top Bar with Badges */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {[
+                    { n: 1, icon: BookOpen, color: 'bg-purple-600', title: 'El curso', text: 'Es la materia que se dicta en un nivel, por ejemplo Matemática en Primaria, con sus horas por semana.' },
+                    { n: 2, icon: Award, color: 'bg-indigo-600', title: 'Sus competencias', text: 'Son las habilidades que se evalúan. Cada una es una columna en el registro de notas (AD, A, B o C).' },
+                    { n: 3, icon: GraduationCap, color: 'bg-emerald-600', title: 'El docente', text: 'Se asigna por aula en Plana Docente. Sin docente, nadie puede poner notas en ese curso.' },
+                  ].map(step => (
+                    <div key={step.n} className="flex items-start gap-3 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50">
+                      <span className={`w-10 h-10 rounded-xl ${step.color} text-white flex items-center justify-center shrink-0`}><step.icon className="w-5 h-5" /></span>
                       <div>
-                        <div className="flex items-center justify-between gap-2 mb-3">
-                          <span 
-                            className="px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider text-white shadow-xs flex items-center gap-1.5"
-                            style={{ backgroundColor: courseColor }}
-                          >
-                            <Hash className="w-3 h-3" />
-                            {course.codigo}
-                          </span>
-
-                          <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider ${
-                            course.nivel === 'inicial'
-                              ? 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300'
-                              : course.nivel === 'primaria'
-                              ? 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300'
-                              : 'bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300'
-                          }`}>
-                            {course.nivel}
-                          </span>
-                        </div>
-
-                        {/* Title & Area */}
-                        <h3 className="font-extrabold text-base text-slate-900 dark:text-white leading-snug">
-                          {course.nombre}
-                        </h3>
-                        <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-500 font-semibold">
-                          <span>{course.area_curricular || 'Área General'}</span>
-                          <span>•</span>
-                          <span className="flex items-center gap-1 text-slate-700 dark:text-slate-300 font-bold">
-                            <Clock className="w-3 h-3 text-purple-500" />
-                            {course.horas_semanales_sugeridas || 4} hrs/sem
-                          </span>
-                        </div>
-
-                        {/* Competencias CNEB */}
-                        <div className="mt-3 pt-3 border-t border-slate-200/60 dark:border-slate-700/60">
-                          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 flex items-center gap-1">
-                            <Award className="w-3 h-3 text-indigo-500" />
-                            {course.competencias?.length || 0} Competencias CNEB
-                          </div>
-                          <div className="flex flex-wrap gap-1.5">
-                            {course.competencias && course.competencias.length > 0 ? (
-                              course.competencias.slice(0, 4).map((comp, cIdx) => (
-                                <span
-                                  key={comp.id || cIdx}
-                                  title={comp.descripcion}
-                                  className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 truncate max-w-[200px]"
-                                >
-                                  {comp.codigo}: {comp.descripcion}
-                                </span>
-                              ))
-                            ) : (
-                              <span className="text-[11px] text-slate-400 italic">Sin competencias registradas</span>
-                            )}
-                            {(course.competencias?.length || 0) > 4 && (
-                              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
-                                +{(course.competencias?.length || 0) - 4} más
-                              </span>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Docentes Asignados */}
-                        <div className="mt-3 pt-3 border-t border-slate-200/60 dark:border-slate-700/60">
-                          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 flex items-center gap-1">
-                            <GraduationCap className="w-3 h-3 text-purple-500" />
-                            Plana Docente Asignada
-                          </div>
-                          {uniqueTeachers.length > 0 ? (
-                            <div className="flex flex-wrap items-center gap-1.5">
-                              {uniqueTeachers.map((t) => (
-                                <span
-                                  key={t?.id}
-                                  className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200/60 dark:border-purple-800/60 flex items-center gap-1"
-                                >
-                                  👨‍🏫 {t?.apellidos}, {t?.nombres.split(' ')[0]}
-                                </span>
-                              ))}
-                              <span className="text-[10px] text-slate-400 font-medium ml-1">
-                                ({assignedTeachers.length} aulas)
-                              </span>
-                            </div>
-                          ) : (
-                            <div className="flex items-center justify-between bg-amber-50/70 dark:bg-amber-950/30 p-2 rounded-xl border border-amber-200/60 dark:border-amber-900/40">
-                              <span className="text-[11px] text-amber-700 dark:text-amber-300 font-medium">
-                                ⚠️ Sin docente asignado
-                              </span>
-                              <Link
-                                href="/admin/docentes"
-                                className="text-[10px] font-black text-amber-700 hover:underline"
-                              >
-                                Asignar &rarr;
-                              </Link>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Card Action Buttons */}
-                      <div className="pt-3 border-t border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between gap-2">
-                        <Link
-                          href="/admin/docentes"
-                          className="px-3 py-1.5 rounded-xl text-[11px] font-bold bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/60 border border-purple-200 dark:border-purple-800/60 transition-colors flex items-center gap-1"
-                        >
-                          <GraduationCap className="w-3 h-3" />
-                          <span>Asignar</span>
-                        </Link>
-
-                        <div className="flex items-center gap-1.5">
-                          <button
-                            onClick={() => {
-                              setCourseToEdit(course);
-                              setIsCourseModalOpen(true);
-                            }}
-                            className="p-1.5 rounded-xl text-slate-600 dark:text-slate-400 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-                            title="Editar curso y competencias"
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => setCourseToDelete(course)}
-                            className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
-                            title="Eliminar curso"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
+                        <p className="text-sm font-black text-slate-900 dark:text-white">{step.n}. {step.title}</p>
+                        <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mt-0.5">{step.text}</p>
                       </div>
                     </div>
-                  );
-                })}
+                  ))}
+                </div>
               </div>
-            );
-          })()}
-        </div>
-      )}
+
+              {/* Resumen: se puede tocar para filtrar */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <button type="button" onClick={() => setCourseStatusFilter('todos')} aria-pressed={courseStatusFilter === 'todos'}
+                  className={`text-left p-4 rounded-2xl border-2 cursor-pointer transition-all ${courseStatusFilter === 'todos' ? 'border-purple-500 bg-purple-50 dark:bg-purple-950/30' : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-purple-300'}`}>
+                  <p className="text-3xl font-black text-slate-900 dark:text-white">{inLevel.length}</p>
+                  <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{inLevel.length === 1 ? 'curso' : 'cursos'}{selectedLevel !== 'todos' ? ` en ${levelLabel[selectedLevel]}` : ' en total'}</p>
+                  <p className="text-xs text-slate-500">{readyCount} {readyCount === 1 ? 'está listo' : 'están listos'} para usarse</p>
+                </button>
+                <button type="button" onClick={() => setCourseStatusFilter(courseStatusFilter === 'sin_docente' ? 'todos' : 'sin_docente')} aria-pressed={courseStatusFilter === 'sin_docente'}
+                  className={`text-left p-4 rounded-2xl border-2 cursor-pointer transition-all ${courseStatusFilter === 'sin_docente' ? 'border-amber-500 bg-amber-50 dark:bg-amber-950/30' : withoutTeacher > 0 ? 'border-amber-200 dark:border-amber-900 bg-white dark:bg-slate-900 hover:border-amber-400' : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900'}`}>
+                  <p className={`text-3xl font-black ${withoutTeacher > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>{withoutTeacher}</p>
+                  <p className="text-sm font-bold text-slate-700 dark:text-slate-200">sin docente asignado</p>
+                  <p className="text-xs text-slate-500">{withoutTeacher > 0 ? 'Toca para verlos' : '¡Todos tienen docente!'}</p>
+                </button>
+                <button type="button" onClick={() => setCourseStatusFilter(courseStatusFilter === 'sin_competencias' ? 'todos' : 'sin_competencias')} aria-pressed={courseStatusFilter === 'sin_competencias'}
+                  className={`text-left p-4 rounded-2xl border-2 cursor-pointer transition-all ${courseStatusFilter === 'sin_competencias' ? 'border-rose-500 bg-rose-50 dark:bg-rose-950/30' : withoutComps > 0 ? 'border-rose-200 dark:border-rose-900 bg-white dark:bg-slate-900 hover:border-rose-400' : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900'}`}>
+                  <p className={`text-3xl font-black ${withoutComps > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{withoutComps}</p>
+                  <p className="text-sm font-bold text-slate-700 dark:text-slate-200">sin competencias</p>
+                  <p className="text-xs text-slate-500">{withoutComps > 0 ? 'No se les puede poner notas' : 'Todos se pueden evaluar'}</p>
+                </button>
+                <div className="p-4 rounded-2xl border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+                  <p className="text-3xl font-black text-indigo-600">{totalComps}</p>
+                  <p className="text-sm font-bold text-slate-700 dark:text-slate-200">competencias a evaluar</p>
+                  <p className="text-xs text-slate-500">Según el Currículo Nacional (CNEB)</p>
+                </div>
+              </div>
+
+              {/* Buscador */}
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                <div className="relative flex-1 max-w-md">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type="text"
+                    value={courseSearch}
+                    onChange={(e) => setCourseSearch(e.target.value)}
+                    placeholder="Buscar un curso (ej. Matemática, Inglés…)"
+                    className="w-full pl-10 pr-9 py-2.5 text-sm rounded-2xl bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:border-purple-500"
+                  />
+                  {courseSearch && (
+                    <button type="button" onClick={() => setCourseSearch('')} aria-label="Borrar búsqueda" className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 cursor-pointer"><X className="w-4 h-4" /></button>
+                  )}
+                </div>
+                {courseStatusFilter !== 'todos' && (
+                  <button type="button" onClick={() => setCourseStatusFilter('todos')} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-sm font-bold text-slate-700 dark:text-slate-200 cursor-pointer">
+                    <X className="w-4 h-4" /> Quitar filtro: {courseStatusFilter === 'sin_docente' ? 'sin docente' : 'sin competencias'}
+                  </button>
+                )}
+              </div>
+
+              {/* Lista de cursos agrupada por nivel */}
+              {filtered.length === 0 ? (
+                <div className="p-10 text-center rounded-3xl bg-white dark:bg-slate-900 border-2 border-dashed border-slate-200 dark:border-slate-700 space-y-3">
+                  <BookOpen className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto" />
+                  <h4 className="text-lg font-black text-slate-800 dark:text-slate-100">
+                    {courses.length === 0 ? 'Todavía no hay cursos' : courseSearch ? 'No hay cursos con ese nombre' : courseStatusFilter !== 'todos' ? '¡Nada pendiente aquí! 🎉' : 'Este nivel aún no tiene cursos'}
+                  </h4>
+                  <p className="text-sm text-slate-500 max-w-md mx-auto">
+                    {courses.length === 0
+                      ? 'Puedes crearlos uno por uno o cargar de una vez los cursos oficiales del Ministerio de Educación con sus competencias.'
+                      : 'Prueba con otro nivel, otro filtro o borra la búsqueda.'}
+                  </p>
+                  {courses.length === 0 && (
+                    <div className="flex flex-wrap justify-center gap-2 pt-1">
+                      <button type="button" onClick={() => setIsCnebPreloadModalOpen(true)} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-black cursor-pointer">
+                        <Sparkles className="w-4 h-4" /> Cargar cursos oficiales (MINEDU)
+                      </button>
+                      <button type="button" onClick={() => { setCourseToEdit(null); setIsCourseModalOpen(true); }} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-sm font-black cursor-pointer">
+                        <Plus className="w-4 h-4" /> Crear un curso
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {groups.map(group => (
+                    <div key={group.lvl} className="space-y-3">
+                      {selectedLevel === 'todos' && (
+                        <div className="flex items-center gap-3">
+                          <span className={`px-3 py-1 rounded-full text-sm font-black ${levelStyle[group.lvl]}`}>{levelLabel[group.lvl]}</span>
+                          <span className="text-sm text-slate-500">{group.items.length} {group.items.length === 1 ? 'curso' : 'cursos'} · {sectionsOfLevel(group.lvl).length} aulas</span>
+                          <span className="flex-1 h-px bg-slate-200 dark:bg-slate-800" />
+                        </div>
+                      )}
+                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                        {group.items.map(course => {
+                          const i = info(course);
+                          const color = course.color_hex || course.color || '#4f46e5';
+                          const open = expandedCourseId === course.id;
+                          return (
+                            <div key={course.id} className="relative rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-md transition-all overflow-hidden flex flex-col">
+                              <span className="absolute left-0 top-0 bottom-0 w-1.5" style={{ backgroundColor: color }} />
+                              <div className="p-5 pl-6 flex-1 space-y-3">
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="min-w-0">
+                                    <h3 className="text-lg font-black text-slate-900 dark:text-white leading-tight">{course.nombre}</h3>
+                                    <p className="text-xs text-slate-500 mt-0.5">{course.area_curricular || 'Área general'} · Código {course.codigo}</p>
+                                  </div>
+                                  {i.ready ? (
+                                    <span className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 text-xs font-black"><CheckCircle2 className="w-3.5 h-3.5" /> Listo</span>
+                                  ) : (
+                                    <span className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 text-xs font-black"><AlertTriangle className="w-3.5 h-3.5" /> Incompleto</span>
+                                  )}
+                                </div>
+
+                                {/* Datos clave en palabras simples */}
+                                <ul className="grid grid-cols-3 gap-2">
+                                  <li className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 text-center">
+                                    <p className="text-lg font-black text-slate-900 dark:text-white leading-none">{course.horas_semanales_sugeridas || 4}</p>
+                                    <p className="text-[11px] text-slate-500 mt-1">horas por semana</p>
+                                  </li>
+                                  <li className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 text-center">
+                                    <p className={`text-lg font-black leading-none ${i.missingComps ? 'text-rose-600' : 'text-slate-900 dark:text-white'}`}>{i.comps.length}</p>
+                                    <p className="text-[11px] text-slate-500 mt-1">{i.comps.length === 1 ? 'competencia' : 'competencias'}</p>
+                                  </li>
+                                  <li className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 text-center">
+                                    <p className="text-lg font-black text-slate-900 dark:text-white leading-none">{i.classrooms}<span className="text-xs font-bold text-slate-400">/{i.levelClassrooms}</span></p>
+                                    <p className="text-[11px] text-slate-500 mt-1">aulas lo llevan</p>
+                                  </li>
+                                </ul>
+
+                                {/* Docentes */}
+                                <div>
+                                  <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">¿Quién lo dicta?</p>
+                                  {i.courseTeachers.length > 0 ? (
+                                    <div className="flex flex-wrap gap-1.5">
+                                      {i.courseTeachers.map(t => (
+                                        <span key={t.id} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-purple-50 dark:bg-purple-950/40 text-purple-800 dark:text-purple-200 text-xs font-bold">
+                                          <span className="w-5 h-5 rounded-full bg-purple-600 text-white text-[10px] font-black flex items-center justify-center">{(t.nombres?.[0] || '') + (t.apellidos?.[0] || '')}</span>
+                                          {t.nombres?.split(' ')[0]} {t.apellidos?.split(' ')[0]}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <p className="text-sm text-amber-700 dark:text-amber-300 font-bold">⚠️ Aún no tiene docente. Nadie puede poner notas en este curso.</p>
+                                  )}
+                                  {i.classrooms > 0 && i.classrooms < i.levelClassrooms && (
+                                    <p className="text-xs text-slate-500 mt-1.5">Falta asignarlo en {i.levelClassrooms - i.classrooms} {i.levelClassrooms - i.classrooms === 1 ? 'aula' : 'aulas'} de {levelLabel[course.nivel] || course.nivel}.</p>
+                                  )}
+                                </div>
+
+                                {/* Competencias desplegables */}
+                                <div>
+                                  <button type="button" onClick={() => setExpandedCourseId(open ? null : course.id)} aria-expanded={open}
+                                    className="w-full flex items-center justify-between gap-2 text-sm font-bold text-indigo-700 dark:text-indigo-300 cursor-pointer" disabled={i.missingComps}>
+                                    <span className="inline-flex items-center gap-1.5"><Award className="w-4 h-4" /> {i.missingComps ? 'Sin competencias: edita el curso para agregarlas' : `${open ? 'Ocultar' : 'Ver'} qué se evalúa`}</span>
+                                    {!i.missingComps && <ChevronRight className={`w-4 h-4 transition-transform ${open ? 'rotate-90' : ''}`} />}
+                                  </button>
+                                  {open && (
+                                    <ol className="mt-2 space-y-1.5">
+                                      {i.comps.map((comp, idx) => (
+                                        <li key={comp.id || idx} className="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-200">
+                                          <span className="w-6 h-6 rounded-lg bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 text-xs font-black flex items-center justify-center shrink-0">{idx + 1}</span>
+                                          <span className="leading-snug">{comp.descripcion}</span>
+                                        </li>
+                                      ))}
+                                    </ol>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Acciones */}
+                              <div className="px-5 pl-6 py-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
+                                <Link href="/admin/docentes" className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-black ${i.missingTeacher ? 'bg-amber-500 hover:bg-amber-600 text-white' : 'bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 hover:bg-purple-100'}`}>
+                                  <GraduationCap className="w-4 h-4" /> {i.missingTeacher ? 'Asignar docente' : 'Ver docentes'}
+                                </Link>
+                                <div className="flex items-center gap-1">
+                                  <button type="button" onClick={() => { setCourseToEdit(course); setIsCourseModalOpen(true); }}
+                                    className="inline-flex items-center gap-1 px-3 py-2 rounded-xl text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer" title="Editar el curso y sus competencias">
+                                    <Edit2 className="w-4 h-4" /> Editar
+                                  </button>
+                                  <button type="button" onClick={() => setCourseToDelete(course)} aria-label={`Eliminar ${course.nombre}`}
+                                    className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer" title="Eliminar curso">
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })()
+      ) : null}
 
       {/* ── 3. PESTAÑA: PERIODOS LECTIVOS & CIERRE DE BIMESTRES (CNEB) ── */}
       {activeMainTab === 'periodos' && (

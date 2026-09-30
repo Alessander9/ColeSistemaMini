@@ -48,7 +48,8 @@ import {
   FileSpreadsheet,
   FileImage,
   FileText,
-  Loader2
+  Loader2,
+  Copy
 } from 'lucide-react';
 
 const TIME_BLOCKS = [
@@ -350,7 +351,9 @@ export default function AdminHorariosPage() {
 
   // Total weekly hours in schedule
   const scheduledHoursCount = currentSectionSchedule.length;
-  const targetTotalHours = currentSectionCourses.reduce((acc, curr) => acc + (curr.horas_semanales || 0), 0);
+  // Horas que pide cada materia (si la asignación no las tiene, se usan las sugeridas del curso)
+  const hoursOfAssignment = (sc: { horas_semanales?: number; curso_id: string }) => sc.horas_semanales || courses.find(c => c.id === sc.curso_id)?.horas_semanales_sugeridas || 0;
+  const targetTotalHours = currentSectionCourses.reduce((acc, curr) => acc + hoursOfAssignment(curr), 0);
 
   // Distinct teachers assigned to this section
   const assignedTeachersCount = useMemo(() => {
@@ -692,1099 +695,325 @@ export default function AdminHorariosPage() {
   };
 
   return (
-    <div className="space-y-6 pb-12 animate-fade-in max-w-[1600px] mx-auto">
+    <div className="space-y-5 pb-12 animate-fade-in max-w-[1600px] mx-auto">
       
-      {/* ── 1. Page Header Banner (Matching Reference Screenshot) ── */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-blue-50/90 via-indigo-50/60 to-purple-50/80 dark:from-slate-900 dark:via-purple-950/80 dark:to-indigo-950 p-6 sm:p-7 md:p-8 border border-blue-100/90 dark:border-purple-900/40 shadow-sm flex flex-col xl:flex-row xl:items-center justify-between gap-6">
-        
-        {/* Left Content */}
-        <div className="space-y-3.5 max-w-2xl">
-          {/* Top Badges */}
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <span className="px-3.5 py-1 rounded-full text-xs font-black bg-purple-100/80 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 border border-purple-200/80 dark:border-purple-800/60 flex items-center gap-1.5 shadow-xs">
-              <School className="w-3.5 h-3.5" />
-              Gestión Curricular & Malla 2026
-            </span>
-            <span className="px-3.5 py-1 rounded-full text-xs font-black bg-emerald-100/80 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60 flex items-center gap-1.5 shadow-xs">
-              <Users className="w-3.5 h-3.5" />
-              {sections.length} Salones Oficiales
-            </span>
-          </div>
-
-          {/* Heading */}
-          <div>
-            <h1 className="text-2xl sm:text-3xl md:text-4xl font-black tracking-tight text-slate-900 dark:text-white">
-              Horarios & Asignación de <span className="text-purple-600 dark:text-purple-400">Profesores</span>
-            </h1>
-            <p className="text-slate-600 dark:text-slate-300 text-xs sm:text-sm mt-1.5 leading-relaxed font-medium">
-              Organiza la distribución horaria de cada salón, asigna docentes especialistas y garantiza un mejor aprendizaje.
-            </p>
-          </div>
-
-          {/* 3 Feature Pills */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
-            {/* Pill 1 */}
-            <div className="flex items-center gap-2.5 p-2 px-3 rounded-2xl bg-white/80 dark:bg-slate-800/80 border border-slate-200/70 dark:border-slate-700/60 shadow-xs">
-              <div className="w-8 h-8 rounded-xl bg-purple-600 text-white flex items-center justify-center shrink-0 shadow-xs">
-                <Calendar className="w-4 h-4" />
-              </div>
-              <div className="min-w-0">
-                <span className="text-xs font-black text-slate-900 dark:text-white block leading-tight">Planifica</span>
-                <span className="text-[10px] text-slate-400 font-medium truncate block">de forma simple</span>
-              </div>
-            </div>
-
-            {/* Pill 2 */}
-            <div className="flex items-center gap-2.5 p-2 px-3 rounded-2xl bg-white/80 dark:bg-slate-800/80 border border-slate-200/70 dark:border-slate-700/60 shadow-xs">
-              <div className="w-8 h-8 rounded-xl bg-blue-500 text-white flex items-center justify-center shrink-0 shadow-xs">
-                <Users className="w-4 h-4" />
-              </div>
-              <div className="min-w-0">
-                <span className="text-xs font-black text-slate-900 dark:text-white block leading-tight">Asigna</span>
-                <span className="text-[10px] text-slate-400 font-medium truncate block">a los mejores docentes</span>
-              </div>
-            </div>
-
-            {/* Pill 3 */}
-            <div className="flex items-center gap-2.5 p-2 px-3 rounded-2xl bg-white/80 dark:bg-slate-800/80 border border-slate-200/70 dark:border-slate-700/60 shadow-xs">
-              <div className="w-8 h-8 rounded-xl bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-xs">
-                <BarChart3 className="w-4 h-4" />
-              </div>
-              <div className="min-w-0">
-                <span className="text-xs font-black text-slate-900 dark:text-white block leading-tight">Evita cruces</span>
-                <span className="text-[10px] text-slate-400 font-medium truncate block">y optimiza el tiempo</span>
-              </div>
-            </div>
-          </div>
+      {/* ══════════ 1. ENCABEZADO: título simple + acciones principales ══════════ */}
+      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
+            <Calendar className="w-8 h-8 text-purple-600" /> Horarios
+          </h1>
+          <p className="text-sm text-slate-600 dark:text-slate-300 mt-1 max-w-2xl">
+            Elige un aula y arma su semana: toca un espacio vacío para poner una clase. El sistema avisa si un docente queda en dos aulas a la misma hora.
+          </p>
         </div>
-
-        {/* Right Side: Slogans Artwork & Action Buttons */}
-        <div className="flex flex-col xl:items-end justify-between gap-5 shrink-0">
-          {/* Top Action Buttons */}
-          <div className="flex items-center gap-3 shrink-0 flex-wrap relative">
-            {/* Export Menu Dropdown */}
-            <div className="relative">
-              <button 
-                onClick={() => setIsExportMenuOpen(prev => !prev)}
-                disabled={isExporting}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-black text-xs border border-slate-200 dark:border-slate-700 transition-all shadow-sm ${
-                  isExporting ? 'opacity-70 cursor-wait' : 'cursor-pointer hover:border-purple-300'
-                }`}
-              >
-                {isExporting ? (
-                  <Loader2 className="w-4 h-4 animate-spin text-purple-600" />
-                ) : (
-                  <Download className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-                )}
-                <span>Exportar Horario</span>
-                <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${isExportMenuOpen ? 'rotate-180' : ''}`} />
-              </button>
-
-              {/* Dropdown Card */}
-              {isExportMenuOpen && (
-                <>
-                  <div 
-                    className="fixed inset-0 z-40" 
-                    onClick={() => setIsExportMenuOpen(false)} 
-                  />
-                  <div className="absolute right-0 mt-2 w-64 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl z-50 p-2 space-y-1 animate-in fade-in zoom-in-95 duration-150">
-                    <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800/80">
-                      <p className="text-[11px] font-black text-slate-800 dark:text-slate-200">Formato de Exportación</p>
-                      <p className="text-[10px] text-slate-400 font-medium">Sección actual: {currentSection?.grado?.nombre} &quot;{currentSection?.letra}&quot;</p>
-                    </div>
-
-                    {/* PNG Option */}
-                    <button
-                      onClick={exportScheduleAsImage}
-                      disabled={isExporting}
-                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left hover:bg-purple-50 dark:hover:bg-purple-950/40 text-slate-700 dark:text-slate-200 transition-colors group cursor-pointer"
-                    >
-                      <div className="w-8 h-8 rounded-xl bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                        <FileImage className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <span className="text-xs font-black block group-hover:text-purple-600 dark:group-hover:text-purple-400">Imagen HD (.PNG)</span>
-                        <span className="text-[10px] text-slate-400 font-medium block">Alta nitidez para WhatsApp o redes</span>
-                      </div>
-                    </button>
-
-                    {/* PDF Option */}
-                    <button
-                      onClick={exportScheduleAsPdf}
-                      disabled={isExporting}
-                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left hover:bg-blue-50 dark:hover:bg-blue-950/40 text-slate-700 dark:text-slate-200 transition-colors group cursor-pointer"
-                    >
-                      <div className="w-8 h-8 rounded-xl bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                        <FileText className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <span className="text-xs font-black block group-hover:text-blue-600 dark:group-hover:text-blue-400">Documento Oficial (.PDF)</span>
-                        <span className="text-[10px] text-slate-400 font-medium block">A4 horizontal con membrete escolar</span>
-                      </div>
-                    </button>
-
-                    {/* CSV Option */}
-                    <button
-                      onClick={exportScheduleAsCsv}
-                      disabled={isExporting}
-                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-slate-700 dark:text-slate-200 transition-colors group cursor-pointer"
-                    >
-                      <div className="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                        <FileSpreadsheet className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <span className="text-xs font-black block group-hover:text-emerald-600 dark:group-hover:text-emerald-400">Hoja de Cálculo (.CSV)</span>
-                        <span className="text-[10px] text-slate-400 font-medium block">Compatible con Excel y Sheets</span>
-                      </div>
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-
-            <button 
-              onClick={() => window.print()}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-black text-xs border border-slate-200 dark:border-slate-700 transition-all shadow-sm"
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Exportar (PNG / PDF / CSV) */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setIsExportMenuOpen(prev => !prev)}
+              disabled={isExporting}
+              aria-expanded={isExportMenuOpen}
+              className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-700 dark:text-slate-200 ${isExporting ? 'opacity-70 cursor-wait' : 'hover:border-purple-300 cursor-pointer'}`}
             >
-              <Printer className="w-4 h-4" />
-              Imprimir
+              {isExporting ? <Loader2 className="w-4 h-4 animate-spin text-purple-600" /> : <Download className="w-4 h-4 text-purple-600" />}
+              Descargar
+              <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${isExportMenuOpen ? 'rotate-180' : ''}`} />
             </button>
-            <button 
-              onClick={handleOpenAssignModal}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-extrabold text-xs shadow-lg shadow-purple-600/30 transition-all hover:scale-[1.02]"
-            >
-              <Plus className="w-4 h-4" />
-              Asignar Materia a Salón
-            </button>
-          </div>
-
-          {/* Slogans and artistic decoration */}
-          <div className="hidden xl:flex items-center gap-6">
-            <div className="text-right">
-              <span className="font-serif italic text-base text-blue-600 dark:text-blue-400 block -rotate-2 font-bold leading-snug">
-                Una mejor educación,<br />un mejor futuro
-              </span>
-            </div>
-            <div className="text-right pl-4 border-l border-slate-200/80 dark:border-slate-800">
-              <span className="font-serif italic text-xs text-purple-600 dark:text-purple-400 block leading-tight">
-                Grandes docentes,<br />mejores historias
-              </span>
-              <span className="text-purple-400 text-xs">💜</span>
-            </div>
-          </div>
-        </div>
-
-      </div>
-
-      {/* ── 2. Three-Tier Level/Grade/Section Selector Ribbon ── */}
-      {/* ── 2. Three-Tier Level/Grade/Section Selector Ribbon (Modern Responsive Design) ── */}
-      <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
-        
-        {/* Tier 1: Nivel Educativo + Buscador Integrado */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3.5 border-b border-slate-100 dark:border-slate-800">
-          
-          {/* Level Tabs Selector */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 lg:pb-0 scrollbar-none">
-            <span className="text-[11px] font-black uppercase tracking-wider text-slate-400 shrink-0 hidden sm:inline">
-              Nivel Educativo:
-            </span>
-            <div className="flex items-center p-1 bg-slate-100 dark:bg-slate-800/80 rounded-2xl gap-1 shrink-0">
-              <button
-                type="button"
-                onClick={() => handleLevelChange('primaria')}
-                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
-                  selectedLevel === 'primaria'
-                    ? 'bg-purple-600 text-white shadow-md shadow-purple-600/25'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                }`}
-              >
-                <BookOpen className="w-3.5 h-3.5" />
-                <span>Primaria</span>
-                <span className="text-[10px] opacity-75 hidden sm:inline">(1°–6°)</span>
-              </button>
-              
-              <button
-                type="button"
-                onClick={() => handleLevelChange('secundaria')}
-                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
-                  selectedLevel === 'secundaria'
-                    ? 'bg-purple-600 text-white shadow-md shadow-purple-600/25'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                }`}
-              >
-                <GraduationCap className="w-3.5 h-3.5" />
-                <span>Secundaria</span>
-                <span className="text-[10px] opacity-75 hidden sm:inline">(1°–5°)</span>
-              </button>
-              
-              <button
-                type="button"
-                onClick={() => handleLevelChange('inicial')}
-                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
-                  selectedLevel === 'inicial'
-                    ? 'bg-amber-500 text-white shadow-md shadow-amber-500/25'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                }`}
-              >
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>Inicial</span>
-                <span className="text-[10px] opacity-75 hidden sm:inline">(3–5 Años)</span>
-              </button>
-              
-              <button
-                type="button"
-                onClick={() => handleLevelChange('todos')}
-                className={`flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
-                  selectedLevel === 'todos'
-                    ? 'bg-purple-600 text-white shadow-md shadow-purple-600/25'
-                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                }`}
-              >
-                <LayoutGrid className="w-3.5 h-3.5" />
-                <span>Todos</span>
-                <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-black/10 dark:bg-white/10 ml-0.5 font-bold">
-                  {sections.length}
-                </span>
-              </button>
-            </div>
-          </div>
-
-          {/* Search Box with Clear Button */}
-          <div className="relative w-full lg:w-72 shrink-0">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-            <input
-              type="text"
-              placeholder="Buscar salón, grado o aula..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-8 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500 transition-all"
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => setSearchQuery('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer p-0.5"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
+            {isExportMenuOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setIsExportMenuOpen(false)} />
+                <div className="absolute right-0 mt-2 w-64 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl z-50 p-2 space-y-1">
+                  <p className="px-3 py-1.5 text-xs text-slate-500">Horario de {currentSection?.grado?.nombre} &quot;{currentSection?.letra}&quot;</p>
+                  {[
+                    { onClick: exportScheduleAsImage, icon: FileImage, tone: 'bg-purple-100 text-purple-600 dark:bg-purple-900/40', label: 'Imagen (PNG)', hint: 'Para enviar por WhatsApp' },
+                    { onClick: exportScheduleAsPdf, icon: FileText, tone: 'bg-blue-100 text-blue-600 dark:bg-blue-900/40', label: 'Documento (PDF)', hint: 'A4 horizontal con membrete' },
+                    { onClick: exportScheduleAsCsv, icon: FileSpreadsheet, tone: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40', label: 'Hoja de cálculo (CSV)', hint: 'Para abrir en Excel' },
+                  ].map(o => (
+                    <button key={o.label} type="button" onClick={o.onClick} disabled={isExporting} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer">
+                      <span className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${o.tone}`}><o.icon className="w-4 h-4" /></span>
+                      <span><span className="block text-sm font-black text-slate-800 dark:text-slate-100">{o.label}</span><span className="block text-xs text-slate-500">{o.hint}</span></span>
+                    </button>
+                  ))}
+                </div>
+              </>
             )}
           </div>
+          <button type="button" onClick={() => window.print()} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-700 dark:text-slate-200 hover:border-slate-400 cursor-pointer">
+            <Printer className="w-4 h-4" /> Imprimir
+          </button>
+          <button type="button" onClick={handleOpenAssignModal} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-purple-600 hover:bg-purple-700 text-white text-sm font-black shadow-md shadow-purple-600/25 cursor-pointer">
+            <Plus className="w-4 h-4" /> Asignar materia
+          </button>
         </div>
-
-        {/* Tier 2: Seleccionar Grado & Sección */}
-        <div className="flex flex-wrap items-center justify-between gap-4 pt-0.5">
-          
-          <div className="flex flex-wrap items-center gap-4 sm:gap-6">
-            
-            {/* Section 2: Selecciona un grado */}
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-slate-500 dark:text-slate-400 shrink-0">
-                Grado:
-              </span>
-              <div className="flex items-center gap-1.5 flex-wrap">
-                {availableGradeNumbers.map(num => {
-                  const isSelected = selectedGradeNum === num;
-                  return (
-                    <button
-                      key={num}
-                      type="button"
-                      onClick={() => handleGradeChange(num)}
-                      className={`min-w-[34px] h-8 px-2.5 rounded-xl font-black text-xs transition-all flex items-center justify-center cursor-pointer ${
-                        isSelected
-                          ? 'bg-purple-600 text-white shadow-md shadow-purple-600/25 scale-105'
-                          : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-                      }`}
-                    >
-                      {num}°
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="h-6 w-px bg-slate-200 dark:bg-slate-800 hidden sm:block" />
-
-            {/* Section 3: Selecciona una sección */}
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-slate-500 dark:text-slate-400 shrink-0">
-                Sección:
-              </span>
-              <div className="flex items-center gap-1.5 flex-wrap">
-                {gradeSections.map(sec => {
-                  const isSelected = sec.id === selectedSectionId;
-                  return (
-                    <button
-                      key={sec.id}
-                      type="button"
-                      onClick={() => setSelectedSectionId(sec.id)}
-                      className={`min-w-[34px] h-8 px-2.5 rounded-xl font-black text-xs transition-all flex items-center justify-center cursor-pointer ${
-                        isSelected
-                          ? 'bg-purple-600 text-white shadow-md shadow-purple-600/25 scale-105'
-                          : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-                      }`}
-                    >
-                      {sec.letra}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-          </div>
-
-          {/* Estado de selección actual */}
-          <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400 ml-auto">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-            <span className="truncate">
-              Mostrando: <strong className="text-slate-800 dark:text-white">{currentSection ? `${currentSection.grado?.nombre} "${currentSection.letra}"` : 'Todas las secciones'}</strong>
-            </span>
-          </div>
-
-        </div>
-
       </div>
 
-      {/* ── 3. Section Overview Header Card (Matching Image 1 & 2) ── */}
-      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm border-l-4 border-l-purple-600 p-5 sm:p-6 space-y-5">
-        
-        {/* Top Header Row */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          {/* Left Title with Purple Squircle Badge */}
-          <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-purple-600 text-white flex items-center justify-center font-black text-xl shadow-md shadow-purple-600/20 shrink-0">
-              {currentSection?.grado?.numero_grado || 3}°
-            </div>
-            <div>
-              <div className="flex items-center gap-2.5">
-                <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight">
-                  {currentSection?.grado?.nombre} — Sección &quot;{currentSection?.letra}&quot;
-                </h2>
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200/80 dark:border-purple-800/60">
-                  {currentSection?.grado?.nivel || 'PRIMARIA'}
-                </span>
-              </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 font-medium">
-                Horario organizado, docentes asignados y materias listas para un gran año.
-              </p>
-            </div>
-          </div>
-
-          {/* Right Status Pill & Tab Switches */}
-          <div className="flex items-center gap-2.5 flex-wrap">
-            {/* Conflict Status */}
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60 text-xs font-bold">
-              <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-              <div>
-                <span className="block leading-tight text-xs font-black">Sin cruces de horario</span>
-                <span className="text-[10px] text-emerald-600 dark:text-emerald-400 block">Todo en orden</span>
-              </div>
-            </div>
-
-            {/* Audit button */}
-            <button
-              onClick={() => setIsAuditModalOpen(true)}
-              title="Auditoría de cruces"
-              className="p-2.5 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
-            >
-              <MoreHorizontal className="w-4 h-4" />
+      {/* ══════════ 2. ELEGIR AULA: nivel → grado → sección ══════════ */}
+      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm p-4 flex flex-col xl:flex-row xl:items-center gap-4">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs font-black uppercase tracking-wider text-slate-400 w-14">Nivel</span>
+          {([
+            { k: 'inicial', label: 'Inicial' },
+            { k: 'primaria', label: 'Primaria' },
+            { k: 'secundaria', label: 'Secundaria' },
+            { k: 'todos', label: 'Todos' },
+          ] as const).map(l => (
+            <button key={l.k} type="button" onClick={() => handleLevelChange(l.k)} aria-pressed={selectedLevel === l.k}
+              className={`px-3.5 py-1.5 rounded-xl text-sm font-bold cursor-pointer transition-colors ${selectedLevel === l.k ? 'bg-purple-600 text-white shadow-sm' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'}`}>
+              {l.label}
             </button>
-
-            {/* Tab Switches */}
-            <div className="flex items-center p-1 bg-slate-100 dark:bg-slate-800 rounded-2xl">
-              <button
-                onClick={() => setActiveTab('asignacion')}
-                className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 ${
-                  activeTab === 'asignacion'
-                    ? 'bg-purple-600 text-white shadow-sm'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                }`}
-              >
-                <BookOpen className="w-3.5 h-3.5" />
-                Materias ({currentSectionCourses.length})
-              </button>
-              <button
-                onClick={() => setActiveTab('horario')}
-                className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 ${
-                  activeTab === 'horario'
-                    ? 'bg-purple-600 text-white shadow-sm'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                }`}
-              >
-                <Calendar className="w-3.5 h-3.5" />
-                Malla Horaria
-              </button>
-            </div>
-          </div>
+          ))}
         </div>
 
-        {/* Bottom Stats Row & Quick Actions */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 pt-4 border-t border-slate-100 dark:border-slate-800/80">
-          
-          {/* 4 Stats */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 flex-1">
-            {/* Stat 1: Capacidad */}
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
-                <Users className="w-5 h-5" />
-              </div>
-              <div>
-                <span className="text-[11px] font-bold text-slate-400 block">Capacidad</span>
-                <span className="text-sm font-black text-slate-900 dark:text-white block leading-tight">
-                  {currentSection?.capacidad_maxima || 30} alumnos
-                </span>
-                <span className="text-[10px] text-slate-400 font-medium block">
-                  {enrollments.filter(e => e.seccion_id === currentSection?.id).length || 28} matriculados
-                </span>
-              </div>
-            </div>
-
-            {/* Stat 2: Materias Asignadas */}
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
-                <BookOpen className="w-5 h-5" />
-              </div>
-              <div>
-                <span className="text-[11px] font-bold text-slate-400 block">Materias asignadas</span>
-                <span className="text-sm font-black text-slate-900 dark:text-white block leading-tight">
-                  {currentSectionCourses.length}
-                </span>
-                <span className="text-[10px] text-slate-400 font-medium block">
-                  de 10 planificadas
-                </span>
-              </div>
-            </div>
-
-            {/* Stat 3: Docentes Asignados */}
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
-                <UserCheck className="w-5 h-5" />
-              </div>
-              <div>
-                <span className="text-[11px] font-bold text-slate-400 block">Docentes asignados</span>
-                <span className="text-sm font-black text-slate-900 dark:text-white block leading-tight">
-                  {assignedTeachersCount || 6}
-                </span>
-                <span className="text-[10px] text-slate-400 font-medium block">
-                  especialistas
-                </span>
-              </div>
-            </div>
-
-            {/* Stat 4: Horario Semanal */}
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
-                <Calendar className="w-5 h-5" />
-              </div>
-              <div>
-                <span className="text-[11px] font-bold text-slate-400 block">Horario semanal</span>
-                <span className="text-sm font-black text-slate-900 dark:text-white block leading-tight">
-                  {scheduledHoursCount || 35} bloques
-                </span>
-                <span className="text-[10px] text-slate-400 font-medium block">
-                  de 45 minutos
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Vertical Divider */}
-          <div className="h-12 w-px bg-slate-200 dark:bg-slate-800 hidden lg:block shrink-0" />
-
-          {/* Quick Actions (Acciones rápidas) */}
-          <div className="space-y-1.5 shrink-0">
-            <span className="text-[11px] font-black uppercase tracking-wider text-slate-400 block">
-              Acciones rápidas
-            </span>
-            <div className="flex items-center gap-2 flex-wrap">
-              <button
-                onClick={() => setActiveTab('profesores')}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/60 text-blue-700 dark:text-blue-300 font-bold text-xs border border-blue-200/70 dark:border-blue-800/60 transition-colors shadow-xs"
-              >
-                <Users className="w-3.5 h-3.5" />
-                Carga por Docente
+        {selectedLevel !== 'todos' && !searchQuery && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs font-black uppercase tracking-wider text-slate-400 w-14 xl:w-auto">Grado</span>
+            {availableGradeNumbers.map(num => (
+              <button key={num} type="button" onClick={() => handleGradeChange(num)} aria-pressed={selectedGradeNum === num}
+                className={`min-w-[40px] h-9 px-2.5 rounded-xl text-sm font-black cursor-pointer transition-colors ${selectedGradeNum === num ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'}`}>
+                {selectedLevel === 'inicial' ? (currentLevelGrades.find(g => g.numero_grado === num)?.nombre || num) : `${num}°`}
               </button>
-              <button
-                onClick={handleCopySchedule}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 font-bold text-xs border border-emerald-200/70 dark:border-emerald-800/60 transition-colors shadow-xs"
-              >
-                <Check className="w-3.5 h-3.5" />
-                Copiar Horario
-              </button>
-              <Link
-                href={`/admin/secciones/${currentSection?.id || ''}`}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/60 text-amber-700 dark:text-amber-300 font-bold text-xs border border-amber-200/70 dark:border-amber-800/60 transition-colors shadow-xs"
-              >
-                <Settings className="w-3.5 h-3.5" />
-                Configurar Sección
-              </Link>
-            </div>
-          </div>
-
-        </div>
-
-        {isCopiedToast && (
-          <div className="p-3 rounded-2xl bg-emerald-500 text-white font-bold text-xs flex items-center gap-2 animate-in fade-in slide-in-from-top-1">
-            <CheckCircle2 className="w-4 h-4" />
-            <span>¡Malla horaria copiada al portapapeles y lista para replicar en otras secciones!</span>
+            ))}
           </div>
         )}
 
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs font-black uppercase tracking-wider text-slate-400 w-14 xl:w-auto">{searchQuery || selectedLevel === 'todos' ? 'Aula' : 'Sección'}</span>
+          {(selectedLevel === 'todos' && !searchQuery ? filteredSections : gradeSections).map(sec => (
+            <button key={sec.id} type="button" onClick={() => setSelectedSectionId(sec.id)} aria-pressed={sec.id === selectedSectionId}
+              className={`h-9 px-3 rounded-xl text-sm font-black cursor-pointer transition-colors ${sec.id === selectedSectionId ? 'bg-purple-600 text-white shadow-sm' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'}`}>
+              {searchQuery || selectedLevel === 'todos' ? `${sec.grado?.nombre?.replace(' de ', ' ')} ${sec.letra}` : sec.letra}
+            </button>
+          ))}
+          {(selectedLevel === 'todos' && !searchQuery ? filteredSections : gradeSections).length === 0 && <span className="text-sm text-slate-400">No hay aulas</span>}
+        </div>
+
+        <div className="relative xl:ml-auto xl:w-60">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <input type="text" placeholder="Buscar aula (ej. 3° B)" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-9 pr-8 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-purple-500" />
+          {searchQuery && <button type="button" onClick={() => setSearchQuery('')} aria-label="Borrar búsqueda" className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 cursor-pointer"><X className="w-4 h-4" /></button>}
+        </div>
       </div>
 
-      {/* ═══════════════════════════════════════════════════════════════════════ */}
-      {/* TAB 1: MALLA HORARIA SEMANAL (EXACT REPLICA OF DESIGN)                  */}
-      {/* ═══════════════════════════════════════════════════════════════════════ */}
-      {activeTab === 'horario' && (
-        <div className="space-y-4">
-          
-          {/* Top Bar for Timetable (Matching Screenshot Header) */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setSelectedLevel('primaria')}
-                className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center gap-1.5 hover:bg-slate-50 transition-all shadow-2xs"
-              >
-                <span>←</span>
-                <span>Volver</span>
-              </button>
-              <div className="w-10 h-10 rounded-2xl bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0 shadow-inner">
-                <Calendar className="w-5 h-5" />
+      {/* ══════════ 3. AULA ELEGIDA: datos clave en una línea + pestañas ══════════ */}
+      {(() => {
+        const enrolled = enrollments.filter(e => e.seccion_id === currentSection?.id && e.estado === 'activo').length;
+        const conflicts = auditResult.conflictsCount;
+        const stats = [
+          { icon: Users, label: 'Alumnos', value: `${enrolled} de ${currentSection?.capacidad_maxima || 30}` },
+          { icon: BookOpen, label: 'Materias', value: `${currentSectionCourses.length}` },
+          { icon: UserCheck, label: 'Docentes', value: `${assignedTeachersCount}` },
+          { icon: Clock, label: 'Clases en el horario', value: targetTotalHours > 0 ? `${scheduledHoursCount} de ${targetTotalHours}` : `${scheduledHoursCount}` },
+        ];
+        return (
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden">
+            <div className="p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center gap-4">
+              <div className="flex items-center gap-3 min-w-0">
+                <span className="w-14 h-14 rounded-2xl bg-purple-600 text-white flex items-center justify-center text-xl font-black shrink-0">
+                  {currentSection?.grado?.numero_grado || ''}{currentSection?.letra}
+                </span>
+                <div className="min-w-0">
+                  <h2 className="text-xl font-black text-slate-900 dark:text-white leading-tight truncate">{currentSection?.grado?.nombre} &quot;{currentSection?.letra}&quot;</h2>
+                  <p className="text-sm text-slate-500 capitalize">{currentSection?.grado?.nivel || ''}{currentSection?.aula ? ` · ${currentSection.aula}` : ''}</p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white leading-tight">
-                  Malla Horaria: {currentSection?.grado?.nombre || '3° de Primaria'} &quot;{currentSection?.letra || 'A'}&quot;
-                </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                  Haz clic en cualquier bloque libre para asignar una clase con el profesor correspondiente.
-                </p>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 flex-1">
+                {stats.map(s => (
+                  <div key={s.label} className="px-3 py-2 rounded-2xl bg-slate-50 dark:bg-slate-800/60">
+                    <p className="text-xs text-slate-500 flex items-center gap-1"><s.icon className="w-3.5 h-3.5" /> {s.label}</p>
+                    <p className="text-base font-black text-slate-900 dark:text-white">{s.value}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                <button type="button" onClick={() => setIsAuditModalOpen(true)} title="Revisar cruces de horario de todo el colegio"
+                  className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-bold cursor-pointer ${conflicts > 0 ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 border-2 border-rose-200 dark:border-rose-900' : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-2 border-emerald-200 dark:border-emerald-900'}`}>
+                  {conflicts > 0 ? <AlertTriangle className="w-4 h-4" /> : <ShieldCheck className="w-4 h-4" />}
+                  {conflicts > 0 ? `${conflicts} ${conflicts === 1 ? 'cruce' : 'cruces'} de horario` : 'Sin cruces'}
+                </button>
+                <Link href={`/admin/secciones/${currentSection?.id || ''}`} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border-2 border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-700 dark:text-slate-200 hover:border-slate-400">
+                  <Settings className="w-4 h-4" /> Ver aula
+                </Link>
+                <button type="button" onClick={handleCopySchedule} title="Copiar este horario para usarlo en otra sección" className="p-2 rounded-xl border-2 border-slate-200 dark:border-slate-700 text-slate-500 hover:border-slate-400 cursor-pointer" aria-label="Copiar horario">
+                  <Copy className="w-4 h-4" />
+                </button>
               </div>
             </div>
 
-            <div className="flex items-center gap-2.5 self-start sm:self-auto">
-              {/* Week Navigator Pill */}
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold text-xs shadow-2xs">
-                <button
-                  type="button"
-                  className="hover:text-purple-600 transition-colors cursor-pointer"
-                  title="Semana anterior"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-                <div className="text-center px-1">
-                  <span className="text-[10px] text-slate-400 block leading-tight">Semana del</span>
-                  <span className="font-bold text-xs text-slate-800 dark:text-slate-200">12 - 16 Feb, 2026</span>
-                </div>
-                <button
-                  type="button"
-                  className="hover:text-purple-600 transition-colors cursor-pointer"
-                  title="Semana siguiente"
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </button>
+            {isCopiedToast && (
+              <div className="mx-5 mb-3 p-3 rounded-2xl bg-emerald-500 text-white font-bold text-sm flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4" /> Horario copiado, listo para usar en otra sección.
               </div>
+            )}
 
-              {/* + Bloque Horario Button */}
-              <button
-                onClick={() => handleOpenSlotModal()}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs sm:text-sm shadow-md shadow-purple-600/25 transition-all active:scale-95 cursor-pointer whitespace-nowrap"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Bloque Horario</span>
-              </button>
-
-              {/* Toggle Side Panel Button */}
-              <button
-                onClick={() => setIsSidePanelOpen((prev) => !prev)}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-bold transition-all shadow-2xs cursor-pointer ${
-                  isSidePanelOpen
-                    ? 'bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800 hover:bg-purple-100/70'
-                    : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50'
-                }`}
-                title={isSidePanelOpen ? 'Colapsar panel lateral' : 'Expandir panel lateral'}
-              >
-                {isSidePanelOpen ? (
-                  <>
-                    <PanelRightClose className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-                    <span className="hidden sm:inline">Ocultar Panel</span>
-                  </>
-                ) : (
-                  <>
-                    <PanelRightOpen className="w-4 h-4 text-slate-600 dark:text-slate-300" />
-                    <span>Mostrar Panel</span>
-                  </>
-                )}
-              </button>
+            {/* Pestañas */}
+            <div className="flex gap-1 px-4 sm:px-5 border-t border-slate-100 dark:border-slate-800" role="tablist">
+              {([
+                { k: 'horario', label: 'Horario de la semana', icon: Calendar },
+                { k: 'asignacion', label: `Materias del aula (${currentSectionCourses.length})`, icon: BookOpen },
+                { k: 'profesores', label: 'Carga por docente', icon: Users },
+              ] as const).map(t => (
+                <button key={t.k} type="button" role="tab" aria-selected={activeTab === t.k} onClick={() => setActiveTab(t.k)}
+                  className={`inline-flex items-center gap-2 px-3 sm:px-4 py-3 text-sm font-black border-b-[3px] -mb-px cursor-pointer transition-colors ${activeTab === t.k ? 'border-purple-600 text-purple-700 dark:text-purple-300' : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'}`}>
+                  <t.icon className="w-4 h-4" /> <span className="hidden sm:inline">{t.label}</span><span className="sm:hidden">{t.label.split(' ')[0]}</span>
+                </button>
+              ))}
             </div>
           </div>
+        );
+      })()}
 
-          {/* Flex Layout: Left Timetable (expands to 100%) + Right Lateral Collapsible Sidebar */}
-          <div className="flex flex-col xl:flex-row gap-5 items-start">
-            
-            {/* ── LEFT: TIMETABLE GRID (Expands laterally) ── */}
-            <div className="flex-1 min-w-0 w-full space-y-3 transition-all duration-300">
-              <div 
-                id="printable-schedule-grid"
-                className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-5 sm:p-6 shadow-sm space-y-4"
-              >
-                {/* Institutional Export Header (Branding on captured image/PDF) */}
-                <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
-                  <div className="flex items-center gap-3.5">
-                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-600 to-indigo-700 text-white flex items-center justify-center font-black text-lg shadow-md shrink-0">
-                      {brandingConfig?.siglas || brandingConfig?.nombreInstitucion?.substring(0, 2).toUpperCase() || 'IE'}
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-base font-black text-slate-900 dark:text-white tracking-tight">
-                          {brandingConfig?.nombreInstitucion || 'Colegio San Juan Bautista'}
-                        </span>
-                        <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-purple-100 dark:bg-purple-900/60 text-purple-700 dark:text-purple-300 uppercase">
-                          Año Académico 2026
-                        </span>
-                      </div>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                        Horario Escolar Oficial • Nivel: {currentSection?.grado?.nivel?.toUpperCase() || 'PRIMARIA'} • {currentSection?.grado?.nombre || '3° de Primaria'} &quot;{currentSection?.letra || 'A'}&quot; • Turno Mañana
-                      </p>
-                    </div>
-                  </div>
+      {/* ══════════ PESTAÑA 1: HORARIO DE LA SEMANA ══════════ */}
+      {activeTab === 'horario' && (
+        <div className="flex flex-col xl:flex-row gap-5 items-start">
+          <div className="flex-1 min-w-0 w-full space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm text-slate-600 dark:text-slate-300 flex items-center gap-2">
+                <Info className="w-4 h-4 text-purple-500 shrink-0" />
+                Toca un espacio con <strong>+</strong> para poner una clase. Pasa el mouse sobre una clase para quitarla.
+              </p>
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={() => handleOpenSlotModal()} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-sm font-black cursor-pointer">
+                  <Plus className="w-4 h-4" /> Agregar clase
+                </button>
+                <button type="button" onClick={() => setIsSidePanelOpen(prev => !prev)} className="hidden xl:inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border-2 border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-600 dark:text-slate-300 cursor-pointer" aria-expanded={isSidePanelOpen}>
+                  {isSidePanelOpen ? <PanelRightClose className="w-4 h-4" /> : <PanelRightOpen className="w-4 h-4" />} {isSidePanelOpen ? 'Ocultar resumen' : 'Ver resumen'}
+                </button>
+              </div>
+            </div>
 
-                  <div className="hidden sm:flex flex-col items-end text-right">
-                    <span className="text-[10px] uppercase font-black tracking-widest text-slate-400">Emisión Oficial</span>
-                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Sistema Central de Horarios</span>
-                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-extrabold flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                      Vigencia 2026
-                    </span>
+            <div id="printable-schedule-grid" className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 shadow-sm space-y-4">
+              {/* Membrete (sale en la imagen y el PDF) */}
+              <div className="flex items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+                <div className="flex items-center gap-3">
+                  <span className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-600 to-indigo-700 text-white flex items-center justify-center font-black text-sm shrink-0">
+                    {brandingConfig?.siglas || brandingConfig?.nombreInstitucion?.substring(0, 2).toUpperCase() || 'IE'}
+                  </span>
+                  <div>
+                    <p className="text-base font-black text-slate-900 dark:text-white leading-tight">{brandingConfig?.nombreInstitucion || 'Institución Educativa'}</p>
+                    <p className="text-xs text-slate-500">Horario escolar {new Date().getFullYear()} · {currentSection?.grado?.nombre} &quot;{currentSection?.letra}&quot;</p>
                   </div>
                 </div>
+                <span className="hidden sm:block text-xs text-slate-400">Emitido el {new Date().toLocaleDateString('es-PE')}</span>
+              </div>
 
-                {/* Desktop Timetable Grid */}
-                <div className="overflow-x-auto scrollbar-thin">
-                  <table className="w-full border-collapse min-w-[700px]">
-                    <thead>
-                      <tr>
-                        {/* HORA Column Header */}
-                        <th className="p-2 text-center w-28 align-middle">
-                          <span className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50/80 dark:bg-slate-800 border border-blue-100 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-black text-xs">
-                            <Clock className="w-3.5 h-3.5 text-blue-500" />
-                            HORA
-                          </span>
-                        </th>
-
-                        {/* Days Headers */}
-                        {[
-                          { key: 'lunes' as DayOfWeek, label: 'LUNES', date: '12 Feb' },
-                          { key: 'martes' as DayOfWeek, label: 'MARTES', date: '13 Feb' },
-                          { key: 'miercoles' as DayOfWeek, label: 'MIÉRCOLES', date: '14 Feb' },
-                          { key: 'jueves' as DayOfWeek, label: 'JUEVES', date: '15 Feb' },
-                          { key: 'viernes' as DayOfWeek, label: 'VIERNES', date: '16 Feb' },
-                        ].map((d) => (
-                          <th key={d.key} className="p-2 text-center w-[18%]">
-                            <span className="block font-black text-xs text-slate-800 dark:text-slate-200 uppercase tracking-wide">
-                              {d.label}
-                            </span>
-                            <span className="block text-[11px] text-slate-400 font-medium">
-                              {d.date}
-                            </span>
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-
-                    <tbody className="space-y-2">
-                      {/* Rows 1, 2, 3 */}
-                      {[
-                        { id: 'b1', label: '1° Hora', inicio: '08:00', fin: '08:45' },
-                        { id: 'b2', label: '2° Hora', inicio: '08:45', fin: '09:30' },
-                        { id: 'b3', label: '3° Hora', inicio: '09:30', fin: '10:15' },
-                      ].map((block, timeIdx) => (
-                        <tr key={block.id} className="border-t border-slate-100 dark:border-slate-800/60">
-                          {/* Time Column */}
-                          <td className="p-2.5 text-center align-middle">
-                            <span className="font-extrabold text-xs text-slate-800 dark:text-slate-200 block">
-                              {block.label}
-                            </span>
-                            <span className="font-mono text-[10px] text-slate-400 font-medium block mt-0.5">
-                              {block.inicio} - {block.fin}
-                            </span>
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse min-w-[720px]">
+                  <thead>
+                    <tr>
+                      <th className="p-2 w-24 text-left text-xs font-black uppercase tracking-wider text-slate-400">Hora</th>
+                      {DAYS.map(d => (
+                        <th key={d.key} className="p-2 text-center text-sm font-black text-slate-700 dark:text-slate-200">{d.label}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {TIME_BLOCKS.map((block, idx) => (
+                      block.isBreak ? (
+                        <tr key={block.id}>
+                          <td className="p-2 text-xs font-bold text-amber-700 dark:text-amber-300 whitespace-nowrap">{block.inicio}–{block.fin}</td>
+                          <td colSpan={5} className="p-1.5">
+                            <div className="py-2 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 text-center text-sm font-black text-amber-800 dark:text-amber-300">☕ Recreo</div>
                           </td>
-
-                          {/* 5 Day Cells */}
-                          {DAYS.map((day) => {
-                            const slot = currentSectionSchedule.find(
-                              (s) => s.dia === day.key && s.hora_inicio === block.inicio
-                            );
-
+                        </tr>
+                      ) : (
+                        <tr key={block.id} className="border-t border-slate-100 dark:border-slate-800/60">
+                          <td className="p-2 align-middle">
+                            <span className="block text-sm font-black text-slate-800 dark:text-slate-200">{block.inicio}</span>
+                            <span className="block text-[11px] text-slate-400">a {block.fin}</span>
+                          </td>
+                          {DAYS.map(day => {
+                            const slot = currentSectionSchedule.find(s => s.dia === day.key && s.hora_inicio === block.inicio);
                             return (
                               <td key={day.key} className="p-1.5 align-top">
                                 {slot ? (
-                                  <ScheduleCard
-                                    slot={slot}
-                                    inicio={block.inicio}
-                                    onDelete={() => removeScheduleSlot(slot.id)}
-                                  />
+                                  <ScheduleCard slot={slot} inicio={block.inicio} onDelete={() => removeScheduleSlot(slot.id)} />
                                 ) : (
-                                  <button
-                                    onClick={() => handleOpenSlotModal(day.key, timeIdx)}
-                                    className="w-full min-h-[92px] rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 hover:border-purple-400 dark:hover:border-purple-600 hover:bg-purple-50/40 dark:hover:bg-purple-950/20 flex flex-col items-center justify-center gap-1 text-slate-400 hover:text-purple-600 transition-all group cursor-pointer"
-                                  >
-                                    <Plus className="w-4 h-4 transition-transform group-hover:scale-125 text-purple-400" />
-                                    <span className="text-[10px] font-bold text-slate-400 group-hover:text-purple-600">Asignar</span>
+                                  <button type="button" onClick={() => handleOpenSlotModal(day.key, idx)} data-html2canvas-ignore="true"
+                                    aria-label={`Agregar clase el ${day.label} a las ${block.inicio}`}
+                                    className="w-full min-h-[84px] rounded-2xl border-2 border-dashed border-slate-100 dark:border-slate-800 hover:border-purple-400 hover:bg-purple-50/50 dark:hover:bg-purple-950/20 flex items-center justify-center text-slate-300 hover:text-purple-600 transition-colors cursor-pointer">
+                                    <Plus className="w-5 h-5" />
                                   </button>
                                 )}
                               </td>
                             );
                           })}
                         </tr>
-                      ))}
-
-                      {/* Recreo Row */}
-                      <tr className="border-y border-amber-200/80 dark:border-amber-900/40">
-                        {/* Time Column */}
-                        <td className="p-2.5 text-center align-middle bg-amber-50/60 dark:bg-amber-950/20 rounded-l-2xl">
-                          <span className="font-extrabold text-xs text-amber-900 dark:text-amber-300 block">
-                            10:15 - 10:45
-                          </span>
-                        </td>
-
-                        {/* Spanning Recreo Banner */}
-                        <td colSpan={5} className="p-1">
-                          <div className="w-full py-2 px-4 rounded-xl bg-gradient-to-r from-amber-100/90 via-orange-50/90 to-amber-100/90 dark:from-amber-950/40 dark:via-orange-950/30 dark:to-amber-950/40 border border-amber-200/90 dark:border-amber-900/60 flex items-center justify-between shadow-2xs">
-                            {/* Left Apple + Trail */}
-                            <div className="flex items-center gap-2">
-                              <span className="text-xl">🍎</span>
-                              <div className="hidden sm:flex items-center gap-1 text-amber-400 text-xs">
-                                <span>- - - - ✈️</span>
-                              </div>
-                            </div>
-
-                            {/* Center Title */}
-                            <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300 font-black text-xs sm:text-sm tracking-wide">
-                              <span>☕</span>
-                              <span>RECREO &amp; DESCANSO ESCOLAR</span>
-                            </div>
-
-                            {/* Right Sun */}
-                            <div className="flex items-center">
-                              <span className="text-xl">☀️</span>
-                            </div>
-                          </div>
-                        </td>
-                      </tr>
-
-                      {/* Rows 4, 5, 6, 7 */}
-                      {[
-                        { id: 'b4', label: '4° Hora', inicio: '10:45', fin: '11:30' },
-                        { id: 'b5', label: '5° Hora', inicio: '11:30', fin: '12:15' },
-                        { id: 'b6', label: '6° Hora', inicio: '12:15', fin: '13:00' },
-                        { id: 'b7', label: '7° Hora', inicio: '13:00', fin: '13:45' },
-                      ].map((block, timeIdx) => {
-                        const actualIdx = timeIdx + 4; // offset for time block indexing
-                        return (
-                          <tr key={block.id} className="border-t border-slate-100 dark:border-slate-800/60">
-                            {/* Time Column */}
-                            <td className="p-2.5 text-center align-middle">
-                              <span className="font-extrabold text-xs text-slate-800 dark:text-slate-200 block">
-                                {block.label}
-                              </span>
-                              <span className="font-mono text-[10px] text-slate-400 font-medium block mt-0.5">
-                                {block.inicio} - {block.fin}
-                              </span>
-                            </td>
-
-                            {/* 5 Day Cells */}
-                            {DAYS.map((day) => {
-                              const slot = currentSectionSchedule.find(
-                                (s) => s.dia === day.key && s.hora_inicio === block.inicio
-                              );
-
-                              return (
-                                <td key={day.key} className="p-1.5 align-top">
-                                  {slot ? (
-                                    <ScheduleCard
-                                      slot={slot}
-                                      inicio={block.inicio}
-                                      onDelete={() => removeScheduleSlot(slot.id)}
-                                    />
-                                  ) : (
-                                    <div className="relative min-h-[96px] flex items-center justify-center">
-                                      <button
-                                        onClick={() => handleOpenSlotModal(day.key, actualIdx)}
-                                        data-html2canvas-ignore="true"
-                                        className="w-full min-h-[96px] rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 hover:border-purple-400 dark:hover:border-purple-600 hover:bg-purple-50/40 dark:hover:bg-purple-950/20 flex flex-col items-center justify-center gap-1 text-slate-400 hover:text-purple-600 transition-all group cursor-pointer"
-                                      >
-                                        <Plus className="w-4 h-4 transition-transform group-hover:scale-125 text-purple-400" />
-                                        <span className="text-[10px] font-bold text-slate-400 group-hover:text-purple-600">Asignar</span>
-                                      </button>
-                                      {/* Clean export placeholder visible only when buttons are ignored */}
-                                      <div className="w-full min-h-[96px] rounded-2xl border border-slate-100 bg-slate-50/50 hidden [canvas_&]:flex items-center justify-center text-slate-300 text-xs font-semibold">
-                                        —
-                                      </div>
-                                    </div>
-                                  )}
-                                </td>
-                              );
-                            })}
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Footer Bar of Timetable with Quick Export Actions (Excluded from clean export image) */}
-                <div 
-                  data-html2canvas-ignore="true"
-                  className="flex flex-col md:flex-row items-center justify-between gap-3 pt-4 border-t border-slate-100 dark:border-slate-800/80 text-xs"
-                >
-                  <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 font-medium">
-                    <Info className="w-4 h-4 text-purple-500 shrink-0" />
-                    <span>Malla horaria oficial configurada para el periodo lectivo 2026.</span>
-                  </div>
-
-                  {/* Quick Export Shortcuts & Settings */}
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-[10px] font-black uppercase text-slate-400 mr-1 hidden sm:inline">Descargar:</span>
-                    
-                    {/* Direct PNG Export */}
-                    <button
-                      type="button"
-                      onClick={exportScheduleAsImage}
-                      disabled={isExporting}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-purple-200 dark:border-purple-800/60 bg-purple-50/60 dark:bg-purple-950/30 text-purple-700 dark:text-purple-300 font-bold text-xs hover:bg-purple-100 transition-all shadow-2xs cursor-pointer"
-                      title="Descargar horario como imagen PNG"
-                    >
-                      <FileImage className="w-3.5 h-3.5" />
-                      <span>PNG</span>
-                    </button>
-
-                    {/* Direct PDF Export */}
-                    <button
-                      type="button"
-                      onClick={exportScheduleAsPdf}
-                      disabled={isExporting}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-blue-200 dark:border-blue-800/60 bg-blue-50/60 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 font-bold text-xs hover:bg-blue-100 transition-all shadow-2xs cursor-pointer"
-                      title="Descargar horario como documento PDF oficial"
-                    >
-                      <FileText className="w-3.5 h-3.5" />
-                      <span>PDF</span>
-                    </button>
-
-                    {/* Direct CSV Export */}
-                    <button
-                      type="button"
-                      onClick={exportScheduleAsCsv}
-                      disabled={isExporting}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-emerald-200 dark:border-emerald-800/60 bg-emerald-50/60 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 font-bold text-xs hover:bg-emerald-100 transition-all shadow-2xs cursor-pointer"
-                      title="Descargar horario como hoja de cálculo CSV"
-                    >
-                      <FileSpreadsheet className="w-3.5 h-3.5" />
-                      <span>CSV</span>
-                    </button>
-
-                    <div className="h-4 w-px bg-slate-200 dark:bg-slate-700 mx-1 hidden sm:block" />
-
-                    <button
-                      type="button"
-                      onClick={() => window.print()}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs hover:bg-slate-50 transition-all shadow-2xs cursor-pointer"
-                    >
-                      <Printer className="w-3.5 h-3.5 text-slate-500" />
-                      <span>Imprimir</span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Security and Verification Footer */}
-                <div className="pt-2 flex flex-col sm:flex-row items-center justify-between text-[10px] text-slate-400 dark:text-slate-500 border-t border-dashed border-slate-100 dark:border-slate-800/60">
-                  <span>Documento institucional emitido y certificado por el Sistema Central de Gestión Educativa • Código de Validación: SCH-2026-{currentSection?.id || 'SEC01'}</span>
-                  <span className="font-mono">Fecha de Generación: {new Date().toLocaleDateString('es-PE')}</span>
-                </div>
-
+                      )
+                    ))}
+                  </tbody>
+                </table>
               </div>
+              <p className="pt-2 text-[11px] text-slate-400 border-t border-dashed border-slate-100 dark:border-slate-800">Código de validación: SCH-{new Date().getFullYear()}-{currentSection?.id || 'SEC'}</p>
             </div>
-
-            {/* ── RIGHT: LATERAL COLLAPSIBLE SIDEBAR ── */}
-            <div className={`transition-all duration-300 ease-in-out shrink-0 w-full ${
-              isSidePanelOpen ? 'xl:w-[320px]' : 'xl:w-14'
-            }`}>
-              {isSidePanelOpen ? (
-                <div className="space-y-4 animate-in fade-in slide-in-from-right-3 duration-300">
-                  
-                  {/* Card 1: Resumen del Horario */}
-                  <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3.5 relative">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-lg bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
-                          <BarChart3 className="w-4 h-4" />
-                        </div>
-                        <h4 className="font-black text-sm text-slate-900 dark:text-white">
-                          Resumen del Horario
-                        </h4>
-                      </div>
-                      <button
-                        onClick={() => setIsSidePanelOpen(false)}
-                        className="p-1.5 rounded-xl text-slate-400 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-950/40 transition-colors cursor-pointer flex items-center gap-1 text-xs font-bold"
-                        title="Colapsar panel lateral hacia la derecha"
-                      >
-                        <ChevronRight className="w-4 h-4" />
-                      </button>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3 pt-1">
-                      {/* KPI 1: Horas programadas */}
-                      <div className="p-3 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-900/40">
-                        <div className="flex items-center justify-between">
-                          <span className="text-base font-black text-emerald-900 dark:text-emerald-200">
-                            35 / 35
-                          </span>
-                          <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                        </div>
-                        <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 block mt-0.5">
-                          Horas programadas
-                        </span>
-                      </div>
-
-                      {/* KPI 2: Días de clase */}
-                      <div className="p-3 rounded-2xl bg-purple-50/70 dark:bg-purple-950/40 border border-purple-100 dark:border-purple-900/40">
-                        <div className="flex items-center gap-1.5">
-                          <Calendar className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-                          <span className="text-base font-black text-purple-900 dark:text-purple-200">
-                            5
-                          </span>
-                        </div>
-                        <span className="text-[10px] font-bold text-purple-700 dark:text-purple-300 block mt-0.5">
-                          Días de clase
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Card 2: Materias del Salón */}
-                  <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3.5">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Users className="w-4 h-4 text-purple-600 shrink-0" />
-                        <div>
-                          <h4 className="font-black text-sm text-slate-900 dark:text-white leading-tight">
-                            Materias del Salón
-                          </h4>
-                          <p className="text-[10px] text-slate-400 font-medium">
-                            Avance de horas semanales
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-3 pt-1">
-                      {[
-                        { name: 'Matemática', hours: '8 / 6 h', color: 'bg-blue-600', barColor: 'bg-blue-600', width: '100%' },
-                        { name: 'Comunicación', hours: '7 / 6 h', color: 'bg-pink-500', barColor: 'bg-pink-500', width: '100%' },
-                        { name: 'Ciencia y Tecnología', hours: '4 / 4 h', color: 'bg-teal-500', barColor: 'bg-teal-500', width: '100%' },
-                        { name: 'Inglés', hours: '3 / 3 h', color: 'bg-indigo-600', barColor: 'bg-indigo-600', width: '100%' },
-                        { name: 'Personal Social', hours: '4 / 3 h', color: 'bg-amber-500', barColor: 'bg-amber-500', width: '100%' },
-                        { name: 'Arte y Cultura', hours: '2 / 2 h', color: 'bg-purple-600', barColor: 'bg-purple-600', width: '100%' },
-                      ].map((c, i) => (
-                        <div key={i} className="group cursor-pointer hover:bg-slate-50/80 dark:hover:bg-slate-800/40 p-1.5 rounded-xl transition-all">
-                          <div className="flex items-center justify-between text-xs mb-1.5">
-                            <div className="flex items-center gap-2">
-                              {/* Course Icon */}
-                              <div className={`w-6 h-6 rounded-lg ${c.color} text-white flex items-center justify-center p-1 shadow-2xs shrink-0`}>
-                                <CourseIcon courseName={c.name} className="w-3.5 h-3.5 text-white" />
-                              </div>
-                              <span className="font-extrabold text-slate-800 dark:text-white text-xs">
-                                {c.name}
-                              </span>
-                            </div>
-
-                            <div className="flex items-center gap-1.5">
-                              <span className="font-extrabold text-[11px] text-emerald-600 dark:text-emerald-400">
-                                {c.hours}
-                              </span>
-                              <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
-                            </div>
-                          </div>
-
-                          {/* Colored Progress Bar */}
-                          <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                            <div className={`h-full ${c.barColor} rounded-full`} style={{ width: c.width }} />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Card 3: Quote Card */}
-                  <div className="bg-gradient-to-br from-blue-50/80 via-indigo-50/40 to-purple-50/80 dark:from-slate-800 dark:to-indigo-950/40 rounded-3xl p-4 border border-blue-100/80 dark:border-blue-900/40 flex items-center gap-3.5 shadow-2xs">
-                    <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-sm">
-                      <GraduationCap className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <p className="font-serif italic font-bold text-xs text-slate-800 dark:text-slate-200 leading-snug">
-                        &quot;Un buen horario construye grandes aprendizajes&quot;
-                      </p>
-                    </div>
-                  </div>
-
-                </div>
-              ) : (
-                /* Collapsed Vertical Dock / Rail */
-                <div 
-                  onClick={() => setIsSidePanelOpen(true)}
-                  className="hidden xl:flex flex-col items-center py-4 px-1.5 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-md hover:border-purple-300 dark:hover:border-purple-700 cursor-pointer transition-all group space-y-4 min-h-[460px] animate-in fade-in duration-200 select-none"
-                  title="Clic para expandir panel lateral"
-                >
-                  <button
-                    type="button"
-                    className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-300 flex items-center justify-center group-hover:scale-110 group-hover:bg-purple-600 group-hover:text-white transition-all shadow-2xs cursor-pointer"
-                    title="Expandir panel lateral"
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                  </button>
-
-                  <div className="h-px w-6 bg-slate-200 dark:bg-slate-800" />
-
-                  {/* Micro Indicators */}
-                  <div className="flex flex-col items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex flex-col items-center justify-center text-[8px] font-black leading-none p-1 shadow-2xs" title="35/35 Horas programadas">
-                      <BarChart3 className="w-3 h-3 mb-0.5" />
-                      <span>35h</span>
-                    </div>
-
-                    <div className="w-8 h-8 rounded-lg bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 flex flex-col items-center justify-center text-[8px] font-black leading-none p-1 shadow-2xs" title="5 Días de clase">
-                      <Calendar className="w-3 h-3 mb-0.5" />
-                      <span>5d</span>
-                    </div>
-                  </div>
-
-                  <div className="h-px w-6 bg-slate-200 dark:bg-slate-800" />
-
-                  {/* Micro Stack of Course Icons */}
-                  <div className="flex flex-col items-center gap-1.5">
-                    <div className="w-6 h-6 rounded-md bg-blue-600 text-white flex items-center justify-center p-1 shadow-2xs" title="Matemática">
-                      <CourseIcon courseName="Matemática" className="w-3 h-3 text-white" />
-                    </div>
-                    <div className="w-6 h-6 rounded-md bg-pink-500 text-white flex items-center justify-center p-1 shadow-2xs" title="Comunicación">
-                      <CourseIcon courseName="Comunicación" className="w-3 h-3 text-white" />
-                    </div>
-                    <div className="w-6 h-6 rounded-md bg-teal-500 text-white flex items-center justify-center p-1 shadow-2xs" title="Ciencia">
-                      <CourseIcon courseName="Ciencia" className="w-3 h-3 text-white" />
-                    </div>
-                    <div className="w-6 h-6 rounded-md bg-indigo-600 text-white flex items-center justify-center p-1 shadow-2xs" title="Inglés">
-                      <CourseIcon courseName="Inglés" className="w-3 h-3 text-white" />
-                    </div>
-                  </div>
-
-                  {/* Rotated Vertical Label */}
-                  <div className="flex-1 flex items-center justify-center pt-2">
-                    <span className="[writing-mode:vertical-rl] rotate-180 text-[10px] font-black uppercase tracking-widest text-slate-400 group-hover:text-purple-600 transition-colors">
-                      Resumen y Materias
-                    </span>
-                  </div>
-                </div>
-              )}
-            </div>
-
           </div>
+
+          {/* Resumen lateral con datos reales */}
+          {isSidePanelOpen && (
+            <aside className="w-full xl:w-80 shrink-0 space-y-4">
+              <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3">
+                <h3 className="text-base font-black text-slate-900 dark:text-white">¿Cómo va el horario?</h3>
+                {(() => {
+                  const pctDone = targetTotalHours > 0 ? Math.min(100, Math.round((scheduledHoursCount / targetTotalHours) * 100)) : 0;
+                  const daysWithClasses = new Set(currentSectionSchedule.map(s => s.dia)).size;
+                  return (
+                    <>
+                      <div>
+                        <div className="flex items-baseline justify-between">
+                          <span className="text-3xl font-black text-slate-900 dark:text-white">{scheduledHoursCount}<span className="text-base text-slate-400"> / {targetTotalHours}</span></span>
+                          <span className={`text-sm font-black ${pctDone === 100 ? 'text-emerald-600' : 'text-purple-600'}`}>{pctDone}%</span>
+                        </div>
+                        <p className="text-xs text-slate-500">clases puestas de las horas que piden sus materias</p>
+                        <div className="h-2.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden mt-2"><div className={`h-full rounded-full ${pctDone === 100 ? 'bg-emerald-500' : 'bg-purple-500'}`} style={{ width: `${pctDone}%` }} /></div>
+                      </div>
+                      <p className="text-sm text-slate-600 dark:text-slate-300">Tiene clases <strong>{daysWithClasses} de 5 días</strong> de la semana.</p>
+                    </>
+                  );
+                })()}
+              </div>
+
+              <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-base font-black text-slate-900 dark:text-white">Horas por materia</h3>
+                  <button type="button" onClick={() => setActiveTab('asignacion')} className="text-xs font-bold text-purple-600 hover:underline cursor-pointer">Ver materias</button>
+                </div>
+                {currentSectionCourses.length === 0 ? (
+                  <div className="text-center space-y-2 py-3">
+                    <p className="text-sm text-slate-500">Esta aula aún no tiene materias.</p>
+                    <button type="button" onClick={handleOpenAssignModal} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-purple-600 text-white text-sm font-black cursor-pointer"><Plus className="w-4 h-4" /> Asignar materia</button>
+                  </div>
+                ) : (
+                  <ul className="space-y-3">
+                    {currentSectionCourses.map(sc => {
+                      const name = sc.curso?.nombre || courses.find(c => c.id === sc.curso_id)?.nombre || 'Materia';
+                      const placed = currentSectionSchedule.filter(s => s.curso_id === sc.curso_id).length;
+                      const goal = hoursOfAssignment(sc);
+                      const theme = getCourseTheme(name);
+                      const done = goal > 0 && placed >= goal;
+                      return (
+                        <li key={sc.id}>
+                          <button type="button" onClick={() => handleOpenSlotModal(undefined, undefined, sc.curso_id)} className="w-full text-left group cursor-pointer" title={`Agregar una clase de ${name}`}>
+                            <div className="flex items-center justify-between text-sm mb-1">
+                              <span className="flex items-center gap-2 min-w-0">
+                                <span className={`w-6 h-6 rounded-lg ${theme.iconBg} text-white flex items-center justify-center shrink-0`}><CourseIcon courseName={name} className="w-3.5 h-3.5 text-white" /></span>
+                                <span className="font-bold text-slate-800 dark:text-slate-100 truncate group-hover:text-purple-600">{name}</span>
+                              </span>
+                              <span className={`text-xs font-black shrink-0 ${done ? 'text-emerald-600' : placed > 0 ? 'text-amber-600' : 'text-slate-400'}`}>{placed} / {goal} h {done ? '✓' : ''}</span>
+                            </div>
+                            <div className="h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden"><div className={`h-full rounded-full ${done ? 'bg-emerald-500' : theme.iconBg}`} style={{ width: `${goal > 0 ? Math.min(100, (placed / goal) * 100) : 0}%` }} /></div>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+            </aside>
+          )}
         </div>
       )}
 

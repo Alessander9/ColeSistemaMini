@@ -1,48 +1,90 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { useApp } from '@/context/AppContext';
-import { PageHeader } from '@/components/ui/PageHeader';
-import { DataTable, Column, FilterChip } from '@/components/ui/DataTable';
+import { DataTable, Column } from '@/components/ui/DataTable';
 import { GradeBadge } from '@/components/notas/GradeBadge';
 import { AnnualReportCardModal } from '@/components/notas/AnnualReportCardModal';
 import { calculateAverage, calculateAnnualStatus, calculateStudentAnnualReportCard, StudentAnnualReportCard } from '@/lib/grades/calculations';
 import { GradeLetter } from '@/types';
-import { Download, FileSpreadsheet, Printer, FileText, Eye, Award, GraduationCap, ArrowRight } from 'lucide-react';
-import { generateReportCardPdf } from '@/lib/pdf/reportCardPdfGenerator';
-import { generateConsolidadoSalonPdf } from '@/lib/pdf/consolidadoSalonPdfGenerator';
+import {
+  Download,
+  FileSpreadsheet,
+  Printer,
+  FileText,
+  Eye,
+  Award,
+  Users,
+  CheckCircle2,
+  AlertTriangle,
+  Clock,
+  Search,
+  BarChart3,
+  LifeBuoy,
+  Ban,
+} from 'lucide-react';
+
+// Se carga solo al generar el PDF (así jsPDF no pesa en la carga inicial de la página)
+const generateReportCardPdf = async (...args: Parameters<typeof import('@/lib/pdf/reportCardPdfGenerator').generateReportCardPdf>) =>
+  (await import('@/lib/pdf/reportCardPdfGenerator')).generateReportCardPdf(...args);
+// Se carga solo al generar el PDF (así jsPDF no pesa en la carga inicial de la página)
+const generateConsolidadoSalonPdf = async (...args: Parameters<typeof import('@/lib/pdf/consolidadoSalonPdfGenerator').generateConsolidadoSalonPdf>) =>
+  (await import('@/lib/pdf/consolidadoSalonPdfGenerator')).generateConsolidadoSalonPdf(...args);
+
+type Situation = 'PROMOVIDO' | 'RECUPERACIÓN' | 'PERMANECE' | 'SIN_NOTAS';
+type FilterId = 'todos' | Situation | 'MERITO' | 'SAT_ALERTA';
+
+// Situación del alumno en palabras sencillas
+const SITUATION: Record<Situation, { label: string; cls: string }> = {
+  PROMOVIDO: { label: 'Va aprobando', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-900' },
+  RECUPERACIÓN: { label: 'Recuperación', cls: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-900' },
+  PERMANECE: { label: 'Permanece en el grado', cls: 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-900' },
+  SIN_NOTAS: { label: 'Sin notas aún', cls: 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700' },
+};
+
+const localIso = (d = new Date()) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
 export default function AdminReportesPage() {
-  const { enrollments, grades, attendances, teachers, courses, evaluationPeriods, students, sections, brandingConfig, showToast } = useApp();
+  const { enrollments, grades, attendances, teachers, courses, evaluationPeriods, students, sections, brandingConfig, academicContext, showToast } = useApp();
   const [selectedReportCard, setSelectedReportCard] = useState<StudentAnnualReportCard | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [activeFilter, setActiveFilter] = useState<string>('todos');
+  const [activeFilter, setActiveFilter] = useState<FilterId>('todos');
   const [isExporting, setIsExporting] = useState(false);
+  const listRef = useRef<HTMLDivElement>(null);
+  const year = academicContext?.anio || new Date().getFullYear();
 
+  const sectionLabel = (id?: string) => {
+    const s = sections.find(x => x.id === id);
+    return s ? `${s.grado?.nombre || 'Grado'} "${s.letra}"` : 'Sin aula';
+  };
+
+  // ── Datos por alumno (solo matrículas vigentes) ──
   const reportData = useMemo(() => {
-    return enrollments.map((enr) => {
+    // Índices por matrícula (antes se recorrían todas las notas y asistencias por cada alumno)
+    const gradesByEnr = new Map<string, GradeLetter[]>();
+    grades.forEach(g => { if (g.nota_letra != null) gradesByEnr.set(g.matricula_id, [...(gradesByEnr.get(g.matricula_id) || []), g.nota_letra as GradeLetter]); });
+    const attsByEnr = new Map<string, { total: number; faltas: number }>();
+    attendances.forEach(a => {
+      const r = attsByEnr.get(a.matricula_id) || { total: 0, faltas: 0 };
+      r.total++;
+      if (a.estado === 'falta') r.faltas++;
+      attsByEnr.set(a.matricula_id, r);
+    });
+    return enrollments.filter(e => e.estado === 'activo').map((enr) => {
       const student = students.find(s => s.id === enr.estudiante_id) || enr.estudiante;
-      const studentName = `${student?.profile?.apellidos || student?.apellidos || ''}, ${student?.profile?.nombres || student?.nombres || ''}`.trim() || 'Estudiante';
-      
-      // Calculate student's overall average across all courses
-      // Fix 1.4: Filtrar nota_letra nula antes de calcular promedio
-      const studentGrades = grades
-        .filter(g => g.matricula_id === enr.id && g.nota_letra != null)
-        .map(g => g.nota_letra as GradeLetter);
+      const studentName = `${student?.profile?.apellidos || student?.apellidos || ''}, ${student?.profile?.nombres || student?.nombres || ''}`.replace(/^, |, $/g, '').trim() || 'Estudiante';
+
+      const studentGrades = gradesByEnr.get(enr.id) || [];
       const { averageLetter, averageScore } = calculateAverage(studentGrades);
-      const { status, statusColor } = calculateAnnualStatus(studentGrades);
+      const situation: Situation = studentGrades.length === 0 ? 'SIN_NOTAS' : calculateAnnualStatus(studentGrades).status;
 
-      // SAT MINEDU: Attendance Risk (faltas > 30%)
-      const studentAtts = attendances.filter(a => a.matricula_id === enr.id);
-      const totalAtts = studentAtts.length;
-      const faltas = studentAtts.filter(a => a.estado === 'falta').length;
-      const pctFaltas = totalAtts > 0 ? (faltas / totalAtts) : 0;
-      const hasAttendanceRisk = totalAtts >= 5 && pctFaltas >= 0.30;
-
-      // SAT MINEDU: Academic Risk (3+ 'C' grades)
+      // Alerta temprana (MINEDU): 30% o más de faltas, o 3 o más notas en C
+      const att = attsByEnr.get(enr.id) || { total: 0, faltas: 0 };
+      const pctFaltas = att.total > 0 ? att.faltas / att.total : 0;
+      const hasAttendanceRisk = att.total >= 5 && pctFaltas >= 0.30;
       const countC = studentGrades.filter(g => g === 'C').length;
       const hasAcademicRisk = countC >= 3;
-      const isSatRisk = hasAttendanceRisk || hasAcademicRisk;
 
       return {
         id: enr.id,
@@ -50,57 +92,70 @@ export default function AdminReportesPage() {
         student,
         codigo: student?.codigo_estudiante || '',
         nombre: studentName,
-        gradoSeccion: enr.seccion?.grado?.nombre ? `${enr.seccion.grado.nombre} "${enr.seccion.letra}"` : 'Sin aula',
-        promedioLetra: averageLetter,
-        promedioNumerico: averageScore,
-        estadoPromocion: status,
-        estadoColor: statusColor,
-        isSatRisk,
+        seccionId: enr.seccion_id,
+        gradoSeccion: sectionLabel(enr.seccion_id),
+        notas: studentGrades.length,
+        promedioLetra: studentGrades.length > 0 ? averageLetter : null,
+        promedioNumerico: studentGrades.length > 0 ? averageScore : 0,
+        situation,
+        isSatRisk: hasAttendanceRisk || hasAcademicRisk,
         hasAttendanceRisk,
         hasAcademicRisk,
         countC,
         pctFaltas: Math.round(pctFaltas * 100),
       };
     });
-  }, [enrollments, grades, students, attendances]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enrollments, grades, students, attendances, sections]);
+  type Row = typeof reportData[0];
 
-  // Filter chips with dynamic counts
-  const filterChips: FilterChip[] = useMemo(() => {
-    const total = reportData.length;
-    const promovidos = reportData.filter(r => r.estadoPromocion === 'PROMOVIDO').length;
-    const recuperacion = reportData.filter(r => r.estadoPromocion === 'RECUPERACIÓN').length;
-    const permanece = reportData.filter(r => r.estadoPromocion === 'PERMANECE').length;
-    const satAlerta = reportData.filter(r => r.isSatRisk).length;
-    const topMerito = reportData.filter(r => r.promedioNumerico >= 3.5).length;
+  const counts = useMemo(() => ({
+    todos: reportData.length,
+    PROMOVIDO: reportData.filter(r => r.situation === 'PROMOVIDO').length,
+    RECUPERACIÓN: reportData.filter(r => r.situation === 'RECUPERACIÓN').length,
+    PERMANECE: reportData.filter(r => r.situation === 'PERMANECE').length,
+    SIN_NOTAS: reportData.filter(r => r.situation === 'SIN_NOTAS').length,
+    MERITO: reportData.filter(r => r.promedioNumerico >= 3.5).length,
+    SAT_ALERTA: reportData.filter(r => r.isSatRisk).length,
+  }), [reportData]);
 
-    return [
-      { id: 'todos', label: 'Todos los Alumnos', count: total },
-      { id: 'MERITO', label: '🏆 Cuadro de Mérito (Top)', count: topMerito },
-      { id: 'PROMOVIDO', label: '✅ Promovidos', count: promovidos },
-      { id: 'RECUPERACIÓN', label: '⚠️ Recuperación', count: recuperacion },
-      { id: 'PERMANECE', label: '🛑 Permanece', count: permanece },
-      { id: 'SAT_ALERTA', label: '🚨 Alerta Temprana (MINEDU)', count: satAlerta },
-    ];
-  }, [reportData]);
-
-  // Filtered dataset
   const filteredData = useMemo(() => {
-    if (activeFilter === 'todos') return reportData;
-    if (activeFilter === 'SAT_ALERTA') return reportData.filter(r => r.isSatRisk);
-    if (activeFilter === 'MERITO') {
-      return [...reportData]
-        .sort((a, b) => b.promedioNumerico - a.promedioNumerico);
-    }
-    return reportData.filter(r => r.estadoPromocion === activeFilter);
+    const byName = (a: Row, b: Row) => a.nombre.localeCompare(b.nombre);
+    if (activeFilter === 'todos') return [...reportData].sort(byName);
+    if (activeFilter === 'SAT_ALERTA') return reportData.filter(r => r.isSatRisk).sort(byName);
+    if (activeFilter === 'MERITO') return reportData.filter(r => r.promedioNumerico >= 3.5).sort((a, b) => b.promedioNumerico - a.promedioNumerico);
+    return reportData.filter(r => r.situation === activeFilter).sort(byName);
   }, [reportData, activeFilter]);
 
-  const handleOpenReportCard = (row: typeof reportData[0]) => {
+  // ── Acta consolidada: el administrador elige aula y bimestre ──
+  const todayIso = localIso();
+  const currentPeriod = evaluationPeriods.find(p => p.fecha_inicio <= todayIso && todayIso <= p.fecha_fin) || evaluationPeriods.find(p => p.activo) || evaluationPeriods[0];
+  const sectionsWithStudents = useMemo(
+    () => sections
+      .map(s => ({ s, n: enrollments.filter(e => e.seccion_id === s.id && e.estado === 'activo').length }))
+      .filter(x => x.n > 0)
+      .sort((a, b) => (a.s.grado?.nivel || '').localeCompare(b.s.grado?.nivel || '') || (a.s.grado?.numero_grado ?? 0) - (b.s.grado?.numero_grado ?? 0) || a.s.letra.localeCompare(b.s.letra)),
+    [sections, enrollments]
+  );
+  const [actaSectionId, setActaSectionId] = useState('');
+  const [actaPeriodId, setActaPeriodId] = useState('');
+  const actaSection = sections.find(s => s.id === (actaSectionId || sectionsWithStudents[0]?.s.id));
+  const actaPeriod = evaluationPeriods.find(p => p.id === actaPeriodId) || currentPeriod;
+
+  const scrollToList = (focusSearch = false) => {
+    listRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (focusSearch) setTimeout(() => listRef.current?.querySelector('input')?.focus(), 350);
+  };
+  const pickFilter = (id: FilterId) => {
+    setActiveFilter(prev => (prev === id && id !== 'todos' ? 'todos' : id));
+  };
+
+  const handleOpenReportCard = (row: Row) => {
     const studentAtts = attendances.filter(a => a.matricula_id === row.id);
     const attPct = studentAtts.length > 0 ? Math.round((studentAtts.filter(a => a.estado === 'presente').length / studentAtts.length) * 100) : 0;
-    const tutorId = row.enrollment?.seccion?.tutor_id;
-    const tutor = teachers.find(t => t.id === tutorId);
+    const sec = sections.find(s => s.id === row.seccionId) || row.enrollment?.seccion;
+    const tutor = teachers.find(t => t.id === sec?.tutor_id);
     const tutorName = tutor ? `${tutor.nombres} ${tutor.apellidos}` : 'No asignado';
-    const conduct = row.promedioLetra || '—';
 
     const card = calculateStudentAnnualReportCard({
       enrollmentId: row.id,
@@ -108,9 +163,9 @@ export default function AdminReportesPage() {
       studentName: row.nombre,
       studentDni: row.student?.profile?.dni || row.student?.dni || '—',
       studentCode: row.codigo || '—',
-      gradeLevelName: row.enrollment?.seccion?.grado?.nombre || 'Sin aula asignada',
-      sectionLetter: row.enrollment?.seccion?.letra || '-',
-      academicYear: 2026,
+      gradeLevelName: sec?.grado?.nombre || 'Sin aula asignada',
+      sectionLetter: sec?.letra || '-',
+      academicYear: year,
       tutorName,
       courses,
       grades,
@@ -123,14 +178,14 @@ export default function AdminReportesPage() {
     setIsModalOpen(true);
   };
 
-  const handleDownloadReportCardPdf = async (row: typeof reportData[0]) => {
+  const handleDownloadReportCardPdf = async (row: Row) => {
     const student = row.student;
     if (!student) {
-      showToast('No se encontró el estudiante para generar la libreta', 'error');
+      showToast('No se encontró el alumno para generar la libreta', 'error');
       return;
     }
     try {
-      showToast('Generando Libreta Oficial PDF...', 'info');
+      showToast('Preparando la libreta en PDF...', 'info');
       const doc = await generateReportCardPdf({
         student,
         enrollment: row.enrollment,
@@ -140,196 +195,261 @@ export default function AdminReportesPage() {
         attendances,
         brandingConfig,
       });
-      doc.save(`Libreta_CNEB_${row.codigo}_${row.nombre.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
-      showToast('Libreta PDF descargada exitosamente', 'success');
+      doc.save(`Libreta_${row.codigo}_${row.nombre.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
+      showToast('Libreta descargada', 'success');
     } catch (err) {
       console.error(err);
-      showToast('Error al generar la libreta en PDF', 'error');
+      showToast('No se pudo generar la libreta en PDF', 'error');
     }
   };
 
   const handleDownloadConsolidadoPdf = async () => {
-    if (sections.length === 0 || evaluationPeriods.length === 0) {
-      showToast('No hay secciones o periodos registrados', 'warning');
+    if (!actaSection || !actaPeriod) {
+      showToast('Primero elige el aula y el bimestre', 'warning');
+      return;
+    }
+    const sectionEnrollments = enrollments.filter(e => e.seccion_id === actaSection.id && e.estado === 'activo');
+    if (sectionEnrollments.length === 0) {
+      showToast('Esta aula no tiene alumnos matriculados', 'warning');
       return;
     }
     try {
       setIsExporting(true);
-      showToast('Generando Acta Consolidada de Salón en PDF...', 'info');
-      const targetSection = sections[0];
-      const activePeriod = evaluationPeriods.find(p => p.activo) || evaluationPeriods[0];
-      const sectionEnrollments = enrollments.filter(e => e.seccion_id === targetSection.id && e.estado === 'activo');
-
+      showToast(`Preparando el acta de ${sectionLabel(actaSection.id)}...`, 'info');
       const doc = await generateConsolidadoSalonPdf({
-        section: targetSection,
-        period: activePeriod,
-        enrollments: sectionEnrollments.length > 0 ? sectionEnrollments : enrollments.slice(0, 15),
+        section: actaSection,
+        period: actaPeriod,
+        enrollments: sectionEnrollments,
         courses,
         grades,
         brandingConfig,
       });
-      doc.save(`Acta_Consolidada_${targetSection.grado?.nombre || 'Salon'}_${targetSection.letra}.pdf`);
-      showToast('Acta Consolidada descargada exitosamente', 'success');
+      doc.save(`Acta_${actaSection.grado?.nombre || 'Aula'}_${actaSection.letra}_${actaPeriod.nombre}.pdf`.replace(/\s+/g, '_'));
+      showToast('Acta descargada', 'success');
     } catch (err) {
       console.error(err);
-      showToast('Error al exportar acta consolidada', 'error');
+      showToast('No se pudo generar el acta', 'error');
     } finally {
       setIsExporting(false);
     }
   };
 
-  const columns: Column<typeof reportData[0]>[] = [
-    {
-      header: 'Código',
-      accessorKey: 'codigo',
-      cell: (row) => <span className="font-mono font-bold text-slate-500 text-xs">{row.codigo}</span>,
-    },
-    {
-      header: 'Estudiante',
-      accessorKey: 'nombre',
-      cell: (row) => <span className="font-extrabold text-slate-900 dark:text-white text-xs">{row.nombre}</span>,
-    },
-    {
-      header: 'Grado / Sección',
-      accessorKey: 'gradoSeccion',
-      cell: (row) => (
-        <span className="inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-          {row.gradoSeccion}
+  const situationBadge = (row: Row) => (
+    <div className="flex flex-col gap-1">
+      <span className={`inline-flex items-center w-fit px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${SITUATION[row.situation].cls}`}>
+        {SITUATION[row.situation].label}
+      </span>
+      {row.isSatRisk && (
+        <span className="inline-flex items-center gap-1 w-fit text-[11px] font-semibold text-rose-600 dark:text-rose-400">
+          <AlertTriangle className="w-3 h-3" /> {row.hasAttendanceRisk ? `Falta mucho (${row.pctFaltas}% de faltas)` : `${row.countC} notas en C`}
         </span>
+      )}
+    </div>
+  );
+
+  const libretaButtons = (row: Row, full = false) => (
+    <div className={`flex items-center gap-1.5 ${full ? 'w-full' : ''}`}>
+      <button
+        type="button"
+        onClick={() => handleOpenReportCard(row)}
+        className={`inline-flex items-center justify-center gap-1 px-2.5 py-1.5 text-xs font-bold rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-950/50 dark:text-indigo-300 transition-all cursor-pointer ${full ? 'flex-1' : ''}`}
+        title="Ver la libreta en pantalla"
+      >
+        <Eye className="w-3.5 h-3.5" /> Ver libreta
+      </button>
+      <button
+        type="button"
+        onClick={() => handleDownloadReportCardPdf(row)}
+        className={`inline-flex items-center justify-center gap-1 px-2.5 py-1.5 text-xs font-bold rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-300 transition-all cursor-pointer ${full ? 'flex-1' : ''}`}
+        title="Descargar la libreta en PDF"
+      >
+        <Download className="w-3.5 h-3.5" /> PDF
+      </button>
+    </div>
+  );
+
+  const columns: Column<Row>[] = [
+    {
+      header: 'Alumno',
+      accessorKey: 'nombre',
+      cell: (row) => (
+        <div>
+          <p className="font-bold text-slate-900 dark:text-white text-sm">{row.nombre}</p>
+          <p className="text-[11px] font-mono text-slate-400">{row.codigo}</p>
+        </div>
       ),
     },
     {
-      header: 'Promedio General',
-      cell: (row) => (
+      header: 'Aula',
+      accessorKey: 'gradoSeccion',
+      cell: (row) => <span className="inline-flex px-2 py-0.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">{row.gradoSeccion}</span>,
+    },
+    {
+      header: 'Promedio',
+      cell: (row) => row.promedioLetra ? (
         <div className="flex items-center gap-2">
           <GradeBadge grade={row.promedioLetra} size="sm" />
-          <span className="text-[11px] text-slate-400 font-mono">({row.promedioNumerico})</span>
+          <span className="text-[11px] text-slate-400">{row.notas} {row.notas === 1 ? 'nota' : 'notas'}</span>
         </div>
-      ),
+      ) : <span className="text-xs text-slate-400">—</span>,
     },
-    {
-      header: 'Condición Anual',
-      cell: (row) => (
-        <div className="flex flex-col gap-1">
-          <span className={`inline-flex items-center w-fit px-2.5 py-0.5 rounded-full text-[10px] font-black border ${row.estadoColor}`}>
-            {row.estadoPromocion}
-          </span>
-          {row.isSatRisk && (
-            <span className="inline-flex items-center gap-1 w-fit px-2 py-0.5 rounded-md text-[9px] font-extrabold bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30">
-              🚨 SAT {row.hasAttendanceRisk ? `Ausentismo (${row.pctFaltas}%)` : `${row.countC} cursos 'C'`}
-            </span>
-          )}
-        </div>
-      ),
-    },
-    {
-      header: 'Libreta Oficial',
-      cell: (row) => (
-        <div className="flex items-center gap-1.5">
-          <button
-            onClick={() => handleOpenReportCard(row)}
-            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-950/50 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 transition-all cursor-pointer"
-            title="Ver en pantalla"
-          >
-            <Eye className="w-3.5 h-3.5" />
-            <span>Ver</span>
-          </button>
-          <button
-            onClick={() => handleDownloadReportCardPdf(row)}
-            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 transition-all cursor-pointer"
-            title="Descargar PDF oficial"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>PDF</span>
-          </button>
-        </div>
-      ),
-    },
+    { header: 'Situación', cell: situationBadge },
+    { header: 'Libreta', cell: (row) => libretaButtons(row) },
   ];
 
+  const summaryCards: { id: FilterId; label: string; hint: string; icon: React.ElementType; tone: string; ring: string }[] = [
+    { id: 'todos', label: 'Todos los alumnos', hint: 'matriculados este año', icon: Users, tone: 'bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-300', ring: 'ring-indigo-500' },
+    { id: 'PROMOVIDO', label: 'Van aprobando', hint: 'sin cursos en C', icon: CheckCircle2, tone: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-300', ring: 'ring-emerald-500' },
+    { id: 'RECUPERACIÓN', label: 'Recuperación', hint: 'promedio B con algún C', icon: LifeBuoy, tone: 'bg-amber-50 text-amber-600 dark:bg-amber-950/50 dark:text-amber-300', ring: 'ring-amber-500' },
+    { id: 'PERMANECE', label: 'Permanecen', hint: 'promedio general C', icon: Ban, tone: 'bg-rose-50 text-rose-600 dark:bg-rose-950/50 dark:text-rose-300', ring: 'ring-rose-500' },
+    { id: 'MERITO', label: 'Cuadro de mérito', hint: 'promedio AD', icon: Award, tone: 'bg-violet-50 text-violet-600 dark:bg-violet-950/50 dark:text-violet-300', ring: 'ring-violet-500' },
+    { id: 'SIN_NOTAS', label: 'Sin notas aún', hint: 'todavía no evaluados', icon: Clock, tone: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300', ring: 'ring-slate-400' },
+  ];
+  const activeCard = [...summaryCards, { id: 'SAT_ALERTA' as FilterId, label: 'Necesitan apoyo' }].find(c => c.id === activeFilter);
+
+  const selectCls = 'w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm font-semibold text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-emerald-500/30 cursor-pointer';
+
   return (
-    <div className="space-y-6 max-w-6xl mx-auto animate-in fade-in-50 pb-12">
-      <PageHeader
-        title="Reportes y Consolidado de Rendimiento"
-        description="Boletín integral del progreso escolar, escala cualitativa y cálculo de promoción según el CNEB."
-        badge="Año Lectivo 2026"
-      >
-        <div className="flex items-center gap-2 flex-wrap">
-          <button
-            onClick={handleDownloadConsolidadoPdf}
-            disabled={isExporting}
-            className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-md transition-all active:scale-95 cursor-pointer disabled:opacity-50"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>{isExporting ? 'Generando...' : '📄 Descargar Acta Consolidada PDF'}</span>
-          </button>
-          <button
-            onClick={() => window.print()}
-            className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl bg-slate-900 dark:bg-slate-800 text-white shadow-md hover:bg-slate-800 transition-all active:scale-95 cursor-pointer"
-          >
-            <Printer className="w-3.5 h-3.5" />
-            <span>Imprimir</span>
+    <div className="space-y-5 max-w-7xl mx-auto animate-in fade-in-50 pb-12">
+
+      {/* ── 1. ENCABEZADO ── */}
+      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden">
+        <div className="h-1.5 bg-gradient-to-r from-indigo-500 via-emerald-500 to-rose-400" />
+        <div className="p-5 sm:p-6 flex flex-col md:flex-row md:items-start justify-between gap-4">
+          <div className="space-y-2 max-w-2xl">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+              Año escolar {year}{currentPeriod ? ` · ${currentPeriod.nombre}` : ''}
+            </span>
+            <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
+              <BarChart3 className="w-8 h-8 text-indigo-600" /> Reportes
+            </h1>
+            <p className="text-sm text-slate-600 dark:text-slate-300">
+              Descarga las libretas de notas y las actas de cada aula, y revisa qué alumnos van aprobando y cuáles necesitan apoyo.
+            </p>
+          </div>
+          <button type="button" onClick={() => window.print()} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-700 dark:text-slate-200 hover:border-slate-400 cursor-pointer shrink-0">
+            <Printer className="w-4 h-4" /> Imprimir
           </button>
         </div>
-      </PageHeader>
+      </div>
 
-      <DataTable
-        title="Padrón de Rendimiento & Promoción Anual"
-        data={filteredData}
-        columns={columns}
-        filterChips={filterChips}
-        activeFilter={activeFilter}
-        onFilterChange={setActiveFilter}
-        searchPlaceholder="Buscar por nombre, código o grado..."
-        itemsPerPage={10}
-        searchFilter={(row, q) =>
-          `${row.nombre} ${row.codigo} ${row.gradoSeccion} ${row.estadoPromocion}`.toLowerCase().includes(q)
-        }
-        gridItemRender={(row) => (
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-md transition-all flex flex-col justify-between h-full group">
-            <div className="space-y-3">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <h4 className="font-extrabold text-sm text-slate-900 dark:text-white leading-snug">
-                    {row.nombre}
-                  </h4>
-                  <span className="text-[11px] font-mono font-bold text-slate-400">
-                    {row.codigo}
-                  </span>
-                </div>
-                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black border ${row.estadoColor}`}>
-                  {row.estadoPromocion}
-                </span>
-              </div>
-
-              <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 space-y-2 text-xs">
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-400">Salón:</span>
-                  <span className="font-bold text-slate-700 dark:text-slate-200">{row.gradoSeccion}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-400">Promedio General:</span>
-                  <div className="flex items-center gap-1.5">
-                    <GradeBadge grade={row.promedioLetra} size="sm" />
-                    <span className="text-[11px] font-mono text-slate-400">({row.promedioNumerico})</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="pt-3 border-t border-slate-100 dark:border-slate-800 mt-4">
-              <button
-                type="button"
-                onClick={() => handleOpenReportCard(row)}
-                className="w-full inline-flex items-center justify-center gap-2 py-2 px-3 text-xs font-bold rounded-xl bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-950/50 dark:text-indigo-300 dark:hover:bg-indigo-900/50 border border-indigo-200 dark:border-indigo-800 transition-all active:scale-95 cursor-pointer"
-              >
-                <FileText className="w-3.5 h-3.5" />
-                <span>Ver Libreta Oficial</span>
-              </button>
+      {/* ── 2. ¿QUÉ NECESITAS? ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Libreta de un alumno */}
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 flex flex-col gap-3">
+          <div className="flex items-center gap-3">
+            <span className="w-11 h-11 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0"><FileText className="w-5 h-5" /></span>
+            <div>
+              <h2 className="text-base font-black text-slate-900 dark:text-white">Libreta de un alumno</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Notas de todos sus cursos y bimestres</p>
             </div>
           </div>
-        )}
-      />
+          <p className="text-sm text-slate-600 dark:text-slate-300 flex-1">Busca al alumno en la lista y toca <strong>Ver libreta</strong> o <strong>PDF</strong>.</p>
+          <button type="button" onClick={() => scrollToList(true)} className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold cursor-pointer">
+            <Search className="w-4 h-4" /> Buscar alumno
+          </button>
+        </div>
+
+        {/* Acta consolidada de un aula */}
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 flex flex-col gap-3">
+          <div className="flex items-center gap-3">
+            <span className="w-11 h-11 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0"><FileSpreadsheet className="w-5 h-5" /></span>
+            <div>
+              <h2 className="text-base font-black text-slate-900 dark:text-white">Acta de un aula</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Las notas de todos los alumnos del aula en un PDF</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2 flex-1">
+            <select value={actaSection?.id || ''} onChange={(e) => setActaSectionId(e.target.value)} className={selectCls} aria-label="Aula del acta">
+              {sectionsWithStudents.length === 0 && <option value="">Sin aulas con alumnos</option>}
+              {sectionsWithStudents.map(({ s, n }) => <option key={s.id} value={s.id}>{sectionLabel(s.id)} ({n})</option>)}
+            </select>
+            <select value={actaPeriod?.id || ''} onChange={(e) => setActaPeriodId(e.target.value)} className={selectCls} aria-label="Bimestre del acta">
+              {evaluationPeriods.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+            </select>
+          </div>
+          <button type="button" onClick={handleDownloadConsolidadoPdf} disabled={isExporting || !actaSection} className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-sm font-bold cursor-pointer">
+            <Download className="w-4 h-4" /> {isExporting ? 'Preparando...' : 'Descargar acta PDF'}
+          </button>
+        </div>
+
+        {/* Alumnos que necesitan apoyo */}
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 flex flex-col gap-3">
+          <div className="flex items-center gap-3">
+            <span className="w-11 h-11 rounded-xl bg-rose-500 text-white flex items-center justify-center shrink-0"><AlertTriangle className="w-5 h-5" /></span>
+            <div>
+              <h2 className="text-base font-black text-slate-900 dark:text-white">Alumnos que necesitan apoyo</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Alerta temprana del MINEDU</p>
+            </div>
+          </div>
+          <p className="text-sm text-slate-600 dark:text-slate-300 flex-1">
+            <strong className={`text-2xl font-black mr-1 ${counts.SAT_ALERTA > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{counts.SAT_ALERTA}</strong>
+            {counts.SAT_ALERTA === 1 ? 'alumno tiene' : 'alumnos tienen'} 3 o más notas en C o faltan al 30% de las clases.
+          </p>
+          <button
+            type="button"
+            onClick={() => { setActiveFilter('SAT_ALERTA'); scrollToList(); }}
+            disabled={counts.SAT_ALERTA === 0}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 disabled:opacity-50 text-sm font-bold cursor-pointer"
+          >
+            {counts.SAT_ALERTA > 0 ? 'Ver quiénes son' : 'Nadie en riesgo por ahora'}
+          </button>
+        </div>
+      </div>
+
+      {/* ── 3. RESUMEN (cada tarjeta filtra la lista) ── */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3">
+        {summaryCards.map(k => {
+          const active = activeFilter === k.id;
+          return (
+            <button
+              key={k.id}
+              type="button"
+              aria-pressed={active}
+              onClick={() => pickFilter(k.id)}
+              className={`text-left p-3.5 rounded-2xl bg-white dark:bg-slate-900 border shadow-xs hover:shadow-md transition-all cursor-pointer ${active ? `border-transparent ring-2 ${k.ring}` : 'border-slate-200/80 dark:border-slate-800'}`}
+            >
+              <div className="flex items-center gap-2.5">
+                <span className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${k.tone}`}><k.icon className="w-5 h-5" /></span>
+                <span className="text-2xl font-black text-slate-900 dark:text-white">{counts[k.id as keyof typeof counts]}</span>
+              </div>
+              <p className="text-sm font-bold text-slate-800 dark:text-slate-100 mt-2">{k.label}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">{k.hint}</p>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ── 4. LISTA DE ALUMNOS ── */}
+      <div ref={listRef} className="scroll-mt-20">
+        <DataTable
+          title={activeFilter === 'todos' ? 'Alumnos y sus libretas' : `Alumnos · ${activeCard?.label || ''}`}
+          actions={activeFilter !== 'todos' ? (
+            <button type="button" onClick={() => setActiveFilter('todos')} className="px-3 py-1.5 rounded-lg text-xs font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/50 hover:bg-indigo-100 cursor-pointer">
+              Ver todos
+            </button>
+          ) : undefined}
+          data={filteredData}
+          columns={columns}
+          searchPlaceholder="Buscar alumno por nombre, código o aula..."
+          emptyMessage="No hay alumnos en este grupo."
+          itemsPerPage={10}
+          searchFilter={(row, q) => `${row.nombre} ${row.codigo} ${row.gradoSeccion} ${SITUATION[row.situation].label}`.toLowerCase().includes(q)}
+          gridItemRender={(row) => (
+            <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200/80 dark:border-slate-800 shadow-xs hover:shadow-md transition-all flex flex-col gap-3 h-full">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <h4 className="font-bold text-sm text-slate-900 dark:text-white leading-snug">{row.nombre}</h4>
+                  <p className="text-xs text-slate-500">{row.gradoSeccion}</p>
+                </div>
+                {row.promedioLetra ? <GradeBadge grade={row.promedioLetra} size="sm" /> : <span className="text-xs text-slate-400">—</span>}
+              </div>
+              {situationBadge(row)}
+              <div className="mt-auto pt-3 border-t border-slate-100 dark:border-slate-800">{libretaButtons(row, true)}</div>
+            </div>
+          )}
+        />
+      </div>
 
       <AnnualReportCardModal
         isOpen={isModalOpen}

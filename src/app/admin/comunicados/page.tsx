@@ -2,26 +2,26 @@
 
 import React, { useState, useMemo } from 'react';
 import { useApp } from '@/context/AppContext';
-import { 
-  Megaphone, 
-  Plus, 
-  Search, 
-  Filter, 
-  AlertTriangle, 
-  CheckCircle2, 
-  Clock, 
-  Calendar, 
-  Users, 
-  Trash2, 
-  Eye, 
-  Send, 
-  Sparkles, 
-  Building2, 
-  GraduationCap, 
-  School, 
-  BookOpen, 
-  FileText, 
-  Tag, 
+import {
+  Megaphone,
+  Plus,
+  Search,
+  Filter,
+  AlertTriangle,
+  CheckCircle2,
+  Clock,
+  Calendar,
+  Users,
+  Trash2,
+  Eye,
+  Send,
+  Sparkles,
+  Building2,
+  GraduationCap,
+  School,
+  BookOpen,
+  FileText,
+  Tag,
   Info,
   X,
   Pin,
@@ -88,11 +88,34 @@ const QUICK_TEMPLATES: {
   },
 ];
 
+const CATEGORY_STYLE = {
+  general: { label: 'Circular general', icon: Megaphone, chip: 'bg-sky-100 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300', solid: 'bg-sky-500' },
+  academico: { label: 'Académico', icon: BookOpen, chip: 'bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300', solid: 'bg-blue-600' },
+  citacion: { label: 'Citación', icon: Users, chip: 'bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300', solid: 'bg-rose-500' },
+  urgente: { label: 'Urgente', icon: AlertTriangle, chip: 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300', solid: 'bg-amber-500' },
+  evento: { label: 'Evento', icon: Sparkles, chip: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300', solid: 'bg-emerald-500' },
+};
+const categoryStyle = (c?: string) => CATEGORY_STYLE[c as keyof typeof CATEGORY_STYLE] || CATEGORY_STYLE.general;
+const ROLE_LABEL: Record<string, string> = { todos: 'Toda la comunidad', apoderado: 'Padres / apoderados', estudiante: 'Alumnos', docente: 'Docentes', admin: 'Dirección' };
+const LEVEL_LABEL: Record<string, string> = { inicial: 'Inicial', primaria: 'Primaria', secundaria: 'Secundaria' };
+const CHANNEL_STYLE: Record<string, { label: string; icon: React.ElementType; cls: string }> = {
+  sistema: { label: 'Web', icon: Bell, cls: 'bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300' },
+  email: { label: 'Correo', icon: Mail, cls: 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300' },
+  whatsapp: { label: 'WhatsApp', icon: MessageCircle, cls: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300' },
+};
+// "2026-09-29" → "29 set 2026" (sin desfase de zona horaria)
+const niceDate = (iso?: string) => {
+  if (!iso) return '—';
+  const [y, m, d] = iso.slice(0, 10).split('-').map(Number);
+  if (!y || !m || !d) return iso;
+  return new Date(y, m - 1, d).toLocaleDateString('es-PE', { day: 'numeric', month: 'short', year: 'numeric' }).replace('.', '');
+};
+
 export default function AdminComunicadosPage() {
-  const { 
-    announcements, 
-    addAnnouncement, 
-    deleteAnnouncement, 
+  const {
+    announcements,
+    addAnnouncement,
+    deleteAnnouncement,
     currentUser,
     gradeLevels,
     sections,
@@ -109,7 +132,9 @@ export default function AdminComunicadosPage() {
   const [selectedGradeFilter, setSelectedGradeFilter] = useState<string>('todos');
   const [selectedSectionFilter, setSelectedSectionFilter] = useState<string>('todos');
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('todos');
-  
+  const [quickFilter, setQuickFilter] = useState<'todos' | 'urgentes' | 'citaciones' | 'confirmacion'>('todos');
+  const [showMoreFilters, setShowMoreFilters] = useState(false);
+
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null);
 
@@ -162,7 +187,7 @@ export default function AdminComunicadosPage() {
     }
 
     const studentsCount = targetEnrollments.length;
-    
+
     // 2. Teachers / Staff
     let teachersCount = teachers.filter(t => t.activo).length;
     if (formData.seccion_id) {
@@ -184,16 +209,16 @@ export default function AdminComunicadosPage() {
       return { totalRecipients: 3, breakdown: `3 Miembros de Dirección` };
     }
 
-    return { 
-      totalRecipients: studentsCount * 2 + teachersCount, 
-      breakdown: `${studentsCount} Estudiantes, ${studentsCount} Apoderados y ${teachersCount} Docentes` 
+    return {
+      totalRecipients: studentsCount * 2 + teachersCount,
+      breakdown: `${studentsCount} Estudiantes, ${studentsCount} Apoderados y ${teachersCount} Docentes`
     };
   }, [formData, enrollments, teachers, sections]);
 
   // Main announcements table filter
   const filteredAnnouncements = useMemo(() => {
     return announcements.filter(ann => {
-      const matchSearch = 
+      const matchSearch =
         ann.titulo.toLowerCase().includes(searchTerm.toLowerCase()) ||
         ann.contenido.toLowerCase().includes(searchTerm.toLowerCase()) ||
         ann.remitente_nombre.toLowerCase().includes(searchTerm.toLowerCase());
@@ -203,10 +228,15 @@ export default function AdminComunicadosPage() {
       const matchGrade = selectedGradeFilter === 'todos' || !ann.grado_id || ann.grado_id === selectedGradeFilter;
       const matchSection = selectedSectionFilter === 'todos' || !ann.seccion_id || ann.seccion_id === selectedSectionFilter;
       const matchCategory = selectedCategoryFilter === 'todos' || ann.categoria === selectedCategoryFilter;
+      const matchQuick =
+        quickFilter === 'todos' ||
+        (quickFilter === 'urgentes' && ann.es_urgente) ||
+        (quickFilter === 'citaciones' && ann.categoria === 'citacion') ||
+        (quickFilter === 'confirmacion' && ann.requiere_confirmacion);
 
-      return matchSearch && matchRole && matchLevel && matchGrade && matchSection && matchCategory;
+      return matchSearch && matchRole && matchLevel && matchGrade && matchSection && matchCategory && matchQuick;
     });
-  }, [announcements, searchTerm, selectedRoleFilter, selectedLevelFilter, selectedGradeFilter, selectedSectionFilter, selectedCategoryFilter]);
+  }, [announcements, searchTerm, selectedRoleFilter, selectedLevelFilter, selectedGradeFilter, selectedSectionFilter, selectedCategoryFilter, quickFilter]);
 
   const stats = useMemo(() => {
     const total = announcements.length;
@@ -287,349 +317,290 @@ export default function AdminComunicadosPage() {
     showToast('Texto copiado para enviar por WhatsApp Web o grupos de aula', 'success', '📋 Copiado');
   };
 
+  const activeFilters = [selectedRoleFilter, selectedLevelFilter, selectedGradeFilter, selectedSectionFilter].filter(v => v !== 'todos').length;
+  const clearFilters = () => {
+    setSearchTerm('');
+    setSelectedRoleFilter('todos');
+    setSelectedLevelFilter('todos');
+    setSelectedGradeFilter('todos');
+    setSelectedSectionFilter('todos');
+    setSelectedCategoryFilter('todos');
+    setQuickFilter('todos');
+  };
+  const hasAnyFilter = !!searchTerm || activeFilters > 0 || selectedCategoryFilter !== 'todos' || quickFilter !== 'todos';
+
   return (
-    <div className="space-y-6 max-w-7xl mx-auto animate-fade-in pb-16 font-sans">
-      
-      {/* ── 1. HEADER BANNER CON GRADIENT PREMIUM ── */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#0d153a] via-[#172054] to-[#0f1738] text-white p-6 sm:p-8 shadow-2xl border border-slate-800">
-        
-        {/* Glow Effects */}
-        <div className="absolute top-0 right-1/4 w-96 h-96 bg-indigo-600/20 rounded-full blur-3xl pointer-events-none -translate-y-1/2" />
-        <div className="absolute bottom-0 right-10 w-80 h-80 bg-blue-600/20 rounded-full blur-3xl pointer-events-none translate-y-1/3" />
-        <div className="absolute -left-10 top-1/2 w-60 h-60 bg-purple-600/15 rounded-full blur-2xl pointer-events-none -translate-y-1/2" />
+    <div className="space-y-5 max-w-7xl mx-auto animate-fade-in pb-16 font-sans">
 
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex flex-wrap items-center gap-2.5">
-            <span className="px-3.5 py-1.5 rounded-full text-xs font-bold bg-[#21163e]/80 text-purple-200 border border-purple-500/30 flex items-center gap-1.5 shadow-xs">
-              <Megaphone className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-              <span>Plataforma de Comunicación Masiva & Citaciones</span>
-            </span>
-            <span className="px-3.5 py-1.5 rounded-full text-xs font-bold bg-[#0d2828]/80 text-emerald-300 border border-emerald-500/30 flex items-center gap-1.5 shadow-xs">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span>Canales Activos • Web, Email & WhatsApp</span>
-            </span>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setIsCreateModalOpen(true)}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-500 hover:to-pink-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 transition-all active:scale-95 cursor-pointer self-start md:self-auto"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Emitir Nuevo Comunicado</span>
-          </button>
-        </div>
-
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6 my-6">
-          <div className="max-w-2xl">
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white leading-tight">
-              Circulares & <br className="hidden sm:inline" />
-              <span className="bg-gradient-to-r from-blue-200 via-indigo-200 to-purple-300 bg-clip-text text-transparent">
-                Comunicados Escolares
+      {/* ── 1. ENCABEZADO (claro y sobrio) ── */}
+      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden">
+        <div className="h-1.5 bg-gradient-to-r from-indigo-500 via-violet-500 to-sky-500" />
+        <div className="p-5 sm:p-6 space-y-5">
+          <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
+            <div className="max-w-2xl space-y-2">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                <span className="w-2 h-2 rounded-full bg-emerald-500" /> Web, correo y WhatsApp
               </span>
-            </h1>
-            <p className="text-slate-300 text-xs sm:text-sm mt-3 leading-relaxed max-w-xl">
-              Difunde avisos oficiales, circulares normativas y citaciones a padres con segmentación precisa por Nivel (Inicial, Primaria, Secundaria), Grados y Secciones específicas.
-            </p>
+              <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
+                <Megaphone className="w-8 h-8 text-violet-600" /> Comunicados
+              </h1>
+              <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                Envía avisos, circulares y citaciones a padres, alumnos o docentes. Puedes dirigirlos a todo el colegio, a un nivel, a un grado o a una sola aula.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setIsCreateModalOpen(true)}
+              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-2xl bg-violet-600 hover:bg-violet-700 text-white font-black text-sm shadow-md shadow-violet-600/20 transition-all active:scale-95 cursor-pointer shrink-0"
+            >
+              <Send className="w-4 h-4" /> Nuevo comunicado
+            </button>
           </div>
 
-          {/* Quick Metrics */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 shrink-0">
-            <div className="p-3.5 rounded-2xl bg-white/10 border border-white/10 backdrop-blur-md">
-              <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider block">Total Emitidos</span>
-              <span className="text-2xl font-black text-white mt-1 block">{stats.total}</span>
-            </div>
-            <div className="p-3.5 rounded-2xl bg-white/10 border border-white/10 backdrop-blur-md">
-              <span className="text-[10px] font-bold text-amber-300 uppercase tracking-wider block">Urgentes</span>
-              <span className="text-2xl font-black text-amber-300 mt-1 block">{stats.urgentCount}</span>
-            </div>
-            <div className="p-3.5 rounded-2xl bg-white/10 border border-white/10 backdrop-blur-md">
-              <span className="text-[10px] font-bold text-rose-300 uppercase tracking-wider block">Citaciones</span>
-              <span className="text-2xl font-black text-rose-300 mt-1 block">{stats.citacionesCount}</span>
-            </div>
-            <div className="p-3.5 rounded-2xl bg-white/10 border border-white/10 backdrop-blur-md">
-              <span className="text-[10px] font-bold text-emerald-300 uppercase tracking-wider block">Con Confirmación</span>
-              <span className="text-2xl font-black text-emerald-300 mt-1 block">{stats.withConfirmationCount}</span>
-            </div>
+          {/* Resumen: cada tarjeta filtra la lista */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {([
+              { id: 'todos', label: 'Enviados', value: stats.total, icon: Megaphone, hint: 'en total', tone: 'bg-violet-50 text-violet-600 dark:bg-violet-950/50 dark:text-violet-300', ring: 'ring-violet-500' },
+              { id: 'urgentes', label: 'Urgentes', value: stats.urgentCount, icon: AlertTriangle, hint: 'marcados urgentes', tone: 'bg-amber-50 text-amber-600 dark:bg-amber-950/50 dark:text-amber-300', ring: 'ring-amber-500' },
+              { id: 'citaciones', label: 'Citaciones', value: stats.citacionesCount, icon: Users, hint: 'reuniones con padres', tone: 'bg-rose-50 text-rose-600 dark:bg-rose-950/50 dark:text-rose-300', ring: 'ring-rose-500' },
+              { id: 'confirmacion', label: 'Piden confirmar', value: stats.withConfirmationCount, icon: CheckSquare, hint: 'esperan respuesta', tone: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-300', ring: 'ring-emerald-500' },
+            ] as const).map(k => {
+              const active = quickFilter === k.id;
+              return (
+                <button
+                  key={k.id}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => setQuickFilter(active && k.id !== 'todos' ? 'todos' : k.id)}
+                  className={`text-left p-3.5 rounded-2xl border bg-slate-50 dark:bg-slate-800/50 transition-all cursor-pointer hover:shadow-sm ${active ? `border-transparent ring-2 ${k.ring} bg-white dark:bg-slate-900` : 'border-slate-100 dark:border-slate-800'}`}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${k.tone}`}><k.icon className="w-5 h-5" /></span>
+                    <div className="min-w-0">
+                      <p className="text-2xl font-black text-slate-900 dark:text-white leading-none">{k.value}</p>
+                      <p className="text-sm font-bold text-slate-700 dark:text-slate-200 mt-1">{k.label}</p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">{k.hint}</p>
+                </button>
+              );
+            })}
           </div>
         </div>
-
       </div>
 
-      {/* ── 2. FILTROS Y BÚSQUEDA MULTINIVEL ── */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm space-y-4">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-          
-          {/* Search Box */}
-          <div className="relative w-full md:w-96">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+      {/* ── 2. BUSCAR Y FILTRAR ── */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-xs space-y-3">
+        <div className="flex flex-col md:flex-row md:items-center gap-3">
+          <div className="relative flex-1">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
-              placeholder="Buscar por título, contenido o autor..."
+              placeholder="Buscar por título, contenido o quién lo envió..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-2xl pl-10 pr-4 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
+              className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500"
             />
           </div>
-
-          {/* Quick Clear Filter */}
-          {(selectedRoleFilter !== 'todos' || selectedLevelFilter !== 'todos' || selectedGradeFilter !== 'todos' || selectedSectionFilter !== 'todos' || selectedCategoryFilter !== 'todos') && (
+          <div className="flex items-center gap-2 shrink-0">
             <button
-              onClick={() => {
-                setSelectedRoleFilter('todos');
-                setSelectedLevelFilter('todos');
-                setSelectedGradeFilter('todos');
-                setSelectedSectionFilter('todos');
-                setSelectedCategoryFilter('todos');
-              }}
-              className="text-xs text-rose-600 dark:text-rose-400 font-bold hover:underline flex items-center gap-1 cursor-pointer"
+              type="button"
+              onClick={() => setShowMoreFilters(v => !v)}
+              aria-expanded={showMoreFilters}
+              className={`inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl border text-sm font-bold cursor-pointer ${showMoreFilters || activeFilters > 0 ? 'bg-violet-50 dark:bg-violet-950/40 border-violet-200 dark:border-violet-800 text-violet-700 dark:text-violet-300' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'}`}
             >
-              <X className="w-3.5 h-3.5" /> Limpiar filtros
+              <Filter className="w-4 h-4" /> ¿A quién va dirigido?{activeFilters > 0 && <span className="px-1.5 rounded-full bg-violet-600 text-white text-xs">{activeFilters}</span>}
             </button>
-          )}
-
+            {hasAnyFilter && (
+              <button type="button" onClick={clearFilters} className="inline-flex items-center gap-1 px-3 py-2.5 rounded-xl text-sm font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer">
+                <X className="w-4 h-4" /> Limpiar
+              </button>
+            )}
+          </div>
         </div>
 
-        {/* Granular Segment Selectors */}
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
-          
-          {/* Nivel */}
-          <div>
-            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Nivel Educativo</label>
-            <select
-              value={selectedLevelFilter}
-              onChange={(e) => {
-                setSelectedLevelFilter(e.target.value);
-                setSelectedGradeFilter('todos');
-                setSelectedSectionFilter('todos');
-              }}
-              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs font-semibold rounded-xl px-3 py-2 focus:ring-2 focus:ring-indigo-500"
-            >
-              <option value="todos">Todos los Niveles</option>
-              <option value="inicial">Inicial (3, 4, 5 años)</option>
-              <option value="primaria">Primaria (1° a 6°)</option>
-              <option value="secundaria">Secundaria (1° a 5°)</option>
-            </select>
-          </div>
+        {/* Tipo de comunicado en chips de color */}
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setSelectedCategoryFilter('todos')}
+            className={`px-3 py-1.5 rounded-full text-xs font-bold border cursor-pointer transition-all ${selectedCategoryFilter === 'todos' ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-transparent' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-slate-400'}`}
+          >
+            Todos
+          </button>
+          {(Object.keys(CATEGORY_STYLE) as (keyof typeof CATEGORY_STYLE)[]).map(key => {
+            const c = CATEGORY_STYLE[key];
+            const active = selectedCategoryFilter === key;
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setSelectedCategoryFilter(active ? 'todos' : key)}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border cursor-pointer transition-all ${active ? `${c.solid} text-white border-transparent shadow-sm` : `${c.chip} border-transparent hover:shadow-sm`}`}
+              >
+                <c.icon className="w-3.5 h-3.5" /> {c.label}
+                <span className={`px-1.5 rounded-full text-[10px] ${active ? 'bg-white/25' : 'bg-white/70 dark:bg-slate-900/40'}`}>{announcements.filter(a => a.categoria === key).length}</span>
+              </button>
+            );
+          })}
+        </div>
 
-          {/* Grado */}
-          <div>
-            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Grado Escolar</label>
-            <select
-              value={selectedGradeFilter}
-              onChange={(e) => {
-                setSelectedGradeFilter(e.target.value);
-                setSelectedSectionFilter('todos');
-              }}
-              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs font-semibold rounded-xl px-3 py-2 focus:ring-2 focus:ring-indigo-500"
-            >
-              <option value="todos">Todos los Grados</option>
-              {gradeLevels
-                .filter(g => selectedLevelFilter === 'todos' || g.nivel === selectedLevelFilter)
-                .map(g => (
+        {showMoreFilters && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3 border-t border-slate-100 dark:border-slate-800 animate-in fade-in slide-in-from-top-1 duration-150">
+            <div>
+              <label className="text-xs font-bold text-slate-500 block mb-1">Dirigido a</label>
+              <select value={selectedRoleFilter} onChange={(e) => setSelectedRoleFilter(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-sm font-semibold rounded-xl px-3 py-2">
+                <option value="todos">Toda la comunidad</option>
+                <option value="apoderado">Padres / apoderados</option>
+                <option value="estudiante">Alumnos</option>
+                <option value="docente">Docentes</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-500 block mb-1">Nivel</label>
+              <select
+                value={selectedLevelFilter}
+                onChange={(e) => { setSelectedLevelFilter(e.target.value); setSelectedGradeFilter('todos'); setSelectedSectionFilter('todos'); }}
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-sm font-semibold rounded-xl px-3 py-2"
+              >
+                <option value="todos">Todos los niveles</option>
+                <option value="inicial">Inicial</option>
+                <option value="primaria">Primaria</option>
+                <option value="secundaria">Secundaria</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-500 block mb-1">Grado</label>
+              <select
+                value={selectedGradeFilter}
+                onChange={(e) => { setSelectedGradeFilter(e.target.value); setSelectedSectionFilter('todos'); }}
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-sm font-semibold rounded-xl px-3 py-2"
+              >
+                <option value="todos">Todos los grados</option>
+                {gradeLevels.filter(g => selectedLevelFilter === 'todos' || g.nivel === selectedLevelFilter).map(g => (
                   <option key={g.id} value={g.id}>{g.nombre}</option>
                 ))}
-            </select>
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-500 block mb-1">Aula</label>
+              <select value={selectedSectionFilter} onChange={(e) => setSelectedSectionFilter(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-sm font-semibold rounded-xl px-3 py-2">
+                <option value="todos">Todas las aulas</option>
+                {sections
+                  .filter(s => (selectedGradeFilter === 'todos' || s.grado_id === selectedGradeFilter) && (selectedLevelFilter === 'todos' || s.grado?.nivel === selectedLevelFilter))
+                  .map(s => (
+                    <option key={s.id} value={s.id}>{s.grado?.nombre} &quot;{s.letra}&quot;</option>
+                  ))}
+              </select>
+            </div>
           </div>
+        )}
 
-          {/* Sección */}
-          <div>
-            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Sección / Aula</label>
-            <select
-              value={selectedSectionFilter}
-              onChange={(e) => setSelectedSectionFilter(e.target.value)}
-              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs font-semibold rounded-xl px-3 py-2 focus:ring-2 focus:ring-indigo-500"
-            >
-              <option value="todos">Todas las Secciones</option>
-              {sections
-                .filter(s => (selectedGradeFilter === 'todos' || s.grado_id === selectedGradeFilter) && (selectedLevelFilter === 'todos' || s.grado?.nivel === selectedLevelFilter))
-                .map(s => (
-                  <option key={s.id} value={s.id}>{s.grado?.nombre} &quot;{s.letra}&quot;</option>
-                ))}
-            </select>
-          </div>
-
-          {/* Destinatario Rol */}
-          <div>
-            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Dirigido A</label>
-            <select
-              value={selectedRoleFilter}
-              onChange={(e) => setSelectedRoleFilter(e.target.value)}
-              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs font-semibold rounded-xl px-3 py-2 focus:ring-2 focus:ring-indigo-500"
-            >
-              <option value="todos">Toda la Comunidad</option>
-              <option value="apoderado">Solo Apoderados / Padres</option>
-              <option value="estudiante">Solo Estudiantes</option>
-              <option value="docente">Solo Docentes</option>
-            </select>
-          </div>
-
-          {/* Categoría */}
-          <div>
-            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Tipo de Circular</label>
-            <select
-              value={selectedCategoryFilter}
-              onChange={(e) => setSelectedCategoryFilter(e.target.value)}
-              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs font-semibold rounded-xl px-3 py-2 focus:ring-2 focus:ring-indigo-500"
-            >
-              <option value="todos">Todas las Categorías</option>
-              <option value="general">Circular General</option>
-              <option value="academico">Académico / Evaluaciones</option>
-              <option value="citacion">Citación a Reunión</option>
-              <option value="urgente">Alerta Urgente</option>
-              <option value="evento">Evento / Actividad</option>
-            </select>
-          </div>
-
-        </div>
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          <strong className="text-slate-900 dark:text-white">{filteredAnnouncements.length}</strong> {filteredAnnouncements.length === 1 ? 'comunicado' : 'comunicados'}
+        </p>
       </div>
 
-      {/* ── 3. LISTA DE COMUNICADOS EMITIDOS ── */}
+      {/* ── 3. LISTA DE COMUNICADOS ── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {filteredAnnouncements.map((ann) => {
           const targetSection = sections.find(s => s.id === ann.seccion_id);
           const targetGrade = gradeLevels.find(g => g.id === ann.grado_id);
           const confirmCount = ann.confirmado_por?.length || 0;
           const readCount = ann.leido_por?.length || 1;
+          const c = categoryStyle(ann.categoria);
+          const channels = ann.canales && ann.canales.length > 0 ? ann.canales : ['sistema'];
+          const audience = [
+            ann.nivel_destinatario === 'todos' ? 'Todo el colegio' : LEVEL_LABEL[ann.nivel_destinatario] || ann.nivel_destinatario,
+            targetGrade?.nombre,
+            targetSection ? `Aula "${targetSection.letra}"` : undefined,
+          ].filter(Boolean).join(' · ');
 
           return (
-            <div 
+            <div
               key={ann.id}
-              className={`p-5 rounded-3xl border transition-all hover:shadow-md bg-white dark:bg-slate-900 flex flex-col justify-between ${
-                ann.es_urgente 
-                  ? 'border-rose-500/40 dark:border-rose-500/30 ring-1 ring-rose-500/20' 
-                  : 'border-slate-200/80 dark:border-slate-800'
-              }`}
+              className={`relative rounded-2xl border bg-white dark:bg-slate-900 overflow-hidden flex flex-col transition-all hover:shadow-lg hover:-translate-y-0.5 ${ann.es_urgente ? 'border-rose-300 dark:border-rose-800' : 'border-slate-200/80 dark:border-slate-800'}`}
             >
-              <div className="space-y-3">
-                
-                {/* Badges Header */}
+              <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${c.solid}`} />
+              <div className="p-4 pl-5 space-y-3 flex-1">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex flex-wrap items-center gap-1.5">
-                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                      ann.categoria === 'citacion' ? 'bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800' :
-                      ann.categoria === 'urgente' ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800' :
-                      ann.categoria === 'academico' ? 'bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800' :
-                      'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
-                    }`}>
-                      {ann.categoria}
+                    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${c.chip}`}>
+                      <c.icon className="w-3.5 h-3.5" /> {c.label}
                     </span>
-
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/60">
-                      {ann.nivel_destinatario === 'todos' ? 'Todos los Niveles' : `Educación ${ann.nivel_destinatario}`}
-                    </span>
-
-                    {targetGrade && (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
-                        {targetGrade.nombre}
-                      </span>
-                    )}
-
-                    {targetSection && (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
-                        Sec. &quot;{targetSection.letra}&quot;
+                    {ann.es_urgente && ann.categoria !== 'urgente' && (
+                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300">
+                        <AlertTriangle className="w-3.5 h-3.5" /> Urgente
                       </span>
                     )}
                   </div>
-
-                  <span className="text-[11px] text-slate-400 flex items-center gap-1">
-                    <Clock className="w-3 h-3" /> {ann.fecha_publicacion}
+                  <span className="text-xs font-semibold text-slate-500 flex items-center gap-1">
+                    <Calendar className="w-3.5 h-3.5 text-violet-500" /> {niceDate(ann.fecha_publicacion)}
                   </span>
                 </div>
 
-                {/* Title & Body Preview */}
                 <div>
-                  <h3 className="text-base font-bold text-slate-900 dark:text-white line-clamp-1">
-                    {ann.titulo}
-                  </h3>
-                  <p className="text-xs text-slate-600 dark:text-slate-400 mt-1.5 line-clamp-3 leading-relaxed whitespace-pre-line">
-                    {ann.contenido}
-                  </p>
+                  <h3 className="text-base font-black text-slate-900 dark:text-white line-clamp-1">{ann.titulo}</h3>
+                  <p className="text-sm text-slate-600 dark:text-slate-400 mt-1 line-clamp-2 leading-relaxed whitespace-pre-line">{ann.contenido}</p>
                 </div>
 
-                {/* If Citation: Detailed meeting pill */}
                 {ann.categoria === 'citacion' && (ann.fecha_citacion || ann.hora_citacion) && (
-                  <div className="p-3 rounded-2xl bg-rose-50/70 dark:bg-rose-950/30 border border-rose-200/60 dark:border-rose-900/40 text-xs text-rose-950 dark:text-rose-200 space-y-1">
-                    <div className="flex items-center gap-2 font-bold">
-                      <Calendar className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
-                      <span>Fecha: {ann.fecha_citacion || 'Por coordinar'} · {ann.hora_citacion || '08:00 AM'}</span>
-                    </div>
-                    {ann.lugar_citacion && (
-                      <div className="flex items-center gap-2 text-[11px] text-rose-700 dark:text-rose-300">
-                        <MapPin className="w-3.5 h-3.5" />
-                        <span>Lugar: {ann.lugar_citacion}</span>
-                      </div>
-                    )}
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/30 text-xs font-semibold text-rose-800 dark:text-rose-200">
+                    <span className="inline-flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" /> {ann.fecha_citacion ? niceDate(ann.fecha_citacion) : 'Por coordinar'} · {ann.hora_citacion || '08:00'}</span>
+                    {ann.lugar_citacion && <span className="inline-flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5" /> {ann.lugar_citacion}</span>}
                   </div>
                 )}
 
-                {/* Delivery Channels */}
-                <div className="flex items-center gap-2 pt-1">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Canales:</span>
-                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-600 dark:text-slate-300">
-                    <Bell className="w-3 h-3 text-indigo-500" /> Web
+                <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 font-semibold">
+                    <Users className="w-3.5 h-3.5" /> {ROLE_LABEL[ann.destinatarios_rol || 'todos'] || 'Toda la comunidad'}
                   </span>
-                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-600 dark:text-slate-300">
-                    <Mail className="w-3 h-3 text-blue-500" /> Email
+                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 font-semibold">
+                    <School className="w-3.5 h-3.5" /> {audience}
                   </span>
-                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-600 dark:text-slate-300">
-                    <MessageCircle className="w-3 h-3 text-emerald-500" /> WhatsApp
-                  </span>
+                  {channels.map(ch => {
+                    const cs = CHANNEL_STYLE[ch];
+                    return cs ? (
+                      <span key={ch} className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg font-semibold ${cs.cls}`}><cs.icon className="w-3.5 h-3.5" /> {cs.label}</span>
+                    ) : null;
+                  })}
                 </div>
-
               </div>
 
-              {/* Footer Actions */}
-              <div className="pt-4 mt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 text-xs text-slate-500">
-                  <span title="Lecturas en el sistema">👁️ {readCount} leídos</span>
+              <div className="px-4 pl-5 py-2.5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/30 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-3 text-xs font-semibold text-slate-500">
+                  <span className="inline-flex items-center gap-1" title="Personas que lo leyeron"><Eye className="w-3.5 h-3.5 text-violet-500" /> {readCount} {readCount === 1 ? 'lectura' : 'lecturas'}</span>
                   {ann.requiere_confirmacion && (
-                    <span className="text-emerald-600 dark:text-emerald-400 font-bold" title="Confirmaciones de asistencia">
-                      ✓ {confirmCount} confirmados
-                    </span>
+                    <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400" title="Confirmaciones recibidas"><CheckCircle2 className="w-3.5 h-3.5" /> {confirmCount} {confirmCount === 1 ? 'confirmó' : 'confirmaron'}</span>
                   )}
                 </div>
-
                 <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => handleCopyWhatsAppText(ann)}
-                    className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 border border-emerald-200/60 dark:border-emerald-900/60 transition-colors cursor-pointer"
-                    title="Copiar texto para WhatsApp"
-                  >
-                    <MessageCircle className="w-3.5 h-3.5" />
+                  <button type="button" onClick={() => handleCopyWhatsAppText(ann)} className="p-2 rounded-xl bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-200 transition-colors cursor-pointer" title="Copiar texto para WhatsApp">
+                    <MessageCircle className="w-4 h-4" />
                   </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setSelectedAnnouncement(ann)}
-                    className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold transition-colors cursor-pointer"
-                  >
-                    Ver Detalle
+                  <button type="button" onClick={() => setSelectedAnnouncement(ann)} className="px-3 py-1.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold transition-colors cursor-pointer">
+                    Ver detalle
                   </button>
-
-                  <button
-                    type="button"
-                    onClick={() => deleteAnnouncement(ann.id)}
-                    className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
-                    title="Eliminar comunicado"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
+                  <button type="button" onClick={() => deleteAnnouncement(ann.id)} className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer" title="Eliminar comunicado">
+                    <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
               </div>
-
             </div>
           );
         })}
 
         {filteredAnnouncements.length === 0 && (
-          <div className="col-span-full text-center py-16 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-8">
-            <Megaphone className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
-            <h3 className="text-base font-bold text-slate-900 dark:text-white">No se encontraron comunicados</h3>
-            <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-              Ajusta los filtros de nivel, grado o destinatario, o emite una nueva circular institucional.
+          <div className="col-span-full text-center py-14 bg-white dark:bg-slate-900 rounded-3xl border border-dashed border-slate-300 dark:border-slate-700 p-8">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-fuchsia-500 text-white flex items-center justify-center mx-auto mb-3"><Megaphone className="w-7 h-7" /></div>
+            <h3 className="text-base font-black text-slate-900 dark:text-white">{announcements.length === 0 ? 'Aún no has enviado comunicados' : 'No hay comunicados con estos filtros'}</h3>
+            <p className="text-sm text-slate-500 mt-1 max-w-sm mx-auto">
+              {announcements.length === 0 ? 'Envía el primero con el botón "Nuevo comunicado".' : 'Prueba con otro tipo o quita los filtros.'}
             </p>
+            {hasAnyFilter && (
+              <button type="button" onClick={clearFilters} className="mt-3 inline-flex items-center gap-1 px-4 py-2 rounded-xl bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 text-sm font-bold cursor-pointer"><X className="w-4 h-4" /> Quitar filtros</button>
+            )}
           </div>
         )}
       </div>
@@ -638,7 +609,7 @@ export default function AdminComunicadosPage() {
       {isCreateModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 max-w-2xl w-full my-8 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-200">
-            
+
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-indigo-50 dark:bg-indigo-950/70 border border-indigo-200/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
@@ -678,7 +649,7 @@ export default function AdminComunicadosPage() {
             </div>
 
             <form onSubmit={handleCreateSubmit} className="space-y-4">
-              
+
               {/* Título */}
               <div className="space-y-1">
                 <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Asunto / Título Oficial</label>

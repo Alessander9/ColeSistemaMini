@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import { useAulaColors } from '@/hooks/useAulaColors';
+import { findActiveNavHref } from '@/lib/navigation/activeNav';
 import {
   LayoutDashboard,
   Users, 
@@ -43,6 +44,10 @@ interface NavItem {
   icon: LucideIcon;
   badge?: string;
   badgeColor?: string;
+  /** Rutas sin opción propia que también marcan esta opción */
+  matches?: string[];
+  /** Pestaña que se abre por defecto cuando la ruta llega sin ?tab= */
+  defaultForPath?: boolean;
 }
 
 interface NavSection {
@@ -73,7 +78,22 @@ export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
     return defaultSec ? [{ seccion: defaultSec, cursos: [] }] : [];
   }, [currentUser, getTeacherSections, sections]);
 
-  const handleLinkClick = () => {
+  // Query actual (?tab=...) para marcar la opción correcta; se actualiza al navegar
+  const [search, setSearch] = useState('');
+  useEffect(() => {
+    const sync = () => setSearch(window.location.search);
+    sync();
+    window.addEventListener('popstate', sync);
+    window.addEventListener('app:locationchange', sync);
+    return () => {
+      window.removeEventListener('popstate', sync);
+      window.removeEventListener('app:locationchange', sync);
+    };
+  }, [pathname]);
+
+  const handleLinkClick = (href?: string) => {
+    // Al tocar una opción con ?tab= en la misma página, el pathname no cambia: se marca al instante
+    if (href) setSearch(href.includes('?') ? href.slice(href.indexOf('?')) : '');
     if (isMobileDrawer && onClose) {
       onClose();
     }
@@ -91,7 +111,7 @@ export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
       section: 'CONFIGURACIÓN INICIAL (PASO A PASO)',
       items: [
         { href: '/admin/academico?tab=cursos', label: '1. Cursos & Materias', icon: BookOpen, badge: 'Paso 1' },
-        { href: '/admin/academico?tab=grados', label: '2. Grados & Secciones', icon: School, badge: 'Paso 2' },
+        { href: '/admin/academico?tab=grados', label: '2. Grados & Secciones', icon: School, badge: 'Paso 2', defaultForPath: true, matches: ['/admin/secciones'] },
         { href: '/admin/docentes', label: '3. Plana Docente', icon: GraduationCap, badge: 'Paso 3' },
         { href: '/admin/horarios', label: '4. Horarios por Aula', icon: Calendar, badge: 'Paso 4' },
         { href: '/admin/matriculas', label: '5. Matrículas & Fichas PDF', icon: UserPlus, badge: 'Paso 5', badgeColor: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold' },
@@ -116,7 +136,7 @@ export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
       items: [
         { href: '/admin/reportes', label: 'Reportes & Actas Oficiales', icon: BarChart3 },
         { href: '/admin/usuarios', label: 'Gestión de Usuarios & Roles', icon: ShieldCheck, badge: 'RBAC' },
-        { href: '/admin/alertas', label: 'Centro de Alertas & Logs', icon: Bell, badge: 'KPIs' },
+        { href: '/admin/alertas', label: 'Alertas y actividad', icon: Bell },
         { href: '/admin/branding', label: 'Branding & SEO Institucional', icon: Palette, badge: 'Marca & SEO', badgeColor: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400' },
       ]
     }
@@ -216,6 +236,9 @@ export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
     currentUser?.rol === 'asistencia' ? asistenciaNav :
     estudianteNav;
 
+  // Una sola opción activa: la que mejor coincide con la página actual
+  const activeHref = findActiveNavHref(currentNav.flatMap(sec => sec.items), pathname, search);
+
   const inicialGrades = gradeLevels.filter(g => g.nivel === 'inicial');
   const primariaGrades = gradeLevels.filter(g => g.nivel === 'primaria');
   const secundariaGrades = gradeLevels.filter(g => g.nivel === 'secundaria');
@@ -308,7 +331,10 @@ export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
         {currentNav.map((sec, idx) => (
           <div key={idx} className="space-y-1">
             {!isDesktopCollapsed ? (
-              <h3 className="px-3 text-[10px] font-bold tracking-wider uppercase text-slate-400 dark:text-slate-500 mb-1.5 whitespace-nowrap animate-in fade-in duration-200">
+              <h3 className={`px-3 text-[10px] font-bold tracking-wider uppercase mb-1.5 whitespace-nowrap animate-in fade-in duration-200 flex items-center gap-1.5 ${
+                sec.items.some(it => it.href === activeHref) ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400 dark:text-slate-500'
+              }`}>
+                {sec.items.some(it => it.href === activeHref) && <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />}
                 {sec.section}
               </h3>
             ) : (
@@ -316,15 +342,16 @@ export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
             )}
 
             <div className="space-y-1">
-              {sec.items.map((item) => {
+              {sec.items.map((item, itemIdx) => {
                 const Icon = item.icon;
-                const isActive = pathname === item.href;
+                const isActive = item.href === activeHref;
 
                 return (
                   <Link
-                    key={item.href}
+                    key={`${item.href}-${itemIdx}`}
                     href={item.href}
-                    onClick={handleLinkClick}
+                    onClick={() => handleLinkClick(item.href)}
+                    aria-current={isActive ? 'page' : undefined}
                     title={isDesktopCollapsed ? `${item.label} (${sec.section})` : undefined}
                     className={`relative flex items-center rounded-xl text-xs font-medium transition-all group ${
                       isDesktopCollapsed
@@ -340,6 +367,9 @@ export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
                           }`
                     }`}
                   >
+                    {isActive && !isDesktopCollapsed && (
+                      <span className="absolute -left-3.5 top-1.5 bottom-1.5 w-1 rounded-r-full bg-indigo-600 dark:bg-indigo-400" aria-hidden="true" />
+                    )}
                     <div className={`flex items-center gap-2.5 min-w-0 ${isDesktopCollapsed ? 'justify-center' : ''}`}>
                       <Icon className={`w-4 h-4 shrink-0 transition-transform group-hover:scale-110 ${
                         isActive ? 'text-white' : 'text-slate-400 group-hover:text-indigo-600 dark:group-hover:text-indigo-400'
@@ -404,7 +434,7 @@ export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
                             <Link
                               key={sec.id}
                               href={`/admin/secciones/${sec.id}`}
-                              onClick={handleLinkClick}
+                              onClick={() => handleLinkClick()}
                               className="px-2 py-0.5 text-[10px] font-bold rounded bg-slate-100 dark:bg-slate-800 hover:bg-indigo-100 dark:hover:bg-indigo-950/60 text-slate-700 dark:text-slate-300 hover:text-indigo-600 transition-colors"
                             >
                               Aula {sec.letra}
@@ -442,7 +472,7 @@ export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
                             <Link
                               key={sec.id}
                               href={`/admin/secciones/${sec.id}`}
-                              onClick={handleLinkClick}
+                              onClick={() => handleLinkClick()}
                               className="px-2 py-0.5 text-[10px] font-bold rounded bg-slate-100 dark:bg-slate-800 hover:bg-indigo-100 dark:hover:bg-indigo-950/60 text-slate-700 dark:text-slate-300 hover:text-indigo-600 transition-colors"
                             >
                               Aula {sec.letra}
@@ -480,7 +510,7 @@ export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
                             <Link
                               key={sec.id}
                               href={`/admin/secciones/${sec.id}`}
-                              onClick={handleLinkClick}
+                              onClick={() => handleLinkClick()}
                               className="px-2 py-0.5 text-[10px] font-bold rounded bg-slate-100 dark:bg-slate-800 hover:bg-indigo-100 dark:hover:bg-indigo-950/60 text-slate-700 dark:text-slate-300 hover:text-indigo-600 transition-colors"
                             >
                               Aula {sec.letra}
@@ -508,7 +538,7 @@ export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
             </p>
             <Link
               href="/estudiante/tareas"
-              onClick={handleLinkClick}
+              onClick={() => handleLinkClick()}
               className="block w-full text-center px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-indigo-200/80 dark:border-indigo-800 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-600 dark:hover:text-white transition-colors"
             >
               Ver Trucos de Estudio 💡
@@ -547,7 +577,7 @@ export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
                   <div className="flex items-center justify-between mt-1.5 pt-1.5 border-t border-slate-100 dark:border-slate-800 text-[10px]">
                     <Link
                       href="/docente/asistencia"
-                      onClick={handleLinkClick}
+                      onClick={() => handleLinkClick()}
                       className="font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
                     >
                       Asistencia
@@ -555,7 +585,7 @@ export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
                     <span className="text-slate-300 dark:text-slate-700">•</span>
                     <Link
                       href={`/docente/notas?aula=${ts.seccion.id}`}
-                      onClick={handleLinkClick}
+                      onClick={() => handleLinkClick()}
                       className="font-bold text-blue-600 dark:text-blue-400 hover:underline"
                     >
                       Calificar

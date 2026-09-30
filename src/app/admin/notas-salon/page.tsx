@@ -8,30 +8,30 @@ import { AnnualReportCardModal } from '@/components/notas/AnnualReportCardModal'
 import { calculateStudentAnnualReportCard, StudentAnnualReportCard } from '@/lib/grades/calculations';
 import { GradeLetter, Section, Student, Course } from '@/types';
 import Link from 'next/link';
-import { 
-  BookOpen, 
-  Users, 
-  BarChart3, 
-  ChevronDown, 
-  ChevronRight, 
-  Search, 
-  Download, 
-  Award, 
-  TrendingUp, 
-  GraduationCap, 
-  Filter, 
-  CheckCircle2, 
-  AlertCircle, 
-  Clock, 
-  Sparkles, 
-  School, 
-  Printer, 
-  FileSpreadsheet, 
-  ExternalLink, 
-  UserCheck, 
-  Eye, 
-  ShieldCheck, 
-  X, 
+import {
+  BookOpen,
+  Users,
+  BarChart3,
+  ChevronDown,
+  ChevronRight,
+  Search,
+  Download,
+  Award,
+  TrendingUp,
+  GraduationCap,
+  Filter,
+  CheckCircle2,
+  AlertCircle,
+  Clock,
+  Sparkles,
+  School,
+  Printer,
+  FileSpreadsheet,
+  ExternalLink,
+  UserCheck,
+  Eye,
+  ShieldCheck,
+  X,
   FileText,
   Calendar,
   MoreHorizontal,
@@ -55,16 +55,17 @@ type FilterNivel = 'todos' | 'inicial' | 'primaria' | 'secundaria';
 type EvaluationStatus = 'todos' | 'sin_notas' | 'en_progreso' | 'evaluado';
 
 export default function NotasSalonPage() {
-  const { 
-    grades: gradeRecords, 
-    enrollments, 
-    courses, 
-    sections, 
-    gradeLevels, 
+  const {
+    grades: gradeRecords,
+    enrollments,
+    courses,
+    sections,
+    gradeLevels,
     teachers,
     academicContext,
     students: allStudentsList,
-    attendances
+    attendances,
+    evaluationPeriods = [],
   } = useApp();
 
   const [filterNivel, setFilterNivel] = useState<FilterNivel>('todos');
@@ -74,11 +75,18 @@ export default function NotasSalonPage() {
   const [search, setSearch] = useState('');
   const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
   const [activeMenuSectionId, setActiveMenuSectionId] = useState<string | null>(null);
+  // Grados desplegados (por defecto todos plegados para no mostrar todas las secciones de golpe)
+  const [expandedGrades, setExpandedGrades] = useState<Set<string>>(new Set());
+  const toggleGrade = (id: string) => setExpandedGrades(prev => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
 
   // Modal State for Selected Section
   const [selectedSectionForModal, setSelectedSectionForModal] = useState<Section | null>(null);
   const [selectedQuickViewSection, setSelectedQuickViewSection] = useState<Section | null>(null);
-  
+
   // Modal State for Grade Detail (Nivel / Grado)
   const [selectedGradeForDetail, setSelectedGradeForDetail] = useState<{ id: string; nombre: string; nivel: string } | null>(null);
 
@@ -89,7 +97,7 @@ export default function NotasSalonPage() {
   // Helper: Build section statistics & student grade data
   const getSectionData = (sectionId: string) => {
     const sectionEnrollments = enrollments.filter(e => e.seccion_id === sectionId && e.estado === 'activo');
-    
+
     const studentsData = sectionEnrollments.map(enr => {
       const studentGrades = gradeRecords.filter(g => {
         const base = g.matricula_id === enr.id;
@@ -100,10 +108,10 @@ export default function NotasSalonPage() {
         }
         return true;
       });
-      
+
       const scores = studentGrades.map(g => gradeToNum[g.nota_letra]).filter(Boolean);
       const avg = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
-      
+
       // Per-course averages
       const courseAvgs: Record<string, GradeLetter | null> = {};
       courses.forEach(course => {
@@ -158,10 +166,10 @@ export default function NotasSalonPage() {
       }
     }
 
-    return { 
-      students: studentsData, 
-      sectionAvg, 
-      distrib, 
+    return {
+      students: studentsData,
+      sectionAvg,
+      distrib,
       totalStudents: sectionEnrollments.length,
       evaluatedStudents: withGrades.length,
       status
@@ -172,12 +180,12 @@ export default function NotasSalonPage() {
   const sectionsByGrade = useMemo(() => {
     const filtered = sections.filter(s => {
       if (filterNivel !== 'todos' && s.grado?.nivel !== filterNivel) return false;
-      
+
       if (filterStatus !== 'todos') {
         const data = getSectionData(s.id);
         if (data.status !== filterStatus) return false;
       }
-      
+
       if (search) {
         const data = getSectionData(s.id);
         if (data.students.length === 0) return false;
@@ -185,7 +193,7 @@ export default function NotasSalonPage() {
 
       return true;
     });
-    
+
     const byGrade: Record<string, typeof sections> = {};
     filtered.forEach(sec => {
       const key = sec.grado_id;
@@ -202,7 +210,7 @@ export default function NotasSalonPage() {
     sections.forEach(s => {
       if (!s.grado || seen.has(s.grado_id)) return;
       if (filterNivel !== 'todos' && s.grado.nivel !== filterNivel) return;
-      
+
       // Check if this grade has any sections after filtering
       if (sectionsByGrade[s.grado_id] && sectionsByGrade[s.grado_id].length > 0) {
         seen.add(s.grado_id);
@@ -287,8 +295,8 @@ export default function NotasSalonPage() {
     });
 
     const average = evaluatedCount > 0 ? totalScore / evaluatedCount : 0;
-    const approvalRate = evaluatedCount > 0 
-      ? Math.round(((globalDistrib.AD + globalDistrib.A) / evaluatedCount) * 100) 
+    const approvalRate = evaluatedCount > 0
+      ? Math.round(((globalDistrib.AD + globalDistrib.A) / evaluatedCount) * 100)
       : 0;
 
     return {
@@ -303,280 +311,89 @@ export default function NotasSalonPage() {
   }, [enrollments, gradeRecords, sections]);
 
   // Modal Section Data for Full Grade Sheet
-  const modalSectionData = selectedSectionForModal 
-    ? getSectionData(selectedSectionForModal.id) 
+  const modalSectionData = selectedSectionForModal
+    ? getSectionData(selectedSectionForModal.id)
     : null;
 
   // Modal Section Data for Quick View
-  const quickViewData = selectedQuickViewSection 
-    ? getSectionData(selectedQuickViewSection.id) 
+  const quickViewData = selectedQuickViewSection
+    ? getSectionData(selectedQuickViewSection.id)
     : null;
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto animate-fade-in pb-16 font-sans">
-      
-      {/* ── 1. HERO HEADER BANNER CON KPIS MACRO (EXACT REFERENCE DESIGN) ── */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#0a0f26] via-[#101738] to-[#0c0f2a] text-white p-6 sm:p-8 shadow-2xl border border-slate-800">
-        
-        {/* Glow Effects */}
-        <div className="absolute top-0 right-1/4 w-96 h-96 bg-purple-600/15 rounded-full blur-3xl pointer-events-none -translate-y-1/2" />
-        <div className="absolute bottom-0 right-10 w-80 h-80 bg-blue-600/15 rounded-full blur-3xl pointer-events-none translate-y-1/3" />
-        <div className="absolute -left-10 top-1/2 w-60 h-60 bg-indigo-600/10 rounded-full blur-2xl pointer-events-none -translate-y-1/2" />
 
-        {/* ── TOP ROW: BADGES & ACTIONS ── */}
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          
-          {/* Left Badges */}
-          <div className="flex flex-wrap items-center gap-2.5">
-            <span className="px-3.5 py-1.5 rounded-full text-xs font-bold bg-[#21163e]/80 text-purple-200 border border-purple-500/30 flex items-center gap-1.5 shadow-xs">
-              <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-              <span>Evaluación CNEB (RVM 094 - 2020 - MINEDU)</span>
-            </span>
-            <span className="px-3.5 py-1.5 rounded-full text-xs font-bold bg-[#0d2828]/80 text-emerald-300 border border-emerald-500/30 flex items-center gap-1.5 shadow-xs">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span>II Bimestre 2026 • Activo</span>
-            </span>
-          </div>
-
-          {/* Right Action Buttons */}
-          <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
-            <button
-              type="button"
-              onClick={() => window.print()}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-[#1e2544]/90 hover:bg-[#28325a] text-white font-bold text-xs border border-slate-600/60 shadow-sm transition-all active:scale-95 cursor-pointer"
-            >
-              <Printer className="w-4 h-4 text-slate-300" />
-              <span>Imprimir Malla</span>
-            </button>
-            <Link
-              href="/admin/reportes"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs shadow-lg shadow-purple-600/40 transition-all active:scale-95 cursor-pointer"
-            >
-              <BarChart3 className="w-4 h-4" />
-              <span>Reportes & Actas</span>
-              <ChevronRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
-        </div>
-
-        {/* ── MIDDLE ROW: TITLE, SUBTITLE & 3D GRAPHIC ── */}
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6 my-6">
-          
-          {/* Title & Subtitle */}
-          <div className="max-w-2xl">
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white leading-tight">
-              Consolidado de <br className="hidden sm:inline" />
-              <span className="bg-gradient-to-r from-blue-200 via-indigo-200 to-purple-300 bg-clip-text text-transparent">
-                Calificaciones
-              </span>
-            </h1>
-            <p className="text-slate-400 text-xs sm:text-sm mt-3 leading-relaxed max-w-xl">
-              Monitorea el rendimiento académico por salón y competencias oficiales (AD – A – B – C). Haz clic sobre cualquier salón para abrir el expediente completo.
-            </p>
-          </div>
-
-          {/* Floating 3D Graphic & Cursive Quote */}
-          <div className="hidden lg:flex items-center gap-5 shrink-0 select-none pointer-events-none pr-2">
-            
-            {/* 3D Glassmorphic Cards Vector Graphic */}
-            <div className="relative w-44 h-28 flex items-center justify-center">
-              {/* Back card */}
-              <div className="absolute left-1 top-2 w-24 h-20 rounded-2xl bg-gradient-to-br from-indigo-500/10 to-purple-500/5 border border-indigo-400/20 backdrop-blur-md rotate-[-8deg] shadow-lg flex flex-col justify-center p-2.5 space-y-1 opacity-60">
-                <div className="w-10 h-1 rounded-full bg-indigo-400/40" />
-                <div className="w-14 h-1 rounded-full bg-indigo-400/20" />
-                <div className="w-8 h-1 rounded-full bg-indigo-400/20" />
-              </div>
-              {/* Middle card */}
-              <div className="absolute left-8 top-0 w-24 h-22 rounded-2xl bg-gradient-to-br from-blue-500/20 to-purple-500/10 border border-blue-400/30 backdrop-blur-lg rotate-[-2deg] shadow-xl flex flex-col items-center justify-center p-2.5">
-                <GraduationCap className="w-7 h-7 text-blue-300/80 drop-shadow-[0_0_10px_rgba(96,165,250,0.5)]" />
-              </div>
-              {/* Front Glowing Card with Bar chart */}
-              <div className="absolute right-0 bottom-0 w-28 h-22 rounded-2xl bg-gradient-to-br from-[#1a234f]/90 to-[#221c4e]/80 border border-purple-400/40 backdrop-blur-xl rotate-[6deg] shadow-2xl shadow-purple-900/50 p-2.5 flex flex-col justify-between">
-                <div className="flex items-center justify-between">
-                  <div className="w-3.5 h-1 rounded-full bg-purple-400/60" />
-                  <div className="w-1.5 h-1.5 rounded-full bg-purple-400" />
-                </div>
-                {/* Mini glowing bars */}
-                <div className="flex items-end justify-between gap-1.5 h-10 pt-1">
-                  <div className="w-2 h-3.5 bg-gradient-to-t from-blue-600 to-blue-400 rounded-t-sm shadow-[0_0_6px_rgba(59,130,246,0.6)]" />
-                  <div className="w-2 h-6 bg-gradient-to-t from-indigo-600 to-indigo-400 rounded-t-sm shadow-[0_0_6px_rgba(99,102,241,0.6)]" />
-                  <div className="w-2 h-9 bg-gradient-to-t from-purple-600 to-purple-400 rounded-t-sm shadow-[0_0_8px_rgba(168,85,247,0.7)]" />
-                  <div className="w-2 h-7 bg-gradient-to-t from-fuchsia-600 to-fuchsia-400 rounded-t-sm shadow-[0_0_6px_rgba(217,70,239,0.6)]" />
-                </div>
-              </div>
-            </div>
-
-            {/* Cursive Quote */}
-            <div className="text-right">
-              <p className="font-serif italic text-xs text-purple-200/60 leading-tight">
-                Mejores<br />
-                estudiantes,<br />
-                mejores futuros
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* ── BOTTOM ROW: 4 MACRO KPI CARDS ── */}
-        <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4 mt-2">
-          
-          {/* Card 1: TOTAL AULAS / SALONES */}
-          <div className="bg-[#101736]/90 border border-blue-500/25 hover:border-blue-500/50 rounded-2xl p-4 flex flex-col justify-between shadow-lg transition-all">
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-blue-600/25 border border-blue-500/40 text-blue-400 flex items-center justify-center shrink-0 shadow-inner">
-                    <School className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                      TOTAL AULAS / SALONES
+      {/* ══════════ 1. ENCABEZADO (claro y sobrio) ══════════ */}
+      {(() => {
+        const now = new Date();
+        const todayIso = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        const currentPeriod = evaluationPeriods.find(p => p.fecha_inicio <= todayIso && todayIso <= p.fecha_fin) || evaluationPeriods.find(p => p.activo && !p.cerrado);
+        const evaluatedPct = globalMetrics.totalStudents > 0 ? Math.round((globalMetrics.evaluatedCount / globalMetrics.totalStudents) * 100) : 0;
+        const avgPct = globalMetrics.average > 0 ? Math.round((globalMetrics.average / 4) * 100) : 0;
+        const kpis = [
+          { icon: School, tone: 'bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-300', bar: 'bg-blue-500', label: 'Aulas', value: `${globalMetrics.totalSections}`, hint: 'secciones en el colegio', pct: null as number | null },
+          { icon: Users, tone: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-300', bar: 'bg-emerald-500', label: 'Alumnos con notas', value: `${globalMetrics.evaluatedCount} de ${globalMetrics.totalStudents}`, hint: `${evaluatedPct}% ya tiene al menos una nota`, pct: evaluatedPct },
+          { icon: Award, tone: 'bg-amber-50 text-amber-600 dark:bg-amber-950/50 dark:text-amber-300', bar: 'bg-amber-500', label: 'Promedio del colegio', value: globalMetrics.average > 0 ? globalMetrics.averageLetter : '—', hint: globalMetrics.average > 0 ? `${globalMetrics.average.toFixed(2)} de 4.00` : 'Aún no hay notas registradas', pct: globalMetrics.average > 0 ? avgPct : null },
+          { icon: TrendingUp, tone: 'bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-300', bar: 'bg-indigo-500', label: 'Alumnos en logro', value: globalMetrics.evaluatedCount > 0 ? `${globalMetrics.approvalRate}%` : '—', hint: 'con promedio AD o A', pct: globalMetrics.evaluatedCount > 0 ? globalMetrics.approvalRate : null },
+        ];
+        return (
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden">
+            <div className="h-1.5 bg-gradient-to-r from-indigo-500 via-blue-500 to-emerald-500" />
+            <div className="p-5 sm:p-6 space-y-5">
+              <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
+                <div className="space-y-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                      <ShieldCheck className="w-3.5 h-3.5 text-indigo-500" /> Evaluación por competencias (CNEB)
                     </span>
-                    <div className="flex items-baseline gap-1.5 mt-0.5">
-                      <span className="text-2xl font-black text-white">{globalMetrics.totalSections}</span>
-                      <span className="text-xs text-slate-400 font-medium">secciones</span>
-                    </div>
-                  </div>
-                </div>
-                <button 
-                  onClick={() => setFilterNivel('todos')}
-                  className="w-6 h-6 rounded-full bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
-                  title="Ver todas las secciones"
-                >
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 mt-3 pt-2 border-t border-slate-800/60">
-              <div className="flex-1 bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                <div className="bg-blue-500 h-full rounded-full w-full shadow-[0_0_8px_rgba(59,130,246,0.6)]" />
-              </div>
-              <span className="text-[10px] font-black text-slate-400">100%</span>
-            </div>
-          </div>
-
-          {/* Card 2: ALUMNOS EVALUADOS */}
-          <div className="bg-[#101736]/90 border border-emerald-500/25 hover:border-emerald-500/50 rounded-2xl p-4 flex flex-col justify-between shadow-lg transition-all">
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-600/25 border border-emerald-500/40 text-emerald-400 flex items-center justify-center shrink-0 shadow-inner">
-                    <Users className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                      ALUMNOS EVALUADOS
-                    </span>
-                    <div className="flex items-baseline gap-1 mt-0.5">
-                      <span className="text-2xl font-black text-white">{globalMetrics.evaluatedCount}</span>
-                      <span className="text-xs text-slate-400 font-medium">/ {globalMetrics.totalStudents} total</span>
-                    </div>
-                  </div>
-                </div>
-                <button 
-                  className="w-6 h-6 rounded-full bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
-                >
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-            {(() => {
-              const pct = globalMetrics.totalStudents > 0 
-                ? Math.round((globalMetrics.evaluatedCount / globalMetrics.totalStudents) * 100) 
-                : 0;
-              return (
-                <div className="flex items-center gap-2 mt-3 pt-2 border-t border-slate-800/60">
-                  <div className="flex-1 bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                    <div 
-                      className="bg-emerald-500 h-full rounded-full shadow-[0_0_8px_rgba(16,185,129,0.6)]" 
-                      style={{ width: `${Math.max(5, pct)}%` }}
-                    />
-                  </div>
-                  <span className="text-[10px] font-black text-slate-400">{pct}%</span>
-                </div>
-              );
-            })()}
-          </div>
-
-          {/* Card 3: PROMEDIO INSTITUCIONAL */}
-          <div className="bg-[#101736]/90 border border-amber-500/25 hover:border-amber-500/50 rounded-2xl p-4 flex flex-col justify-between shadow-lg transition-all">
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-amber-600/25 border border-amber-500/40 text-amber-400 flex items-center justify-center shrink-0 shadow-inner">
-                    <Award className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                      PROMEDIO INSTITUCIONAL
-                    </span>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className="px-2 py-0.5 rounded-md font-black text-xs bg-blue-600 text-white shadow-sm">
-                        {globalMetrics.averageLetter}
+                    {currentPeriod && (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500" /> {currentPeriod.nombre} {academicContext?.anio || new Date().getFullYear()} en curso
                       </span>
-                      <span className="text-xs text-slate-300 font-bold">
-                        ({(globalMetrics.average > 0 ? globalMetrics.average : 3.02).toFixed(2)} / 4.0)
-                      </span>
-                    </div>
+                    )}
                   </div>
+                  <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
+                    <BarChart3 className="w-8 h-8 text-indigo-600" /> Notas por salón
+                  </h1>
+                  <p className="text-sm text-slate-600 dark:text-slate-300 max-w-2xl">
+                    Revisa cómo van las notas de cada aula (AD, A, B y C). Toca un grado para ver sus secciones y abre el consolidado de cualquiera para ver alumno por alumno.
+                  </p>
                 </div>
-                <button 
-                  className="w-6 h-6 rounded-full bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
-                >
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </button>
+                <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                  <button type="button" onClick={() => window.print()} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-700 dark:text-slate-200 hover:border-slate-400 cursor-pointer">
+                    <Printer className="w-4 h-4" /> Imprimir
+                  </button>
+                  <Link href="/admin/reportes" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-black shadow-md shadow-indigo-600/20">
+                    <FileText className="w-4 h-4" /> Reportes y actas <ChevronRight className="w-4 h-4" />
+                  </Link>
+                </div>
               </div>
-            </div>
-            <div className="flex items-center gap-2 mt-3 pt-2 border-t border-slate-800/60">
-              <div className="flex-1 bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                <div className="bg-amber-500 h-full rounded-full w-[75%] shadow-[0_0_8px_rgba(245,158,11,0.6)]" />
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                {kpis.map(k => (
+                  <div key={k.label} className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+                    <div className="flex items-center gap-3">
+                      <span className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${k.tone}`}><k.icon className="w-5 h-5" /></span>
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-slate-500 dark:text-slate-400">{k.label}</p>
+                        <p className="text-2xl font-black text-slate-900 dark:text-white leading-tight">{k.value}</p>
+                      </div>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-2">{k.hint}</p>
+                    {k.pct !== null && (
+                      <div className="h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden mt-2"><div className={`h-full rounded-full ${k.bar}`} style={{ width: `${k.pct}%` }} /></div>
+                    )}
+                  </div>
+                ))}
               </div>
-              <span className="text-[10px] font-black text-slate-400">75%</span>
             </div>
           </div>
-
-          {/* Card 4: TASA DE APROBACIÓN */}
-          <div className="bg-[#101736]/90 border border-purple-500/25 hover:border-purple-500/50 rounded-2xl p-4 flex flex-col justify-between shadow-lg transition-all">
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-purple-600/25 border border-purple-500/40 text-purple-400 flex items-center justify-center shrink-0 shadow-inner">
-                    <TrendingUp className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                      TASA DE APROBACIÓN
-                    </span>
-                    <div className="flex items-baseline gap-1.5 mt-0.5">
-                      <span className="text-2xl font-black text-white">{globalMetrics.approvalRate}%</span>
-                      <span className="text-xs text-slate-400 font-medium">(AD + A)</span>
-                    </div>
-                  </div>
-                </div>
-                <button 
-                  className="w-6 h-6 rounded-full bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
-                >
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 mt-3 pt-2 border-t border-slate-800/60">
-              <div className="flex-1 bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                <div 
-                  className="bg-fuchsia-500 h-full rounded-full shadow-[0_0_8px_rgba(217,70,239,0.6)]" 
-                  style={{ width: `${Math.max(5, globalMetrics.approvalRate)}%` }}
-                />
-              </div>
-              <span className="text-[10px] font-black text-slate-400">{globalMetrics.approvalRate}%</span>
-            </div>
-          </div>
-
-        </div>
-      </div>
+        );
+      })()}
 
       {/* ── 2. BARRA DE BÚSQUEDA Y FILTROS ── */}
       <div className="bg-white dark:bg-slate-900 p-3 sm:p-3.5 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
-        
+
         {/* Search Input */}
         <div className="relative flex-1 min-w-[240px]">
           <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -702,10 +519,40 @@ export default function NotasSalonPage() {
       </div>
 
       {/* ── 3. ORGANIZACIÓN POR NIVEL Y GRADO ── */}
-      <div className="space-y-8">
+      {sortedGrades.length > 0 && (() => {
+        const allOpen = sortedGrades.every(g => expandedGrades.has(g.id));
+        const totalSecs = sortedGrades.reduce((a, g) => a + (sectionsByGrade[g.id]?.length || 0), 0);
+        return (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs">
+            <p className="text-sm text-slate-600 dark:text-slate-300">
+              <strong className="text-slate-900 dark:text-white">{sortedGrades.length} {sortedGrades.length === 1 ? 'grado' : 'grados'}</strong> con <strong className="text-slate-900 dark:text-white">{totalSecs} {totalSecs === 1 ? 'sección' : 'secciones'}</strong>. Toca un grado para ver sus secciones.
+            </p>
+            <button
+              type="button"
+              onClick={() => setExpandedGrades(allOpen ? new Set() : new Set(sortedGrades.map(g => g.id)))}
+              aria-expanded={allOpen}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-black shadow-sm cursor-pointer shrink-0"
+            >
+              <ChevronDown className={`w-4 h-4 transition-transform ${allOpen ? 'rotate-180' : ''}`} />
+              {allOpen ? 'Plegar todas las secciones' : 'Desplegar todas las secciones'}
+            </button>
+          </div>
+        );
+      })()}
+
+      <div className="space-y-3">
         {sortedGrades.map(grade => {
           const gradeSections = sectionsByGrade[grade.id] || [];
-          
+          // Con una búsqueda activa se despliegan solos los grados que tienen resultados
+          const isOpen = expandedGrades.has(grade.id) || !!search.trim();
+          const gradeData = gradeSections.map(sec => getSectionData(sec.id));
+          const gradeEvaluated = gradeData.reduce((a, d) => a + d.evaluatedStudents, 0);
+          const statusCount = {
+            evaluado: gradeData.filter(d => d.status === 'evaluado').length,
+            en_progreso: gradeData.filter(d => d.status === 'en_progreso').length,
+            sin_notas: gradeData.filter(d => d.status === 'sin_notas').length,
+          };
+
           // Calculate total students in this grade
           const totalGradeStudents = gradeSections.reduce((acc, sec) => {
             const secData = getSectionData(sec.id);
@@ -740,11 +587,18 @@ export default function NotasSalonPage() {
           }
 
           return (
-            <div key={grade.id} className="space-y-4">
-              
+            <div key={grade.id} className="space-y-3">
+
               {/* Header Bar of Grade Group */}
-              <div className={`p-4 sm:p-4.5 rounded-2xl border ${headerBg} flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs transition-all`}>
-                
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => toggleGrade(grade.id)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleGrade(grade.id); } }}
+                aria-expanded={isOpen}
+                className={`p-4 sm:p-4.5 rounded-2xl border ${headerBg} flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs transition-all cursor-pointer hover:shadow-md`}
+              >
+
                 {/* Left: Cap Icon + Name + Section Count Pill */}
                 <div className="flex items-center gap-3">
                   <div className={`w-9 h-9 rounded-xl ${iconBg} flex items-center justify-center shadow-md shrink-0`}>
@@ -760,26 +614,37 @@ export default function NotasSalonPage() {
                   </div>
                 </div>
 
-                {/* Right: Total Students + Button "Ver detalle del nivel" */}
-                <div className="flex items-center gap-4 shrink-0 justify-between sm:justify-end">
-                  <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400">
+                {/* Right: resumen, detalle del nivel y botón para desplegar */}
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3 shrink-0 justify-between sm:justify-end">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300">
                     <Users className="w-4 h-4 text-slate-400" />
-                    <span>{totalGradeStudents} alumnos en total</span>
+                    <span>{totalGradeStudents} alumnos · {gradeEvaluated} con notas</span>
+                  </div>
+                  <div className="hidden md:flex items-center gap-1">
+                    {statusCount.evaluado > 0 && <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">{statusCount.evaluado} evaluadas</span>}
+                    {statusCount.en_progreso > 0 && <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300">{statusCount.en_progreso} en progreso</span>}
+                    {statusCount.sin_notas > 0 && <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">{statusCount.sin_notas} sin notas</span>}
                   </div>
 
                   <button
-                    onClick={() => setSelectedGradeForDetail(grade)}
+                    onClick={(e) => { e.stopPropagation(); setSelectedGradeForDetail(grade); }}
                     className="inline-flex items-center gap-1 px-3.5 py-1.5 rounded-xl bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-indigo-600 dark:text-indigo-400 font-bold text-xs border border-indigo-200/80 dark:border-indigo-900/60 shadow-xs transition-all hover:scale-[1.02] active:scale-95 cursor-pointer"
                   >
-                    <span>Ver detalle del nivel</span>
+                    <span>Detalle del grado</span>
                     <ChevronRight className="w-3.5 h-3.5" />
                   </button>
+
+                  <span className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-black ${isOpen ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900' : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700'}`}>
+                    {isOpen ? 'Ocultar secciones' : `Ver secciones (${gradeSections.length})`}
+                    <ChevronDown className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                  </span>
                 </div>
 
               </div>
 
-              {/* ── 4. TARJETAS DE SECCIONES (Grid 2 Columnas en Desktop) ── */}
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+              {/* ── 4. TARJETAS DE SECCIONES (solo con el grado desplegado) ── */}
+              {isOpen && (
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-1 duration-200">
                 {gradeSections
                   .sort((a, b) => a.letra.localeCompare(b.letra))
                   .map(section => {
@@ -799,7 +664,7 @@ export default function NotasSalonPage() {
                       >
                         {/* ── Card Top: Section Letter, Name, Info, Status & Quick View Eye ── */}
                         <div className="flex items-start justify-between gap-3">
-                          
+
                           {/* Left: Letter & Meta */}
                           <div className="flex items-center gap-3.5">
                             <div className={`w-11 h-11 rounded-xl ${cardSquircleColor} text-white font-black text-xl flex items-center justify-center shadow-sm shrink-0 group-hover:scale-105 transition-transform`}>
@@ -825,7 +690,7 @@ export default function NotasSalonPage() {
 
                           {/* Right: Status Badge & Eye Quick View Button */}
                           <div className="flex items-center gap-2 shrink-0">
-                            
+
                             {/* Status Badge */}
                             {data.status === 'sin_notas' ? (
                               <span className="px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200/70 dark:border-slate-700">
@@ -857,7 +722,7 @@ export default function NotasSalonPage() {
 
                         {/* ── 5. Card Middle: Distribución de Logros (AD, A, B, C) ── */}
                         <div className="my-4 pt-3.5 border-t border-slate-100 dark:border-slate-800/80">
-                          
+
                           {/* Header of Logros */}
                           <div className="flex items-center justify-between text-xs font-bold mb-2.5">
                             <span className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
@@ -871,7 +736,7 @@ export default function NotasSalonPage() {
 
                           {/* 4 Micro Bars for AD, A, B, C */}
                           <div className="grid grid-cols-4 gap-2 sm:gap-3">
-                            
+
                             {/* AD */}
                             <div className="space-y-1">
                               <div className="flex items-center text-[11px] font-bold text-slate-700 dark:text-slate-300 gap-1">
@@ -946,7 +811,7 @@ export default function NotasSalonPage() {
 
                         {/* ── 6. Card Bottom: Acciones de la Sección ── */}
                         <div className="pt-2 flex items-center justify-between gap-3">
-                          
+
                           {/* Primary Action Button: Ver Consolidado Completo */}
                           <button
                             type="button"
@@ -981,7 +846,7 @@ export default function NotasSalonPage() {
                                   <Users className="w-3.5 h-3.5 text-slate-400" />
                                   <span>Ver estudiantes</span>
                                 </button>
-                                
+
                                 <button
                                   onClick={() => {
                                     setSelectedSectionForModal(section);
@@ -1032,6 +897,7 @@ export default function NotasSalonPage() {
                     );
                   })}
               </div>
+              )}
 
             </div>
           );
@@ -1203,7 +1069,7 @@ export default function NotasSalonPage() {
       >
         {selectedSectionForModal && modalSectionData && (
           <div className="space-y-6">
-            
+
             {/* Header Card inside Modal */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-3xl bg-gradient-to-br from-slate-900 via-indigo-950 to-purple-950 text-white shadow-xl">
               <div className="flex items-center gap-3.5">
@@ -1389,10 +1255,10 @@ export default function NotasSalonPage() {
                             <td className="py-3 px-3 text-center">
                               {s.avgLetter ? (
                                 <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                                  isApproved 
-                                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400' 
-                                    : isAtRisk 
-                                    ? 'bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-400' 
+                                  isApproved
+                                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400'
+                                    : isAtRisk
+                                    ? 'bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-400'
                                     : 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400'
                                 }`}>
                                   {isApproved ? 'Aprobado' : isAtRisk ? 'En Riesgo' : 'En Proceso'}

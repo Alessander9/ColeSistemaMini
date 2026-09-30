@@ -90,6 +90,7 @@ import * as tasksService from '@/lib/services/tasksService';
 import * as notificationsService from '@/lib/services/notificationsService';
 import { logoutUser } from '@/lib/services/authService';
 import { isSupabaseConfigured } from '@/lib/supabase/config';
+import { pushToast, removeToast as removeToastFromStore } from '@/lib/toastStore';
 import { findStudentByQr } from '@/lib/attendance/qrMatcher';
 import { gradeToNumber } from '@/lib/grades/calculations';
 import { generateStudentPassword, generateStudentEmail, generateStudentUsername } from '@/lib/auth/generateCredentials';
@@ -109,7 +110,6 @@ interface AppContextType {
   setAcademicGrade: (gradeId?: string) => void;
   setAcademicSection: (sectionId?: string) => void;
   
-  toasts: ToastMessage[];
   showToast: (mensaje: string, tipo?: 'success' | 'error' | 'info' | 'warning', titulo?: string, duracionMs?: number) => void;
   removeToast: (id: string) => void;
 
@@ -364,6 +364,7 @@ interface AppContextType {
     fechaLimite: string;
     competenciaId?: string;
     archivoUrl?: string;
+    docenteId?: string;
   }) => TaskAssignment;
 
   submissions: TaskSubmission[];
@@ -524,6 +525,25 @@ function getInitialUser(): UserProfile {
   return MOCK_USERS[0];
 }
 
+// Guarda un dato en localStorage solo cuando ESE dato cambia.
+// Antes, cualquier cambio (una asistencia, una nota) volvía a serializar y escribir las ~30 tablas.
+function usePersist(key: string, value: unknown, raw = false) {
+  const mounted = React.useRef(false);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      // Al montar, el valor acaba de leerse de localStorage: solo se escribe si aún no existía
+      if (!mounted.current) {
+        mounted.current = true;
+        if (localStorage.getItem(key) !== null) return;
+      }
+      localStorage.setItem(key, raw ? String(value) : JSON.stringify(value));
+    } catch (err) {
+      console.warn(`[Storage] No se pudo guardar ${key}`, err);
+    }
+  }, [key, value, raw]);
+}
+
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [users, setUsers] = useState<UserProfile[]>(() => getInitialData('colegio_users', MOCK_USERS));
   const [currentUser, setCurrentUser] = useState<UserProfile>(() => getInitialUser());
@@ -564,23 +584,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [onboardingCompleted, setOnboardingCompleted] = useState<boolean>(() => getInitialData('colegio_onboarding', true));
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => getInitialData('colegio_sidebar_collapsed', false));
   const [brandingConfig, setBrandingConfig] = useState<SystemBrandingConfig>(() => getInitialData('cole_system_branding_config_v1', DEFAULT_BRANDING_CONFIG));
-  const isHydratedRef = React.useRef(true);
 
-  // Sincronización a localStorage de entidades operativas
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    try {
-      localStorage.setItem('colegio_announcements', JSON.stringify(announcements));
-      localStorage.setItem('colegio_calendar_events', JSON.stringify(calendarEvents));
-      localStorage.setItem('colegio_subsanaciones', JSON.stringify(subsanaciones));
-      localStorage.setItem('colegio_justifications', JSON.stringify(justificationRequests));
-      localStorage.setItem('colegio_staff_attendances', JSON.stringify(staffAttendances));
-      localStorage.setItem('colegio_payments', JSON.stringify(payments));
-      localStorage.setItem('colegio_behavior_logs', JSON.stringify(behaviorLogs));
-    } catch (err) {
-      console.warn('[Storage] Error sincronizando entidades operativas:', err);
-    }
-  }, [announcements, calendarEvents, subsanaciones, justificationRequests, staffAttendances, payments, behaviorLogs]);
+  // Sincronización a localStorage de entidades operativas (cada una solo cuando cambia)
+  usePersist('colegio_announcements', announcements);
+  usePersist('colegio_calendar_events', calendarEvents);
+  usePersist('colegio_subsanaciones', subsanaciones);
+  usePersist('colegio_justifications', justificationRequests);
+  usePersist('colegio_staff_attendances', staffAttendances);
+  usePersist('colegio_payments', payments);
+  usePersist('colegio_behavior_logs', behaviorLogs);
 
   // Hidratación y sincronización de DOM y cookies post-montaje
   useEffect(() => {
@@ -623,7 +635,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   const refreshData = async () => {
@@ -725,67 +736,31 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // Sincronización automática a localStorage cuando cambian los datos (solo post-hidratación)
-  useEffect(() => {
-    if (typeof window === 'undefined' || !isHydratedRef.current) return;
-    try {
-      localStorage.setItem('colegio_users', JSON.stringify(users));
-      localStorage.setItem('colegio_current_user', JSON.stringify(currentUser));
-      localStorage.setItem('colegio_students', JSON.stringify(students));
-      localStorage.setItem('colegio_enrollments', JSON.stringify(enrollments));
-      localStorage.setItem('colegio_attendances', JSON.stringify(attendances));
-      localStorage.setItem('colegio_grades', JSON.stringify(grades));
-      localStorage.setItem('colegio_tasks', JSON.stringify(tasks));
-      localStorage.setItem('colegio_submissions', JSON.stringify(submissions));
-      localStorage.setItem('colegio_exams', JSON.stringify(exams));
-      localStorage.setItem('colegio_notifications', JSON.stringify(notifications));
-      localStorage.setItem('colegio_courses', JSON.stringify(courses));
-      localStorage.setItem('colegio_section_courses', JSON.stringify(sectionCourses));
-      localStorage.setItem('colegio_schedule_slots', JSON.stringify(scheduleSlots));
-      localStorage.setItem('colegio_class_sessions', JSON.stringify(classSessions));
-      localStorage.setItem('colegio_academic_context', JSON.stringify(academicContext));
-      localStorage.setItem('colegio_children', JSON.stringify(childrenList));
-      localStorage.setItem('colegio_selected_child_id', selectedChildId);
-      localStorage.setItem('colegio_parents', JSON.stringify(parentsList));
-      localStorage.setItem('colegio_lms_modules', JSON.stringify(lmsModules));
-      localStorage.setItem('colegio_lms_progress', JSON.stringify(lmsProgress));
-      localStorage.setItem('colegio_alerts', JSON.stringify(alerts));
-      localStorage.setItem('colegio_audit_logs', JSON.stringify(auditLogs));
-      localStorage.setItem('colegio_sections', JSON.stringify(sections));
-      localStorage.setItem('colegio_evaluation_periods', JSON.stringify(evaluationPeriods));
-      localStorage.setItem('colegio_behavior_logs', JSON.stringify(behaviorLogs));
-      localStorage.setItem('colegio_payments', JSON.stringify(payments));
-    } catch (err) {
-      console.warn('[Storage] Error al guardar estados en localStorage', err);
-    }
-  }, [
-    users,
-    currentUser,
-    students,
-    enrollments,
-    attendances,
-    grades,
-    tasks,
-    submissions,
-    exams,
-    notifications,
-    courses,
-    sectionCourses,
-    scheduleSlots,
-    classSessions,
-    academicContext,
-    childrenList,
-    selectedChildId,
-    parentsList,
-    lmsModules,
-    lmsProgress,
-    alerts,
-    auditLogs,
-    sections,
-    evaluationPeriods,
-    behaviorLogs,
-    payments,
-  ]);
+  // Sincronización a localStorage: cada dato se guarda solo cuando cambia
+  usePersist('colegio_users', users);
+  usePersist('colegio_current_user', currentUser);
+  usePersist('colegio_students', students);
+  usePersist('colegio_enrollments', enrollments);
+  usePersist('colegio_attendances', attendances);
+  usePersist('colegio_grades', grades);
+  usePersist('colegio_tasks', tasks);
+  usePersist('colegio_submissions', submissions);
+  usePersist('colegio_exams', exams);
+  usePersist('colegio_notifications', notifications);
+  usePersist('colegio_courses', courses);
+  usePersist('colegio_section_courses', sectionCourses);
+  usePersist('colegio_schedule_slots', scheduleSlots);
+  usePersist('colegio_class_sessions', classSessions);
+  usePersist('colegio_academic_context', academicContext);
+  usePersist('colegio_children', childrenList);
+  usePersist('colegio_selected_child_id', selectedChildId, true);
+  usePersist('colegio_parents', parentsList);
+  usePersist('colegio_lms_modules', lmsModules);
+  usePersist('colegio_lms_progress', lmsProgress);
+  usePersist('colegio_alerts', alerts);
+  usePersist('colegio_audit_logs', auditLogs);
+  usePersist('colegio_sections', sections);
+  usePersist('colegio_evaluation_periods', evaluationPeriods);
 
   const resetToDemoData = () => {
     if (typeof window !== 'undefined') {
@@ -822,9 +797,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     showToast('Datos del sistema restaurados al estado original', 'info', 'Datos Reiniciados');
   };
 
-  const removeToast = useCallback((id: string) => {
-    setToasts(prev => prev.filter(t => t.id !== id));
-  }, []);
+  const removeToast = useCallback((id: string) => removeToastFromStore(id), []);
 
   const showToast = useCallback((
     mensaje: string, 
@@ -832,14 +805,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     titulo?: string, 
     duracionMs = 4000
   ) => {
-    const id = `toast-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
-    const newToast: ToastMessage = { id, tipo, titulo, mensaje, duracionMs };
-    setToasts(prev => [...prev.slice(-4), newToast]);
-
-    setTimeout(() => {
-      removeToast(id);
-    }, duracionMs);
-  }, [removeToast]);
+    pushToast({ tipo, titulo, mensaje, duracionMs });
+  }, []);
 
   const updateBrandingConfig = useCallback((newConfig: Partial<SystemBrandingConfig>) => {
     setBrandingConfig((prev) => {
@@ -1526,13 +1493,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     fechaLimite: string;
     competenciaId?: string;
     archivoUrl?: string;
+    docenteId?: string;
   }) => {
     const course = courses.find(c => c.id === data.cursoId) || MOCK_COURSES.find(c => c.id === data.cursoId);
     const newTask: TaskAssignment = {
       id: `task-${Date.now()}`,
       curso_id: data.cursoId,
       seccion_id: data.seccionId,
-      docente_id: currentUser.id,
+      docente_id: data.docenteId || currentUser.id,
       competencia_id: data.competenciaId,
       titulo: data.titulo,
       descripcion: data.descripcion,
@@ -1996,9 +1964,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     horaFin: string;
     aula?: string;
   }) => {
-    const seccion = MOCK_SECTIONS.find(s => s.id === data.seccionId);
-    const curso = MOCK_COURSES.find(c => c.id === data.cursoId);
-    const docente = MOCK_USERS.find(u => u.id === data.docenteId);
+    // Datos reales primero; los de ejemplo solo como respaldo
+    const seccion = sections.find(s => s.id === data.seccionId) || MOCK_SECTIONS.find(s => s.id === data.seccionId);
+    const curso = courses.find(c => c.id === data.cursoId) || MOCK_COURSES.find(c => c.id === data.cursoId);
+    const docente = users.find(u => u.id === data.docenteId) || MOCK_USERS.find(u => u.id === data.docenteId);
 
     const newSlot: ScheduleSlot = {
       id: `slot-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
@@ -2034,13 +2003,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return sectionCourses.filter(sc => sc.seccion_id === seccionId);
   }, [sectionCourses]);
 
+  // Cada bloque con el curso y el docente actuales (si se renombran o reasignan, el horario se actualiza solo)
+  const withCurrentRefs = useCallback((slot: ScheduleSlot): ScheduleSlot => ({
+    ...slot,
+    curso: courses.find(c => c.id === slot.curso_id) || slot.curso,
+    docente: users.find(u => u.id === slot.docente_id) || slot.docente,
+    seccion: sections.find(sec => sec.id === slot.seccion_id) || slot.seccion,
+  }), [courses, users, sections]);
+
   const getSectionSchedule = useCallback((seccionId: string) => {
-    return scheduleSlots.filter(slot => slot.seccion_id === seccionId);
-  }, [scheduleSlots]);
+    return scheduleSlots.filter(slot => slot.seccion_id === seccionId).map(withCurrentRefs);
+  }, [scheduleSlots, withCurrentRefs]);
 
   const getTeacherSchedule = useCallback((docenteId: string) => {
-    return scheduleSlots.filter(slot => slot.docente_id === docenteId);
-  }, [scheduleSlots]);
+    return scheduleSlots.filter(slot => slot.docente_id === docenteId).map(withCurrentRefs);
+  }, [scheduleSlots, withCurrentRefs]);
 
   const getTeacherSections = useCallback((docenteId: string) => {
     const assignments = sectionCourses.filter(sc => sc.docente_id === docenteId);
@@ -2506,7 +2483,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setAcademicLevel,
     setAcademicGrade,
     setAcademicSection,
-    toasts,
     showToast,
     removeToast,
     users,
@@ -2832,7 +2808,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }), [
     currentUser,
     academicContext,
-    toasts,
     students,
     enrollments,
     teachers,
@@ -2872,6 +2847,44 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     subsanaciones,
     justificationRequests,
     staffAttendances,
+    users,
+    courses,
+    handleSetCurrentUser,
+    removeToast,
+    showToast,
+    updateUserRole,
+    toggleUserStatus,
+    deleteUser,
+    switchRole,
+    addCourse,
+    updateCourse,
+    deleteCourse,
+    getSectionCourses,
+    getSectionSchedule,
+    getTeacherSchedule,
+    getTeacherSections,
+    checkTeacherConflict,
+    auditScheduleIntegrity,
+    getCurrentOrNextClass,
+    setAcademicContext,
+    setAcademicLevel,
+    setAcademicGrade,
+    setAcademicSection,
+    preloadOfficialCnebCurriculum,
+    addSection,
+    updateSection,
+    deleteSection,
+    assignSectionTutor,
+    updateEvaluationPeriod,
+    toggleClosePeriod,
+    justifyAttendance,
+    addBehaviorLog,
+    deleteBehaviorLog,
+    addPayment,
+    updatePaymentStatus,
+    generateMonthlyFeeRecords,
+    promoteStudentsMassive,
+    updateEnrollmentDocuments,
   ]);
 
   // El estado inicial se lee de localStorage, que no existe en el servidor.

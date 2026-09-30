@@ -1,7 +1,7 @@
 // ColeSistema Mini — Service Worker
 // Handles: push notifications, offline cache, background sync
 
-const CACHE_NAME = 'colesistema-v2';
+const CACHE_NAME = 'colesistema-v3';
 const OFFLINE_URL = '/';
 
 const PRECACHE = [
@@ -35,11 +35,20 @@ self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   if (!event.request.url.startsWith(self.location.origin)) return;
 
+  // Solo se guarda en caché lo útil sin conexión: páginas y archivos estáticos.
+  // Antes se guardaba cada respuesta (datos de navegación, recargas de desarrollo...), escribiendo en disco en cada clic.
+  const url = new URL(event.request.url);
+  const cacheable =
+    event.request.mode === 'navigate' ||
+    url.pathname.startsWith('/_next/static/') ||
+    /\.(png|jpg|jpeg|svg|ico|webp|woff2?)$/.test(url.pathname);
+  if (url.searchParams.has('_rsc') || url.pathname.includes('hot-update') || url.pathname.includes('webpack-hmr')) return;
+
   event.respondWith(
     fetch(event.request)
       .then((response) => {
         // Cache successful responses
-        if (response && response.status === 200) {
+        if (cacheable && response && response.status === 200) {
           const clone = response.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
         }

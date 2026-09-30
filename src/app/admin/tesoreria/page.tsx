@@ -24,8 +24,11 @@ import {
   Sparkles,
   ChevronRight
 } from 'lucide-react';
-import { generateReceiptPdf } from '@/lib/pdf/receiptPdfGenerator';
 import confetti from 'canvas-confetti';
+
+// Se carga solo al generar el PDF (así jsPDF no pesa en la carga inicial de la página)
+const generateReceiptPdf = async (...args: Parameters<typeof import('@/lib/pdf/receiptPdfGenerator').generateReceiptPdf>) =>
+  (await import('@/lib/pdf/receiptPdfGenerator')).generateReceiptPdf(...args);
 
 export default function AdminTesoreriaPage() {
   /* 

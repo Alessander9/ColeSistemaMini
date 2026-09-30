@@ -86,7 +86,8 @@ export default function SectionHubDashboardPage() {
 
   // Real attendance rate for this section
   const sectionAttendances = useMemo(() => {
-    return attendances.filter(a => sectionEnrollments.some(e => e.id === a.matricula_id));
+    const ids = new Set(sectionEnrollments.map(e => e.id));
+    return attendances.filter(a => ids.has(a.matricula_id));
   }, [attendances, sectionEnrollments]);
 
   const presentCount = sectionAttendances.filter(a => a.estado === 'presente' || a.estado === 'tardanza').length;
