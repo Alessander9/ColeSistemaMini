@@ -201,7 +201,7 @@ export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
       section: 'CONTROL DE ASISTENCIA & BIENESTAR',
       items: [
         { href: '/estudiante/asistencias', label: '1. Monitoreo de Asistencia', icon: Clock, badge: '● Live', badgeColor: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
-        { href: '/apoderado', label: '2. Justificar Inasistencia', icon: ShieldCheck },
+        { href: '/apoderado/justificar', label: '2. Justificar Inasistencia', icon: ShieldCheck },
       ]
     },
     {
