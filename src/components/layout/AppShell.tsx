@@ -121,7 +121,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
         toasts={toasts}
         onRemove={removeToast}
       />
-      {/* <WhatsAppFloatingButton /> */}
+      <WhatsAppFloatingButton />
       <PwaInstallBanner />
     </>
   );

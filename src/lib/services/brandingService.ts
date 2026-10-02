@@ -170,7 +170,7 @@ export const DEFAULT_BRANDING_CONFIG: SystemBrandingConfig = {
   // PWA & Canales de Soporte
   pwaShortName: 'ColeSistema',
   pwaThemeColor: '#4f46e5',
-  whatsappSoporteNumero: '51987654321',
+  whatsappSoporteNumero: '51918643775',
   whatsappSoporteMensaje: 'Hola, deseo información sobre las matrículas y servicios escolares.',
   mostrarWhatsappFlotante: true,
   googleAnalyticsId: '',
