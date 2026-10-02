@@ -80,7 +80,9 @@ import {
   MOCK_BEHAVIOR_LOGS,
   MOCK_ANNOUNCEMENTS,
   MOCK_CALENDAR_EVENTS,
-  MOCK_SUBSANACIONES
+  MOCK_SUBSANACIONES,
+  MOCK_JUSTIFICATIONS,
+  MOCK_STAFF_ATTENDANCES
 } from '@/lib/mock-data';
 import { getOfficialCnebCoursesAndCompetencies } from '@/lib/cneb/officialCurriculum';
 import * as academicService from '@/lib/services/academicService';
@@ -437,14 +439,14 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-const STORAGE_VERSION_KEY = 'colegio_storage_clean_v6';
+const STORAGE_VERSION_KEY = 'colegio_storage_clean_v7';
 
 function ensureLegacyMockDataPurged() {
   if (typeof window === 'undefined') return;
   try {
     const version = localStorage.getItem(STORAGE_VERSION_KEY);
     if (!version) {
-      // Limpiar todas las claves para dejar la base de datos completamente limpia
+      // Limpiar todas las claves para dejar la base de datos completamente limpia y actualizada con datos de medio año
       const legacyKeys = [
         'colegio_users',
         'colegio_current_user',
@@ -465,9 +467,19 @@ function ensureLegacyMockDataPurged() {
         'colegio_alerts',
         'colegio_audit_logs',
         'colegio_storage_clean_v5',
+        'colegio_storage_clean_v6',
+        'colegio_payments',
+        'colegio_behavior_logs',
+        'colegio_announcements',
+        'colegio_calendar_events',
+        'colegio_subsanaciones',
+        'colegio_justifications',
+        'colegio_staff_attendances',
+        'colegio_sections',
+        'colegio_evaluation_periods'
       ];
       legacyKeys.forEach(k => localStorage.removeItem(k));
-      localStorage.setItem(STORAGE_VERSION_KEY, '6.0.0');
+      localStorage.setItem(STORAGE_VERSION_KEY, '7.0.0');
     }
   } catch (err) {
     console.warn('[Storage] Error al purgar datos mock antiguos:', err);
@@ -578,8 +590,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [announcements, setAnnouncements] = useState<Announcement[]>(() => getInitialData('colegio_announcements', MOCK_ANNOUNCEMENTS));
   const [calendarEvents, setCalendarEvents] = useState<SchoolCalendarEvent[]>(() => getInitialData('colegio_calendar_events', MOCK_CALENDAR_EVENTS));
   const [subsanaciones, setSubsanaciones] = useState<SubsanacionRecord[]>(() => getInitialData('colegio_subsanaciones', MOCK_SUBSANACIONES));
-  const [justificationRequests, setJustificationRequests] = useState<JustificationRequest[]>(() => getInitialData('colegio_justifications', []));
-  const [staffAttendances, setStaffAttendances] = useState<StaffAttendanceRecord[]>(() => getInitialData('colegio_staff_attendances', []));
+  const [justificationRequests, setJustificationRequests] = useState<JustificationRequest[]>(() => getInitialData('colegio_justifications', MOCK_JUSTIFICATIONS));
+  const [staffAttendances, setStaffAttendances] = useState<StaffAttendanceRecord[]>(() => getInitialData('colegio_staff_attendances', MOCK_STAFF_ATTENDANCES));
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [onboardingCompleted, setOnboardingCompleted] = useState<boolean>(() => getInitialData('colegio_onboarding', true));
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => getInitialData('colegio_sidebar_collapsed', false));
@@ -778,6 +790,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         'colegio_section_courses',
         'colegio_schedule_slots',
         'colegio_class_sessions',
+        'colegio_payments',
+        'colegio_behavior_logs',
+        'colegio_announcements',
+        'colegio_calendar_events',
+        'colegio_subsanaciones',
+        'colegio_justifications',
+        'colegio_staff_attendances',
+        'colegio_children',
+        'colegio_parents',
+        'colegio_alerts',
+        'colegio_audit_logs',
+        'colegio_evaluation_periods',
+        'colegio_sections'
       ];
       storageKeys.forEach((key) => localStorage.removeItem(key));
     }
@@ -794,6 +819,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setSectionCourses(MOCK_SECTION_COURSES);
     setScheduleSlots(MOCK_SCHEDULE_SLOTS);
     setClassSessions(MOCK_CLASS_SESSIONS);
+    setPayments(MOCK_PAYMENTS);
+    setBehaviorLogs(MOCK_BEHAVIOR_LOGS);
+    setAlerts(MOCK_SYSTEM_ALERTS);
+    setAuditLogs(MOCK_AUDIT_LOGS);
+    setAnnouncements(MOCK_ANNOUNCEMENTS);
+    setCalendarEvents(MOCK_CALENDAR_EVENTS);
+    setSubsanaciones(MOCK_SUBSANACIONES);
+    setJustificationRequests(MOCK_JUSTIFICATIONS);
+    setStaffAttendances(MOCK_STAFF_ATTENDANCES);
+    setChildrenList(MOCK_CHILDREN);
+    setParentsList(MOCK_PARENTS);
+    setEvaluationPeriods(MOCK_EVALUATION_PERIODS);
+    setSections(MOCK_SECTIONS);
     showToast('Datos del sistema restaurados al estado original', 'info', 'Datos Reiniciados');
   };
 
