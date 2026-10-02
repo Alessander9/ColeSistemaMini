@@ -249,6 +249,12 @@ export function getStoredBranding(): SystemBrandingConfig {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return DEFAULT_BRANDING_CONFIG;
     const parsed = JSON.parse(raw);
+
+    // Si el almacenamiento local aún tiene el número de prueba antiguo o vacío, actualizarlo
+    if (!parsed.whatsappSoporteNumero || parsed.whatsappSoporteNumero === '51987654321' || parsed.whatsappSoporteNumero === '987654321') {
+      parsed.whatsappSoporteNumero = DEFAULT_BRANDING_CONFIG.whatsappSoporteNumero;
+    }
+
     return {
       ...DEFAULT_BRANDING_CONFIG,
       ...parsed,

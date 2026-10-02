@@ -595,7 +595,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [onboardingCompleted, setOnboardingCompleted] = useState<boolean>(() => getInitialData('colegio_onboarding', true));
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => getInitialData('colegio_sidebar_collapsed', false));
-  const [brandingConfig, setBrandingConfig] = useState<SystemBrandingConfig>(() => getInitialData('cole_system_branding_config_v1', DEFAULT_BRANDING_CONFIG));
+  const [brandingConfig, setBrandingConfig] = useState<SystemBrandingConfig>(() => getStoredBranding());
 
   // Sincronización a localStorage de entidades operativas (cada una solo cuando cambia)
   usePersist('colegio_announcements', announcements);

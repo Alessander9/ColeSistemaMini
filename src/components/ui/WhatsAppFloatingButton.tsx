@@ -8,14 +8,19 @@ export function WhatsAppFloatingButton() {
   const { brandingConfig } = useApp();
   const [isOpen, setIsOpen] = useState(false);
 
-  if (!brandingConfig?.mostrarWhatsappFlotante || !brandingConfig?.whatsappSoporteNumero) {
+  if (brandingConfig?.mostrarWhatsappFlotante === false) {
     return null;
   }
 
-  const cleanNumber = brandingConfig.whatsappSoporteNumero.replace(/[^0-9]/g, '');
+  const rawNumber = brandingConfig?.whatsappSoporteNumero;
+  const targetNumber = (rawNumber && rawNumber !== '51987654321' && rawNumber !== '987654321')
+    ? rawNumber
+    : '51918643775';
+
+  const cleanNumber = targetNumber.replace(/[^0-9]/g, '');
   const encodedText = encodeURIComponent(
-    brandingConfig.whatsappSoporteMensaje ||
-    `Hola, me comunico desde la plataforma de ${brandingConfig.nombreInstitucion || 'ColeSistema'}.`
+    brandingConfig?.whatsappSoporteMensaje ||
+    `Hola, me comunico desde la plataforma de ${brandingConfig?.nombreInstitucion || 'ColeSistema'}.`
   );
   const waUrl = `https://wa.me/${cleanNumber}?text=${encodedText}`;
 
