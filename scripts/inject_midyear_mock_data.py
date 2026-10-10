@@ -695,6 +695,15 @@ export const MOCK_GRADE_RECORDS: GradeRecord[] = [
 export const MOCK_ATTENDANCES: AttendanceRecord[] = [
   // Semana actual de Octubre (ingresos QR y puntualidad)
   { id: 'att-oct-01-1', matricula_id: 'enr-1', fecha: '2026-10-01', hora_registro: '07:44:12', estado: 'presente', metodo: 'qr', tipo_registro: 'ingreso', observacion: 'Ingreso puntual por molinete portería A', registrado_por: 'user-asistencia-1' },
+  // Lucas (enr-1): un caso de cada estado para mostrar todo el historial al apoderado
+  { id: 'att-oct-02-1', matricula_id: 'enr-1', fecha: '2026-10-02', hora_registro: '08:09:40', estado: 'tardanza', metodo: 'qr', tipo_registro: 'ingreso', observacion: 'Llegó tarde por la lluvia', registrado_por: 'user-asistencia-1' },
+  { id: 'att-sep-30-1', matricula_id: 'enr-1', fecha: '2026-09-30', hora_registro: '—', estado: 'falta', metodo: 'manual', tipo_registro: 'inasistencia', registrado_por: 'teacher-1' },
+  { id: 'att-sep-29-1', matricula_id: 'enr-1', fecha: '2026-09-29', hora_registro: '—', estado: 'justificado', metodo: 'manual', tipo_registro: 'inasistencia', observacion: 'Cita médica con constancia', registrado_por: 'teacher-1' },
+  { id: 'att-sep-28-1', matricula_id: 'enr-1', fecha: '2026-09-28', hora_registro: '07:43:05', estado: 'presente', metodo: 'qr', tipo_registro: 'ingreso', registrado_por: 'user-asistencia-1' },
+  { id: 'att-sep-24-1', matricula_id: 'enr-1', fecha: '2026-09-24', hora_registro: '08:12:30', estado: 'tardanza', metodo: 'qr', tipo_registro: 'ingreso', registrado_por: 'user-asistencia-1' },
+  { id: 'att-sep-23-1', matricula_id: 'enr-1', fecha: '2026-09-23', hora_registro: '—', estado: 'falta', metodo: 'manual', tipo_registro: 'inasistencia', registrado_por: 'teacher-1' },
+  { id: 'att-sep-22-1', matricula_id: 'enr-1', fecha: '2026-09-22', hora_registro: '07:40:18', estado: 'presente', metodo: 'qr', tipo_registro: 'ingreso', registrado_por: 'user-asistencia-1' },
+  { id: 'att-sep-21-1', matricula_id: 'enr-1', fecha: '2026-09-21', hora_registro: '07:45:52', estado: 'presente', metodo: 'qr', tipo_registro: 'ingreso', registrado_por: 'user-asistencia-1' },
   { id: 'att-oct-01-2', matricula_id: 'enr-2', fecha: '2026-10-01', hora_registro: '07:48:30', estado: 'presente', metodo: 'qr', tipo_registro: 'ingreso', registrado_por: 'user-asistencia-1' },
   { id: 'att-oct-01-3', matricula_id: 'enr-3', fecha: '2026-10-01', hora_registro: '08:08:15', estado: 'tardanza', metodo: 'qr', tipo_registro: 'ingreso', observacion: 'Tardanza por congestión vehicular', registrado_por: 'user-asistencia-1' },
   { id: 'att-oct-01-4', matricula_id: 'enr-4', fecha: '2026-10-01', hora_registro: '07:50:00', estado: 'presente', metodo: 'qr', tipo_registro: 'ingreso', registrado_por: 'user-asistencia-1' },
@@ -1274,8 +1283,35 @@ export const MOCK_JUSTIFICATIONS: JustificationRequest[] = [
     motivo: 'Atención médica odontológica especializada con reposo indicado.',
     estado: 'aprobada',
     respuesta_colegio: 'Falta justificada en el registro oficial. Se otorgará reprogramación de actividades.',
-    revisado_por: 'teacher-1',
+    revisado_por: 'Tomás',
     created_at: '2026-09-25T08:30:00Z',
+  },
+  // Lucas (enr-1): falta del 29/09 ya aceptada y la del 23/09 aún en revisión (la del 30/09 queda sin justificar)
+  {
+    id: 'just-2',
+    matricula_id: 'enr-1',
+    estudiante_id: 'student-1',
+    apoderado_id: 'parent-1',
+    apoderado_nombre: 'Perico Morales Silva',
+    fecha: '2026-09-29',
+    tipo: 'falta',
+    motivo: 'Tuvo fiebre y lo llevamos al pediatra. Adjunto la constancia médica.',
+    estado: 'aprobada',
+    respuesta_colegio: 'Falta justificada. Que se recupere pronto.',
+    revisado_por: 'Tomás',
+    created_at: '2026-09-29T09:15:00Z',
+  },
+  {
+    id: 'just-3',
+    matricula_id: 'enr-1',
+    estudiante_id: 'student-1',
+    apoderado_id: 'parent-1',
+    apoderado_nombre: 'Perico Morales Silva',
+    fecha: '2026-09-23',
+    tipo: 'falta',
+    motivo: 'Tuvimos una emergencia familiar y no pudo asistir.',
+    estado: 'pendiente',
+    created_at: '2026-09-23T19:40:00Z',
   }
 ];
 

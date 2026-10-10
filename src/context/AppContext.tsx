@@ -439,7 +439,7 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-const STORAGE_VERSION_KEY = 'colegio_storage_clean_v7';
+const STORAGE_VERSION_KEY = 'colegio_storage_clean_v8';
 
 function ensureLegacyMockDataPurged() {
   if (typeof window === 'undefined') return;
@@ -468,6 +468,7 @@ function ensureLegacyMockDataPurged() {
         'colegio_audit_logs',
         'colegio_storage_clean_v5',
         'colegio_storage_clean_v6',
+        'colegio_storage_clean_v7',
         'colegio_payments',
         'colegio_behavior_logs',
         'colegio_announcements',
@@ -479,7 +480,7 @@ function ensureLegacyMockDataPurged() {
         'colegio_evaluation_periods'
       ];
       legacyKeys.forEach(k => localStorage.removeItem(k));
-      localStorage.setItem(STORAGE_VERSION_KEY, '7.0.0');
+      localStorage.setItem(STORAGE_VERSION_KEY, '8.0.0');
     }
   } catch (err) {
     console.warn('[Storage] Error al purgar datos mock antiguos:', err);
