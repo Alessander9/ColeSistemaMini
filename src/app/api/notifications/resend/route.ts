@@ -6,9 +6,21 @@ import {
   buildTuitionReminderEmailHtml 
 } from '@/lib/services/resendService';
 import { DEFAULT_BRANDING_CONFIG } from '@/lib/services/brandingService';
+import { verifySessionToken } from '@/lib/security/sessionToken';
 
 export async function POST(req: NextRequest) {
   try {
+    // Validar autorización: Solo directivos o docentes pueden despachar correos
+    const sessionToken = req.cookies.get('cole_session_token')?.value;
+    const verification = await verifySessionToken(sessionToken);
+
+    if (!verification.valid || (verification.payload?.role !== 'admin' && verification.payload?.role !== 'docente')) {
+      return NextResponse.json(
+        { success: false, error: 'No autorizado. Se requiere sesión activa de Director o Docente para emitir notificaciones.' },
+        { status: 401 }
+      );
+    }
+
     const body = (await req.json()) as ResendEmailParams;
 
     if (!body || !body.recipientEmail || !body.type) {
@@ -49,7 +61,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Si no hay API Key de Resend configurada o estamos en desarrollo local, simulamos despacho exitoso
-    if (!apiKey || apiKey.trim() === '' || apiKey.startsWith('re_demo')) {
+    if (!apiKey || apiKey.trim() === '' || apiKey.startsWith('re_demo') || apiKey.includes('your_') || apiKey.includes('your-') || apiKey.includes('example')) {
       console.log(`[Resend Simulado] Correo tipo "${body.type}" despachado a: ${body.recipientEmail} | Asunto: ${subject}`);
       return NextResponse.json({
         success: true,

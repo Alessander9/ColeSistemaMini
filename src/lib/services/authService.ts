@@ -39,6 +39,18 @@ export async function loginWithCredentials(emailOrUsername: string, password: st
         return { user: null, error: 'Contraseña incorrecta. Verifica tus credenciales.' };
       }
 
+      if (typeof window !== 'undefined') {
+        try {
+          await fetch('/api/auth/session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ role: matchedUser.rol, userId: matchedUser.id }),
+          });
+        } catch {
+          /* ignore */
+        }
+      }
+
       if (typeof document !== 'undefined') {
         document.cookie = `cole_user_role=${matchedUser.rol}; path=/; max-age=604800; SameSite=Lax`;
         document.cookie = `cole_access_token=jwt-local-active; path=/; max-age=604800; SameSite=Lax`;
@@ -92,6 +104,18 @@ export async function loginWithCredentials(emailOrUsername: string, password: st
     }
 
     // Establecer cookie para control en middleware
+    if (typeof window !== 'undefined') {
+      try {
+        await fetch('/api/auth/session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ role: profile.rol, userId: profile.id }),
+        });
+      } catch {
+        /* ignore */
+      }
+    }
+
     if (typeof document !== 'undefined') {
       document.cookie = `cole_user_role=${profile.rol}; path=/; max-age=604800; SameSite=Lax`;
       document.cookie = `cole_access_token=jwt-supabase-session; path=/; max-age=604800; SameSite=Lax`;
@@ -107,6 +131,14 @@ export async function logoutUser(): Promise<void> {
   if (isSupabaseConfigured()) {
     try {
       await createClient().auth.signOut();
+    } catch {
+      /* ignore */
+    }
+  }
+
+  if (typeof window !== 'undefined') {
+    try {
+      await fetch('/api/auth/session', { method: 'DELETE' });
     } catch {
       /* ignore */
     }

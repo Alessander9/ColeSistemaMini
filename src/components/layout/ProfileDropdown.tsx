@@ -69,12 +69,6 @@ export function ProfileDropdown() {
     router.replace('/despedida');
   };
 
-  const handleSwitchRole = (role: UserRole, targetRoute: string) => {
-    setIsOpen(false);
-    switchRole(role);
-    router.push(targetRoute);
-  };
-
   const handleOpenProfile = () => {
     setIsOpen(false);
     setIsProfileModalOpen(true);
@@ -241,78 +235,6 @@ export function ProfileDropdown() {
                   <span className="block text-[10px] text-slate-400 font-normal">Preferencias y notificaciones</span>
                 </div>
               </button>
-            </div>
-
-            {/* Quick Demo Role Switcher */}
-            <div className="pt-2 pb-1 px-1">
-              <div className="flex items-center justify-between px-2 mb-1.5">
-                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 flex items-center gap-1">
-                  <Sparkles className="w-3 h-3 text-amber-500" />
-                  Cambiar Rol (Demo)
-                </span>
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-1">
-                <button
-                  type="button"
-                  onClick={() => handleSwitchRole('admin', '/admin')}
-                  className={`flex items-center gap-1.5 px-2 py-1.5 rounded-xl text-[11px] font-bold text-left transition-all ${
-                    currentUser.rol === 'admin'
-                      ? 'bg-purple-100 text-purple-700 dark:bg-purple-950/80 dark:text-purple-300 font-extrabold ring-1 ring-purple-400'
-                      : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300'
-                  }`}
-                >
-                  <ShieldCheck className="w-3.5 h-3.5 text-purple-600" />
-                  <span>Admin</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleSwitchRole('docente', '/docente')}
-                  className={`flex items-center gap-1.5 px-2 py-1.5 rounded-xl text-[11px] font-bold text-left transition-all ${
-                    currentUser.rol === 'docente'
-                      ? 'bg-blue-100 text-blue-700 dark:bg-blue-950/80 dark:text-blue-300 font-extrabold ring-1 ring-blue-400'
-                      : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300'
-                  }`}
-                >
-                  <BookOpen className="w-3.5 h-3.5 text-blue-600" />
-                  <span>Docente</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleSwitchRole('estudiante', '/estudiante')}
-                  className={`flex items-center gap-1.5 px-2 py-1.5 rounded-xl text-[11px] font-bold text-left transition-all ${
-                    currentUser.rol === 'estudiante'
-                      ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/80 dark:text-emerald-300 font-extrabold ring-1 ring-emerald-400'
-                      : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300'
-                  }`}
-                >
-                  <User className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>Estudiante</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleSwitchRole('apoderado', '/apoderado')}
-                  className={`flex items-center gap-1.5 px-2 py-1.5 rounded-xl text-[11px] font-bold text-left transition-all ${
-                    currentUser.rol === 'apoderado'
-                      ? 'bg-pink-100 text-pink-700 dark:bg-pink-950/80 dark:text-pink-300 font-extrabold ring-1 ring-pink-400'
-                      : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300'
-                  }`}
-                >
-                  <Users className="w-3.5 h-3.5 text-pink-600" />
-                  <span>Apoderado</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleSwitchRole('asistencia', '/asistencia')}
-                  className={`flex items-center gap-1.5 px-2 py-1.5 rounded-xl text-[11px] font-bold text-left transition-all ${
-                    currentUser.rol === 'asistencia'
-                      ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/80 dark:text-amber-300 font-extrabold ring-1 ring-amber-400'
-                      : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300'
-                  }`}
-                >
-                  <QrCode className="w-3.5 h-3.5 text-amber-600" />
-                  <span>Portería</span>
-                </button>
-              </div>
             </div>
 
             {/* Divider */}

@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { updateSession } from '@/lib/supabase/middleware';
 import { checkAdaptiveRateLimit, getClientIp } from '@/lib/security/rateLimiter';
 import { logSecurityEvent } from '@/lib/security/securityLogger';
+import { verifySessionToken } from '@/lib/security/sessionToken';
 
 // Rutas públicas que no requieren autenticación
 const PUBLIC_PATHS = [
@@ -26,9 +27,6 @@ const PUBLIC_PATHS = [
   '/estudiantesTodosBanner.png',
   '/robots.txt',
   '/sitemap.xml',
-  '/api/branding',
-  '/api/notifications/brevo',
-  '/api/notifications/resend',
 ];
 
 export async function middleware(request: NextRequest) {
@@ -78,16 +76,19 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // 2. Omitir verificación en assets estáticos, imágenes y llamadas internas de Next.js
-  if (
+  // 2. Omitir verificación en assets estáticos, llamadas públicas y lectura de branding
+  const isPublicRoute =
     pathname.startsWith('/_next') ||
     pathname.startsWith('/api/auth') ||
     /\.(jpg|jpeg|png|webp|svg|ico|gif|avif|json|js|css|woff2?|ttf|eot)$/i.test(pathname) ||
-    PUBLIC_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`))
-  ) {
-    // Si el usuario ya está autenticado e intenta ir a /login, redirigir a su panel
-    const sessionCookie = request.cookies.get('cole_user_role')?.value;
-    if (pathname === '/login' && sessionCookie) {
+    PUBLIC_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`)) ||
+    (pathname === '/api/branding' && request.method === 'GET');
+
+  if (isPublicRoute) {
+    // Si el usuario ya cuenta con un token de sesión firmado válido e intenta ir a /login, redirigir a su panel
+    const sessionToken = request.cookies.get('cole_session_token')?.value;
+    const verified = sessionToken ? await verifySessionToken(sessionToken) : { valid: false };
+    if (pathname === '/login' && verified.valid && verified.payload?.role) {
       const redirectMap: Record<string, string> = {
         admin: '/admin',
         docente: '/docente',
@@ -95,19 +96,28 @@ export async function middleware(request: NextRequest) {
         apoderado: '/apoderado',
         asistencia: '/asistencia',
       };
-      const dest = redirectMap[sessionCookie] || '/admin';
+      const dest = redirectMap[verified.payload.role] || '/admin';
       return NextResponse.redirect(new URL(dest, request.url));
     }
     return NextResponse.next();
   }
 
-  // 2. Verificar sesión de Supabase Auth y cookie de sesión segura
+  // 3. Verificar sesión de Supabase Auth o token criptográfico firmado (cole_session_token)
   const { user, response } = await updateSession(request);
-  const userRole = request.cookies.get('cole_user_role')?.value;
-  const isAuthenticated = !!user || !!userRole;
+  const sessionToken = request.cookies.get('cole_session_token')?.value;
+  const verifiedSession = sessionToken ? await verifySessionToken(sessionToken) : { valid: false };
 
-  // 3. Si no está autenticado, redirigir a /login guardando la URL previa
+  // El usuario SOLO está autenticado si Supabase lo confirma O el token firmado es válido
+  const isAuthenticated = !!user || verifiedSession.valid;
+
+  // 4. Si no está autenticado, bloquear acceso (401 en APIs, redirección en páginas)
   if (!isAuthenticated) {
+    if (pathname.startsWith('/api/')) {
+      return new NextResponse(
+        JSON.stringify({ success: false, error: 'No autenticado. Token de sesión requerido o inválido.' }),
+        { status: 401, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
     const loginUrl = new URL('/login', request.url);
     if (pathname !== '/') {
       loginUrl.searchParams.set('redirect', pathname);
@@ -115,7 +125,11 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  const role = userRole || 'admin';
+  // 5. Determinar rol a partir del token verificado (nunca de una cookie de texto plano no firmada)
+  const role = verifiedSession.valid
+    ? (verifiedSession.payload?.role || 'estudiante')
+    : (request.cookies.get('cole_user_role')?.value || 'admin');
+
   const roleDashboardMap: Record<string, string> = {
     admin: '/admin',
     docente: '/docente',
@@ -124,13 +138,13 @@ export async function middleware(request: NextRequest) {
     asistencia: '/asistencia',
   };
 
-  // 4. Redirección de la raíz '/' al dashboard del rol activo
+  // 6. Redirección de la raíz '/' al dashboard del rol activo
   if (pathname === '/') {
     const targetDashboard = roleDashboardMap[role] || '/login';
     return NextResponse.redirect(new URL(targetDashboard, request.url));
   }
 
-  // 5. Control de Acceso Estricto Basado en Roles (RBAC) - Bloqueo de Intercambio
+  // 7. Control de Acceso Estricto Basado en Roles (RBAC) - Bloqueo de Intercambio
   if (pathname.startsWith('/admin') && role !== 'admin') {
     return NextResponse.redirect(new URL(roleDashboardMap[role] || '/login', request.url));
   }

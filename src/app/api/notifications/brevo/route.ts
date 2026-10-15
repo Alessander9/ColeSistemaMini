@@ -1,8 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { buildAttendanceEmailHtml, SendAttendanceEmailParams } from '@/lib/services/brevoService';
+import { verifySessionToken } from '@/lib/security/sessionToken';
 
 export async function POST(request: NextRequest) {
   try {
+    // Validar autorización: Solo directivos o docentes pueden despachar notificaciones de asistencia
+    const sessionToken = request.cookies.get('cole_session_token')?.value;
+    const verification = await verifySessionToken(sessionToken);
+
+    if (!verification.valid || (verification.payload?.role !== 'admin' && verification.payload?.role !== 'docente' && verification.payload?.role !== 'asistencia')) {
+      return NextResponse.json(
+        { success: false, error: 'No autorizado. Se requiere sesión activa autorizada para emitir notificaciones de asistencia.' },
+        { status: 401 }
+      );
+    }
+
     const params: SendAttendanceEmailParams = await request.json();
 
     if (!params.parentEmail || !params.studentName) {
