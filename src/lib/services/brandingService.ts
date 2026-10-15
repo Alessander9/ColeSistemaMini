@@ -170,7 +170,7 @@ export const DEFAULT_BRANDING_CONFIG: SystemBrandingConfig = {
   // PWA & Canales de Soporte
   pwaShortName: 'ColeSistema',
   pwaThemeColor: '#4f46e5',
-  whatsappSoporteNumero: '51918643775',
+  whatsappSoporteNumero: '51987654321',
   whatsappSoporteMensaje: 'Hola, deseo información sobre las matrículas y servicios escolares.',
   mostrarWhatsappFlotante: true,
   googleAnalyticsId: '',
@@ -249,12 +249,6 @@ export function getStoredBranding(): SystemBrandingConfig {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return DEFAULT_BRANDING_CONFIG;
     const parsed = JSON.parse(raw);
-
-    // Si el almacenamiento local aún tiene el número de prueba antiguo o vacío, actualizarlo
-    if (!parsed.whatsappSoporteNumero || parsed.whatsappSoporteNumero === '51987654321' || parsed.whatsappSoporteNumero === '987654321') {
-      parsed.whatsappSoporteNumero = DEFAULT_BRANDING_CONFIG.whatsappSoporteNumero;
-    }
-
     return {
       ...DEFAULT_BRANDING_CONFIG,
       ...parsed,

@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useApp } from '@/context/AppContext';
+import { useParentChildren } from '@/hooks/useParentChildren';
 import { Course, DayOfWeek, ScheduleSlot, UserProfile } from '@/types';
 import { TIME_BLOCKS, DAYS } from '@/lib/constants/schedule';
 import {
@@ -78,8 +79,11 @@ function ScheduleIllustration({ className = '' }: { className?: string }) {
 export default function EstudianteHorarioPage() {
   const { currentUser, students, enrollments, users, courses, sections, getSectionSchedule, getSectionCourses } = useApp();
 
-  const currentStudent = students.find(s => s.profile_id === currentUser.id || s.id === currentUser.id);
-  const currentEnrollment = enrollments.find(e => e.estudiante_id === currentStudent?.id);
+  // El apoderado ve el horario del hijo seleccionado, no el suyo
+  const { child } = useParentChildren();
+  const isParent = currentUser.rol === 'apoderado';
+  const currentStudent = isParent ? child?.student : students.find(s => s.profile_id === currentUser.id || s.id === currentUser.id);
+  const currentEnrollment = isParent ? child?.enrollment : enrollments.find(e => e.estudiante_id === currentStudent?.id);
   const sectionId = currentEnrollment?.seccion_id || '';
   const section = sections.find(s => s.id === sectionId) || currentEnrollment?.seccion;
 
@@ -144,7 +148,7 @@ export default function EstudianteHorarioPage() {
     return () => document.removeEventListener('keydown', onKey);
   }, [selectedCourseId]);
 
-  const firstName = (currentStudent?.profile?.nombres || currentStudent?.nombres || currentUser?.nombres || '').split(' ')[0];
+  const firstName = (currentStudent?.profile?.nombres || currentStudent?.nombres || (isParent ? '' : currentUser?.nombres) || '').split(' ')[0];
   const classroom = section?.grado?.nombre ? `${section.grado.nombre} "${section.letra}"` : 'Sin aula asignada';
 
   return (
@@ -155,10 +159,10 @@ export default function EstudianteHorarioPage() {
         <div className="flex items-center justify-between gap-4">
           <div className="space-y-1 min-w-0">
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-white">
-              Mi horario {firstName && <span className="text-violet-600 dark:text-violet-300">· {firstName}</span>}
+              {isParent ? 'Horario' : 'Mi horario'} {firstName && <span className="text-violet-600 dark:text-violet-300">· {firstName}</span>}
             </h1>
             <p className="text-sm text-slate-600 dark:text-slate-300">
-              {classroom}{tutor ? ` · Tutor(a): ${tutor.nombres} ${tutor.apellidos}` : ''} · Toca un curso para conocer a tu profesor.
+              {classroom}{tutor ? ` · Tutor(a): ${tutor.nombres} ${tutor.apellidos}` : ''} · Toca un curso para conocer {isParent ? 'al profesor' : 'a tu profesor'}.
             </p>
             <div className="flex flex-wrap gap-2 pt-1.5">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/80 dark:bg-slate-800/80 text-xs font-bold text-slate-700 dark:text-slate-200">📚 {myCourses.length} cursos</span>

@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:e2e": "python tests/test_super_playwright_e2e.py"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.1",

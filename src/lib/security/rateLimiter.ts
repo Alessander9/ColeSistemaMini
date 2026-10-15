@@ -168,12 +168,17 @@ export function getClientIp(headers: Headers): string {
   const cfConnectingIp = headers.get('cf-connecting-ip');
   if (cfConnectingIp) return cfConnectingIp.trim();
 
-  const forwardedFor = headers.get('x-forwarded-for');
-  if (forwardedFor) {
-    return forwardedFor.split(',')[0].trim();
-  }
   const realIp = headers.get('x-real-ip');
   if (realIp) return realIp.trim();
+
+  // Solo confiar en X-Forwarded-For si explícitamente se corre tras un proxy de confianza configurado
+  if (process.env.TRUST_PROXY === 'true') {
+    const forwardedFor = headers.get('x-forwarded-for');
+    if (forwardedFor) {
+      const parts = forwardedFor.split(',').map((s) => s.trim()).filter(Boolean);
+      return parts[0] || '127.0.0.1';
+    }
+  }
 
   return '127.0.0.1';
 }

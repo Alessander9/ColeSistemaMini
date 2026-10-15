@@ -4,6 +4,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { useApp } from '@/context/AppContext';
+import { useParentChildren } from '@/hooks/useParentChildren';
 import { AttendanceRecord, AttendanceStatus } from '@/types';
 import { AttendanceSkeleton } from '@/components/estudiante/asistencias/AttendanceSkeleton';
 import { exportAttendanceToPDF, exportAttendanceToExcel } from '@/components/estudiante/asistencias/ExportAttendance';
@@ -70,8 +71,15 @@ function timeText(hora?: string) {
   d.setHours(h, m || 0, 0, 0);
   return d.toLocaleTimeString('es-PE', { hour: 'numeric', minute: '2-digit' });
 }
-function recordMessage(r: AttendanceRecord) {
+// Con `who` (nombre del hijo) el mensaje va en tercera persona para el apoderado
+function recordMessage(r: AttendanceRecord, who?: string) {
   const t = timeText(r.hora_registro);
+  if (who) {
+    if (r.estado === 'presente') return t ? `${who} llegó a tiempo a las ${t}` : `${who} llegó a tiempo`;
+    if (r.estado === 'tardanza') return t ? `${who} llegó tarde, a las ${t}` : `${who} llegó tarde`;
+    if (r.estado === 'justificado') return `${who} faltó, pero la falta fue justificada`;
+    return `${who} no asistió a clases`;
+  }
   if (r.estado === 'presente') return t ? `Llegaste a tiempo a las ${t}` : 'Llegaste a tiempo';
   if (r.estado === 'tardanza') return t ? `Llegaste tarde, a las ${t}` : 'Llegaste tarde';
   if (r.estado === 'justificado') return 'Faltaste, pero tu familia lo justificó';
@@ -103,14 +111,19 @@ function AttendanceIllustration({ className = '' }: { className?: string }) {
 export default function EstudianteAsistenciasPage() {
   const { students, enrollments, attendances, currentUser, isLoading, showToast } = useApp();
 
+  // El apoderado ve la asistencia del hijo seleccionado, no la suya
+  const { child } = useParentChildren();
+  const isParent = currentUser?.rol === 'apoderado';
   const activeStudent = useMemo(
-    () => students.find(s => s.profile_id === currentUser?.id || s.id === currentUser?.id),
-    [students, currentUser?.id]
+    () => isParent ? child?.student : students.find(s => s.profile_id === currentUser?.id || s.id === currentUser?.id),
+    [isParent, child?.student, students, currentUser?.id]
   );
   const activeEnrollment = useMemo(
-    () => enrollments.find(e => e.estudiante_id === activeStudent?.id),
-    [enrollments, activeStudent?.id]
+    () => isParent ? child?.enrollment : enrollments.find(e => e.estudiante_id === activeStudent?.id),
+    [isParent, child?.enrollment, enrollments, activeStudent?.id]
   );
+  // Nombre del hijo para los textos en tercera persona (vacío para el estudiante)
+  const childName = isParent ? (activeStudent?.profile?.nombres || activeStudent?.nombres || 'Tu hijo').split(' ')[0] : '';
 
   // Un registro por día (el de ingreso); las salidas no cuentan para la asistencia
   const myDays = useMemo(() => {
@@ -194,7 +207,13 @@ export default function EstudianteAsistenciasPage() {
   const todayRecord = myDays.find(r => r.fecha === todayIso) || null;
   const isWeekend = today.getDay() === 0 || today.getDay() === 6;
 
-  const cheer = !periodDays.length
+  const cheer = isParent
+    ? !periodDays.length
+      ? `Cuando ${childName} registre su entrada con el carnet QR, aquí verás su asistencia.`
+      : pct >= 95 ? `¡${childName} tiene una asistencia de campeón! 🏆`
+      : pct >= 85 ? `${childName} va muy bien con su asistencia. 🌟`
+      : `Ayuda a ${childName} a llegar a tiempo: cada día de clase cuenta. 💪`
+    : !periodDays.length
     ? 'Cuando registres tu entrada con el carnet QR, aquí verás tu asistencia.'
     : pct >= 95 ? '¡Asistencia de campeón! Sigue así. 🏆'
     : pct >= 85 ? '¡Muy bien! Cada día que vienes aprendes algo nuevo. 🌟'
@@ -249,7 +268,7 @@ export default function EstudianteAsistenciasPage() {
   // Los datos ya están en el navegador: solo se muestra el esqueleto si aún no hay nada que mostrar
   if (isLoading && myDays.length === 0) return <AttendanceSkeleton />;
 
-  const firstName = (activeStudent?.profile?.nombres || activeStudent?.nombres || currentUser?.nombres || '').split(' ')[0];
+  const firstName = (activeStudent?.profile?.nombres || activeStudent?.nombres || (isParent ? '' : currentUser?.nombres) || '').split(' ')[0];
 
   return (
     <div className="space-y-4 max-w-7xl mx-auto animate-in fade-in-50">
@@ -259,10 +278,12 @@ export default function EstudianteAsistenciasPage() {
         <div className="flex items-center justify-between gap-4">
           <div className="space-y-1 min-w-0">
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-white">
-              Mi asistencia {firstName && <span className="text-emerald-600 dark:text-emerald-300">· {firstName}</span>}
+              {isParent ? 'Asistencia' : 'Mi asistencia'} {firstName && <span className="text-emerald-600 dark:text-emerald-300">· {firstName}</span>}
             </h1>
             <p className="text-sm text-slate-600 dark:text-slate-300">
-              Mira qué días llegaste a tiempo, cuándo llegaste tarde y cuándo faltaste. {periodRange.label}.
+              {isParent
+                ? `Mira qué días ${firstName || 'tu hijo'} llegó a tiempo, cuándo llegó tarde y cuándo faltó.`
+                : 'Mira qué días llegaste a tiempo, cuándo llegaste tarde y cuándo faltaste.'} {periodRange.label}.
             </p>
             <div className="flex flex-wrap gap-2 pt-1.5">
               {(['presente', 'tardanza', 'falta', 'justificado'] as AttendanceStatus[]).map(s => (
@@ -281,7 +302,7 @@ export default function EstudianteAsistenciasPage() {
           </div>
 
           <div className="hidden sm:flex items-center gap-4 shrink-0">
-            <div className="relative w-20 h-20" title={`${attended} de ${periodDays.length} días asististe`}>
+            <div className="relative w-20 h-20" title={`${attended} de ${periodDays.length} días ${isParent ? `asistió ${childName}` : 'asististe'}`}>
               <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
                 <circle cx="18" cy="18" r="15.9155" fill="none" strokeWidth="3.5" className="stroke-white/80 dark:stroke-slate-800" />
                 <circle cx="18" cy="18" r="15.9155" fill="none" strokeWidth="3.5" strokeLinecap="round"
@@ -290,7 +311,7 @@ export default function EstudianteAsistenciasPage() {
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
                 <span className="text-lg font-black text-slate-900 dark:text-white leading-none">{pct}%</span>
-                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">asistí</span>
+                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">{isParent ? 'asistió' : 'asistí'}</span>
               </div>
             </div>
             <AttendanceIllustration className="hidden lg:block w-32 h-24 animate-float" />
@@ -314,9 +335,9 @@ export default function EstudianteAsistenciasPage() {
               <div className="min-w-0">
                 <p className="text-[11px] font-black uppercase tracking-wider opacity-70">Hoy · {capitalize(today.toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long' }))}</p>
                 <p className="text-sm font-black text-slate-900 dark:text-white">
-                  {todayRecord ? recordMessage(todayRecord) : isWeekend ? 'Hoy no hay clases. ¡A descansar!' : 'Aún no registras tu entrada'}
+                  {todayRecord ? recordMessage(todayRecord, childName) : isWeekend ? 'Hoy no hay clases. ¡A descansar!' : isParent ? `${childName} aún no registra su entrada` : 'Aún no registras tu entrada'}
                 </p>
-                {!todayRecord && !isWeekend && (
+                {!todayRecord && !isWeekend && !isParent && (
                   <Link href="/estudiante/carnet-qr" className="text-xs font-bold text-emerald-700 dark:text-emerald-300 hover:underline">
                     Muestra tu carnet QR en la puerta →
                   </Link>
@@ -333,7 +354,7 @@ export default function EstudianteAsistenciasPage() {
                 <p className="text-sm font-black text-slate-900 dark:text-white">
                   {streak} {streak === 1 ? 'día seguido' : 'días seguidos'} llegando a tiempo
                 </p>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Tu mejor racha: {bestStreak} {bestStreak === 1 ? 'día' : 'días'}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{isParent ? 'Su' : 'Tu'} mejor racha: {bestStreak} {bestStreak === 1 ? 'día' : 'días'}</p>
               </div>
             </div>
           </div>
@@ -420,9 +441,9 @@ export default function EstudianteAsistenciasPage() {
                           <span className="text-lg font-black text-slate-900 dark:text-white leading-none">{d.getDate()}</span>
                         </span>
                         <span className="min-w-0 flex-1">
-                          <span className="block text-sm font-black text-slate-900 dark:text-white truncate">{recordMessage(r)}</span>
+                          <span className="block text-sm font-black text-slate-900 dark:text-white truncate">{recordMessage(r, childName)}</span>
                           <span className="block text-xs text-slate-500 dark:text-slate-400 truncate">
-                            {r.observacion || (r.metodo === 'qr' ? 'Registrado con tu carnet QR' : 'Registrado por el colegio')}
+                            {r.observacion || (r.metodo === 'qr' ? `Registrado con ${isParent ? 'su' : 'tu'} carnet QR` : 'Registrado por el colegio')}
                           </span>
                         </span>
                         <span className={`px-2.5 py-1 rounded-full text-xs font-black whitespace-nowrap ${meta.chip}`}>
@@ -480,7 +501,7 @@ export default function EstudianteAsistenciasPage() {
                     type="button"
                     disabled={!cell.record}
                     onClick={() => cell.record && setSelectedRecord(cell.record)}
-                    title={cell.record ? `${STATUS_META[cell.record.estado].label} · ${recordMessage(cell.record)}` : undefined}
+                    title={cell.record ? `${STATUS_META[cell.record.estado].label} · ${recordMessage(cell.record, childName)}` : undefined}
                     className={`h-9 rounded-xl text-xs font-bold transition-transform ${
                       cell.record ? `${STATUS_META[cell.record.estado].cell} hover:scale-105 cursor-pointer` : 'text-slate-400 dark:text-slate-500 cursor-default'
                     } ${isToday ? 'ring-2 ring-offset-1 ring-slate-900 dark:ring-white dark:ring-offset-slate-900' : ''}`}
@@ -503,12 +524,17 @@ export default function EstudianteAsistenciasPage() {
               <HelpCircle className="w-4 h-4 text-amber-500" /> Para llegar siempre a tiempo
             </h3>
             <ul className="mt-2.5 space-y-2">
-              {[
+              {(isParent ? [
+                { emoji: '🎒', text: `Dejen lista la mochila y el uniforme de ${childName} la noche anterior.` },
+                { emoji: '⏰', text: 'Pongan la alarma un poquito más temprano.' },
+                { emoji: '🪪', text: `Recuérdale a ${childName} mostrar su carnet QR en la puerta al llegar.` },
+                { emoji: '📝', text: 'Si falta, envía la justificación desde "Justificar inasistencia".' },
+              ] : [
                 { emoji: '🎒', text: 'Deja lista tu mochila y tu uniforme la noche anterior.' },
                 { emoji: '⏰', text: 'Pon tu alarma un poquito más temprano.' },
                 { emoji: '🪪', text: 'Muestra tu carnet QR en la puerta al llegar.' },
                 { emoji: '📝', text: 'Si faltas, pide a tu familia que envíe la justificación.' },
-              ].map((tip, i) => (
+              ]).map((tip, i) => (
                 <li key={i} className="flex items-start gap-2.5 text-xs text-slate-600 dark:text-slate-300">
                   <span className="w-7 h-7 rounded-xl bg-amber-50 dark:bg-amber-950/40 flex items-center justify-center text-base shrink-0" aria-hidden="true">{tip.emoji}</span>
                   <span className="pt-1">{tip.text}</span>
@@ -518,10 +544,10 @@ export default function EstudianteAsistenciasPage() {
           </div>
 
           <Link
-            href="/estudiante/carnet-qr"
+            href={isParent ? '/apoderado/justificar' : '/estudiante/carnet-qr'}
             className="flex items-center justify-between gap-2 px-4 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm transition-colors"
           >
-            <span className="flex items-center gap-2"><QrCode className="w-4 h-4" /> Ver mi carnet QR</span>
+            <span className="flex items-center gap-2">{isParent ? <FileText className="w-4 h-4" /> : <QrCode className="w-4 h-4" />} {isParent ? 'Justificar una falta' : 'Ver mi carnet QR'}</span>
             <ChevronRight className="w-4 h-4" />
           </Link>
         </div>
@@ -551,7 +577,7 @@ export default function EstudianteAsistenciasPage() {
               </div>
             </div>
             <div className="p-5 space-y-3 text-sm">
-              <p className="font-bold text-slate-800 dark:text-slate-100">{recordMessage(selectedRecord)}</p>
+              <p className="font-bold text-slate-800 dark:text-slate-100">{recordMessage(selectedRecord, childName)}</p>
               <div className="grid grid-cols-2 gap-2">
                 <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60">
                   <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1"><Clock className="w-3 h-3" /> Hora de entrada</p>
@@ -559,7 +585,7 @@ export default function EstudianteAsistenciasPage() {
                 </div>
                 <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60">
                   <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1"><QrCode className="w-3 h-3" /> Cómo se registró</p>
-                  <p className="font-black text-slate-900 dark:text-white">{selectedRecord.metodo === 'qr' ? 'Con tu carnet QR' : 'Por el colegio'}</p>
+                  <p className="font-black text-slate-900 dark:text-white">{selectedRecord.metodo === 'qr' ? `Con ${isParent ? 'su' : 'tu'} carnet QR` : 'Por el colegio'}</p>
                 </div>
               </div>
               {selectedRecord.dispositivo && <p className="text-xs text-slate-500 dark:text-slate-400">Equipo: {selectedRecord.dispositivo}</p>}
@@ -571,7 +597,9 @@ export default function EstudianteAsistenciasPage() {
               )}
               {selectedRecord.estado === 'falta' && (
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Si faltaste por una razón importante (por ejemplo, estabas enfermo), pide a tu familia que envíe la justificación al colegio.
+                  {isParent
+                    ? `Si ${childName} faltó por una razón importante (por ejemplo, estaba enfermo), envía la justificación desde "Justificar inasistencia".`
+                    : 'Si faltaste por una razón importante (por ejemplo, estabas enfermo), pide a tu familia que envíe la justificación al colegio.'}
                 </p>
               )}
             </div>
