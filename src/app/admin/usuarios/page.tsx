@@ -34,6 +34,7 @@ import {
 } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { AvatarUploader } from '@/components/ui/AvatarUploader';
+import { generateSecurePassword } from '@/lib/auth/generateCredentials';
 
 const PAGE_SIZE = 20;
 
@@ -213,11 +214,7 @@ export default function GestionUsuariosPage() {
   };
 
   const generateAutoPassword = () => {
-    const rolePrefix = formData.rol === 'admin' ? 'Adm' : formData.rol === 'docente' ? 'Doc' : formData.rol === 'estudiante' ? 'Est' : formData.rol === 'apoderado' ? 'Apo' : 'Ast';
-    const cleanFirst = (formData.nombres.trim().split(' ')[0] || 'User').normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-    const cleanLast = (formData.apellidos.trim().split(' ')[0] || 'Cole').normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-    const dniPart = formData.dni.trim().slice(-4) || '2026';
-    const gen = `${rolePrefix}${cleanFirst[0].toUpperCase()}${cleanLast.slice(0, 3)}${dniPart}!`;
+    const gen = generateSecurePassword();
     setFormData(prev => ({ ...prev, password: gen }));
     showToast('Contraseña segura sugerida generada.', 'info', 'Contraseña');
   };

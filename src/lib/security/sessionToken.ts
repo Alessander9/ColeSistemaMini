@@ -4,7 +4,16 @@
  * Compatible con Node.js, Edge Runtime (Next.js Middleware) y navegadores.
  */
 
-const SESSION_SECRET = process.env.SESSION_SECRET || 'colesistema_mini_hmac_secret_key_2026_enterprise_secure_token';
+// En producción el secreto es obligatorio: con un valor conocido cualquiera podría firmar sesiones de admin.
+// En desarrollo se usa uno fijo solo para que la app funcione sin configurar nada.
+function getSessionSecret(): string {
+  const secret = process.env.SESSION_SECRET?.trim();
+  if (secret && secret.length >= 32) return secret;
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('SESSION_SECRET no está configurado (mínimo 32 caracteres).');
+  }
+  return 'dev-only-session-secret-no-usar-en-produccion';
+}
 
 function base64UrlEncode(bytes: Uint8Array): string {
   let binary = '';
@@ -31,7 +40,7 @@ async function getHmacKey(): Promise<CryptoKey> {
   const enc = new TextEncoder();
   return crypto.subtle.importKey(
     'raw',
-    enc.encode(SESSION_SECRET),
+    enc.encode(getSessionSecret()),
     { name: 'HMAC', hash: 'SHA-256' },
     false,
     ['sign', 'verify']

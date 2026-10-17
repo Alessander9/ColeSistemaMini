@@ -54,7 +54,7 @@ export async function generateEnrollmentFichaPdf(data: EnrollmentFichaPdfData): 
   const studentDni = student.profile?.dni || student.dni || 'Sin DNI';
   const studentEmail = credentials?.email || student.profile?.email || `${studentCode.toLowerCase()}@colegio.edu.pe`;
   const studentUsername = credentials?.username || student.profile?.username || studentDni;
-  const studentPassword = credentials?.password || student.profile?.password || `Est${studentDni}!`;
+  const studentPassword = credentials?.password || student.profile?.password || 'Solicitar en Dirección';
 
   const gradeName = section?.grado?.nombre || '3° de Primaria';
   const sectionLetter = section?.letra || 'A';
@@ -63,7 +63,7 @@ export async function generateEnrollmentFichaPdf(data: EnrollmentFichaPdfData): 
   const enrollmentDate = enrollment?.fecha_matricula || new Date().toISOString().split('T')[0];
 
   const parentUser = parentCredentials?.username || parentDni || parentPhone || 'DNI del Apoderado';
-  const parentPass = parentCredentials?.password || `Apo${parentPhone.slice(-4) || studentDni.slice(-4)}!`;
+  const parentPass = parentCredentials?.password || 'Solicitar en Dirección';
 
   // ── Margins & Palette ──
   const marginX = 14;

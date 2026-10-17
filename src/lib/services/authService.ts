@@ -1,6 +1,23 @@
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
-import { UserProfile, UserRole } from '@/types';
+import { UserProfile } from '@/types';
 import { MOCK_USERS } from '@/lib/mock-data';
+
+// Pide al servidor la cookie de sesión firmada. En modo Supabase el servidor ignora el rol enviado
+// y lo lee del perfil del usuario autenticado; en modo demo solo se acepta si el servidor lo permite.
+async function requestServerSession(user: UserProfile): Promise<string | null> {
+  try {
+    const res = await fetch('/api/auth/session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role: user.rol, userId: user.id }),
+    });
+    if (res.ok) return null;
+    const body = await res.json().catch(() => null);
+    return body?.error || 'No se pudo iniciar la sesión en el servidor.';
+  } catch {
+    return 'Error de conexión con el servidor de autenticación.';
+  }
+}
 
 export async function loginWithCredentials(emailOrUsername: string, password: string): Promise<{ user: UserProfile | null; error: string | null }> {
   // 1. Si Supabase no está configurado con credenciales reales, autenticar localmente contra base de datos interna
@@ -16,7 +33,10 @@ export async function loginWithCredentials(emailOrUsername: string, password: st
           const parsed = JSON.parse(stored);
           if (Array.isArray(parsed) && parsed.length > 0) {
             parsed.forEach((u: UserProfile) => {
-              if (u && u.id) userMap.set(u.id, u);
+              if (!u || !u.id) return;
+              // Datos guardados antes de que las cuentas demo tuvieran contraseña: conservar la de la semilla
+              const seed = userMap.get(u.id);
+              userMap.set(u.id, { ...u, password: u.password || seed?.password });
             });
           }
         }
@@ -27,72 +47,41 @@ export async function loginWithCredentials(emailOrUsername: string, password: st
 
     const userList = Array.from(userMap.values());
 
-    const matchedUser = userList.find(u => 
-      u.email?.toLowerCase() === cleanInput || 
+    const matchedUser = userList.find(u =>
+      u.email?.toLowerCase() === cleanInput ||
       u.username?.toLowerCase() === cleanInput ||
       u.dni === cleanInput
     );
 
-    if (matchedUser) {
-      // Si el usuario tiene contraseña personalizada asignada, validarla (o permitir demo password para mocks)
-      if (matchedUser.password && password && matchedUser.password !== password && password !== 'Colegio2026!' && password !== 'admin123' && password !== '123456') {
-        return { user: null, error: 'Contraseña incorrecta. Verifica tus credenciales.' };
-      }
-
-      if (typeof window !== 'undefined') {
-        try {
-          await fetch('/api/auth/session', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ role: matchedUser.rol, userId: matchedUser.id }),
-          });
-        } catch {
-          /* ignore */
-        }
-      }
-
-      if (typeof document !== 'undefined') {
-        document.cookie = `cole_user_role=${matchedUser.rol}; path=/; max-age=604800; SameSite=Lax`;
-        document.cookie = `cole_access_token=jwt-local-active; path=/; max-age=604800; SameSite=Lax`;
-      }
-      return { user: matchedUser, error: null };
+    // Mismo mensaje para usuario inexistente y contraseña errada: no revela qué cuentas existen
+    if (!matchedUser || !matchedUser.password || matchedUser.password !== password) {
+      return { user: null, error: 'Usuario o contraseña incorrectos. Verifica tus credenciales.' };
     }
 
-    return { user: null, error: 'Usuario no encontrado. Verifica tu correo, usuario o DNI.' };
+    if (matchedUser.activo === false) {
+      return { user: null, error: 'Tu acceso está bloqueado. Comunícate con la dirección del colegio.' };
+    }
+
+    if (typeof window !== 'undefined') {
+      const sessionError = await requestServerSession(matchedUser);
+      if (sessionError) return { user: null, error: sessionError };
+    }
+
+    return { user: matchedUser, error: null };
   }
 
   const supabase = createClient();
 
   try {
-    // 1. Intentar inicio de sesión mediante Supabase Auth
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
       email: emailOrUsername.includes('@') ? emailOrUsername : `${emailOrUsername}@colegio.edu.pe`,
       password,
     });
 
     if (authError || !authData.user) {
-      // Fallback a consulta directa de perfil si está configurado en base de datos
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .or(`email.eq.${emailOrUsername},dni.eq.${emailOrUsername}`)
-        .eq('activo', true)
-        .single();
-
-      if (profileError || !profile) {
-        return { user: null, error: 'Credenciales inválidas o usuario inactivo.' };
-      }
-
-      // Guardar cookie de rol para middleware
-      if (typeof document !== 'undefined') {
-        document.cookie = `cole_user_role=${profile.rol}; path=/; max-age=604800; SameSite=Lax`;
-        document.cookie = `cole_access_token=jwt-supabase-session; path=/; max-age=604800; SameSite=Lax`;
-      }
-
-      return { user: profile as UserProfile, error: null };
+      return { user: null, error: 'Usuario o contraseña incorrectos. Verifica tus credenciales.' };
     }
 
-    // 2. Obtener datos del perfil extendido
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('*')
@@ -100,25 +89,19 @@ export async function loginWithCredentials(emailOrUsername: string, password: st
       .single();
 
     if (profileError || !profile) {
+      await supabase.auth.signOut();
       return { user: null, error: 'Perfil de usuario no encontrado en la base de datos.' };
     }
 
-    // Establecer cookie para control en middleware
-    if (typeof window !== 'undefined') {
-      try {
-        await fetch('/api/auth/session', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ role: profile.rol, userId: profile.id }),
-        });
-      } catch {
-        /* ignore */
-      }
+    if (profile.activo === false) {
+      await supabase.auth.signOut();
+      return { user: null, error: 'Tu acceso está bloqueado. Comunícate con la dirección del colegio.' };
     }
 
-    if (typeof document !== 'undefined') {
-      document.cookie = `cole_user_role=${profile.rol}; path=/; max-age=604800; SameSite=Lax`;
-      document.cookie = `cole_access_token=jwt-supabase-session; path=/; max-age=604800; SameSite=Lax`;
+    const sessionError = await requestServerSession(profile as UserProfile);
+    if (sessionError) {
+      await supabase.auth.signOut();
+      return { user: null, error: sessionError };
     }
 
     return { user: profile as UserProfile, error: null };

@@ -36,6 +36,7 @@ import {
   Video
 } from 'lucide-react';
 import { UserRole, EducationalLevel, Announcement } from '@/types';
+import { sendResendEmail } from '@/lib/services/resendService';
 
 // Predefined quick templates for rapid official school broadcasting
 const QUICK_TEMPLATES: {
@@ -123,8 +124,10 @@ export default function AdminComunicadosPage() {
     enrollments,
     teachers,
     users,
-    showToast
+    showToast,
+    brandingConfig
   } = useApp();
+  const [isSendingEmails, setIsSendingEmails] = useState(false);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRoleFilter, setSelectedRoleFilter] = useState<string>('todos');
@@ -259,12 +262,97 @@ export default function AdminComunicadosPage() {
     showToast(`Plantilla "${tpl.title}" cargada`, 'info', 'Plantilla Aplicada');
   };
 
+  // Correos reales de los destinatarios según la segmentación elegida (sin repetidos)
+  const recipientEmails = useMemo(() => {
+    const sectionOf = (id: string) => sections.find(s => s.id === id);
+    let targetEnrollments = enrollments.filter(e => e.estado === 'activo');
+    if (formData.nivel_destinatario !== 'todos') {
+      targetEnrollments = targetEnrollments.filter(e => (sectionOf(e.seccion_id)?.grado?.nivel || e.seccion?.grado?.nivel) === formData.nivel_destinatario);
+    }
+    if (formData.grado_id) {
+      targetEnrollments = targetEnrollments.filter(e => (sectionOf(e.seccion_id)?.grado_id || e.seccion?.grado_id) === formData.grado_id);
+    }
+    if (formData.seccion_id) {
+      targetEnrollments = targetEnrollments.filter(e => e.seccion_id === formData.seccion_id);
+    }
+    const targetStudents = targetEnrollments
+      .map(e => students.find(s => s.id === e.estudiante_id) || e.estudiante)
+      .filter((s): s is NonNullable<typeof s> => !!s);
+
+    const rol = formData.destinatarios_rol;
+    const out: { email: string; name?: string }[] = [];
+    if (rol === 'todos' || rol === 'apoderado') {
+      targetStudents.forEach(s => {
+        const parent = users.find(u => u.id === s.apoderado_id);
+        out.push({ email: parent?.email || s.email_apoderado || '', name: parent ? `${parent.nombres} ${parent.apellidos}`.trim() : s.nombre_apoderado });
+      });
+    }
+    if (rol === 'todos' || rol === 'estudiante') {
+      targetStudents.forEach(s => {
+        const account = users.find(u => u.id === s.profile_id) || s.profile;
+        out.push({ email: account?.email || '', name: `${s.nombres || account?.nombres || ''} ${s.apellidos || account?.apellidos || ''}`.trim() });
+      });
+    }
+    if (rol === 'todos' || rol === 'docente') {
+      const tutorId = formData.seccion_id ? sectionOf(formData.seccion_id)?.tutor_id : undefined;
+      teachers
+        .filter(t => t.activo !== false && (!formData.seccion_id || t.id === tutorId))
+        .forEach(t => out.push({ email: t.email || '', name: `${t.nombres} ${t.apellidos}` }));
+    }
+    if (rol === 'admin') {
+      users.filter(u => u.rol === 'admin' && u.activo !== false).forEach(u => out.push({ email: u.email || '', name: `${u.nombres} ${u.apellidos}` }));
+    }
+
+    const seen = new Set<string>();
+    return out.filter(r => {
+      const key = r.email.trim().toLowerCase();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(key) || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [formData.destinatarios_rol, formData.nivel_destinatario, formData.grado_id, formData.seccion_id, enrollments, sections, students, users, teachers]);
+
+  const sendAnnouncementEmails = async (titulo: string, contenido: string, esUrgente: boolean) => {
+    const recipients = recipientEmails;
+    if (recipients.length === 0) {
+      showToast('Ningún destinatario tiene correo registrado. El comunicado quedó solo en el portal.', 'warning', 'Sin correos');
+      return;
+    }
+    setIsSendingEmails(true);
+    let sent = 0, failed = 0, simulated = false;
+    for (const r of recipients) {
+      const res = await sendResendEmail({
+        type: 'comunicado',
+        recipientEmail: r.email,
+        recipientName: r.name,
+        titulo,
+        contenido,
+        esUrgente,
+        remitente: `${currentUser.nombres} ${currentUser.apellidos}`.trim(),
+        loginUrl: typeof window !== 'undefined' ? `${window.location.origin}/login` : undefined,
+        branding: brandingConfig,
+      });
+      if (res.success) { sent++; if (res.simulated) simulated = true; } else { failed++; }
+    }
+    setIsSendingEmails(false);
+    if (simulated) {
+      showToast(`Resend no está configurado: se simularon ${sent} correos y no salió ninguno. Configura RESEND_API_KEY para enviarlos de verdad.`, 'warning', 'Correo simulado', 7000);
+    } else if (failed > 0) {
+      showToast(`Se enviaron ${sent} correos y fallaron ${failed}.`, 'warning', 'Envío parcial');
+    } else {
+      showToast(`Se enviaron ${sent} correos.`, 'success', '✉️ Correos enviados');
+    }
+  };
+
   const handleCreateSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.titulo.trim() || !formData.contenido.trim()) {
       showToast('Por favor complete el título y contenido del comunicado', 'warning');
       return;
     }
+    const emailCopy = formData.canales.includes('email')
+      ? { titulo: formData.titulo.trim(), contenido: formData.contenido.trim(), esUrgente: formData.es_urgente }
+      : null;
 
     addAnnouncement({
       titulo: formData.titulo.trim(),
@@ -309,6 +397,7 @@ export default function AdminComunicadosPage() {
     });
 
     showToast(`Comunicado publicado en el portal para ${targetAudienceEstimate.totalRecipients} destinatarios`, 'success', '📢 Comunicado publicado');
+    if (emailCopy) void sendAnnouncementEmails(emailCopy.titulo, emailCopy.contenido, emailCopy.esUrgente);
   };
 
   const handleCopyWhatsAppText = (ann: Announcement) => {
@@ -339,7 +428,7 @@ export default function AdminComunicadosPage() {
           <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
             <div className="max-w-2xl space-y-2">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-                <span className="w-2 h-2 rounded-full bg-emerald-500" /> Portal web · texto listo para WhatsApp
+                <span className="w-2 h-2 rounded-full bg-emerald-500" /> Portal web, correo y texto para WhatsApp
               </span>
               <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
                 <Megaphone className="w-8 h-8 text-violet-600" /> Comunicados
@@ -354,7 +443,7 @@ export default function AdminComunicadosPage() {
               onClick={() => setIsCreateModalOpen(true)}
               className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-2xl bg-violet-600 hover:bg-violet-700 text-white font-black text-sm shadow-md shadow-violet-600/20 transition-all active:scale-95 cursor-pointer shrink-0"
             >
-              <Send className="w-4 h-4" /> Nuevo comunicado
+              <Send className="w-4 h-4" /> {isSendingEmails ? 'Enviando correos…' : 'Nuevo comunicado'}
             </button>
           </div>
 
@@ -842,6 +931,28 @@ export default function AdminComunicadosPage() {
                   <div>
                     <span className="text-xs font-bold text-slate-900 dark:text-white block">Requiere Confirmación</span>
                     <span className="text-[10px] text-slate-400">El apoderado debe confirmar asistencia/recepción</span>
+                  </div>
+                </label>
+
+                <label className="flex items-center gap-2.5 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 cursor-pointer sm:col-span-2">
+                  <input
+                    type="checkbox"
+                    checked={formData.canales.includes('email')}
+                    onChange={(e) => setFormData({
+                      ...formData,
+                      canales: e.target.checked
+                        ? Array.from(new Set([...formData.canales, 'email' as const]))
+                        : formData.canales.filter(c => c !== 'email'),
+                    })}
+                    className="w-4 h-4 rounded-md text-emerald-600 focus:ring-emerald-500"
+                  />
+                  <div>
+                    <span className="text-xs font-bold text-slate-900 dark:text-white block">Enviar también por correo</span>
+                    <span className="text-[10px] text-slate-400">
+                      {recipientEmails.length > 0
+                        ? `${recipientEmails.length} ${recipientEmails.length === 1 ? 'destinatario tiene' : 'destinatarios tienen'} correo registrado`
+                        : 'Ningún destinatario de esta segmentación tiene correo registrado'}
+                    </span>
                   </div>
                 </label>
               </div>

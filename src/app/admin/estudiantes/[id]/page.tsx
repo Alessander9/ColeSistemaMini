@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, notFound } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import { GradeBadge } from '@/components/notas/GradeBadge';
 import { calculateAverage, GRADE_SCALE } from '@/lib/grades/calculations';
@@ -57,7 +57,8 @@ export default function Estudiante360Page() {
     addBehaviorLog,
     updateEnrollmentDocuments,
     showToast,
-    payments
+    payments,
+    users
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<
@@ -73,8 +74,13 @@ export default function Estudiante360Page() {
   });
 
   const student = useMemo(() => {
-    return students.find(s => s.id === studentId || s.profile_id === studentId) || students[0];
+    return students.find(s => s.id === studentId || s.profile_id === studentId);
   }, [students, studentId]);
+
+  // Cuenta de acceso real del alumno (el perfil embebido no siempre trae usuario y contraseña)
+  const account = useMemo(() => {
+    return users.find(u => u.id === student?.profile_id) || student?.profile;
+  }, [users, student]);
 
   const enrollment = useMemo(() => {
     return enrollments.find(e => e.estudiante_id === student?.id);
@@ -153,9 +159,9 @@ export default function Estudiante360Page() {
         enrollment,
         section,
         credentials: {
-          username: student.profile?.username || student.profile?.dni || student.codigo_estudiante,
-          password: student.profile?.password || `Est${student.profile?.dni || '2026'}!`,
-          email: student.profile?.email,
+          username: account?.username || account?.dni || student.dni || student.codigo_estudiante,
+          password: account?.password || '',
+          email: account?.email,
         },
         parentName: student.nombre_apoderado,
         parentPhone: student.telefono_apoderado,
@@ -184,6 +190,9 @@ export default function Estudiante360Page() {
     // [DESACTIVADO: El colegio no gestiona pagos ni pensiones]
     // { id: 'finanzas', label: 'Finanzas & Pensiones' },
   ] as const;
+
+  if (students.length > 0 && !student) notFound();
+  if (!student) return null;
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
@@ -359,15 +368,15 @@ export default function Estudiante360Page() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1 text-slate-600 dark:text-slate-300 font-mono">
                 <div>
                   <span className="text-slate-400 font-sans block text-[11px]">Usuario Alumno:</span>
-                  <span className="font-bold text-slate-800 dark:text-slate-100">{student?.profile?.username || student?.profile?.dni || student?.codigo_estudiante}</span>
+                  <span className="font-bold text-slate-800 dark:text-slate-100">{account?.username || account?.dni || student?.dni || student?.codigo_estudiante}</span>
                 </div>
                 <div>
                   <span className="text-slate-400 font-sans block text-[11px]">Correo Institucional:</span>
-                  <span className="font-bold text-slate-800 dark:text-slate-100">{student?.profile?.email || 'No configurado'}</span>
+                  <span className="font-bold text-slate-800 dark:text-slate-100">{account?.email || 'No configurado'}</span>
                 </div>
                 <div>
                   <span className="text-slate-400 font-sans block text-[11px]">Contraseña Asignada:</span>
-                  <span className="font-bold text-indigo-600 dark:text-indigo-400">{student?.profile?.password || `Est${student?.profile?.dni || '2026'}!`}</span>
+                  <span className="font-bold text-indigo-600 dark:text-indigo-400">{account?.password || 'Sin contraseña registrada'}</span>
                 </div>
               </div>
             </div>

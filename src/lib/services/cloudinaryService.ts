@@ -3,6 +3,8 @@
  * Proporciona compresión automática en WebP/AVIF, recorte facial inteligente y CDN global gratuito.
  */
 
+import { initialsAvatarUrl } from '@/lib/avatar';
+
 export interface CloudinaryUploadResponse {
   secure_url: string;
   public_id: string;
@@ -22,8 +24,7 @@ export function isCloudinaryConfigured(): boolean {
  * Genera una URL de avatar con iniciales de alta definición como fallback
  */
 export function getFallbackAvatar(nombres: string, apellidos: string = ''): string {
-  const nameQuery = encodeURIComponent(`${nombres} ${apellidos}`.trim());
-  return `https://ui-avatars.com/api/?name=${nameQuery}&background=6366f1&color=fff&size=200&bold=true`;
+  return initialsAvatarUrl(`${nombres} ${apellidos}`.trim());
 }
 
 /**

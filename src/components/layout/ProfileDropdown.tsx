@@ -27,6 +27,7 @@ import {
   QrCode 
 } from 'lucide-react';
 import { AvatarUploader } from '@/components/ui/AvatarUploader';
+import { initialsAvatarUrl } from '@/lib/avatar';
 
 export function ProfileDropdown() {
   const { currentUser, setCurrentUser, switchRole, students, enrollments, showToast, resetToDemoData, logout } = useApp();
@@ -148,7 +149,7 @@ export function ProfileDropdown() {
           {/* Avatar with indicator */}
           <div className="relative shrink-0">
             <img
-              src={currentUser.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.nombres)}&background=6366f1&color=fff&size=80`}
+              src={currentUser.avatar_url || initialsAvatarUrl(currentUser.nombres)}
               alt={currentUser.nombres}
               className="w-8 h-8 rounded-xl object-cover ring-2 ring-slate-200 dark:ring-slate-700 group-hover:ring-purple-500 transition-all shadow-sm"
             />
@@ -178,7 +179,7 @@ export function ProfileDropdown() {
             <div className="p-3 rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100/80 dark:from-slate-800/60 dark:to-slate-900/60 border border-slate-200/60 dark:border-slate-700/60 mb-1.5">
               <div className="flex items-center gap-3">
                 <img
-                  src={currentUser.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.nombres)}&background=6366f1&color=fff&size=80`}
+                  src={currentUser.avatar_url || initialsAvatarUrl(currentUser.nombres)}
                   alt={currentUser.nombres}
                   className="w-10 h-10 rounded-xl object-cover ring-2 ring-white dark:ring-slate-800 shadow-sm shrink-0"
                 />

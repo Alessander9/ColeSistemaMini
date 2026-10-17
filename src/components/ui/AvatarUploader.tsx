@@ -4,6 +4,7 @@ import React, { useState, useRef } from 'react';
 import { Camera, Upload, CheckCircle2, AlertCircle, Loader2, Sparkles, X, Zap } from 'lucide-react';
 import { uploadImageToCloudinary, isCloudinaryConfigured } from '@/lib/services/cloudinaryService';
 import { compressFile, formatBytes } from '@/lib/services/compressionService';
+import { initialsAvatarUrl } from '@/lib/avatar';
 
 interface AvatarUploaderProps {
   currentAvatarUrl?: string;
@@ -92,7 +93,7 @@ export function AvatarUploader({
         <div className="relative group">
           <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden ring-2 ring-purple-200 dark:ring-purple-900/60 shadow-md bg-slate-100 dark:bg-slate-800">
             <img
-              src={preview || `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=6366f1&color=fff&size=160`}
+              src={preview || initialsAvatarUrl(userName)}
               alt={userName}
               className={`w-full h-full object-cover transition-all duration-300 ${
                 isUploading ? 'scale-105 blur-xs opacity-60' : 'group-hover:scale-105'
@@ -180,7 +181,7 @@ export function AvatarUploader({
       <div className="relative group">
         <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-3xl overflow-hidden ring-4 ring-white dark:ring-slate-800 shadow-xl bg-slate-100 dark:bg-slate-800">
           <img
-            src={preview || `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=6366f1&color=fff&size=200`}
+            src={preview || initialsAvatarUrl(userName)}
             alt={userName}
             className={`w-full h-full object-cover transition-all duration-300 ${
               isUploading ? 'scale-105 blur-xs opacity-60' : 'group-hover:scale-105'

@@ -1,4 +1,23 @@
 /**
+ * Genera una contraseña aleatoria con el generador criptográfico del entorno.
+ * Usa letras y números sin caracteres que se confunden al dictarlos (0/O, 1/l/I).
+ */
+export function generateSecurePassword(length = 10): string {
+  const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+  const lower = 'abcdefghijkmnopqrstuvwxyz';
+  const digits = '23456789';
+  const all = upper + lower + digits;
+  const bytes = new Uint32Array(length);
+  crypto.getRandomValues(bytes);
+  const chars = Array.from(bytes, b => all[b % all.length]);
+  // Garantiza al menos una mayúscula, una minúscula y un número
+  chars[0] = upper[bytes[0] % upper.length];
+  chars[1] = lower[bytes[1] % lower.length];
+  chars[2] = digits[bytes[2] % digits.length];
+  return chars.join('');
+}
+
+/**
  * Generates a deterministic 12-character access password for a student.
  *
  * Formula:

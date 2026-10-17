@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import { logoutUser } from '@/lib/services/authService';
 import { Sparkles, Heart } from 'lucide-react';
+import { initialsAvatarUrl } from '@/lib/avatar';
 
 export default function DespedidaPage() {
   const router = useRouter();
@@ -16,7 +17,7 @@ export default function DespedidaPage() {
     // 1. Obtener datos del usuario antes de limpiar la sesión
     if (currentUser?.nombres) {
       setUserName(currentUser.nombres.split(' ')[0]);
-      setUserAvatar(currentUser.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.nombres)}&background=6366f1&color=fff&size=200`);
+      setUserAvatar(currentUser.avatar_url || initialsAvatarUrl(currentUser.nombres));
     }
 
     // 2. Limpieza de sesión

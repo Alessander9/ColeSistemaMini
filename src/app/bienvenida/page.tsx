@@ -6,6 +6,7 @@ import { useApp } from '@/context/AppContext';
 import { UserRole } from '@/types';
 import { Sparkles, ArrowRight } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { initialsAvatarUrl } from '@/lib/avatar';
 
 export default function BienvenidaPage() {
   const { currentUser } = useApp();
@@ -50,7 +51,7 @@ export default function BienvenidaPage() {
   }, [countdown, currentUser.rol, router]);
 
   const firstName = currentUser?.nombres ? currentUser.nombres.split(' ')[0] : 'Usuario';
-  const avatarUrl = currentUser?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(firstName)}&background=6366f1&color=fff&size=200`;
+  const avatarUrl = currentUser?.avatar_url || initialsAvatarUrl(firstName);
 
   return (
     <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center relative overflow-hidden px-4 select-none">

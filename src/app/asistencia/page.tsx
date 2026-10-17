@@ -38,6 +38,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import confetti from 'canvas-confetti';
 import { findStudentByQr, parseQrPayload } from '@/lib/attendance/qrMatcher';
+import { initialsAvatarUrl } from '@/lib/avatar';
 
 export default function AsistenciaKioscoPage() {
   const router = useRouter();
@@ -1031,7 +1032,7 @@ export default function AsistenciaKioscoPage() {
                     <div className="w-full mt-4 p-4 rounded-2xl bg-black/40 border border-white/10 space-y-2 text-left">
                       <div className="flex items-center gap-3">
                         <img
-                          src={activeAlert.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(activeAlert.studentName)}`}
+                          src={activeAlert.avatarUrl || initialsAvatarUrl(activeAlert.studentName)}
                           alt=""
                           className="w-12 h-12 rounded-xl object-cover ring-2 ring-emerald-400 shrink-0"
                         />
@@ -1399,7 +1400,7 @@ export default function AsistenciaKioscoPage() {
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
                         <img
-                          src={student?.profile?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(student?.profile?.nombres || 'Alumno')}`}
+                          src={student?.profile?.avatar_url || initialsAvatarUrl(student?.profile?.nombres || 'Alumno')}
                           alt=""
                           className="w-7 h-7 rounded-lg object-cover ring-1 ring-slate-700 shrink-0"
                         />

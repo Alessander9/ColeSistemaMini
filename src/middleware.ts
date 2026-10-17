@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { updateSession } from '@/lib/supabase/middleware';
 import { checkAdaptiveRateLimit, getClientIp } from '@/lib/security/rateLimiter';
 import { logSecurityEvent } from '@/lib/security/securityLogger';
-import { verifySessionToken } from '@/lib/security/sessionToken';
+import { verifySessionToken, type VerifySessionResult } from '@/lib/security/sessionToken';
 
 // Rutas públicas que no requieren autenticación
 const PUBLIC_PATHS = [
@@ -103,12 +103,14 @@ export async function middleware(request: NextRequest) {
   }
 
   // 3. Verificar sesión de Supabase Auth o token criptográfico firmado (cole_session_token)
-  const { user, response } = await updateSession(request);
+  // Refresca las cookies de Supabase (si está configurado) para mantener viva su sesión
+  const { response } = await updateSession(request);
   const sessionToken = request.cookies.get('cole_session_token')?.value;
-  const verifiedSession = sessionToken ? await verifySessionToken(sessionToken) : { valid: false };
+  const verifiedSession: VerifySessionResult = sessionToken ? await verifySessionToken(sessionToken) : { valid: false };
 
-  // El usuario SOLO está autenticado si Supabase lo confirma O el token firmado es válido
-  const isAuthenticated = !!user || verifiedSession.valid;
+  // La sesión válida es siempre el token firmado: el servidor solo lo emite tras verificar la identidad
+  // (en modo Supabase, con el perfil del usuario). Una sesión de Supabase sin token no indica el rol.
+  const isAuthenticated = verifiedSession.valid && !!verifiedSession.payload?.role;
 
   // 4. Si no está autenticado, bloquear acceso (401 en APIs, redirección en páginas)
   if (!isAuthenticated) {
@@ -126,9 +128,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // 5. Determinar rol a partir del token verificado (nunca de una cookie de texto plano no firmada)
-  const role = verifiedSession.valid
-    ? (verifiedSession.payload?.role || 'estudiante')
-    : (request.cookies.get('cole_user_role')?.value || 'admin');
+  const role = verifiedSession.payload!.role;
 
   const roleDashboardMap: Record<string, string> = {
     admin: '/admin',

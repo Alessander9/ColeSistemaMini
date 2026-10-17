@@ -41,6 +41,7 @@ import {
   Check
 } from 'lucide-react';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
+import { initialsAvatarUrl } from '@/lib/avatar';
 
 // Grade letter to number mapping
 const gradeToNum: Record<GradeLetter, number> = { AD: 4, A: 3, B: 2, C: 1 };
@@ -1216,7 +1217,7 @@ export default function NotasSalonPage() {
                             <td className="py-3 px-4">
                               <div className="flex items-center gap-2.5">
                                 <img
-                                  src={s.student?.profile?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(s.student?.profile?.nombres || 'Alumno')}`}
+                                  src={s.student?.profile?.avatar_url || initialsAvatarUrl(s.student?.profile?.nombres || 'Alumno')}
                                   alt=""
                                   className="w-8 h-8 rounded-xl object-cover ring-1 ring-slate-200 dark:ring-slate-700 shrink-0"
                                 />

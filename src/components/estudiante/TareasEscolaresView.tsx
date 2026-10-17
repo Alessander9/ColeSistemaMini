@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
+import { getChildrenOfParent } from '@/lib/auth/parentChildren';
 import { Modal } from '@/components/ui/Modal';
 import { GradeBadge } from '@/components/notas/GradeBadge';
 import { TaskAssignment, TaskSubmission, Student } from '@/types';
@@ -82,16 +83,7 @@ export function TareasEscolaresView({ isApoderado = false }: TareasEscolaresView
   const childrenList = useMemo(() => {
     if (isApoderado) {
       if (currentUser?.rol === 'admin') return students;
-      const email = currentUser?.email?.toLowerCase().trim();
-      const phone = currentUser?.telefono?.trim();
-      const name = `${currentUser?.nombres || ''} ${currentUser?.apellidos || ''}`.toLowerCase().trim();
-      const matched = students.filter(s => {
-        const matchEmail = s.email_apoderado && email && s.email_apoderado.toLowerCase().trim() === email;
-        const matchPhone = s.telefono_apoderado && phone && s.telefono_apoderado.trim() === phone;
-        const matchName = s.nombre_apoderado && name && (s.nombre_apoderado.toLowerCase().includes(name) || name.includes(s.nombre_apoderado.toLowerCase()));
-        return matchEmail || matchPhone || matchName;
-      });
-      return matched;
+      return currentUser ? getChildrenOfParent(students, currentUser) : [];
     }
     return [];
   }, [isApoderado, students, currentUser]);

@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
+import { getChildrenOfParent } from '@/lib/auth/parentChildren';
 import { GradeBadge } from '@/components/notas/GradeBadge';
 import { AnnualReportCardView } from '@/components/notas/AnnualReportCardView';
 import { calculateAverage, calculateStudentAnnualReportCard, getGradeMeta } from '@/lib/grades/calculations';
@@ -86,7 +87,6 @@ export default function EstudianteLibretaNotasPage() {
     teachers,
     evaluationPeriods, 
     currentUser, 
-    childrenList, 
     selectedChildId, 
     setSelectedChildId,
     showToast,
@@ -97,10 +97,9 @@ export default function EstudianteLibretaNotasPage() {
 
   // Lista de hijos/estudiantes disponibles
   const availableChildren = useMemo(() => {
-    if (childrenList && childrenList.length > 0) {
-      return childrenList;
-    }
-    return students.map((s, idx) => {
+    // childrenList es global (no distingue apoderados): el apoderado ve solo a sus hijos, el admin a todos
+    const pool = currentUser.rol === 'apoderado' ? getChildrenOfParent(students, currentUser) : students;
+    return pool.map((s, idx) => {
       const enr = enrollments.find(e => e.estudiante_id === s.id);
       const sec = sections.find(sc => sc.id === enr?.seccion_id);
       const grd = gradeLevels.find(g => g.id === sec?.grado_id);
@@ -127,7 +126,7 @@ export default function EstudianteLibretaNotasPage() {
         tutor_avatar: tutor?.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'
       };
     });
-  }, [childrenList, students, enrollments, sections, gradeLevels, attendances, grades, teachers]);
+  }, [currentUser, students, enrollments, sections, gradeLevels, attendances, grades, teachers]);
 
   // Estudiante/Hijo activo
   const activeChild = useMemo(() => {

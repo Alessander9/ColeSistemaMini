@@ -1,6 +1,6 @@
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
 import { Student, Enrollment, GradeLevel, Section, Course, Competency, EvaluationPeriod, GradeRecord, GradeLetter, UserProfile } from '@/types';
-import { generateStudentEmail, generateStudentPassword, generateStudentUsername } from '@/lib/auth/generateCredentials';
+import { generateStudentEmail, generateSecurePassword, generateStudentUsername } from '@/lib/auth/generateCredentials';
 import { 
   MOCK_GRADE_LEVELS, 
   MOCK_SECTIONS, 
@@ -155,7 +155,7 @@ export async function createStudentInDb(data: {
 }): Promise<{ student: Student; credentials: { username: string; password: string; email: string } }> {
   const supabase = createClient();
 
-  const generatedPassword = generateStudentPassword(data.nombres, data.apellidos, data.fechaNacimiento);
+  const generatedPassword = generateSecurePassword();
   const generatedEmail = generateStudentEmail(data.nombres, data.apellidos);
   const generatedUsername = generateStudentUsername(data.apellidos, data.dni);
   

@@ -51,6 +51,7 @@ import {
   Loader2,
   Copy
 } from 'lucide-react';
+import { initialsAvatarUrl } from '@/lib/avatar';
 
 const TIME_BLOCKS = [
   { id: 'b1', label: '1° Hora', inicio: '08:00', fin: '08:45' },
@@ -370,12 +371,13 @@ export default function AdminHorariosPage() {
   const modalConflictCheck = useMemo(() => {
     if (!slotCourseId) return { hasConflict: false };
     const assignment = currentSectionCourses.find(sc => sc.curso_id === slotCourseId);
-    const teacherId = assignment?.docente_id || teachers[0]?.id;
+    // Sin docente asignado no hay cruce que revisar (antes se usaba el primer docente de la lista)
+    const teacherId = assignment?.docente_id;
     const timeBlock = TIME_BLOCKS[slotTimeIndex];
-    if (!timeBlock || timeBlock.isBreak) return { hasConflict: false };
+    if (!teacherId || !timeBlock || timeBlock.isBreak) return { hasConflict: false };
 
     return checkTeacherConflict(teacherId, slotDay, timeBlock.inicio);
-  }, [slotCourseId, slotDay, slotTimeIndex, currentSectionCourses, teachers, checkTeacherConflict]);
+  }, [slotCourseId, slotDay, slotTimeIndex, currentSectionCourses, checkTeacherConflict]);
 
   // Handlers
   const handleLevelChange = (level: 'todos' | 'inicial' | 'primaria' | 'secundaria') => {
@@ -430,7 +432,7 @@ export default function AdminHorariosPage() {
     setSlotCourseId(courseToSelect);
 
     const assignment = currentSectionCourses.find(sc => sc.curso_id === courseToSelect);
-    setSlotRoom(assignment?.aula_defecto || `Aula ${currentSection?.grado?.numero_grado || '3'}01`);
+    setSlotRoom(assignment?.aula_defecto || currentSection?.aula || '');
     
     setIsSlotModalOpen(true);
   };
@@ -440,7 +442,11 @@ export default function AdminHorariosPage() {
     if (!slotCourseId) return;
 
     const assignment = currentSectionCourses.find(sc => sc.curso_id === slotCourseId);
-    const docenteId = assignment?.docente_id || teachers[0]?.id;
+    const docenteId = assignment?.docente_id;
+    if (!docenteId) {
+      showToast('Este curso aún no tiene docente en el aula. Asígnalo en Docentes antes de ponerlo en el horario.', 'warning', 'Falta docente');
+      return;
+    }
     const timeBlock = TIME_BLOCKS[slotTimeIndex];
 
     addScheduleSlot({
@@ -1092,7 +1098,7 @@ export default function AdminHorariosPage() {
                       </div>
                       <div className="flex items-center gap-3">
                         <img
-                          src={assignment.docente?.avatar_url || `https://ui-avatars.com/api/?name=${assignment.docente?.nombres}`}
+                          src={assignment.docente?.avatar_url || initialsAvatarUrl(assignment.docente?.nombres)}
                           alt={assignment.docente?.nombres}
                           className="w-10 h-10 rounded-xl object-cover ring-2 ring-purple-500/20 shrink-0"
                         />
@@ -1215,7 +1221,7 @@ export default function AdminHorariosPage() {
                 <div className="p-6 rounded-3xl bg-gradient-to-r from-blue-900/90 to-indigo-900/90 text-white shadow-xl shadow-blue-900/10 flex flex-col md:flex-row md:items-center justify-between gap-6">
                   <div className="flex items-center gap-4">
                     <img
-                      src={currentTeacher.avatar_url || `https://ui-avatars.com/api/?name=${currentTeacher.nombres}`}
+                      src={currentTeacher.avatar_url || initialsAvatarUrl(currentTeacher.nombres)}
                       alt={currentTeacher.nombres}
                       className="w-16 h-16 rounded-2xl object-cover ring-2 ring-white/30"
                     />

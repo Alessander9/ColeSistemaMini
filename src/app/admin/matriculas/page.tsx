@@ -37,6 +37,7 @@ import {
   CreditCard
 } from 'lucide-react';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
+import { generateSecurePassword } from '@/lib/auth/generateCredentials';
 
 // Se carga solo al generar el PDF (así jsPDF no pesa en la carga inicial de la página)
 const downloadEnrollmentFichaPdf = async (...args: Parameters<typeof import('@/lib/pdf/generateEnrollmentFichaPdf').downloadEnrollmentFichaPdf>) =>
@@ -46,7 +47,7 @@ const generateBatchQrCardsPdf = async (...args: Parameters<typeof import('@/lib/
   (await import('@/lib/pdf/batchQrCardsPdfGenerator')).generateBatchQrCardsPdf(...args);
 
 function MatriculasContent() {
-  const { enrollments, addStudent, sections, gradeLevels, students, showToast, brandingConfig } = useApp();
+  const { enrollments, addStudent, sections, gradeLevels, students, users, showToast, brandingConfig } = useApp();
   const searchParams = useSearchParams();
 
   // Selected Enrollment for QR Modal
@@ -99,7 +100,7 @@ function MatriculasContent() {
     student: Student | null;
     enrollment: Enrollment | null;
     credentials: { username: string; password: string; email: string } | null;
-    parentCredentials: { username: string; password: string; email: string } | null;
+    parentCredentials: { username: string; password: string; email: string; existing?: boolean } | null;
   }>({ student: null, enrollment: null, credentials: null, parentCredentials: null });
 
   const [copiedField, setCopiedField] = useState<string | null>(null);
@@ -152,11 +153,8 @@ function MatriculasContent() {
   );
 
   const handleGenerateWizardPasswords = () => {
-    const cleanFirst = (wizardData.nombres.trim().split(' ')[0] || 'Est').normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-    const cleanLast = (wizardData.apellidos.trim().split(' ')[0] || 'Cole').normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-    const dniPart = wizardData.dni.trim().slice(-4) || '2026';
-    const sPass = `Est${cleanFirst[0].toUpperCase()}${cleanLast.slice(0, 3)}${dniPart}!`;
-    const pPass = `Apo${wizardData.telefonoApoderado.slice(-4) || dniPart}!`;
+    const sPass = generateSecurePassword();
+    const pPass = generateSecurePassword();
     setWizardData(prev => ({
       ...prev,
       studentPassword: sPass,
@@ -199,6 +197,7 @@ function MatriculasContent() {
 
   const handleDownloadExistingEnrollmentPdf = async (enr: Enrollment) => {
     if (!enr.estudiante) return;
+    const account = users.find(u => u.id === enr.estudiante?.profile_id) || enr.estudiante.profile;
     try {
       showToast('Generando Ficha de Matrícula en PDF...', 'info', 'PDF');
       await downloadEnrollmentFichaPdf({
@@ -206,9 +205,9 @@ function MatriculasContent() {
         enrollment: enr,
         section: enr.seccion,
         credentials: {
-          username: enr.estudiante.profile?.username || enr.estudiante.profile?.dni || enr.estudiante.dni || enr.estudiante.codigo_estudiante,
-          password: enr.estudiante.profile?.password || `Est${enr.estudiante.profile?.dni || enr.estudiante.dni || '2026'}!`,
-          email: enr.estudiante.profile?.email,
+          username: account?.username || account?.dni || enr.estudiante.dni || enr.estudiante.codigo_estudiante,
+          password: account?.password || '',
+          email: account?.email,
         },
         parentName: enr.estudiante.nombre_apoderado,
         parentPhone: enr.estudiante.telefono_apoderado,
@@ -1057,7 +1056,7 @@ function MatriculasContent() {
                       <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs space-y-2 font-mono">
                         <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-1.5">
                           <span className="font-bold text-[11px] font-sans text-amber-600 dark:text-amber-400">👨‍👩‍👧 Cuenta Apoderado</span>
-                          <span className="text-[10px] bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 px-1.5 py-0.2 rounded font-sans">Apoderado</span>
+                          <span className="text-[10px] bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 px-1.5 py-0.2 rounded font-sans">{generatedResult.parentCredentials.existing ? 'Ya tenía cuenta' : 'Apoderado'}</span>
                         </div>
                         <div className="flex justify-between items-center text-[11px]">
                           <span className="text-slate-400 font-sans">Usuario:</span>

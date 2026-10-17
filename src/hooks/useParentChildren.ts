@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react';
 import { useApp } from '@/context/AppContext';
+import { getChildrenOfParent } from '@/lib/auth/parentChildren';
 
 // Hijos del apoderado con su matrícula, aula y tutor reales (compartido por las páginas del apoderado)
 export function useParentChildren() {
@@ -10,12 +11,8 @@ export function useParentChildren() {
   const children = useMemo(() => {
     let base = (childrenList || []).map(c => ({ id: c.id, studentId: c.estudiante_id }));
     if (currentUser?.rol === 'apoderado') {
-      // childrenList es global: un apoderado solo debe ver a los alumnos que lo tienen registrado por correo o teléfono
-      const email = currentUser.email?.toLowerCase().trim();
-      const phone = currentUser.telefono?.trim();
-      const ownIds = new Set(students
-        .filter(s => (email && s.email_apoderado?.toLowerCase().trim() === email) || (phone && s.telefono_apoderado?.trim() === phone))
-        .map(s => s.id));
+      // childrenList es global: un apoderado solo debe ver a sus propios hijos
+      const ownIds = new Set(getChildrenOfParent(students, currentUser).map(s => s.id));
       base = base.filter(c => ownIds.has(c.studentId));
       ownIds.forEach(id => {
         if (!base.some(c => c.studentId === id)) base.push({ id, studentId: id });

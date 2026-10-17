@@ -104,6 +104,8 @@ export interface Student {
   nombre_apoderado?: string;
   telefono_apoderado?: string;
   email_apoderado?: string;
+  // Cuenta del apoderado vinculada explícitamente (más fiable que comparar correo o teléfono)
+  apoderado_id?: string;
   token_qr: string;
   profile?: UserProfile;
 }

@@ -1,7 +1,7 @@
 import { SystemBrandingConfig } from '@/types';
 import { DEFAULT_BRANDING_CONFIG } from '@/lib/services/brandingService';
 
-export type ResendEmailType = 'libreta_notas' | 'bienvenida_matricula' | 'recordatorio_pension';
+export type ResendEmailType = 'libreta_notas' | 'bienvenida_matricula' | 'recordatorio_pension' | 'comunicado';
 
 export interface SendReportCardEmailParams {
   type: 'libreta_notas';
@@ -45,10 +45,70 @@ export interface SendTuitionReminderEmailParams {
   branding?: Partial<SystemBrandingConfig>;
 }
 
+export interface SendAnnouncementEmailParams {
+  type: 'comunicado';
+  recipientEmail: string;
+  recipientName?: string;
+  titulo: string;
+  contenido: string;
+  categoria?: string;
+  esUrgente?: boolean;
+  remitente: string;
+  loginUrl?: string;
+  branding?: Partial<SystemBrandingConfig>;
+}
+
 export type ResendEmailParams = 
   | SendReportCardEmailParams 
   | SendWelcomeEnrollmentEmailParams 
-  | SendTuitionReminderEmailParams;
+  | SendTuitionReminderEmailParams
+  | SendAnnouncementEmailParams;
+
+// El texto del comunicado lo escribe una persona: se escapa antes de insertarlo en el HTML del correo
+function escapeHtml(text: string): string {
+  return text.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
+}
+
+/**
+ * Plantilla de Comunicado / Circular enviado desde el módulo de Comunicados
+ */
+export function buildAnnouncementEmailHtml(params: SendAnnouncementEmailParams): string {
+  const branding = { ...DEFAULT_BRANDING_CONFIG, ...params.branding };
+  const primaryColor = branding.primaryColor || '#4f46e5';
+  const schoolName = escapeHtml(branding.nombreInstitucion || 'ColeSistema Mini');
+  const schoolSiglas = escapeHtml(branding.siglas || 'CS');
+  const titulo = escapeHtml(params.titulo);
+  const contenido = escapeHtml(params.contenido).replace(/\r?\n/g, '<br>');
+
+  return `
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${titulo}</title>
+</head>
+<body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f8fafc;color:#1e293b;">
+  <div style="padding:30px 10px;">
+    <div style="max-width:600px;margin:0 auto;background:#ffffff;border-radius:20px;overflow:hidden;border:1px solid #e2e8f0;">
+      <div style="background:${primaryColor};padding:28px 25px;text-align:center;color:#ffffff;">
+        <div style="display:inline-block;width:48px;height:48px;line-height:48px;background:rgba(255,255,255,0.2);border-radius:14px;font-weight:900;font-size:20px;margin-bottom:10px;">${schoolSiglas}</div>
+        <div style="font-size:13px;opacity:0.85;">${schoolName} · Comunicado oficial</div>
+      </div>
+      <div style="padding:28px 25px;">
+        ${params.esUrgente ? '<div style="display:inline-block;background:#fef2f2;color:#dc2626;font-size:11px;font-weight:800;padding:4px 10px;border-radius:999px;margin-bottom:12px;">URGENTE</div>' : ''}
+        <h1 style="margin:0 0 16px 0;font-size:20px;font-weight:800;color:#0f172a;">${titulo}</h1>
+        <div style="font-size:14px;line-height:1.7;color:#334155;">${contenido}</div>
+        <p style="margin:24px 0 0 0;font-size:12px;color:#64748b;">Emitido por: ${escapeHtml(params.remitente)}</p>
+        ${params.loginUrl ? `<a href="${escapeHtml(params.loginUrl)}" style="display:block;text-align:center;background:${primaryColor};color:#ffffff;padding:13px 20px;border-radius:12px;font-weight:800;font-size:14px;text-decoration:none;margin-top:20px;">Ver en el portal del colegio</a>` : ''}
+      </div>
+      <div style="background:#f1f5f9;padding:16px 25px;text-align:center;font-size:11px;color:#94a3b8;">${schoolName}</div>
+    </div>
+  </div>
+</body>
+</html>
+  `.trim();
+}
 
 /**
  * 1. Plantilla de Entrega Oficial de Libreta de Notas Bimestral

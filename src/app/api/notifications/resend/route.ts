@@ -3,7 +3,8 @@ import {
   ResendEmailParams, 
   buildReportCardEmailHtml, 
   buildWelcomeEnrollmentEmailHtml, 
-  buildTuitionReminderEmailHtml 
+  buildTuitionReminderEmailHtml,
+  buildAnnouncementEmailHtml
 } from '@/lib/services/resendService';
 import { DEFAULT_BRANDING_CONFIG } from '@/lib/services/brandingService';
 import { verifySessionToken } from '@/lib/security/sessionToken';
@@ -52,6 +53,9 @@ export async function POST(req: NextRequest) {
       subject = (branding.resendPlantillaBienvenidaAsunto || '🎉 ¡Bienvenido(a) al Año Escolar 2026!: [ALUMNO] | [COLEGIO]')
         .replace(/\[ALUMNO\]/g, body.studentName)
         .replace(/\[COLEGIO\]/g, branding.siglas || branding.nombreInstitucion || 'Colegio');
+    } else if (body.type === 'comunicado') {
+      htmlContent = buildAnnouncementEmailHtml({ ...body, branding });
+      subject = `${body.esUrgente ? '[URGENTE] ' : ''}${body.titulo} | ${branding.siglas || branding.nombreInstitucion || 'Colegio'}`;
     } else if (body.type === 'recordatorio_pension') {
       htmlContent = buildTuitionReminderEmailHtml(body);
       subject = (branding.resendPlantillaPensionAsunto || '💳 Aviso de Pensión Escolar - Mes de [MES]: [ALUMNO] | [COLEGIO]')

@@ -34,6 +34,7 @@ import {
 } from 'lucide-react';
 import { Student, Enrollment, GradeLetter, DayOfWeek } from '@/types';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
+import { initialsAvatarUrl } from '@/lib/avatar';
 
 export default function SectionHubDashboardPage() {
   const params = useParams();
@@ -146,7 +147,7 @@ export default function SectionHubDashboardPage() {
         return (
           <div className="flex items-center gap-3">
             <img
-              src={student?.profile?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(nombres || 'Alumno')}`}
+              src={student?.profile?.avatar_url || initialsAvatarUrl(nombres || 'Alumno')}
               alt={fullName}
               className="w-9 h-9 rounded-xl object-cover ring-1 ring-slate-200 dark:ring-slate-700 shrink-0"
             />
@@ -496,7 +497,7 @@ export default function SectionHubDashboardPage() {
                     <div className="space-y-3">
                       <div className="flex items-center gap-3">
                         <img
-                          src={student?.profile?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(nombres || 'Alumno')}`}
+                          src={student?.profile?.avatar_url || initialsAvatarUrl(nombres || 'Alumno')}
                           alt={fullName}
                           className="w-11 h-11 rounded-2xl object-cover ring-1 ring-slate-200 dark:ring-slate-700 shrink-0"
                         />
@@ -611,7 +612,7 @@ export default function SectionHubDashboardPage() {
                       {teacher ? (
                         <>
                           <img
-                            src={teacher.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(teacher.nombres)}`}
+                            src={teacher.avatar_url || initialsAvatarUrl(teacher.nombres)}
                             alt=""
                             className="w-8 h-8 rounded-full object-cover ring-1 ring-purple-500/30 shrink-0"
                           />

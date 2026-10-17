@@ -6,11 +6,12 @@ import {
 } from '../lib/services/cloudinaryService';
 
 describe('Cloudinary Avatar & CDN Integration Service', () => {
-  it('generates high resolution fallback avatar URLs with encoded names', () => {
+  it('generates local initials avatars without sending the name to third parties', () => {
     const avatar = getFallbackAvatar('Carlos Alberto', 'Mendoza');
-    expect(avatar).toContain('ui-avatars.com');
-    expect(avatar).toContain('Carlos%20Alberto%20Mendoza');
-    expect(avatar).toContain('size=200');
+    expect(avatar.startsWith('data:image/svg+xml')).toBe(true);
+    expect(avatar).not.toContain('ui-avatars.com');
+    expect(avatar).not.toContain('Mendoza');
+    expect(decodeURIComponent(avatar)).toContain('>CA</text>');
   });
 
   it('correctly identifies when Cloudinary is not configured or configured', () => {

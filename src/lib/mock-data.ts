@@ -160,6 +160,11 @@ export const MOCK_USERS: UserProfile[] = [
   DEMO_ASISTENCIA_USER,
 ];
 
+// Contraseñas de las cuentas demo (las mismas que rellena el acceso rápido de la pantalla de login)
+MOCK_USERS.forEach(u => {
+  if (!u.password) u.password = u.rol === 'admin' ? 'admin123' : 'Colegio2026!';
+});
+
 export const MOCK_TEACHERS: UserProfile[] = [
   DEMO_TEACHER_USER,
   TEACHER_2,
@@ -278,6 +283,7 @@ export const MOCK_COURSES: Course[] = cnebData.courses;
 export const DEMO_STUDENT: Student = {
   id: 'student-1',
   profile_id: 'user-student-1',
+  apoderado_id: 'parent-1',
   codigo_estudiante: 'EST-2026-001',
   nombres: 'Lucas',
   apellidos: 'Morales Vega',
@@ -526,6 +532,7 @@ export const MOCK_STUDENTS: Student[] = [
 MOCK_USERS.push(
   ...MOCK_STUDENTS.filter(s => s.id !== DEMO_STUDENT.id).flatMap((s): UserProfile[] => {
     const phone4 = (s.telefono_apoderado || s.dni || '').slice(-4);
+    s.apoderado_id = `user-apoderado-${s.id}`;
     return [
       {
         id: s.profile_id,

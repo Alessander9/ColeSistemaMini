@@ -95,7 +95,8 @@ import { isSupabaseConfigured } from '@/lib/supabase/config';
 import { pushToast, removeToast as removeToastFromStore } from '@/lib/toastStore';
 import { findStudentByQr } from '@/lib/attendance/qrMatcher';
 import { gradeToNumber } from '@/lib/grades/calculations';
-import { generateStudentPassword, generateStudentEmail, generateStudentUsername } from '@/lib/auth/generateCredentials';
+import { generateSecurePassword, generateStudentEmail, generateStudentUsername } from '@/lib/auth/generateCredentials';
+import { initialsAvatarUrl } from '@/lib/avatar';
 
 interface AppContextType {
   currentUser: UserProfile;
@@ -334,7 +335,7 @@ interface AppContextType {
     student: Student; 
     enrollment: Enrollment;
     credentials: { username: string; password: string; email: string };
-    parentCredentials?: { username: string; password: string; email: string };
+    parentCredentials?: { username: string; password: string; email: string; existing?: boolean };
   };
 
   updateStudent: (studentId: string, updatedData: Partial<{
@@ -882,7 +883,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const cleanLast = data.apellidos.trim().split(' ')[0].toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     const autoEmail = data.email?.trim() || `${cleanFirst[0]}${cleanLast}@colegio.edu.pe`;
     const autoUsername = `${cleanFirst[0]}${cleanLast}${data.dni.slice(-4)}`;
-    const autoPassword = `Doc${cleanFirst[0].toUpperCase()}${cleanLast.slice(0,3)}${data.dni.slice(-4)}!`;
+    const autoPassword = generateSecurePassword();
 
     const newTeacher: UserProfile = {
       id: `user-docente-${Date.now()}`,
@@ -891,6 +892,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       apellidos: data.apellidos,
       dni: data.dni,
       email: autoEmail,
+      // Sin estos dos campos el docente no podía entrar con las credenciales que se le mostraban
+      username: autoUsername,
+      password: autoPassword,
       telefono: data.telefono,
       especialidad: data.especialidad || 'Educación General',
       avatar_url: data.avatar_url || `https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80`,
@@ -933,8 +937,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const cleanLast = data.apellidos.trim().split(' ')[0].toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     const autoEmail = data.email?.trim() || `${cleanFirst[0]}${cleanLast}@colegio.edu.pe`;
     const autoUsername = data.username?.trim() || `${cleanFirst[0]}${cleanLast}${data.dni.slice(-4)}`;
-    const rolePrefix = data.rol === 'admin' ? 'Adm' : data.rol === 'docente' ? 'Doc' : data.rol === 'estudiante' ? 'Est' : data.rol === 'apoderado' ? 'Apo' : 'Ast';
-    const finalPassword = data.password?.trim() || `${rolePrefix}${cleanFirst[0].toUpperCase()}${cleanLast.slice(0, 3)}${data.dni.slice(-4)}!`;
+    const finalPassword = data.password?.trim() || generateSecurePassword();
 
     const newUser: UserProfile = {
       id: `user-${data.rol}-${Date.now()}`,
@@ -948,7 +951,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       telefono: data.telefono,
       especialidad: data.especialidad,
       cargo: data.cargo,
-      avatar_url: data.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(data.nombres + ' ' + data.apellidos)}&background=6366f1&color=fff&size=150`,
+      avatar_url: data.avatar_url || initialsAvatarUrl(data.nombres + ' ' + data.apellidos),
       activo: data.activo !== undefined ? data.activo : true,
     };
 
@@ -1057,7 +1060,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (!student) {
         return { success: false, message: 'Código QR no reconocido o estudiante inexistente' };
       }
-      targetEnrollment = enrollments.find(e => 
+      const studentEnrollments = enrollments.filter(e =>
         e.estudiante_id === student.id ||
         e.estudiante?.id === student.id ||
         (student.profile_id && (e.estudiante_id === student.profile_id || e.estudiante?.profile_id === student.profile_id)) ||
@@ -1065,25 +1068,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         (student.dni && (e.estudiante?.dni === student.dni || e.estudiante?.profile?.dni === student.dni)) ||
         (student.profile?.dni && (e.estudiante?.dni === student.profile.dni || e.estudiante?.profile?.dni === student.profile.dni))
       );
-
-      // Si el estudiante existe pero no tiene registro en matrículas, crear fallback activo automáticamente
-      if (!targetEnrollment) {
-        const fallbackSection = sections[0] || MOCK_SECTIONS[0];
-        targetEnrollment = {
-          id: `enr-auto-${student.id}`,
-          estudiante_id: student.id,
-          periodo_id: MOCK_PERIOD.id,
-          seccion_id: fallbackSection.id,
-          fecha_matricula: new Date().toISOString().split('T')[0],
-          estado: 'activo',
-          estudiante: student,
-          seccion: fallbackSection,
-          periodo: MOCK_PERIOD,
-        };
-        setEnrollments(prev => [targetEnrollment!, ...prev]);
+      // Solo cuenta la matrícula vigente: el kiosco nunca matricula por su cuenta ni acepta alumnos retirados
+      targetEnrollment = studentEnrollments.find(e => e.estado === 'activo');
+      if (!targetEnrollment && studentEnrollments.length > 0) {
+        return { success: false, message: 'El estudiante figura como retirado o trasladado. Consulta con dirección.' };
       }
     } else if (matriculaId) {
-      targetEnrollment = enrollments.find(e => e.id === matriculaId);
+      targetEnrollment = enrollments.find(e => e.id === matriculaId && e.estado === 'activo');
     }
 
     if (!targetEnrollment) {
@@ -1332,14 +1323,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const tokenQr = `QR-${studentCode}-${cleanFirst}-${cleanLast}`;
 
     // ── Credentials generation or custom ──────────────────────────────
-    const password = data.password?.trim() || generateStudentPassword(data.nombres, data.apellidos, data.fechaNacimiento);
+    const password = data.password?.trim() || generateSecurePassword();
     const email    = data.email?.trim() || generateStudentEmail(data.nombres, data.apellidos);
     const username = data.username?.trim() || generateStudentUsername(data.apellidos, data.dni);
 
     // Apoderado credentials
     const parentUsername = data.dniApoderado?.trim() || data.emailApoderado?.trim() || `apo${data.telefonoApoderado?.slice(-4) || data.dni.slice(-4)}`;
     const parentEmail = data.emailApoderado?.trim() || `${parentUsername.toLowerCase()}@apoderado.colegio.edu.pe`;
-    const parentPassword = data.parentPassword?.trim() || `Apo${data.telefonoApoderado?.slice(-4) || data.dni.slice(-4)}!`;
+    const parentPassword = data.parentPassword?.trim() || generateSecurePassword();
     // ──────────────────────────────────────────────────────────
 
     const newProfile: UserProfile = {
@@ -1372,9 +1363,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       profile: newProfile,
     };
 
-    // Crear o vincular perfil de apoderado
-    const parentUserId = `user-apoderado-${Date.now()}`;
-    const parentProfile: UserProfile = {
+    // Vincular al apoderado si ya tiene cuenta (hermanos), o crearle una
+    const existingParent = users.find(u => u.rol === 'apoderado' && (
+      (!!data.dniApoderado?.trim() && u.dni === data.dniApoderado.trim()) ||
+      (!!data.emailApoderado?.trim() && u.email?.toLowerCase() === data.emailApoderado.trim().toLowerCase()) ||
+      (!!data.telefonoApoderado?.trim() && u.telefono?.trim() === data.telefonoApoderado.trim())
+    ));
+    const parentUserId = existingParent?.id || `user-apoderado-${Date.now()}`;
+    newStudent.apoderado_id = parentUserId;
+    const parentProfile: UserProfile = existingParent || {
       id: parentUserId,
       rol: 'apoderado',
       nombres: data.nombreApoderado || 'Apoderado',
@@ -1384,11 +1381,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       username: parentUsername,
       password: parentPassword,
       telefono: data.telefonoApoderado,
-      avatar_url: `https://ui-avatars.com/api/?name=${encodeURIComponent(data.nombreApoderado || 'Apoderado')}&background=10b981&color=fff`,
+      avatar_url: initialsAvatarUrl(data.nombreApoderado || 'Apoderado', '#10b981'),
       activo: true,
     };
 
-    const targetSection = MOCK_SECTIONS.find(s => s.id === data.seccionId) || MOCK_SECTIONS[0];
+    const targetSection = sections.find(s => s.id === data.seccionId);
 
     const newEnrollment: Enrollment = {
       id: `enr-${Date.now()}`,
@@ -1404,7 +1401,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     setStudents(prev => [newStudent, ...prev]);
     setEnrollments(prev => [newEnrollment, ...prev]);
-    setUsers(prev => [newProfile, parentProfile, ...prev]);
+    const newUsers = existingParent ? [newProfile] : [newProfile, parentProfile];
+    setUsers(prev => [...newUsers, ...prev]);
 
     // Persistencia inmediata síncrona en localStorage para evitar pérdida al navegar
     if (typeof window !== 'undefined') {
@@ -1414,7 +1412,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const currentSavedEnrollments = JSON.parse(localStorage.getItem('colegio_enrollments') || '[]');
         localStorage.setItem('colegio_enrollments', JSON.stringify([newEnrollment, ...currentSavedEnrollments]));
         const currentSavedUsers = JSON.parse(localStorage.getItem('colegio_users') || '[]');
-        localStorage.setItem('colegio_users', JSON.stringify([newProfile, parentProfile, ...currentSavedUsers]));
+        localStorage.setItem('colegio_users', JSON.stringify([...newUsers, ...currentSavedUsers]));
       } catch (err) {
         console.warn('[Storage] Error al persistir inmediatamente:', err);
       }
@@ -1440,7 +1438,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       student: newStudent, 
       enrollment: newEnrollment,
       credentials: { username, password, email },
-      parentCredentials: { username: parentUsername, password: parentPassword, email: parentEmail }
+      // Un apoderado que ya tenía cuenta conserva su usuario y contraseña
+      parentCredentials: existingParent
+        ? { username: existingParent.username || existingParent.email || '', password: existingParent.password || '', email: existingParent.email || '', existing: true }
+        : { username: parentUsername, password: parentPassword, email: parentEmail }
     };
   };
 

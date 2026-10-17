@@ -37,6 +37,7 @@ import {
 } from 'lucide-react';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { MassPromotionModal } from '@/components/academico/MassPromotionModal';
+import { generateSecurePassword } from '@/lib/auth/generateCredentials';
 
 export default function AdminEstudiantesPage() {
   const {
@@ -286,10 +287,7 @@ export default function AdminEstudiantesPage() {
   };
 
   const handleGenerateStudentPassword = () => {
-    const cleanFirst = (formData.nombres.trim().split(' ')[0] || 'Est').normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-    const cleanLast = (formData.apellidos.trim().split(' ')[0] || 'Cole').normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-    const dniPart = formData.dni.trim().slice(-4) || '2026';
-    const gen = `Est${cleanFirst[0].toUpperCase()}${cleanLast.slice(0, 3)}${dniPart}!`;
+    const gen = generateSecurePassword();
     setFormData(prev => ({ ...prev, password: gen }));
     showToast('Contraseña de estudiante sugerida generada.', 'info', 'Contraseña');
   };
