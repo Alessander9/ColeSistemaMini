@@ -20,7 +20,7 @@ export function WhatsAppFloatingButton() {
   const waUrl = `https://wa.me/${cleanNumber}?text=${encodedText}`;
 
   return (
-    <div className="fixed bottom-20 md:bottom-6 right-4 md:right-6 z-[9990] flex flex-col items-end animate-in slide-in-from-bottom-5 duration-300">
+    <div className="fixed bottom-20 md:bottom-6 right-3 md:right-6 z-[9990] flex flex-col items-end animate-in slide-in-from-bottom-5 duration-300">
       {/* Popover Card */}
       {isOpen && (
         <div className="mb-3 w-72 sm:w-80 max-w-[calc(100vw-2rem)] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-4 animate-in zoom-in-95 duration-200">
@@ -69,16 +69,16 @@ export function WhatsAppFloatingButton() {
       <button
         type="button"
         onClick={() => setIsOpen(prev => !prev)}
-        className="w-14 h-14 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center shadow-xl shadow-emerald-500/40 hover:scale-105 active:scale-95 transition-all cursor-pointer group"
+        className="w-11 h-11 md:w-14 md:h-14 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center shadow-xl shadow-emerald-500/40 hover:scale-105 active:scale-95 transition-all cursor-pointer group"
         title="Contactar por WhatsApp"
         aria-label="Abrir chat de WhatsApp"
       >
         {isOpen ? (
-          <X className="w-6 h-6" />
+          <X className="w-5 h-5 md:w-6 md:h-6" />
         ) : (
           <div className="relative flex items-center justify-center">
-            <MessageCircle className="w-7 h-7 group-hover:scale-110 transition-transform" />
-            <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-white border-2 border-emerald-500 rounded-full" />
+            <MessageCircle className="w-5 h-5 md:w-7 md:h-7 group-hover:scale-110 transition-transform" />
+            <span className="absolute -top-1 -right-1 w-3 h-3 md:w-3.5 md:h-3.5 bg-white border-2 border-emerald-500 rounded-full" />
           </div>
         )}
       </button>

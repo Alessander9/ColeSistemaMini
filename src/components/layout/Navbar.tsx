@@ -106,7 +106,8 @@ export function Navbar({ onOpenMobileMenu }: NavbarProps) {
 
           {/* Center: Persistent Academic Context Selector + Search shortcut + Quick QR */}
           <div className="flex-1 flex items-center justify-center gap-2 max-w-xl mx-auto">
-            <AcademicContextSelector />
+            {/* El filtro de nivel/aula solo sirve a quienes ven varias aulas */}
+            {(currentUser?.rol === 'admin' || currentUser?.rol === 'docente') && <AcademicContextSelector />}
             
             {/* Command Palette Trigger Button (CTRL+K) */}
             <button

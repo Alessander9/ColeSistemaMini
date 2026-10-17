@@ -272,7 +272,7 @@ export default function AdminEvaluacionesPage() {
     });
 
     setIsCreateModalOpen(false);
-    showToast('¡Evaluación programada por Dirección!', 'success', 'Supervisión');
+    showToast('Evaluación programada', 'success', 'Evaluaciones');
   };
 
   const getSectionInfo = (seccionId?: string) => {
@@ -288,37 +288,29 @@ export default function AdminEvaluacionesPage() {
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12 animate-in fade-in-50 duration-200">
 
-      {/* ── 1. HEADER SUPERVISIÓN ── */}
-      <div className="relative overflow-hidden flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white dark:bg-slate-900 p-6 pt-7 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
-        <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-purple-500 via-indigo-500 via-sky-500 to-emerald-500" />
-        <div className="flex items-start gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-600 to-purple-700 flex items-center justify-center text-white shadow-lg shadow-indigo-500/20 shrink-0">
-            <CalendarClock className="w-6 h-6" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
-                Supervisión de Evaluaciones & Exámenes
+      {/* ══════════ 1. ENCABEZADO ══════════ */}
+      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden">
+        <div className="h-1.5 bg-gradient-to-r from-indigo-500 via-blue-500 to-emerald-500" />
+        <div className="p-5 sm:p-6">
+          <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
+            <div className="space-y-2">
+              <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
+                <CalendarClock className="w-8 h-8 text-indigo-600" /> Evaluaciones
               </h1>
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200">
-                Dirección / Admin
-              </span>
+              <p className="text-sm text-slate-600 dark:text-slate-300 max-w-2xl">
+                Los exámenes, prácticas y proyectos que tienen programados las aulas del colegio. Toca un tipo para filtrar o abre una evaluación para ver su detalle.
+              </p>
             </div>
-            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
-              Monitoreo institucional de exámenes bimestrales, prácticas y proyectos de Inicial, Primaria y Secundaria.
-            </p>
+            <div className="flex items-center gap-2 shrink-0 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setIsCreateModalOpen(true)}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-black shadow-md shadow-indigo-600/20 cursor-pointer"
+              >
+                <Plus className="w-4 h-4 stroke-[3]" /> Programar evaluación
+              </button>
+            </div>
           </div>
-        </div>
-
-        <div className="flex items-center gap-3 shrink-0">
-          <button
-            type="button"
-            onClick={() => setIsCreateModalOpen(true)}
-            className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs sm:text-sm shadow-xl shadow-indigo-600/25 transition-all duration-200 active:scale-95 cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            <span>+ Programar Evaluación</span>
-          </button>
         </div>
       </div>
 
@@ -385,10 +377,10 @@ export default function AdminEvaluacionesPage() {
               }}
               className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 outline-none cursor-pointer"
             >
-              <option value="todos">🏛️ Todos los Niveles</option>
-              <option value="inicial">🧸 Inicial</option>
-              <option value="primaria">📚 Primaria</option>
-              <option value="secundaria">🎓 Secundaria</option>
+              <option value="todos">Todos los niveles</option>
+              <option value="inicial">Inicial</option>
+              <option value="primaria">Primaria</option>
+              <option value="secundaria">Secundaria</option>
             </select>
           </div>
 
@@ -403,9 +395,9 @@ export default function AdminEvaluacionesPage() {
               }}
               className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 outline-none cursor-pointer"
             >
-              <option value="todos">📖 Todos los Grados</option>
+              <option value="todos">Todos los grados</option>
               {availableGrades.map(g => (
-                <option key={g.id} value={g.id}>{g.nombre} ({g.nivel.toUpperCase()})</option>
+                <option key={g.id} value={g.id}>{g.nombre}</option>
               ))}
             </select>
           </div>
@@ -420,7 +412,7 @@ export default function AdminEvaluacionesPage() {
               }}
               className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 outline-none cursor-pointer"
             >
-              <option value="todos">🏫 Todas las Secciones</option>
+              <option value="todos">Todas las aulas</option>
               {availableSections.map(s => (
                 <option key={s.id} value={s.id}>{s.grado?.nombre} &quot;{s.letra}&quot;</option>
               ))}
@@ -664,7 +656,7 @@ export default function AdminEvaluacionesPage() {
         <Modal
           isOpen={isCreateModalOpen}
           onClose={() => setIsCreateModalOpen(false)}
-          title="Programar Evaluación (Supervisión Institucional)"
+          title="Programar evaluación"
         >
           <form onSubmit={handleCreateSubmit} className="space-y-4 text-xs">
             <div>
