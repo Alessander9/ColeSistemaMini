@@ -91,7 +91,7 @@ export function TareasEscolaresView({ isApoderado = false }: TareasEscolaresView
         const matchName = s.nombre_apoderado && name && (s.nombre_apoderado.toLowerCase().includes(name) || name.includes(s.nombre_apoderado.toLowerCase()));
         return matchEmail || matchPhone || matchName;
       });
-      return matched.length > 0 ? matched : students;
+      return matched;
     }
     return [];
   }, [isApoderado, students, currentUser]);

@@ -670,7 +670,7 @@ export default function AdminAcademicoPage() {
                         {/* Section Item Rows */}
                         <div className="space-y-2.5">
                           {gradeSections.map((sec) => {
-                            const secStudents = enrollments.filter(e => e.seccion_id === sec.id).length;
+                            const secStudents = enrollments.filter(e => e.seccion_id === sec.id && e.estado === 'activo').length;
                             const secCourses = sectionCourses.filter(sc => sc.seccion_id === sec.id).length;
 
                             return (
@@ -688,7 +688,7 @@ export default function AdminAcademicoPage() {
                                       Sección {sec.letra}
                                     </span>
                                     <span className="text-[11px] text-slate-400 font-medium">
-                                      {secStudents > 0 ? secStudents : 22} alumnos &nbsp;|&nbsp; {secCourses > 0 ? secCourses : 6} materias
+                                      {secStudents} alumnos &nbsp;|&nbsp; {secCourses} materias
                                     </span>
                                   </div>
                                 </div>
@@ -784,7 +784,7 @@ export default function AdminAcademicoPage() {
 
                         <div className="space-y-2.5">
                           {gradeSections.map((sec) => {
-                            const secStudents = enrollments.filter(e => e.seccion_id === sec.id).length;
+                            const secStudents = enrollments.filter(e => e.seccion_id === sec.id && e.estado === 'activo').length;
                             const secCourses = sectionCourses.filter(sc => sc.seccion_id === sec.id).length;
 
                             return (
@@ -802,7 +802,7 @@ export default function AdminAcademicoPage() {
                                       Sección {sec.letra}
                                     </span>
                                     <span className="text-[11px] text-slate-400 font-medium">
-                                      {secStudents > 0 ? secStudents : 30} alumnos &nbsp;|&nbsp; {secCourses > 0 ? secCourses : 10} materias
+                                      {secStudents} alumnos &nbsp;|&nbsp; {secCourses} materias
                                     </span>
                                   </div>
                                 </div>
@@ -901,7 +901,7 @@ export default function AdminAcademicoPage() {
 
                         <div className="space-y-2.5">
                           {gradeSections.map((sec) => {
-                            const secStudents = enrollments.filter(e => e.seccion_id === sec.id).length;
+                            const secStudents = enrollments.filter(e => e.seccion_id === sec.id && e.estado === 'activo').length;
                             const secCourses = sectionCourses.filter(sc => sc.seccion_id === sec.id).length;
 
                             return (
@@ -919,7 +919,7 @@ export default function AdminAcademicoPage() {
                                       Sección {sec.letra}
                                     </span>
                                     <span className="text-[11px] text-slate-400 font-medium">
-                                      {secStudents > 0 ? secStudents : 36} estudiantes &nbsp;|&nbsp; {secCourses > 0 ? secCourses : 12} materias
+                                      {secStudents} estudiantes &nbsp;|&nbsp; {secCourses} materias
                                     </span>
                                   </div>
                                 </div>
@@ -1035,7 +1035,7 @@ export default function AdminAcademicoPage() {
                 <button type="button" onClick={() => setCourseStatusFilter(courseStatusFilter === 'sin_docente' ? 'todos' : 'sin_docente')} aria-pressed={courseStatusFilter === 'sin_docente'}
                   className={`text-left p-4 rounded-2xl border-2 cursor-pointer transition-all ${courseStatusFilter === 'sin_docente' ? 'border-amber-500 bg-amber-50 dark:bg-amber-950/30' : withoutTeacher > 0 ? 'border-amber-200 dark:border-amber-900 bg-white dark:bg-slate-900 hover:border-amber-400' : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900'}`}>
                   <p className={`text-3xl font-black ${withoutTeacher > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>{withoutTeacher}</p>
-                  <p className="text-sm font-bold text-slate-700 dark:text-slate-200">sin docente asignado</p>
+                  <p className="text-sm font-bold text-slate-700 dark:text-slate-200">sin docente en ninguna aula</p>
                   <p className="text-xs text-slate-500">{withoutTeacher > 0 ? 'Toca para verlos' : '¡Todos tienen docente!'}</p>
                 </button>
                 <button type="button" onClick={() => setCourseStatusFilter(courseStatusFilter === 'sin_competencias' ? 'todos' : 'sin_competencias')} aria-pressed={courseStatusFilter === 'sin_competencias'}

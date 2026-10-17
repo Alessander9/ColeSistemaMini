@@ -521,6 +521,39 @@ export const MOCK_STUDENTS: Student[] = [
   }
 ];
 
+// Cuentas de acceso del resto de alumnos de ejemplo y de sus apoderados (el alumno y apoderado demo ya están en MOCK_USERS).
+// Mismo formato de credenciales que usa la matrícula y la ficha PDF: alumno Est<DNI>!, apoderado apo<últimos 4 del teléfono> / Apo<últimos 4>!
+MOCK_USERS.push(
+  ...MOCK_STUDENTS.filter(s => s.id !== DEMO_STUDENT.id).flatMap((s): UserProfile[] => {
+    const phone4 = (s.telefono_apoderado || s.dni || '').slice(-4);
+    return [
+      {
+        id: s.profile_id,
+        rol: 'estudiante',
+        nombres: s.nombres || '',
+        apellidos: s.apellidos || '',
+        dni: s.dni || '',
+        email: `${s.codigo_estudiante.toLowerCase()}@colegio.edu.pe`,
+        username: s.dni,
+        password: `Est${s.dni}!`,
+        activo: true,
+      },
+      {
+        id: `user-apoderado-${s.id}`,
+        rol: 'apoderado',
+        nombres: s.nombre_apoderado || 'Apoderado',
+        apellidos: '',
+        dni: '',
+        email: s.email_apoderado || `apo${phone4}@apoderado.colegio.edu.pe`,
+        telefono: s.telefono_apoderado,
+        username: `apo${phone4}`,
+        password: `Apo${phone4}!`,
+        activo: true,
+      },
+    ];
+  })
+);
+
 export const MOCK_ENROLLMENTS: Enrollment[] = [
   // 3° Primaria A
   { id: 'enr-1', estudiante_id: 'student-1', periodo_id: 'period-2026', seccion_id: 'sec-3pri-a', fecha_matricula: '2026-03-01', estado: 'activo', estudiante: MOCK_STUDENTS[0], seccion: MOCK_SECTIONS.find(s => s.id === 'sec-3pri-a') },
@@ -747,7 +780,7 @@ export const MOCK_TASKS: TaskAssignment[] = [
     descripcion: 'Resolver los ejercicios de la página 18 a 20 del libro de actividades MINEDU.',
     fecha_limite: '2026-03-25T23:59:00',
     estado: 'cerrada',
-    created_at: '2026-03-18T08:00:00Z',
+    created_at: '2026-03-18T08:00:00-05:00',
   },
   {
     id: 'task-2',
@@ -759,7 +792,7 @@ export const MOCK_TASKS: TaskAssignment[] = [
     descripcion: 'Escribir un texto narrativo de al menos 3 párrafos aplicando conectores de secuencia.',
     fecha_limite: '2026-04-12T23:59:00',
     estado: 'cerrada',
-    created_at: '2026-04-05T08:00:00Z',
+    created_at: '2026-04-05T08:00:00-05:00',
   },
   // II Bimestre (Cerradas)
   {
@@ -772,7 +805,7 @@ export const MOCK_TASKS: TaskAssignment[] = [
     descripcion: 'Elaborar un círculo de fracciones con material reciclado y resolver la guía práctica.',
     fecha_limite: '2026-06-15T23:59:00',
     estado: 'cerrada',
-    created_at: '2026-06-08T08:00:00Z',
+    created_at: '2026-06-08T08:00:00-05:00',
   },
   {
     id: 'task-4',
@@ -784,7 +817,7 @@ export const MOCK_TASKS: TaskAssignment[] = [
     descripcion: 'Registrar en 5 días el desarrollo de dos plantas testigo bajo luz y sombra.',
     fecha_limite: '2026-07-02T23:59:00',
     estado: 'cerrada',
-    created_at: '2026-06-20T08:00:00Z',
+    created_at: '2026-06-20T08:00:00-05:00',
   },
   // III Bimestre (En curso / Activas a mitad de año)
   {
@@ -797,7 +830,7 @@ export const MOCK_TASKS: TaskAssignment[] = [
     descripcion: 'Desarrollar los 8 problemas de la ficha adjunta mostrando el procedimiento con MCM.',
     fecha_limite: '2026-09-28T23:59:00',
     estado: 'cerrada',
-    created_at: '2026-09-20T08:00:00Z',
+    created_at: '2026-09-20T08:00:00-05:00',
   },
   {
     id: 'task-6',
@@ -809,7 +842,7 @@ export const MOCK_TASKS: TaskAssignment[] = [
     descripcion: 'Redactar un ensayo expositivo con postura fundamentada y propuestas para la escuela.',
     fecha_limite: '2026-10-08T23:59:00',
     estado: 'publicada',
-    created_at: '2026-09-29T10:00:00Z',
+    created_at: '2026-09-29T10:00:00-05:00',
   },
   {
     id: 'task-7',
@@ -821,7 +854,7 @@ export const MOCK_TASKS: TaskAssignment[] = [
     descripcion: 'Construir un filtro de arena, grava y carbón activo y enviar foto o video explicativo.',
     fecha_limite: '2026-10-15T23:59:00',
     estado: 'publicada',
-    created_at: '2026-10-01T08:00:00Z',
+    created_at: '2026-10-01T08:00:00-05:00',
   }
 ];
 
@@ -992,7 +1025,7 @@ export const MOCK_CLASS_SESSIONS: ClassSessionLog[] = [
     tema_tratado: 'Operaciones combinadas con fracciones heterogéneas',
     observaciones: 'Participación activa de los alumnos en pizarra interactiva.',
     asistencia_tomada: true,
-    created_at: '2026-09-28T09:30:00Z',
+    created_at: '2026-09-28T09:30:00-05:00',
   },
   {
     id: 'sess-2',
@@ -1004,7 +1037,7 @@ export const MOCK_CLASS_SESSIONS: ClassSessionLog[] = [
     tema_tratado: 'Estructura del texto argumentativo y conectores lógicos',
     observaciones: 'Lectura modelo y análisis de ejemplos en grupo.',
     asistencia_tomada: true,
-    created_at: '2026-09-29T09:30:00Z',
+    created_at: '2026-09-29T09:30:00-05:00',
   },
 ];
 
@@ -1013,28 +1046,28 @@ export const MOCK_CLASS_SESSIONS: ClassSessionLog[] = [
 // ─────────────────────────────────────────────────────────────────────────────
 export const MOCK_PAYMENTS: PaymentRecord[] = [
   // Lucas Morales Vega (enr-1, student-1)
-  { id: 'pay-1-0', matricula_id: 'enr-1', estudiante_id: 'student-1', mes: 'Matrícula', concepto: 'Matrícula 2026', monto: 350, mora: 0, total: 350, fecha_vencimiento: '2026-03-01', fecha_pago: '2026-02-18', metodo_pago: 'transferencia', numero_operacion: 'BCP-894125', estado: 'pagado', created_at: '2026-02-18T10:00:00Z' },
-  { id: 'pay-1-1', matricula_id: 'enr-1', estudiante_id: 'student-1', mes: 'Marzo', concepto: 'Pensión Marzo', monto: 420, mora: 0, total: 420, fecha_vencimiento: '2026-03-31', fecha_pago: '2026-03-27', metodo_pago: 'yape', numero_operacion: 'YAP-102548', estado: 'pagado', created_at: '2026-03-27T14:20:00Z' },
-  { id: 'pay-1-2', matricula_id: 'enr-1', estudiante_id: 'student-1', mes: 'Abril', concepto: 'Pensión Abril', monto: 420, mora: 0, total: 420, fecha_vencimiento: '2026-04-30', fecha_pago: '2026-04-28', metodo_pago: 'plin', numero_operacion: 'PLN-963258', estado: 'pagado', created_at: '2026-04-28T11:15:00Z' },
-  { id: 'pay-1-3', matricula_id: 'enr-1', estudiante_id: 'student-1', mes: 'Mayo', concepto: 'Pensión Mayo', monto: 420, mora: 0, total: 420, fecha_vencimiento: '2026-05-31', fecha_pago: '2026-05-29', metodo_pago: 'transferencia', numero_operacion: 'BBV-741258', estado: 'pagado', created_at: '2026-05-29T09:40:00Z' },
-  { id: 'pay-1-4', matricula_id: 'enr-1', estudiante_id: 'student-1', mes: 'Junio', concepto: 'Pensión Junio', monto: 420, mora: 0, total: 420, fecha_vencimiento: '2026-06-30', fecha_pago: '2026-06-26', metodo_pago: 'yape', numero_operacion: 'YAP-852147', estado: 'pagado', created_at: '2026-06-26T16:00:00Z' },
-  { id: 'pay-1-5', matricula_id: 'enr-1', estudiante_id: 'student-1', mes: 'Julio', concepto: 'Pensión Julio', monto: 420, mora: 0, total: 420, fecha_vencimiento: '2026-07-31', fecha_pago: '2026-07-28', metodo_pago: 'transferencia', numero_operacion: 'BCP-321456', estado: 'pagado', created_at: '2026-07-28T12:30:00Z' },
-  { id: 'pay-1-6', matricula_id: 'enr-1', estudiante_id: 'student-1', mes: 'Agosto', concepto: 'Pensión Agosto', monto: 420, mora: 0, total: 420, fecha_vencimiento: '2026-08-31', fecha_pago: '2026-08-30', metodo_pago: 'yape', numero_operacion: 'YAP-456987', estado: 'pagado', created_at: '2026-08-30T17:10:00Z' },
-  { id: 'pay-1-7', matricula_id: 'enr-1', estudiante_id: 'student-1', mes: 'Septiembre', concepto: 'Pensión Septiembre', monto: 420, mora: 0, total: 420, fecha_vencimiento: '2026-09-30', fecha_pago: '2026-09-29', metodo_pago: 'transferencia', numero_operacion: 'BCP-654987', estado: 'pagado', created_at: '2026-09-29T10:15:00Z' },
-  { id: 'pay-1-8', matricula_id: 'enr-1', estudiante_id: 'student-1', mes: 'Octubre', concepto: 'Pensión Octubre', monto: 420, mora: 0, total: 420, fecha_vencimiento: '2026-10-31', estado: 'pendiente', created_at: '2026-10-01T08:00:00Z' },
+  { id: 'pay-1-0', matricula_id: 'enr-1', estudiante_id: 'student-1', mes: 'Matrícula', concepto: 'Matrícula 2026', monto: 350, mora: 0, total: 350, fecha_vencimiento: '2026-03-01', fecha_pago: '2026-02-18', metodo_pago: 'transferencia', numero_operacion: 'BCP-894125', estado: 'pagado', created_at: '2026-02-18T10:00:00-05:00' },
+  { id: 'pay-1-1', matricula_id: 'enr-1', estudiante_id: 'student-1', mes: 'Marzo', concepto: 'Pensión Marzo', monto: 420, mora: 0, total: 420, fecha_vencimiento: '2026-03-31', fecha_pago: '2026-03-27', metodo_pago: 'yape', numero_operacion: 'YAP-102548', estado: 'pagado', created_at: '2026-03-27T14:20:00-05:00' },
+  { id: 'pay-1-2', matricula_id: 'enr-1', estudiante_id: 'student-1', mes: 'Abril', concepto: 'Pensión Abril', monto: 420, mora: 0, total: 420, fecha_vencimiento: '2026-04-30', fecha_pago: '2026-04-28', metodo_pago: 'plin', numero_operacion: 'PLN-963258', estado: 'pagado', created_at: '2026-04-28T11:15:00-05:00' },
+  { id: 'pay-1-3', matricula_id: 'enr-1', estudiante_id: 'student-1', mes: 'Mayo', concepto: 'Pensión Mayo', monto: 420, mora: 0, total: 420, fecha_vencimiento: '2026-05-31', fecha_pago: '2026-05-29', metodo_pago: 'transferencia', numero_operacion: 'BBV-741258', estado: 'pagado', created_at: '2026-05-29T09:40:00-05:00' },
+  { id: 'pay-1-4', matricula_id: 'enr-1', estudiante_id: 'student-1', mes: 'Junio', concepto: 'Pensión Junio', monto: 420, mora: 0, total: 420, fecha_vencimiento: '2026-06-30', fecha_pago: '2026-06-26', metodo_pago: 'yape', numero_operacion: 'YAP-852147', estado: 'pagado', created_at: '2026-06-26T16:00:00-05:00' },
+  { id: 'pay-1-5', matricula_id: 'enr-1', estudiante_id: 'student-1', mes: 'Julio', concepto: 'Pensión Julio', monto: 420, mora: 0, total: 420, fecha_vencimiento: '2026-07-31', fecha_pago: '2026-07-28', metodo_pago: 'transferencia', numero_operacion: 'BCP-321456', estado: 'pagado', created_at: '2026-07-28T12:30:00-05:00' },
+  { id: 'pay-1-6', matricula_id: 'enr-1', estudiante_id: 'student-1', mes: 'Agosto', concepto: 'Pensión Agosto', monto: 420, mora: 0, total: 420, fecha_vencimiento: '2026-08-31', fecha_pago: '2026-08-30', metodo_pago: 'yape', numero_operacion: 'YAP-456987', estado: 'pagado', created_at: '2026-08-30T17:10:00-05:00' },
+  { id: 'pay-1-7', matricula_id: 'enr-1', estudiante_id: 'student-1', mes: 'Septiembre', concepto: 'Pensión Septiembre', monto: 420, mora: 0, total: 420, fecha_vencimiento: '2026-09-30', fecha_pago: '2026-09-29', metodo_pago: 'transferencia', numero_operacion: 'BCP-654987', estado: 'pagado', created_at: '2026-09-29T10:15:00-05:00' },
+  { id: 'pay-1-8', matricula_id: 'enr-1', estudiante_id: 'student-1', mes: 'Octubre', concepto: 'Pensión Octubre', monto: 420, mora: 0, total: 420, fecha_vencimiento: '2026-10-31', estado: 'pendiente', created_at: '2026-10-01T08:00:00-05:00' },
 
   // Sofía Castro Rivas (enr-2)
-  { id: 'pay-2-1', matricula_id: 'enr-2', estudiante_id: 'student-2', mes: 'Julio', concepto: 'Pensión Julio', monto: 420, mora: 0, total: 420, fecha_vencimiento: '2026-07-31', fecha_pago: '2026-07-25', metodo_pago: 'yape', numero_operacion: 'YAP-998877', estado: 'pagado', created_at: '2026-07-25T11:00:00Z' },
-  { id: 'pay-2-2', matricula_id: 'enr-2', estudiante_id: 'student-2', mes: 'Agosto', concepto: 'Pensión Agosto', monto: 420, mora: 0, total: 420, fecha_vencimiento: '2026-08-31', fecha_pago: '2026-08-28', metodo_pago: 'yape', numero_operacion: 'YAP-776655', estado: 'pagado', created_at: '2026-08-28T09:15:00Z' },
-  { id: 'pay-2-3', matricula_id: 'enr-2', estudiante_id: 'student-2', mes: 'Septiembre', concepto: 'Pensión Septiembre', monto: 420, mora: 15, total: 435, fecha_vencimiento: '2026-09-30', estado: 'pendiente', created_at: '2026-09-01T08:00:00Z' },
+  { id: 'pay-2-1', matricula_id: 'enr-2', estudiante_id: 'student-2', mes: 'Julio', concepto: 'Pensión Julio', monto: 420, mora: 0, total: 420, fecha_vencimiento: '2026-07-31', fecha_pago: '2026-07-25', metodo_pago: 'yape', numero_operacion: 'YAP-998877', estado: 'pagado', created_at: '2026-07-25T11:00:00-05:00' },
+  { id: 'pay-2-2', matricula_id: 'enr-2', estudiante_id: 'student-2', mes: 'Agosto', concepto: 'Pensión Agosto', monto: 420, mora: 0, total: 420, fecha_vencimiento: '2026-08-31', fecha_pago: '2026-08-28', metodo_pago: 'yape', numero_operacion: 'YAP-776655', estado: 'pagado', created_at: '2026-08-28T09:15:00-05:00' },
+  { id: 'pay-2-3', matricula_id: 'enr-2', estudiante_id: 'student-2', mes: 'Septiembre', concepto: 'Pensión Septiembre', monto: 420, mora: 15, total: 435, fecha_vencimiento: '2026-09-30', estado: 'pendiente', created_at: '2026-09-01T08:00:00-05:00' },
 
   // Mateo Flores Díaz (enr-3)
-  { id: 'pay-3-1', matricula_id: 'enr-3', estudiante_id: 'student-3', mes: 'Agosto', concepto: 'Pensión Agosto', monto: 420, mora: 0, total: 420, fecha_vencimiento: '2026-08-31', fecha_pago: '2026-08-31', metodo_pago: 'efectivo', numero_operacion: 'REC-001248', estado: 'pagado', created_at: '2026-08-31T15:30:00Z' },
-  { id: 'pay-3-2', matricula_id: 'enr-3', estudiante_id: 'student-3', mes: 'Septiembre', concepto: 'Pensión Septiembre', monto: 420, mora: 0, total: 420, fecha_vencimiento: '2026-09-30', fecha_pago: '2026-09-30', metodo_pago: 'yape', numero_operacion: 'YAP-332211', estado: 'pagado', created_at: '2026-09-30T14:00:00Z' },
+  { id: 'pay-3-1', matricula_id: 'enr-3', estudiante_id: 'student-3', mes: 'Agosto', concepto: 'Pensión Agosto', monto: 420, mora: 0, total: 420, fecha_vencimiento: '2026-08-31', fecha_pago: '2026-08-31', metodo_pago: 'efectivo', numero_operacion: 'REC-001248', estado: 'pagado', created_at: '2026-08-31T15:30:00-05:00' },
+  { id: 'pay-3-2', matricula_id: 'enr-3', estudiante_id: 'student-3', mes: 'Septiembre', concepto: 'Pensión Septiembre', monto: 420, mora: 0, total: 420, fecha_vencimiento: '2026-09-30', fecha_pago: '2026-09-30', metodo_pago: 'yape', numero_operacion: 'YAP-332211', estado: 'pagado', created_at: '2026-09-30T14:00:00-05:00' },
 
   // Thiago Mendoza Navarro (enr-7) - Caso con mora pendiente de regularización
-  { id: 'pay-7-1', matricula_id: 'enr-7', estudiante_id: 'student-7', mes: 'Agosto', concepto: 'Pensión Agosto', monto: 420, mora: 25, total: 445, fecha_vencimiento: '2026-08-31', estado: 'vencido', created_at: '2026-08-01T08:00:00Z' },
-  { id: 'pay-7-2', matricula_id: 'enr-7', estudiante_id: 'student-7', mes: 'Septiembre', concepto: 'Pensión Septiembre', monto: 420, mora: 10, total: 430, fecha_vencimiento: '2026-09-30', estado: 'vencido', created_at: '2026-09-01T08:00:00Z' },
+  { id: 'pay-7-1', matricula_id: 'enr-7', estudiante_id: 'student-7', mes: 'Agosto', concepto: 'Pensión Agosto', monto: 420, mora: 25, total: 445, fecha_vencimiento: '2026-08-31', estado: 'vencido', created_at: '2026-08-01T08:00:00-05:00' },
+  { id: 'pay-7-2', matricula_id: 'enr-7', estudiante_id: 'student-7', mes: 'Septiembre', concepto: 'Pensión Septiembre', monto: 420, mora: 10, total: 430, fecha_vencimiento: '2026-09-30', estado: 'vencido', created_at: '2026-09-01T08:00:00-05:00' },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1052,7 +1085,7 @@ export const MOCK_BEHAVIOR_LOGS: BehaviorLogEntry[] = [
     docente_id: 'teacher-3',
     docente_nombre: 'Prof. Carlos Benites',
     visible_apoderado: true,
-    created_at: '2026-06-24T12:00:00Z',
+    created_at: '2026-06-24T12:00:00-05:00',
   },
   {
     id: 'beh-2',
@@ -1065,7 +1098,7 @@ export const MOCK_BEHAVIOR_LOGS: BehaviorLogEntry[] = [
     docente_id: 'teacher-1',
     docente_nombre: 'Prof. Tomás Pérez',
     visible_apoderado: true,
-    created_at: '2026-07-22T11:30:00Z',
+    created_at: '2026-07-22T11:30:00-05:00',
   },
   {
     id: 'beh-3',
@@ -1078,7 +1111,7 @@ export const MOCK_BEHAVIOR_LOGS: BehaviorLogEntry[] = [
     docente_id: 'teacher-1',
     docente_nombre: 'Prof. Tomás Pérez',
     visible_apoderado: true,
-    created_at: '2026-09-18T08:30:00Z',
+    created_at: '2026-09-18T08:30:00-05:00',
   }
 ];
 
@@ -1121,7 +1154,7 @@ export const MOCK_SYSTEM_ALERTS: SystemAlert[] = [
     estado: 'resuelta',
     accion_label: 'Ver Actas',
     accion_url: '/admin/reportes',
-    created_at: '2026-08-01T10:00:00Z',
+    created_at: '2026-08-01T10:00:00-05:00',
   },
   {
     id: 'alt-2',
@@ -1131,26 +1164,26 @@ export const MOCK_SYSTEM_ALERTS: SystemAlert[] = [
     descripcion: 'El 96.2% de los estudiantes registró asistencia puntual mediante credencial QR esta semana.',
     estado: 'resuelta',
     accion_label: 'Ver Registro',
-    accion_url: '/admin/asistencia',
-    created_at: '2026-10-01T08:30:00Z',
+    accion_url: '/admin/reportes',
+    created_at: '2026-10-01T08:30:00-05:00',
   },
   {
     id: 'alt-3',
     prioridad: 'alta',
-    categoria: 'tareas',
-    titulo: 'Pensiones de Septiembre por Regularizar',
-    descripcion: 'Existen cuotas del mes de Septiembre pendientes de confirmación en tesorería.',
+    categoria: 'academico',
+    titulo: 'Reunión de Escuela para Padres - III Bimestre',
+    descripcion: 'Confirma la asistencia de los apoderados al taller del III Bimestre y envía un recordatorio por comunicado.',
     estado: 'nueva',
-    accion_label: 'Revisar Tesorería',
-    accion_url: '/admin/reportes',
-    created_at: '2026-10-01T09:00:00Z',
+    accion_label: 'Ir a Comunicados',
+    accion_url: '/admin/comunicados',
+    created_at: '2026-10-01T09:00:00-05:00',
   }
 ];
 
 export const MOCK_AUDIT_LOGS: AuditLogEntry[] = [
-  { id: 'aud-1', usuario_id: 'teacher-1', usuario_nombre: 'Prof. Tomás Pérez', rol: 'docente', accion: 'REGISTRO_CALIFICACIONES', modulo: 'NOTAS', detalle: 'Ingreso oficial de calificaciones finales de II Bimestre para 3° Primaria A', timestamp: '2026-07-24T18:00:00Z' },
-  { id: 'aud-2', usuario_id: 'user-admin-1', usuario_nombre: 'Administrador Institucional', rol: 'admin', accion: 'EMISION_LIBRETAS', modulo: 'REPORTES', detalle: 'Generación masiva de Libretas de Información Académica del II Bimestre', timestamp: '2026-07-25T10:30:00Z' },
-  { id: 'aud-3', usuario_id: 'user-asistencia-1', usuario_nombre: 'Portería Principal', rol: 'asistencia', accion: 'SCAN_QR_MASIVO', modulo: 'ASISTENCIA', detalle: 'Apertura de molinete y escaneo de 180 credenciales QR escolares', timestamp: '2026-10-01T07:30:00Z' },
+  { id: 'aud-1', usuario_id: 'teacher-1', usuario_nombre: 'Prof. Tomás Pérez', rol: 'docente', accion: 'REGISTRO_CALIFICACIONES', modulo: 'NOTAS', detalle: 'Ingreso oficial de calificaciones finales de II Bimestre para 3° Primaria A', timestamp: '2026-07-24T18:00:00-05:00' },
+  { id: 'aud-2', usuario_id: 'user-admin-1', usuario_nombre: 'Administrador Institucional', rol: 'admin', accion: 'EMISION_LIBRETAS', modulo: 'REPORTES', detalle: 'Generación masiva de Libretas de Información Académica del II Bimestre', timestamp: '2026-07-25T10:30:00-05:00' },
+  { id: 'aud-3', usuario_id: 'user-asistencia-1', usuario_nombre: 'Portería Principal', rol: 'asistencia', accion: 'SCAN_QR_MASIVO', modulo: 'ASISTENCIA', detalle: 'Apertura de molinete y escaneo de 180 credenciales QR escolares', timestamp: '2026-10-01T07:30:00-05:00' },
 ];
 
 export const MOCK_ANNOUNCEMENTS: Announcement[] = [
@@ -1165,7 +1198,7 @@ export const MOCK_ANNOUNCEMENTS: Announcement[] = [
     fecha_publicacion: '2026-03-01',
     es_urgente: false,
     categoria: 'general',
-    creado_en: '2026-03-01T08:00:00Z',
+    creado_en: '2026-03-01T08:00:00-05:00',
   },
   {
     id: 'ann-2',
@@ -1178,7 +1211,7 @@ export const MOCK_ANNOUNCEMENTS: Announcement[] = [
     fecha_publicacion: '2026-07-25',
     es_urgente: false,
     categoria: 'academico',
-    creado_en: '2026-07-25T09:30:00Z',
+    creado_en: '2026-07-25T09:30:00-05:00',
   },
   {
     id: 'ann-3',
@@ -1191,7 +1224,7 @@ export const MOCK_ANNOUNCEMENTS: Announcement[] = [
     fecha_publicacion: '2026-09-15',
     es_urgente: true,
     categoria: 'general',
-    creado_en: '2026-09-15T10:00:00Z',
+    creado_en: '2026-09-15T10:00:00-05:00',
   }
 ];
 
@@ -1215,7 +1248,7 @@ export const MOCK_NOTIFICATIONS: AppNotification[] = [
     mensaje: 'Tu libreta de notas del II Bimestre ya está disponible. ¡Felicitaciones por tu promedio AD!',
     leido: true,
     url_redireccion: '/estudiante/notas',
-    created_at: '2026-07-25T11:00:00Z',
+    created_at: '2026-07-25T11:00:00-05:00',
   },
   {
     id: 'notif-2',
@@ -1226,7 +1259,7 @@ export const MOCK_NOTIFICATIONS: AppNotification[] = [
     mensaje: 'La Prof. Carmen Mendoza ha publicado una tarea con fecha límite el 08 de Octubre.',
     leido: false,
     url_redireccion: '/estudiante/tareas',
-    created_at: '2026-09-29T10:05:00Z',
+    created_at: '2026-09-29T10:05:00-05:00',
   },
   {
     id: 'notif-3',
@@ -1237,7 +1270,7 @@ export const MOCK_NOTIFICATIONS: AppNotification[] = [
     mensaje: 'Su menor hijo Lucas Morales ingresó al colegio a las 07:44 AM mediante credencial QR.',
     leido: false,
     url_redireccion: '/apoderado/asistencia',
-    created_at: '2026-10-01T07:45:00Z',
+    created_at: '2026-10-01T07:45:00-05:00',
   }
 ];
 
@@ -1270,7 +1303,7 @@ export const MOCK_JUSTIFICATIONS: JustificationRequest[] = [
     estado: 'aprobada',
     respuesta_colegio: 'Falta justificada en el registro oficial. Se otorgará reprogramación de actividades.',
     revisado_por: 'Tomás',
-    created_at: '2026-09-25T08:30:00Z',
+    created_at: '2026-09-25T08:30:00-05:00',
   },
   // Lucas (enr-1): falta del 29/09 ya aceptada y la del 23/09 aún en revisión (la del 30/09 queda sin justificar)
   {
@@ -1285,7 +1318,7 @@ export const MOCK_JUSTIFICATIONS: JustificationRequest[] = [
     estado: 'aprobada',
     respuesta_colegio: 'Falta justificada. Que se recupere pronto.',
     revisado_por: 'Tomás',
-    created_at: '2026-09-29T09:15:00Z',
+    created_at: '2026-09-29T09:15:00-05:00',
   },
   {
     id: 'just-3',
@@ -1297,13 +1330,13 @@ export const MOCK_JUSTIFICATIONS: JustificationRequest[] = [
     tipo: 'falta',
     motivo: 'Tuvimos una emergencia familiar y no pudo asistir.',
     estado: 'pendiente',
-    created_at: '2026-09-23T19:40:00Z',
+    created_at: '2026-09-23T19:40:00-05:00',
   }
 ];
 
 export const MOCK_STAFF_ATTENDANCES: StaffAttendanceRecord[] = [
-  { id: 'stf-1', user_id: 'teacher-1', fecha: '2026-10-01', hora_ingreso: '07:25:00', tipo: 'entrada', estado: 'puntual', metodo: 'qr', creado_en: '2026-10-01T07:25:00Z' },
-  { id: 'stf-2', user_id: 'teacher-2', fecha: '2026-10-01', hora_ingreso: '07:28:00', tipo: 'entrada', estado: 'puntual', metodo: 'qr', creado_en: '2026-10-01T07:28:00Z' },
-  { id: 'stf-3', user_id: 'teacher-3', fecha: '2026-10-01', hora_ingreso: '07:30:00', tipo: 'entrada', estado: 'puntual', metodo: 'qr', creado_en: '2026-10-01T07:30:00Z' },
-  { id: 'stf-4', user_id: 'user-asistencia-1', fecha: '2026-10-01', hora_ingreso: '07:00:00', tipo: 'entrada', estado: 'puntual', metodo: 'qr', creado_en: '2026-10-01T07:00:00Z' },
+  { id: 'stf-1', user_id: 'teacher-1', fecha: '2026-10-01', hora_ingreso: '07:25:00', tipo: 'entrada', estado: 'puntual', metodo: 'qr', creado_en: '2026-10-01T07:25:00-05:00' },
+  { id: 'stf-2', user_id: 'teacher-2', fecha: '2026-10-01', hora_ingreso: '07:28:00', tipo: 'entrada', estado: 'puntual', metodo: 'qr', creado_en: '2026-10-01T07:28:00-05:00' },
+  { id: 'stf-3', user_id: 'teacher-3', fecha: '2026-10-01', hora_ingreso: '07:30:00', tipo: 'entrada', estado: 'puntual', metodo: 'qr', creado_en: '2026-10-01T07:30:00-05:00' },
+  { id: 'stf-4', user_id: 'user-asistencia-1', fecha: '2026-10-01', hora_ingreso: '07:00:00', tipo: 'entrada', estado: 'puntual', metodo: 'qr', creado_en: '2026-10-01T07:00:00-05:00' },
 ];

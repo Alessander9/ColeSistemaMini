@@ -9,12 +9,17 @@ export function useParentChildren() {
 
   const children = useMemo(() => {
     let base = (childrenList || []).map(c => ({ id: c.id, studentId: c.estudiante_id }));
-    if (base.length === 0 && currentUser?.rol === 'apoderado') {
+    if (currentUser?.rol === 'apoderado') {
+      // childrenList es global: un apoderado solo debe ver a los alumnos que lo tienen registrado por correo o teléfono
       const email = currentUser.email?.toLowerCase().trim();
       const phone = currentUser.telefono?.trim();
-      base = students
+      const ownIds = new Set(students
         .filter(s => (email && s.email_apoderado?.toLowerCase().trim() === email) || (phone && s.telefono_apoderado?.trim() === phone))
-        .map(s => ({ id: s.id, studentId: s.id }));
+        .map(s => s.id));
+      base = base.filter(c => ownIds.has(c.studentId));
+      ownIds.forEach(id => {
+        if (!base.some(c => c.studentId === id)) base.push({ id, studentId: id });
+      });
     }
     return base.map(c => {
       const student = students.find(s => s.id === c.studentId);

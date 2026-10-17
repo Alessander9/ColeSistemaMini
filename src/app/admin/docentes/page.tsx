@@ -310,7 +310,7 @@ export default function AdminDocentesPage() {
         </button>
         <button type="button" onClick={() => { setView('aulas'); setOnlyGaps(true); }} className={`${card} p-4 text-left hover:-translate-y-0.5 hover:shadow-md transition-all cursor-pointer ${missingSlots > 0 ? 'ring-2 ring-rose-200 dark:ring-rose-900' : ''}`}>
           <div className="flex items-center justify-between"><AlertTriangle className={`w-6 h-6 ${missingSlots > 0 ? 'text-rose-500' : 'text-emerald-500'}`} /><span className={`text-3xl font-black ${missingSlots > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{missingSlots}</span></div>
-          <p className="text-sm font-black text-slate-800 dark:text-slate-100 mt-2">cursos sin docente</p>
+          <p className="text-sm font-black text-slate-800 dark:text-slate-100 mt-2">cursos por aula sin docente</p>
           <p className="text-xs text-slate-500">{totalSlots > 0 ? `${coveredSlots} de ${totalSlots} ya tienen docente` : 'Crea cursos y aulas primero'}</p>
         </button>
         <button type="button" onClick={() => { setView('docentes'); setStatusFilter('sin_cursos'); }} className={`${card} p-4 text-left hover:-translate-y-0.5 hover:shadow-md transition-all cursor-pointer`}>

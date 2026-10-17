@@ -37,18 +37,17 @@ export default function BienvenidaPage() {
     });
 
     const timer = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          router.push(getDashboardUrl(currentUser.rol));
-          return 0;
-        }
-        return prev - 1;
-      });
+      setCountdown((prev) => Math.max(prev - 1, 0));
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [currentUser.rol, router]);
+  }, []);
+
+  // Navegar fuera del updater de estado: hacerlo dentro provoca "Cannot update a component while rendering"
+  useEffect(() => {
+    if (countdown === 0) router.push(getDashboardUrl(currentUser.rol));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [countdown, currentUser.rol, router]);
 
   const firstName = currentUser?.nombres ? currentUser.nombres.split(' ')[0] : 'Usuario';
   const avatarUrl = currentUser?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(firstName)}&background=6366f1&color=fff&size=200`;

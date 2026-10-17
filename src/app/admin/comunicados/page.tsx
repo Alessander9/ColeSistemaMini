@@ -308,7 +308,7 @@ export default function AdminComunicadosPage() {
       enlace_reunion: '',
     });
 
-    showToast(`Comunicado difundido exitosamente a ${targetAudienceEstimate.totalRecipients} destinatarios`, 'success', '📢 Difusión Masiva');
+    showToast(`Comunicado publicado en el portal para ${targetAudienceEstimate.totalRecipients} destinatarios`, 'success', '📢 Comunicado publicado');
   };
 
   const handleCopyWhatsAppText = (ann: Announcement) => {
@@ -339,7 +339,7 @@ export default function AdminComunicadosPage() {
           <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
             <div className="max-w-2xl space-y-2">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-                <span className="w-2 h-2 rounded-full bg-emerald-500" /> Web, correo y WhatsApp
+                <span className="w-2 h-2 rounded-full bg-emerald-500" /> Portal web · texto listo para WhatsApp
               </span>
               <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
                 <Megaphone className="w-8 h-8 text-violet-600" /> Comunicados

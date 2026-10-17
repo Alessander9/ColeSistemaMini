@@ -206,8 +206,8 @@ function MatriculasContent() {
         enrollment: enr,
         section: enr.seccion,
         credentials: {
-          username: enr.estudiante.profile?.username || enr.estudiante.profile?.dni || enr.estudiante.codigo_estudiante,
-          password: enr.estudiante.profile?.password || `Est${enr.estudiante.profile?.dni || '2026'}!`,
+          username: enr.estudiante.profile?.username || enr.estudiante.profile?.dni || enr.estudiante.dni || enr.estudiante.codigo_estudiante,
+          password: enr.estudiante.profile?.password || `Est${enr.estudiante.profile?.dni || enr.estudiante.dni || '2026'}!`,
           email: enr.estudiante.profile?.email,
         },
         parentName: enr.estudiante.nombre_apoderado,

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, notFound } from 'next/navigation';
 import Link from 'next/link';
 import { useApp } from '@/context/AppContext';
 import { GradeBadge } from '@/components/notas/GradeBadge';
@@ -57,9 +57,16 @@ export default function SectionHubDashboardPage() {
   const [selectedBimestre, setSelectedBimestre] = useState<string>('eval-bim-1');
   const [activeTab, setActiveTab] = useState<'alumnos' | 'areas' | 'calificaciones' | 'horario'>('alumnos');
 
-  const currentSection = sections.find(s => s.id === seccionId) || sections[0];
+  const currentSection = sections.find(s => s.id === seccionId);
   const currentGrade = currentSection ? gradeLevels.find(g => g.id === currentSection.grado_id) : gradeLevels[0];
   const nivel = currentGrade?.nivel || 'primaria';
+
+  // El perfil embebido solo existe en algunos alumnos; los datos base viven en el propio Student
+  const studentNames = (student?: Student) => ({
+    nombres: student?.profile?.nombres || student?.nombres || '',
+    apellidos: student?.profile?.apellidos || student?.apellidos || '',
+    dni: student?.profile?.dni || student?.dni || '',
+  });
 
   // Real enrolled students in this section
   const sectionEnrollments = useMemo(() => {
@@ -134,11 +141,12 @@ export default function SectionHubDashboardPage() {
       header: 'Estudiante',
       cell: (enr) => {
         const student = enr.estudiante;
-        const fullName = `${student?.profile?.apellidos || ''}, ${student?.profile?.nombres || ''}`;
+        const { nombres, apellidos, dni } = studentNames(student);
+        const fullName = `${apellidos}, ${nombres}`;
         return (
           <div className="flex items-center gap-3">
             <img
-              src={student?.profile?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(student?.profile?.nombres || 'Alumno')}`}
+              src={student?.profile?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(nombres || 'Alumno')}`}
               alt={fullName}
               className="w-9 h-9 rounded-xl object-cover ring-1 ring-slate-200 dark:ring-slate-700 shrink-0"
             />
@@ -147,7 +155,7 @@ export default function SectionHubDashboardPage() {
                 {fullName}
               </p>
               <p className="text-[10px] text-slate-400 font-mono">
-                {student?.codigo_estudiante} · DNI {student?.profile?.dni}
+                {student?.codigo_estudiante} · DNI {dni}
               </p>
             </div>
           </div>
@@ -187,6 +195,9 @@ export default function SectionHubDashboardPage() {
       ),
     },
   ];
+
+  if (sections.length > 0 && !currentSection) notFound();
+  if (!currentSection) return null;
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto animate-fade-in pb-16">
@@ -243,7 +254,7 @@ export default function SectionHubDashboardPage() {
               </span>
               <span className="px-3 py-1 rounded-full bg-blue-500/20 border border-blue-400/30 text-blue-200 text-xs font-bold flex items-center gap-1">
                 <MapPin className="w-3 h-3 text-blue-300" />
-                Aula {currentGrade?.numero_grado || '3'}01 · Pabellón {nivel === 'inicial' ? 'A' : 'B'}
+                {currentSection.aula || 'Aula sin asignar'}
               </span>
             </div>
 
@@ -472,18 +483,20 @@ export default function SectionHubDashboardPage() {
               itemsPerPage={10}
               searchPlaceholder="Buscar estudiante por nombre, apellidos o DNI..."
               searchFilter={(enr, q) => {
-                const full = `${enr.estudiante?.profile?.nombres} ${enr.estudiante?.profile?.apellidos} ${enr.estudiante?.profile?.dni} ${enr.estudiante?.codigo_estudiante}`.toLowerCase();
+                const { nombres, apellidos, dni } = studentNames(enr.estudiante);
+                const full = `${nombres} ${apellidos} ${dni} ${enr.estudiante?.codigo_estudiante}`.toLowerCase();
                 return full.includes(q);
               }}
               gridItemRender={(enr) => {
                 const student = enr.estudiante;
-                const fullName = `${student?.profile?.apellidos || ''}, ${student?.profile?.nombres || ''}`;
+                const { nombres, apellidos, dni } = studentNames(student);
+        const fullName = `${apellidos}, ${nombres}`;
                 return (
                   <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-md transition-all flex flex-col justify-between h-full group">
                     <div className="space-y-3">
                       <div className="flex items-center gap-3">
                         <img
-                          src={student?.profile?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(student?.profile?.nombres || 'Alumno')}`}
+                          src={student?.profile?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(nombres || 'Alumno')}`}
                           alt={fullName}
                           className="w-11 h-11 rounded-2xl object-cover ring-1 ring-slate-200 dark:ring-slate-700 shrink-0"
                         />
@@ -492,7 +505,7 @@ export default function SectionHubDashboardPage() {
                             {fullName}
                           </p>
                           <p className="text-[10px] text-slate-400 font-mono mt-0.5">
-                            {student?.codigo_estudiante} · DNI {student?.profile?.dni}
+                            {student?.codigo_estudiante} · DNI {dni}
                           </p>
                         </div>
                       </div>
@@ -697,7 +710,7 @@ export default function SectionHubDashboardPage() {
                         <td className="p-3.5 pl-5 font-bold text-slate-400 font-mono">{idx + 1}</td>
                         <td className="p-3.5">
                           <p className="font-extrabold text-slate-800 dark:text-white">
-                            {enr.estudiante?.profile?.apellidos}, {enr.estudiante?.profile?.nombres}
+                            {studentNames(enr.estudiante).apellidos}, {studentNames(enr.estudiante).nombres}
                           </p>
                           <p className="text-[10px] text-slate-400 font-mono">{enr.estudiante?.codigo_estudiante}</p>
                         </td>

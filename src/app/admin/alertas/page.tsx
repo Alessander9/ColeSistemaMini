@@ -217,13 +217,13 @@ export default function AlertasPage() {
     sections.filter(s => inLevel(s.id) && active.some(e => e.seccion_id === s.id)).forEach(s => {
       const nivel = s.grado?.nivel;
       courses.filter(c => c.nivel === nivel).forEach(c => {
-        if (!sectionCourses.some(sc => sc.seccion_id === s.id && sc.curso_id === c.id)) missingTeacher.push(`${c.nombre} · ${sectionLabel(s.id)}`);
+        if (!sectionCourses.some(sc => sc.seccion_id === s.id && sc.curso_id === c.id && sc.docente_id)) missingTeacher.push(`${c.nombre} · ${sectionLabel(s.id)}`);
       });
     });
     if (missingTeacher.length > 0) {
       out.push({
         key: 'auto-sin-docente', priority: 'media', icon: GraduationCap, auto: true,
-        title: `${missingTeacher.length} ${missingTeacher.length === 1 ? 'curso no tiene' : 'cursos no tienen'} docente`,
+        title: `${missingTeacher.length} ${missingTeacher.length === 1 ? 'curso no tiene' : 'cursos no tienen'} docente en aulas con alumnos`,
         detail: 'Esos alumnos no tienen quién les registre notas ni asistencia en ese curso.',
         people: missingTeacher, peopleLabel: 'Ver cursos',
         actionLabel: 'Asignar docentes', actionHref: '/admin/docentes',
