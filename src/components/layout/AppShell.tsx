@@ -102,6 +102,7 @@ function PwaInstallBanner() {
 import { CommandPalette } from '@/components/layout/CommandPalette';
 
 import { WhatsAppFloatingButton } from '@/components/ui/WhatsAppFloatingButton';
+import { useEscapeKey } from '@/hooks/useEscapeKey';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Inner shell (needs AppProvider context for toasts)
@@ -138,6 +139,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     setIsMobileMenuOpen(false);
   }, [pathname]);
+
+  useEscapeKey(isMobileMenuOpen, () => setIsMobileMenuOpen(false));
 
   return (
     <AppProvider>

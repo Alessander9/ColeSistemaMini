@@ -5,6 +5,7 @@ import { Section, GradeLevel, UserProfile } from '@/types';
 import { useApp } from '@/context/AppContext';
 import { X, School, Users, DoorClosed, Award, Check } from 'lucide-react';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
+import { useEscapeKey } from '@/hooks/useEscapeKey';
 
 interface SectionFormModalProps {
   isOpen: boolean;
@@ -41,6 +42,7 @@ export const SectionFormModal: React.FC<SectionFormModalProps> = ({
     }
   }, [sectionToEdit, gradeLevels, isOpen]);
 
+  useEscapeKey(isOpen, onClose);
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {

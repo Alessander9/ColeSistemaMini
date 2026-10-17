@@ -52,6 +52,7 @@ import {
   Copy
 } from 'lucide-react';
 import { initialsAvatarUrl } from '@/lib/avatar';
+import { useEscapeKey } from '@/hooks/useEscapeKey';
 
 const TIME_BLOCKS = [
   { id: 'b1', label: '1° Hora', inicio: '08:00', fin: '08:45' },
@@ -699,6 +700,9 @@ export default function AdminHorariosPage() {
       setIsExporting(false);
     }
   };
+
+  useEscapeKey(isAssignModalOpen, () => setIsAssignModalOpen(false));
+  useEscapeKey(isSlotModalOpen, () => setIsSlotModalOpen(false));
 
   return (
     <div className="space-y-5 pb-12 animate-fade-in max-w-[1600px] mx-auto">

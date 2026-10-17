@@ -38,6 +38,7 @@ import {
 } from 'lucide-react';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { generateSecurePassword } from '@/lib/auth/generateCredentials';
+import { useEscapeKey } from '@/hooks/useEscapeKey';
 
 // Se carga solo al generar el PDF (así jsPDF no pesa en la carga inicial de la página)
 const downloadEnrollmentFichaPdf = async (...args: Parameters<typeof import('@/lib/pdf/generateEnrollmentFichaPdf').downloadEnrollmentFichaPdf>) =>
@@ -515,6 +516,8 @@ function MatriculasContent() {
     showToast(`Se generaron ${items.length} carnets (8 por hoja A4)`, 'success', '📇 Carnets');
   };
 
+
+  useEscapeKey(isWizardOpen, resetWizard);
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12 animate-in fade-in-50">
       

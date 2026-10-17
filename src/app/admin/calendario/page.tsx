@@ -23,6 +23,7 @@ import {
   CalendarDays
 } from 'lucide-react';
 import { SchoolCalendarEvent, CalendarEventType, EducationalLevel } from '@/types';
+import { useEscapeKey } from '@/hooks/useEscapeKey';
 
 export default function AdminCalendarioPage() {
   const { 
@@ -110,6 +111,8 @@ export default function AdminCalendarioPage() {
     setIsModalOpen(false);
   };
 
+
+  useEscapeKey(isModalOpen, () => setIsModalOpen(false));
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-16">
       {/* Header */}

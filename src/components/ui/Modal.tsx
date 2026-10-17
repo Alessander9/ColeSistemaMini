@@ -64,6 +64,9 @@ export function Modal({
       <div
         className={`relative w-full ${maxWidthClass} my-auto max-h-[calc(100dvh-2rem)] sm:max-h-[calc(100dvh-3.5rem)] flex flex-col bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-200/90 dark:border-slate-800 overflow-hidden z-10 animate-in zoom-in-95 duration-200`}
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
       >
         <div className="flex items-center justify-between px-5 sm:px-6 py-3.5 sm:py-4 border-b border-slate-100 dark:border-slate-800 shrink-0 bg-white dark:bg-slate-900">
           <h3 className="font-extrabold text-sm sm:text-base text-slate-900 dark:text-white truncate max-w-[85%]">
@@ -71,6 +74,7 @@ export function Modal({
           </h3>
           <button
             type="button"
+            aria-label="Cerrar"
             onClick={onClose}
             className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
           >

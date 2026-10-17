@@ -48,6 +48,7 @@ import { CourseFormModal } from '@/components/academico/CourseFormModal';
 import { SectionFormModal } from '@/components/academico/SectionFormModal';
 import { BannerImageEditor } from '@/components/ui/BannerImageEditor';
 import { Course, Section, EducationalLevel } from '@/types';
+import { useEscapeKey } from '@/hooks/useEscapeKey';
 
 export default function AdminAcademicoPage() {
   const { 
@@ -412,6 +413,8 @@ export default function AdminAcademicoPage() {
     },
   };
 
+
+  useEscapeKey(isBannerEditorOpen, () => setIsBannerEditorOpen(false));
   return (
     <div className="space-y-6 max-w-[1600px] mx-auto animate-in fade-in-50 pb-12">
       {/* ── Breadcrumb Navigation ── */}

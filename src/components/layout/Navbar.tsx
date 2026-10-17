@@ -92,7 +92,8 @@ export function Navbar({ onOpenMobileMenu }: NavbarProps) {
                   <div className="absolute inset-0 rounded-xl ring-2 ring-white/20" />
                 </div>
               )}
-              <div className="max-w-[100px] xs:max-w-[140px] sm:max-w-xs">
+              {/* En teléfonos angostos solo cabe el logo: el nombre empujaba avisos y perfil fuera de la pantalla */}
+              <div className="hidden sm:block sm:max-w-xs">
                 <div className="text-xs sm:text-sm font-black tracking-tight text-slate-900 dark:text-white truncate">
                   {brandingConfig?.nombreInstitucion || 'ColeSistema Mini'}
                 </div>

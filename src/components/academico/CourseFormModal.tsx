@@ -20,6 +20,7 @@ import {
   Check
 } from 'lucide-react';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
+import { useEscapeKey } from '@/hooks/useEscapeKey';
 
 interface CourseFormModalProps {
   isOpen: boolean;
@@ -257,6 +258,7 @@ export function CourseFormModal({
     onClose();
   };
 
+  useEscapeKey(isOpen, onClose);
   if (!isOpen) return null;
 
   return (

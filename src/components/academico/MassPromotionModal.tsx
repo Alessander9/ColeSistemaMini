@@ -12,6 +12,7 @@ import {
   AlertCircle,
   Sparkles
 } from 'lucide-react';
+import { useEscapeKey } from '@/hooks/useEscapeKey';
 
 interface MassPromotionModalProps {
   isOpen: boolean;
@@ -85,6 +86,7 @@ export const MassPromotionModal: React.FC<MassPromotionModalProps> = ({ isOpen, 
     onClose();
   };
 
+  useEscapeKey(isOpen, onClose);
   if (!isOpen) return null;
 
   return (

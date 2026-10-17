@@ -157,7 +157,7 @@ export function ProfileDropdown() {
           </div>
 
           {/* Name & Role Tag (Desktop) */}
-          <div className="hidden sm:block text-left min-w-0" suppressHydrationWarning>
+          <div className="hidden lg:block text-left min-w-0" suppressHydrationWarning>
             <p className="text-xs font-bold text-slate-800 dark:text-white leading-tight truncate max-w-[110px]" suppressHydrationWarning>
               {currentUser.nombres.split(' ')[0]}
             </p>

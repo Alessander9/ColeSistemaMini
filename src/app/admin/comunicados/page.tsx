@@ -37,6 +37,7 @@ import {
 } from 'lucide-react';
 import { UserRole, EducationalLevel, Announcement } from '@/types';
 import { sendResendEmail } from '@/lib/services/resendService';
+import { useEscapeKey } from '@/hooks/useEscapeKey';
 
 // Predefined quick templates for rapid official school broadcasting
 const QUICK_TEMPLATES: {
@@ -418,6 +419,8 @@ export default function AdminComunicadosPage() {
   };
   const hasAnyFilter = !!searchTerm || activeFilters > 0 || selectedCategoryFilter !== 'todos' || quickFilter !== 'todos';
 
+
+  useEscapeKey(isCreateModalOpen, () => setIsCreateModalOpen(false));
   return (
     <div className="space-y-5 max-w-7xl mx-auto animate-fade-in pb-16 font-sans">
 
