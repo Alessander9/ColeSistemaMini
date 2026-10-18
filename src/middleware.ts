@@ -34,7 +34,10 @@ export async function middleware(request: NextRequest) {
   const clientIp = getClientIp(request.headers);
 
   // 1. Adaptive Rate Limiting & Anti-DDoS / Anti-Bruteforce
-  if (pathname === '/login' || pathname.startsWith('/api/')) {
+  const isLocalhost = clientIp === '127.0.0.1' || clientIp === '::1' || clientIp === 'localhost';
+  const shouldSkipRateLimit = process.env.NODE_ENV !== 'production' && isLocalhost;
+
+  if (!shouldSkipRateLimit && (pathname === '/login' || pathname.startsWith('/api/'))) {
     const isLogin = pathname === '/login';
     const rateLimit = checkAdaptiveRateLimit(`ip_${clientIp}_${isLogin ? 'auth' : 'api'}`, {
       maxRequests: isLogin ? 30 : 120, // Límite estándar por minuto
