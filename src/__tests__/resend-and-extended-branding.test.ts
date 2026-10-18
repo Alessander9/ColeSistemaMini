@@ -164,5 +164,45 @@ describe('Suite Avanzada de Branding Institucional & Resend Mailer', () => {
 
     expect(docLandscape).toBeDefined();
     expect(docLandscape.getNumberOfPages()).toBe(1);
+
+    // Test Minimalista Compacto and Oficial Minedu with QR & Signatures
+    const docMinimal = await generateReportCardPdf({
+      student: sampleStudent as any,
+      courses: [{ id: 'c1', nombre: 'Comunicación', area: 'Comunicación', nivel: 'secundaria' as const, grado_id: 'g1' }] as any,
+      grades: [],
+      brandingConfig: {
+        ...DEFAULT_BRANDING_CONFIG,
+        libretaEstilo: 'minimalista_compacto',
+        libretaMostrarQrVerificacion: true,
+        libretaMostrarEscudo: true,
+        libretaMostrarFotoEstudiante: false,
+        directorFirmaUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+      },
+    });
+    expect(docMinimal).toBeDefined();
+    expect(docMinimal.getNumberOfPages()).toBe(1);
+
+    // Test Batch Report Card PDF generation
+    const { generateBatchReportCardsPdf } = await import('../lib/pdf/reportCardPdfGenerator');
+    const batchDoc = await generateBatchReportCardsPdf({
+      items: [
+        {
+          student: sampleStudent as any,
+          courses: [{ id: 'c1', nombre: 'Matemática', area: 'Matemática', nivel: 'secundaria' as const, grado_id: 'g1' }] as any,
+          grades: [],
+          brandingConfig: DEFAULT_BRANDING_CONFIG,
+        },
+        {
+          student: { ...sampleStudent, id: 'student-test-2', nombres: 'Carlos' } as any,
+          courses: [{ id: 'c1', nombre: 'Matemática', area: 'Matemática', nivel: 'secundaria' as const, grado_id: 'g1' }] as any,
+          grades: [],
+          brandingConfig: DEFAULT_BRANDING_CONFIG,
+        },
+      ],
+      sectionName: '1A_Secundaria',
+      anioLectivo: '2026',
+    });
+    expect(batchDoc).toBeDefined();
+    expect(batchDoc.getNumberOfPages()).toBe(2);
   });
 });

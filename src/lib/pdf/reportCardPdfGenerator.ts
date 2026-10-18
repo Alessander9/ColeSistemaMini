@@ -1,4 +1,5 @@
 import { jsPDF } from 'jspdf';
+import QRCode from 'qrcode';
 import { 
   Student, 
   Enrollment, 
@@ -22,6 +23,7 @@ export interface ReportCardPdfData {
   activePeriodId?: string;
   brandingConfig?: SystemBrandingConfig | null;
   tutorName?: string;
+  qrDataUrl?: string;
 }
 
 export interface BatchReportCardsPdfData {
@@ -101,6 +103,32 @@ export function renderReportCardPage(doc: jsPDF, data: ReportCardPdfData): void 
     doc.rect(8.5, 8.5, pageWidth - 17, pageHeight - 17, 'S');
   }
 
+  // Watermark / Marca de Agua Institucional (si está configurada)
+  if (brandingConfig?.watermarkUrl && brandingConfig.watermarkUrl.startsWith('data:image/')) {
+    try {
+      const wmSize = isLandscape ? 70 : 65;
+      const wmX = (pageWidth - wmSize) / 2;
+      const wmY = (pageHeight - wmSize) / 2;
+      // @ts-ignore
+      if (typeof doc.saveGraphicsState === 'function') {
+        // @ts-ignore
+        doc.saveGraphicsState();
+        // @ts-ignore
+        if (typeof doc.setGState === 'function' && doc.GState) {
+          // @ts-ignore
+          doc.setGState(new doc.GState({ opacity: brandingConfig.watermarkOpacity || 0.08 }));
+        }
+        doc.addImage(brandingConfig.watermarkUrl, 'PNG', wmX, wmY, wmSize, wmSize);
+        // @ts-ignore
+        doc.restoreGraphicsState();
+      } else {
+        doc.addImage(brandingConfig.watermarkUrl, 'PNG', wmX, wmY, wmSize, wmSize);
+      }
+    } catch {
+      // Ignorar fallo de formato en entornos sin soporte gráfico avanzado
+    }
+  }
+
   // 1. CABECERA INSTITUCIONAL
   const docTitle = (brandingConfig?.libretaTitulo || 'INFORME DEL PROGRESO DEL APRENDIZAJE DEL ESTUDIANTE').toUpperCase();
   const docSubtitle = brandingConfig?.libretaSubtitulo || 'Currículo Nacional de la Educación Básica (CNEB - MINEDU)';
@@ -113,16 +141,41 @@ export function renderReportCardPage(doc: jsPDF, data: ReportCardPdfData): void 
   doc.setDrawColor(cBorder[0], cBorder[1], cBorder[2]);
   doc.roundedRect(marginX, y, contentW, 22, estilo === 'moderno_ejecutivo' ? 3 : 1.5, estilo === 'moderno_ejecutivo' ? 3 : 1.5, 'FD');
 
+  const mostrarEscudo = brandingConfig?.libretaMostrarEscudo !== false;
+  let textHeaderX = marginX + 4;
+
+  if (mostrarEscudo) {
+    let logoDrawn = false;
+    if (brandingConfig?.logoUrl && brandingConfig.logoUrl.startsWith('data:image/')) {
+      try {
+        doc.addImage(brandingConfig.logoUrl, 'PNG', marginX + 3, y + 2.5, 17, 17);
+        logoDrawn = true;
+      } catch {
+        logoDrawn = false;
+      }
+    }
+    if (!logoDrawn) {
+      // Escudo con insignia heráldica del colegio
+      doc.setFillColor(cAccent[0], cAccent[1], cAccent[2]);
+      doc.roundedRect(marginX + 3, y + 2.5, 17, 17, 2, 2, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8.5);
+      doc.text(brandingConfig?.siglas || 'IE', marginX + 11.5, y + 12.5, { align: 'center' });
+    }
+    textHeaderX = marginX + 23;
+  }
+
   doc.setTextColor(cPrimary[0], cPrimary[1], cPrimary[2]);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10.5);
-  doc.text(schoolName.toUpperCase(), marginX + 4, y + 6);
+  doc.text(schoolName.toUpperCase(), textHeaderX, y + 6);
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);
   doc.setTextColor(cMuted[0], cMuted[1], cMuted[2]);
-  doc.text(`Cód. Modular: ${codigoModular}  |  ${dre}  |  ${ugel}`, marginX + 4, y + 11);
-  doc.text(`${docTitle} — ${docSubtitle}`, marginX + 4, y + 16);
+  doc.text(`Cód. Modular: ${codigoModular}  |  ${dre}  |  ${ugel}`, textHeaderX, y + 11);
+  doc.text(`${docTitle} — ${docSubtitle}`, textHeaderX, y + 16);
 
   // Badge derecho año lectivo
   const badgeW = 38;
@@ -373,27 +426,41 @@ export function renderReportCardPage(doc: jsPDF, data: ReportCardPdfData): void 
     y += 13;
   }
 
-  // 6. FIRMAS CONFIGURABLES (Director, Tutor, Apoderado)
-  const signatures: { title: string; subtitle: string }[] = [];
+  // 6. FIRMAS CONFIGURABLES (Director, Tutor, Apoderado) Y SELLO QR DIGITAL
+  const signatures: { title: string; subtitle: string; isDirector?: boolean }[] = [];
   if (brandingConfig?.libretaFirmaDirector !== false) {
-    signatures.push({ title: directorName, subtitle: 'Director(a) General' });
+    signatures.push({ title: directorName, subtitle: 'Director(a) General', isDirector: true });
   }
   if (brandingConfig?.libretaFirmaTutor !== false) {
     signatures.push({ title: customTutorName || 'Docente Tutor de Aula', subtitle: 'Tutor(a) de Aula' });
   }
-  if (brandingConfig?.libretaFirmaApoderado === true) {
+  if (brandingConfig?.libretaFirmaApoderado !== false) {
     signatures.push({ title: 'Firma del Padre o Apoderado', subtitle: 'Recepción y Conformidad' });
   }
 
-  if (signatures.length > 0) {
+  const mostrarQr = brandingConfig?.libretaMostrarQrVerificacion !== false;
+
+  if (signatures.length > 0 || mostrarQr) {
     const sigY = Math.max(y + 4, pageHeight - 25);
     const numSigs = signatures.length;
-    const sigW = numSigs === 3 ? 46 : 54;
-    const totalSpacing = contentW - numSigs * sigW;
-    const gap = totalSpacing / (numSigs + 1);
+    const qrBlockW = mostrarQr ? 24 : 0;
+    const availW = contentW - qrBlockW;
+    const sigW = numSigs === 3 ? 38 : numSigs === 2 ? 48 : 58;
+    const totalSpacing = availW - numSigs * sigW;
+    const gap = Math.max(4, totalSpacing / (numSigs + 1));
 
     signatures.forEach((sig, sIdx) => {
       const sx = marginX + gap * (sIdx + 1) + sigW * sIdx;
+
+      // Estampar firma digital del director si existe
+      if (sig.isDirector && brandingConfig?.directorFirmaUrl && brandingConfig.directorFirmaUrl.startsWith('data:image/')) {
+        try {
+          doc.addImage(brandingConfig.directorFirmaUrl, 'PNG', sx + (sigW - 28) / 2, sigY - 11, 28, 10);
+        } catch {
+          // Ignorar fallo de carga de imagen
+        }
+      }
+
       doc.setDrawColor(cMuted[0], cMuted[1], cMuted[2]);
       doc.line(sx, sigY, sx + sigW, sigY);
 
@@ -407,6 +474,31 @@ export function renderReportCardPage(doc: jsPDF, data: ReportCardPdfData): void 
       doc.setTextColor(cMuted[0], cMuted[1], cMuted[2]);
       doc.text(sig.subtitle, sx + sigW / 2, sigY + 7, { align: 'center' });
     });
+
+    // Render Sello QR de Validación Digital Oficial
+    if (mostrarQr) {
+      const qx = marginX + contentW - qrBlockW + 2;
+      const qy = sigY - 11;
+      if (data.qrDataUrl) {
+        try {
+          doc.addImage(data.qrDataUrl, 'PNG', qx + 2, qy, 16, 16);
+        } catch {
+          // fallback
+        }
+      } else {
+        doc.setFillColor(cBgLight[0], cBgLight[1], cBgLight[2]);
+        doc.setDrawColor(cBorder[0], cBorder[1], cBorder[2]);
+        doc.roundedRect(qx + 2, qy, 16, 16, 1, 1, 'FD');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(5.5);
+        doc.setTextColor(cMuted[0], cMuted[1], cMuted[2]);
+        doc.text('QR', qx + 10, qy + 9, { align: 'center' });
+      }
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(4.5);
+      doc.setTextColor(22, 101, 52);
+      doc.text('VALIDADO SIAGIE', qx + 10, qy + 19, { align: 'center' });
+    }
   }
 
   // 7. PIE DE PÁGINA INSTITUCIONAL / QR DE SEGURIDAD
@@ -424,6 +516,19 @@ export async function generateReportCardPdf(data: ReportCardPdfData): Promise<js
     unit: 'mm',
     format: 'a4',
   });
+
+  if (data.brandingConfig?.libretaMostrarQrVerificacion !== false && !data.qrDataUrl) {
+    try {
+      const studentCode = data.student.codigo_estudiante || `EST-${data.student.id.slice(-6)}`;
+      const canonical = data.brandingConfig?.canonicalUrl || 'https://colesistema.edu.pe';
+      const anioLectivo = data.enrollment?.periodo?.nombre || new Date().getFullYear().toString();
+      const verificationUrl = `${canonical}/verificar?tipo=libreta&codigo=${studentCode}&anio=${encodeURIComponent(anioLectivo)}`;
+      data.qrDataUrl = await QRCode.toDataURL(verificationUrl, { margin: 1, width: 120 });
+    } catch {
+      // Ignorar fallo de generación QR en entornos limitados
+    }
+  }
+
   renderReportCardPage(doc, data);
   return doc;
 }
@@ -437,12 +542,26 @@ export async function generateBatchReportCardsPdf(data: BatchReportCardsPdfData)
     format: 'a4',
   });
 
-  data.items.forEach((item, index) => {
+  for (let index = 0; index < data.items.length; index++) {
+    const item = data.items[index];
     if (index > 0) {
       doc.addPage('a4', isLandscape ? 'landscape' : 'portrait');
     }
+
+    if (item.brandingConfig?.libretaMostrarQrVerificacion !== false && !item.qrDataUrl) {
+      try {
+        const studentCode = item.student.codigo_estudiante || `EST-${item.student.id.slice(-6)}`;
+        const canonical = item.brandingConfig?.canonicalUrl || 'https://colesistema.edu.pe';
+        const anioLectivo = data.anioLectivo || item.enrollment?.periodo?.nombre || new Date().getFullYear().toString();
+        const verificationUrl = `${canonical}/verificar?tipo=libreta&codigo=${studentCode}&anio=${encodeURIComponent(anioLectivo)}`;
+        item.qrDataUrl = await QRCode.toDataURL(verificationUrl, { margin: 1, width: 120 });
+      } catch {
+        // Ignorar fallo de generación QR
+      }
+    }
+
     renderReportCardPage(doc, item);
-  });
+  }
 
   return doc;
 }

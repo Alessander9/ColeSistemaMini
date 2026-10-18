@@ -6,7 +6,7 @@ import { DataTable, Column } from '@/components/ui/DataTable';
 import { GradeBadge } from '@/components/notas/GradeBadge';
 import { AnnualReportCardModal } from '@/components/notas/AnnualReportCardModal';
 import { calculateAverage, calculateAnnualStatus, calculateStudentAnnualReportCard, StudentAnnualReportCard } from '@/lib/grades/calculations';
-import { GradeLetter } from '@/types';
+import { GradeLetter, Student } from '@/types';
 import {
   Download,
   FileSpreadsheet,
@@ -22,11 +22,14 @@ import {
   BarChart3,
   LifeBuoy,
   Ban,
+  BookOpen,
 } from 'lucide-react';
 
 // Se carga solo al generar el PDF (así jsPDF no pesa en la carga inicial de la página)
 const generateReportCardPdf = async (...args: Parameters<typeof import('@/lib/pdf/reportCardPdfGenerator').generateReportCardPdf>) =>
   (await import('@/lib/pdf/reportCardPdfGenerator')).generateReportCardPdf(...args);
+const downloadBatchReportCardsPdf = async (...args: Parameters<typeof import('@/lib/pdf/reportCardPdfGenerator').downloadBatchReportCardsPdf>) =>
+  (await import('@/lib/pdf/reportCardPdfGenerator')).downloadBatchReportCardsPdf(...args);
 // Se carga solo al generar el PDF (así jsPDF no pesa en la carga inicial de la página)
 const generateConsolidadoSalonPdf = async (...args: Parameters<typeof import('@/lib/pdf/consolidadoSalonPdfGenerator').generateConsolidadoSalonPdf>) =>
   (await import('@/lib/pdf/consolidadoSalonPdfGenerator')).generateConsolidadoSalonPdf(...args);
@@ -51,6 +54,7 @@ export default function AdminReportesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeFilter, setActiveFilter] = useState<FilterId>('todos');
   const [isExporting, setIsExporting] = useState(false);
+  const [isExportingBatchLibretas, setIsExportingBatchLibretas] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
   const year = academicContext?.anio || new Date().getFullYear();
 
@@ -234,6 +238,61 @@ export default function AdminReportesPage() {
     }
   };
 
+  const handleDownloadBatchLibretasPdf = async () => {
+    if (!actaSection) {
+      showToast('Primero elige el aula para descargar las libretas', 'warning');
+      return;
+    }
+    const sectionEnrollments = enrollments.filter(e => e.seccion_id === actaSection.id && e.estado === 'activo');
+    if (sectionEnrollments.length === 0) {
+      showToast('Esta aula no tiene alumnos matriculados', 'warning');
+      return;
+    }
+    try {
+      setIsExportingBatchLibretas(true);
+      showToast(`Generando libretas oficiales en lote para ${sectionLabel(actaSection.id)} (${sectionEnrollments.length} alumnos)...`, 'info');
+
+      const tutorObj = actaSection.tutor_id ? teachers.find(t => t.id === actaSection.tutor_id) : undefined;
+      const tutorFullName = tutorObj ? `${tutorObj.nombres} ${tutorObj.apellidos}` : undefined;
+
+      const items = sectionEnrollments.map(enr => {
+        const student = (students.find(s => s.id === enr.estudiante_id) || enr.estudiante || {
+          id: enr.estudiante_id,
+          profile_id: enr.estudiante_id,
+          codigo_estudiante: `EST-${enr.estudiante_id.slice(-6)}`,
+          nombres: 'Estudiante',
+          apellidos: 'Escolar',
+        }) as Student;
+        const studentAttendances = attendances.filter(a => a.matricula_id === enr.id);
+        const studentGrades = grades.filter(g => g.matricula_id === enr.id);
+
+        return {
+          student,
+          enrollment: enr,
+          courses,
+          grades: studentGrades,
+          periods: evaluationPeriods,
+          attendances: studentAttendances,
+          brandingConfig,
+          tutorName: tutorFullName,
+        };
+      });
+
+      await downloadBatchReportCardsPdf({
+        items,
+        sectionName: `${actaSection.grado?.nombre || 'Aula'}_${actaSection.letra}`,
+        anioLectivo: String(year),
+      });
+
+      showToast(`¡Consolidado de ${items.length} libretas descargado con éxito!`, 'success');
+    } catch (err) {
+      console.error(err);
+      showToast('No se pudieron generar las libretas en lote', 'error');
+    } finally {
+      setIsExportingBatchLibretas(false);
+    }
+  };
+
   const situationBadge = (row: Row) => (
     <div className="flex flex-col gap-1">
       <span className={`inline-flex items-center w-fit px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${SITUATION[row.situation].cls}`}>
@@ -368,9 +427,14 @@ export default function AdminReportesPage() {
               {evaluationPeriods.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
             </select>
           </div>
-          <button type="button" onClick={handleDownloadConsolidadoPdf} disabled={isExporting || !actaSection} className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-sm font-bold cursor-pointer">
-            <Download className="w-4 h-4" /> {isExporting ? 'Preparando...' : 'Descargar acta PDF'}
-          </button>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <button type="button" onClick={handleDownloadConsolidadoPdf} disabled={isExporting || isExportingBatchLibretas || !actaSection} className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-bold cursor-pointer transition-all">
+              <Download className="w-4 h-4" /> {isExporting ? 'Preparando...' : 'Descargar Acta'}
+            </button>
+            <button type="button" onClick={handleDownloadBatchLibretasPdf} disabled={isExporting || isExportingBatchLibretas || !actaSection} className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white text-xs font-bold cursor-pointer transition-all" title="Descarga las libretas oficiales de todos los alumnos de esta aula en un solo PDF consolidado">
+              <BookOpen className="w-4 h-4" /> {isExportingBatchLibretas ? 'Generando...' : 'Libretas en Lote'}
+            </button>
+          </div>
         </div>
 
         {/* Alumnos que necesitan apoyo */}

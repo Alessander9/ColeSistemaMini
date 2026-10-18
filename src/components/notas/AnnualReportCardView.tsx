@@ -408,8 +408,17 @@ export function AnnualReportCardView({ reportCard, showPrintButton = true }: Ann
           {/* Signature Director */}
           {firmaDirector && (
             <div>
-              <div className="w-36 sm:w-44 h-14 border-b-2 border-dashed border-slate-400 mx-auto flex items-center justify-center">
-                <span className="text-[9px] font-mono text-slate-300 italic select-none">Firma y Sello</span>
+              <div className="w-36 sm:w-44 h-14 border-b-2 border-dashed border-slate-400 mx-auto flex items-center justify-center overflow-hidden">
+                {brandingConfig?.directorFirmaUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={brandingConfig.directorFirmaUrl}
+                    alt="Firma Digital Director"
+                    className="h-12 max-w-[140px] object-contain mx-auto"
+                  />
+                ) : (
+                  <span className="text-[9px] font-mono text-slate-300 italic select-none">Firma y Sello</span>
+                )}
               </div>
               <p className="text-xs font-extrabold text-slate-900 dark:text-white mt-2">
                 {directorName}

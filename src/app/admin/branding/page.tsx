@@ -218,6 +218,28 @@ export default function AdminBrandingPage() {
     );
   };
 
+  const handleResetLibretaDefaults = () => {
+    setFormData(prev => ({
+      ...prev,
+      libretaEstilo: 'oficial_minedu',
+      libretaColorCabecera: '#1e3a8a',
+      libretaTitulo: 'INFORME DEL PROGRESO DEL APRENDIZAJE DEL ESTUDIANTE',
+      libretaSubtitulo: 'Currículo Nacional de la Educación Básica (CNEB - MINEDU)',
+      libretaMostrarEscudo: true,
+      libretaMostrarFotoEstudiante: true,
+      libretaMostrarAsistencia: true,
+      libretaMostrarEscalaCneb: true,
+      libretaMostrarObservaciones: true,
+      libretaMostrarQrVerificacion: true,
+      libretaFirmaDirector: true,
+      libretaFirmaTutor: true,
+      libretaFirmaApoderado: true,
+      libretaOrientacion: 'vertical',
+      libretaMensajePie: 'Documento Oficial con Valor Legal emitido por el Sistema de Gestión Escolar.',
+    }));
+    showToast('Parámetros de libreta restablecidos a la norma oficial MINEDU', 'info', 'Libreta Restablecida');
+  };
+
   const handleDownloadLibretaSamplePdf = async () => {
     try {
       setIsGeneratingLibretaSamplePdf(true);
@@ -1783,14 +1805,26 @@ export default function AdminBrandingPage() {
             
             {/* 1. Estilo Visual y Plantilla */}
             <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm space-y-5">
-              <div className="flex items-center justify-between">
-                <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
                   <BookOpen className="w-5 h-5 text-teal-600" />
-                  Estilo Visual de la Libreta de Notas
-                </h2>
-                <span className="text-xs px-2.5 py-1 rounded-full bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 font-bold border border-teal-200 dark:border-teal-800">
-                  CNEB - MINEDU 2026
-                </span>
+                  <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                    Estilo Visual de la Libreta de Notas
+                  </h2>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleResetLibretaDefaults}
+                    className="text-xs px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer flex items-center gap-1.5 transition-colors"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    Restablecer Oficial MINEDU
+                  </button>
+                  <span className="text-xs px-2.5 py-1 rounded-full bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 font-bold border border-teal-200 dark:border-teal-800">
+                    CNEB - MINEDU 2026
+                  </span>
+                </div>
               </div>
               <p className="text-xs text-slate-500">
                 Selecciona la apariencia y formato oficial para las libretas bimestrales e informes de progreso del aprendizaje.
@@ -2324,7 +2358,13 @@ export default function AdminBrandingPage() {
                 <div className="pt-2 border-t border-slate-200 flex items-end justify-between gap-1 text-center text-[7px]">
                   {formData.libretaFirmaDirector !== false && (
                     <div className="flex-1">
-                      <div className="border-b border-slate-400 w-16 mx-auto mb-0.5" />
+                      {formData.directorFirmaUrl ? (
+                        <div className="h-4 flex items-center justify-center mb-0.5">
+                          <img src={formData.directorFirmaUrl} alt="Firma Director" className="max-h-4 max-w-[42px] object-contain" />
+                        </div>
+                      ) : (
+                        <div className="border-b border-slate-400 w-16 mx-auto mb-0.5" />
+                      )}
                       <strong className="block text-slate-800 truncate">{formData.directorNombre || 'Director(a)'}</strong>
                       <span className="text-slate-400 block text-[6.5px]">Dirección</span>
                     </div>

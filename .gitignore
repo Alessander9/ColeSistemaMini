@@ -65,6 +65,7 @@ test-results/
 playwright-report/
 cypress/videos/
 cypress/screenshots/
+tests/screenshots/
 test_error_screenshot.png
 test_*.png
 *screenshot*.png

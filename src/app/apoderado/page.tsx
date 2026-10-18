@@ -19,6 +19,7 @@ import {
   ChevronRight,
   Clock,
   Download,
+  Eye,
   FileText,
   Mail,
   MapPin,
@@ -106,6 +107,7 @@ export default function ApoderadoDashboardPage() {
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
   const [periodId, setPeriodId] = useState('');
+  const [taskFilter, setTaskFilter] = useState<'urgentes' | 'semana' | 'entregadas' | 'todas'>('todas');
 
   const todayIso = localIso();
   const year = academicContext?.anio || new Date().getFullYear();
@@ -158,6 +160,68 @@ export default function ApoderadoDashboardPage() {
   const myJustifications = justificationRequests.filter(j => j.matricula_id === enrollment?.id).sort((a, b) => b.fecha.localeCompare(a.fecha));
   const unexcused = attendanceDays.filter(d => d.estado === 'falta' && !myJustifications.some(j => j.fecha === d.fecha));
 
+  // ── Semana escolar actual (Lunes a Viernes para la tira interactiva) ──
+  const currentWeekDays = useMemo(() => {
+    const now = new Date();
+    const dayOfWeek = now.getDay(); // 0 es domingo, 1 es lunes...
+    const distanceToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    const monday = new Date(now);
+    monday.setDate(now.getDate() + distanceToMonday);
+
+    const dayNames = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'];
+    const shortNames = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'];
+    const days = [];
+
+    for (let i = 0; i < 5; i++) {
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + i);
+      const iso = localIso(d);
+      const isToday = iso === todayIso;
+      const isFuture = iso > todayIso;
+
+      const holiday = calendarEvents.find(
+        e => !e.es_laborable && e.fecha_inicio <= iso && iso <= e.fecha_fin && (e.nivel === 'todos' || e.nivel === section?.grado?.nivel)
+      );
+
+      const attRec = attendanceDays.find(a => a.fecha === iso);
+      const entryTime = attendances.find(
+        a => a.matricula_id === enrollment?.id && a.fecha === iso && a.tipo_registro !== 'salida'
+      )?.hora_registro?.slice(0, 5);
+
+      const isJustified = myJustifications.some(j => j.fecha === iso);
+
+      let status: 'presente' | 'tardanza' | 'falta' | 'justificado' | 'feriado' | 'futuro' | 'sin_registro' = 'sin_registro';
+      if (holiday) {
+        status = 'feriado';
+      } else if (attRec?.estado === 'presente') {
+        status = 'presente';
+      } else if (attRec?.estado === 'tardanza') {
+        status = 'tardanza';
+      } else if (attRec?.estado === 'justificado' || isJustified) {
+        status = 'justificado';
+      } else if (attRec?.estado === 'falta') {
+        status = 'falta';
+      } else if (isFuture) {
+        status = 'futuro';
+      }
+
+      days.push({
+        date: d,
+        iso,
+        dayName: dayNames[i],
+        shortName: shortNames[i],
+        dayNumber: d.getDate(),
+        isToday,
+        isFuture,
+        holidayTitle: holiday?.titulo,
+        status,
+        entryTime,
+        canJustify: status === 'falta' && !isJustified,
+      });
+    }
+    return days;
+  }, [todayIso, calendarEvents, section, attendanceDays, attendances, enrollment, myJustifications]);
+
   // ── Hoy ──
   const todayKey = WEEKDAY_KEYS[new Date().getDay()];
   const holidayToday = calendarEvents.find(e => !e.es_laborable && e.fecha_inicio <= todayIso && todayIso <= e.fecha_fin && (e.nivel === 'todos' || e.nivel === section?.grado?.nivel));
@@ -179,6 +243,21 @@ export default function ApoderadoDashboardPage() {
   }, [tasks, submissions, section, enrollment, courses]);
   const pendingTasks = childTasks.filter(t => !t.sub && !t.overdue);
   const overdueTasks = childTasks.filter(t => t.overdue);
+  const urgentTasks = useMemo(() => {
+    return childTasks.filter(t => !t.sub && (t.overdue || dueInWords(t.task.fecha_limite).includes('hoy') || dueInWords(t.task.fecha_limite).includes('mañana')));
+  }, [childTasks]);
+  const upcomingTasks = useMemo(() => {
+    return childTasks.filter(t => !t.sub && !t.overdue && !dueInWords(t.task.fecha_limite).includes('hoy') && !dueInWords(t.task.fecha_limite).includes('mañana'));
+  }, [childTasks]);
+  const completedTasks = useMemo(() => {
+    return childTasks.filter(t => !!t.sub);
+  }, [childTasks]);
+  const displayedTasks = useMemo(() => {
+    if (taskFilter === 'urgentes') return urgentTasks;
+    if (taskFilter === 'semana') return upcomingTasks;
+    if (taskFilter === 'entregadas') return completedTasks;
+    return childTasks;
+  }, [taskFilter, urgentTasks, upcomingTasks, completedTasks, childTasks]);
   const upcomingExams = exams
     .filter(e => e.seccion_id === section?.id && e.fecha_programada >= todayIso && e.estado !== 'borrador')
     .sort((a, b) => a.fecha_programada.localeCompare(b.fecha_programada));
@@ -219,7 +298,7 @@ export default function ApoderadoDashboardPage() {
     ...(overdueTasks.length > 0 ? [{
       key: 'vencidas', icon: FileText, tone: 'bg-amber-100 text-amber-600 dark:bg-amber-950/60 dark:text-amber-300',
       text: `${overdueTasks.length} ${overdueTasks.length === 1 ? 'tarea venció' : 'tareas vencieron'} sin entregar`,
-      action: 'Ver tareas', onClick: () => setTab('tareas'),
+      action: 'Ver tareas', onClick: () => { setTab('tareas'); setTaskFilter('urgentes'); },
     }] : []),
     ...(coursesInC.length > 0 ? [{
       key: 'notas-c', icon: Award, tone: 'bg-rose-100 text-rose-600 dark:bg-rose-950/60 dark:text-rose-300',
@@ -287,15 +366,25 @@ export default function ApoderadoDashboardPage() {
       showToast('No se pudo generar la constancia', 'error');
     }
   };
-  // ── Tarjeta "Hoy" ──
+  // ── Colores institucionales armonizados ──
+  const primaryColor = brandingConfig?.primaryColor || '#2563eb';
+  const secondaryColor = brandingConfig?.secondaryColor || '#4f46e5';
+  const accentColor = brandingConfig?.accentColor || '#ec4899';
+
+  const isSchoolHours = (() => {
+    const h = new Date().getHours();
+    return h >= 7 && h < 15;
+  })();
+
+  // ── Tarjeta "Hoy" (con pulso en vivo) ──
   const today = (() => {
-    if (!todayKey) return { title: 'Hoy no hay clases', detail: 'Es fin de semana', tone: 'slate', icon: Calendar };
-    if (holidayToday) return { title: 'Hoy no hay clases', detail: holidayToday.titulo, tone: 'slate', icon: Calendar };
-    if (todayRecord?.estado === 'presente') return { title: 'Llegó al colegio', detail: todayEntryTime ? `Entró a las ${todayEntryTime}` : 'Ingreso registrado', tone: 'emerald', icon: UserCheck };
-    if (todayRecord?.estado === 'tardanza') return { title: 'Llegó tarde', detail: todayEntryTime ? `Entró a las ${todayEntryTime}` : 'Tardanza registrada', tone: 'amber', icon: Clock };
-    if (todayRecord?.estado === 'justificado') return { title: 'Falta justificada', detail: 'El colegio ya lo sabe', tone: 'sky', icon: CheckCircle2 };
-    if (todayRecord?.estado === 'falta') return { title: 'No asistió hoy', detail: 'Puedes justificar la falta', tone: 'rose', icon: UserX };
-    return { title: 'Aún no registra ingreso', detail: 'Se actualiza al pasar su carnet', tone: 'slate', icon: Clock };
+    if (!todayKey) return { title: 'Hoy no hay clases', detail: 'Es fin de semana', tone: 'slate', icon: Calendar, isLive: false, statusBadge: 'Fin de semana' };
+    if (holidayToday) return { title: 'Hoy no hay clases', detail: holidayToday.titulo, tone: 'slate', icon: Calendar, isLive: false, statusBadge: 'Feriado' };
+    if (todayRecord?.estado === 'presente') return { title: 'Llegó al colegio', detail: todayEntryTime ? `Entró a las ${todayEntryTime}` : 'Ingreso registrado', tone: 'emerald', icon: UserCheck, isLive: isSchoolHours, statusBadge: 'En clase' };
+    if (todayRecord?.estado === 'tardanza') return { title: 'Llegó tarde', detail: todayEntryTime ? `Entró a las ${todayEntryTime}` : 'Tardanza registrada', tone: 'amber', icon: Clock, isLive: isSchoolHours, statusBadge: 'En clase' };
+    if (todayRecord?.estado === 'justificado') return { title: 'Falta justificada', detail: 'El colegio ya lo sabe', tone: 'sky', icon: CheckCircle2, isLive: false, statusBadge: 'Justificada' };
+    if (todayRecord?.estado === 'falta') return { title: 'No asistió hoy', detail: 'Puedes justificar la falta', tone: 'rose', icon: UserX, isLive: false, statusBadge: 'Falta' };
+    return { title: 'Aún no registra ingreso', detail: isSchoolHours ? 'En espera de marcación' : 'Se actualiza al pasar su carnet', tone: 'slate', icon: Clock, isLive: isSchoolHours, statusBadge: isSchoolHours ? 'En espera' : 'Pendiente' };
   })();
   const TONE: Record<string, string> = {
     emerald: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300',
@@ -336,7 +425,7 @@ export default function ApoderadoDashboardPage() {
 
       {/* ── 1. ENCABEZADO + HIJO SELECCIONADO ── */}
       <section className={`${card} overflow-hidden`}>
-        <div className="h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-pink-400" />
+        <div className="h-1.5" style={{ background: `linear-gradient(90deg, ${primaryColor}, ${secondaryColor}, ${accentColor})` }} />
         <div className="p-4 sm:p-5 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
@@ -349,8 +438,21 @@ export default function ApoderadoDashboardPage() {
               <p className="text-sm text-slate-600 dark:text-slate-300">Así va {firstName} en el colegio.</p>
             </div>
             <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={() => openJustify()} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-pink-600 hover:bg-pink-700 text-white text-sm font-bold cursor-pointer"><Send className="w-4 h-4" /> Justificar falta</button>
-              <button type="button" onClick={() => setIsQrModalOpen(true)} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-700 dark:text-slate-200 hover:border-slate-400 cursor-pointer"><QrCode className="w-4 h-4 text-emerald-600" /> Carnet</button>
+              <button
+                type="button"
+                onClick={() => openJustify()}
+                style={{ backgroundColor: primaryColor }}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-white text-sm font-bold shadow-sm hover:opacity-95 transition-all cursor-pointer"
+              >
+                <Send className="w-4 h-4" /> Justificar falta
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsQrModalOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-700 dark:text-slate-200 hover:border-slate-400 cursor-pointer"
+              >
+                <QrCode className="w-4 h-4 text-emerald-600" /> Carnet
+              </button>
             </div>
           </div>
 
@@ -364,12 +466,24 @@ export default function ApoderadoDashboardPage() {
                   type="button"
                   onClick={() => setSelectedChildId(c.id)}
                   aria-pressed={active}
-                  className={`flex items-center gap-3 pl-2 pr-4 py-2 rounded-2xl border text-left shrink-0 transition-all cursor-pointer ${active ? 'bg-blue-50 dark:bg-blue-950/40 border-blue-300 dark:border-blue-800 ring-2 ring-blue-500/20' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 hover:border-blue-300'}`}
+                  style={active ? { borderColor: primaryColor, backgroundColor: `${primaryColor}14` } : {}}
+                  className={`flex items-center gap-3 pl-2 pr-4 py-2 rounded-2xl border text-left shrink-0 transition-all cursor-pointer ${
+                    active
+                      ? 'shadow-sm ring-2 ring-indigo-500/20'
+                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 hover:border-slate-300'
+                  }`}
                 >
                   {c.avatar
                     // eslint-disable-next-line @next/next/no-img-element
                     ? <img src={c.avatar} alt="" className="w-11 h-11 rounded-xl object-cover" />
-                    : <span className="w-11 h-11 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center font-black">{c.nombre[0]}{c.apellidos[0] || ''}</span>}
+                    : (
+                      <span
+                        className="w-11 h-11 rounded-xl text-white flex items-center justify-center font-black"
+                        style={{ background: `linear-gradient(135deg, ${primaryColor}, ${secondaryColor})` }}
+                      >
+                        {c.nombre[0]}{c.apellidos[0] || ''}
+                      </span>
+                    )}
                   <span>
                     <span className="block text-sm font-black text-slate-900 dark:text-white">{c.nombre} {c.apellidos.split(' ')[0]}</span>
                     <span className="block text-xs text-slate-500 dark:text-slate-400">{c.aula} · Tutor(a): {c.id === child.id ? tutorName : (teachers.find(t => t.id === c.section?.tutor_id)?.nombres || 'por asignar')}</span>
@@ -381,18 +495,29 @@ export default function ApoderadoDashboardPage() {
         </div>
       </section>
 
-      {/* ── 2. ¿CÓMO VA? (4 tarjetas) ── */}
+      {/* ── 2. ¿CÓMO VA? (4 tarjetas con Pulso en Vivo) ── */}
       <section className="grid grid-cols-2 lg:grid-cols-4 gap-3" aria-label="Resumen">
         {[
           { key: 'hoy', label: 'Hoy', value: today.title, sub: today.detail, icon: today.icon, tone: today.tone, onClick: () => setTab('asistencia') },
           { key: 'notas', label: `Notas · ${selectedPeriod?.nombre || 'bimestre'}`, value: periodAverage ? GRADE_MEANING[periodAverage].label : 'Aún sin notas', sub: periodAverage ? `Promedio ${periodAverage}` : 'Los docentes aún no califican', icon: Award, tone: gradeTone, onClick: () => setTab('notas') },
           { key: 'asist', label: 'Asistencia', value: attendedPct === null ? 'Sin registros' : `${attendedPct}% asistió`, sub: attendanceDays.length > 0 ? `${absent} ${absent === 1 ? 'falta' : 'faltas'} · ${late} ${late === 1 ? 'tardanza' : 'tardanzas'}` : 'Aún no hay días registrados', icon: CalendarCheck, tone: attTone, onClick: () => setTab('asistencia') },
-          { key: 'tareas', label: 'Tareas', value: overdueTasks.length > 0 ? `${overdueTasks.length} ${overdueTasks.length === 1 ? 'vencida' : 'vencidas'}` : pendingTasks.length > 0 ? `${pendingTasks.length} por entregar` : 'Al día', sub: pendingTasks[0] ? `${pendingTasks[0].courseName}: ${dueInWords(pendingTasks[0].task.fecha_limite).toLowerCase()}` : `${childTasks.filter(t => t.sub).length} entregadas`, icon: FileText, tone: taskTone, onClick: () => setTab('tareas') },
+          { key: 'tareas', label: 'Tareas', value: overdueTasks.length > 0 ? `${overdueTasks.length} ${overdueTasks.length === 1 ? 'vencida' : 'vencidas'}` : pendingTasks.length > 0 ? `${pendingTasks.length} por entregar` : 'Al día', sub: pendingTasks[0] ? `${pendingTasks[0].courseName}: ${dueInWords(pendingTasks[0].task.fecha_limite).toLowerCase()}` : `${childTasks.filter(t => t.sub).length} entregadas`, icon: FileText, tone: taskTone, onClick: () => { setTab('tareas'); if (overdueTasks.length > 0) setTaskFilter('urgentes'); } },
         ].map(k => (
           <button key={k.key} type="button" onClick={k.onClick} className={`${card} p-3.5 text-left hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer`}>
-            <div className="flex items-center gap-2">
-              <span className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${TONE[k.tone]}`}><k.icon className="w-4 h-4" /></span>
-              <span className="text-xs font-bold text-slate-500 dark:text-slate-400 truncate">{k.label}</span>
+            <div className="flex items-center justify-between gap-1 w-full">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${TONE[k.tone]}`}><k.icon className="w-4 h-4" /></span>
+                <span className="text-xs font-bold text-slate-500 dark:text-slate-400 truncate">{k.label}</span>
+              </div>
+              {k.key === 'hoy' && today.isLive && (
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 shrink-0" suppressHydrationWarning>
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  </span>
+                  <span>{today.statusBadge}</span>
+                </span>
+              )}
             </div>
             <p className="text-base sm:text-lg font-black text-slate-900 dark:text-white mt-2 leading-tight">{k.value}</p>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2">{k.sub}</p>
@@ -422,31 +547,220 @@ export default function ApoderadoDashboardPage() {
       )}
 
       {/* ── 4. PESTAÑAS ── */}
-      <div className="flex gap-1 p-1 rounded-2xl bg-slate-100 dark:bg-slate-800 overflow-x-auto">
-        {tabs.map(t => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => setTab(t.id)}
-            className={`flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-sm font-bold whitespace-nowrap cursor-pointer transition-all ${tab === t.id ? 'bg-white dark:bg-slate-900 text-blue-700 dark:text-blue-300 shadow-sm' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'}`}
-          >
-            <t.icon className="w-4 h-4" /> {t.label}
-            {t.badge ? <span className="px-1.5 rounded-full text-[11px] font-black bg-pink-100 text-pink-700 dark:bg-pink-950 dark:text-pink-300">{t.badge}</span> : null}
-          </button>
-        ))}
+      <div role="tablist" aria-label="Secciones del dashboard" className="flex gap-1 p-1 rounded-2xl bg-slate-100 dark:bg-slate-800 overflow-x-auto">
+        {tabs.map(t => {
+          const isActive = tab === t.id;
+          return (
+            <button
+              key={t.id}
+              role="tab"
+              aria-selected={isActive}
+              data-tab={t.id}
+              type="button"
+              onClick={() => setTab(t.id)}
+              style={isActive ? { color: primaryColor } : {}}
+              className={`flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-sm font-bold whitespace-nowrap cursor-pointer transition-all ${
+                isActive
+                  ? 'bg-white dark:bg-slate-900 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+              }`}
+            >
+              <t.icon className="w-4 h-4" /> {t.label}
+              {t.badge ? (
+                <span
+                  className="px-1.5 rounded-full text-[11px] font-black"
+                  style={isActive ? { backgroundColor: `${primaryColor}20`, color: primaryColor } : { backgroundColor: '#fee2e2', color: '#b91c1c' }}
+                >
+                  {t.badge}
+                </span>
+              ) : null}
+            </button>
+          );
+        })}
       </div>
 
       {/* ── NOTAS ── */}
       {tab === 'notas' && (
         <section className={`${card} p-4 sm:p-5 space-y-4`}>
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          {/* ── 7. Tarjeta Destacada: Libreta Oficial de Notas ── */}
+          <div className="p-5 rounded-3xl bg-gradient-to-br from-indigo-50/70 via-white to-blue-50/40 dark:from-slate-800/90 dark:via-slate-900 dark:to-indigo-950/30 border border-indigo-200/80 dark:border-indigo-900/60 shadow-xs space-y-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex items-center gap-3.5">
+                {brandingConfig?.logoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={brandingConfig.logoUrl}
+                    alt="Insignia del Colegio"
+                    className="w-14 h-14 object-contain rounded-2xl p-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xs shrink-0"
+                  />
+                ) : (
+                  <div
+                    className="w-14 h-14 rounded-2xl text-white flex items-center justify-center font-black shadow-xs shrink-0"
+                    style={{ background: `linear-gradient(135deg, ${primaryColor}, ${secondaryColor})` }}
+                  >
+                    <School className="w-7 h-7" />
+                  </div>
+                )}
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase tracking-wider bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
+                      MINEDU · SIAGIE
+                    </span>
+                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                      Estilo: {brandingConfig?.libretaEstilo === 'moderno_ejecutivo' ? 'Moderno Ejecutivo' : brandingConfig?.libretaEstilo === 'academico_elegante' ? 'Académico Elegante' : brandingConfig?.libretaEstilo === 'minimalista_compacto' ? 'Minimalista' : 'Oficial MINEDU'}
+                    </span>
+                    {brandingConfig?.directorFirmaUrl && (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3" /> Sello Digital
+                      </span>
+                    )}
+                  </div>
+                  <h3 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white mt-1">
+                    Libreta Oficial de Calificaciones {year}
+                  </h3>
+                  <p className="text-xs text-slate-600 dark:text-slate-400">
+                    {brandingConfig?.nombreInstitucion || 'Institución Educativa'} · {child.aula}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsReportCardModalOpen(true)}
+                  style={{ backgroundColor: primaryColor }}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-white text-sm font-bold shadow-sm transition-all hover:opacity-95 cursor-pointer"
+                >
+                  <Eye className="w-4 h-4" />
+                  <span>Ver Libreta Digital</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDownloadReportCardPdf}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-sm font-bold text-slate-700 dark:text-slate-200 hover:border-slate-400 bg-white dark:bg-slate-800 shadow-xs transition-all cursor-pointer"
+                >
+                  <Download className="w-4 h-4 text-slate-600 dark:text-slate-300" />
+                  <span>Descargar PDF</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-indigo-100/70 dark:border-slate-800 text-xs">
+              <div className="p-2 rounded-xl bg-white/70 dark:bg-slate-800/50">
+                <p className="text-slate-500 font-medium">Promedio actual</p>
+                <p className="font-black text-slate-900 dark:text-white text-sm mt-0.5">
+                  {periodAverage ? `Nivel ${periodAverage} (${GRADE_MEANING[periodAverage].label})` : 'En evaluación'}
+                </p>
+              </div>
+              <div className="p-2 rounded-xl bg-white/70 dark:bg-slate-800/50">
+                <p className="text-slate-500 font-medium">Cursos evaluados</p>
+                <p className="font-black text-slate-900 dark:text-white text-sm mt-0.5">
+                  {courseRows.filter(r => r.letter).length} de {courseRows.length} cursos
+                </p>
+              </div>
+              <div className="p-2 rounded-xl bg-white/70 dark:bg-slate-800/50">
+                <p className="text-slate-500 font-medium">Bimestre actual</p>
+                <p className="font-black text-slate-900 dark:text-white text-sm mt-0.5">
+                  {selectedPeriod?.nombre || 'Periodo vigente'}
+                </p>
+              </div>
+              <div className="p-2 rounded-xl bg-white/70 dark:bg-slate-800/50">
+                <p className="text-slate-500 font-medium">Asistencia acumulada</p>
+                <p className="font-black text-slate-900 dark:text-white text-sm mt-0.5">
+                  {attendedPct !== null ? `${attendedPct}% de asistencia` : 'Sin registros'}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* ── 5. Guía Visual Oficial CNEB ── */}
+          <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700/80 space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <Award className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                <h3 className="text-sm font-black text-slate-900 dark:text-white">Escala Oficial de Calificaciones CNEB (MINEDU)</h3>
+              </div>
+              <span className="text-[11px] font-semibold text-slate-500">Evaluación formativa</span>
+            </div>
+
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+              <div className="p-3 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/60">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="px-2 py-0.5 rounded-lg bg-emerald-600 text-white font-black text-xs">AD</span>
+                  <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300">18 - 20</span>
+                </div>
+                <p className="text-xs font-black text-emerald-900 dark:text-emerald-200">Logro Destacado</p>
+                <p className="text-[11px] text-emerald-800/90 dark:text-emerald-300/90 mt-0.5 leading-snug">
+                  Supera con holgura los aprendizajes esperados con gran autonomía.
+                </p>
+              </div>
+
+              <div className="p-3 rounded-xl bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/60">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="px-2 py-0.5 rounded-lg bg-blue-600 text-white font-black text-xs">A</span>
+                  <span className="text-[10px] font-bold text-blue-700 dark:text-blue-300">14 - 17</span>
+                </div>
+                <p className="text-xs font-black text-blue-900 dark:text-blue-200">Logro Esperado</p>
+                <p className="text-[11px] text-blue-800/90 dark:text-blue-300/90 mt-0.5 leading-snug">
+                  Demuestra satisfactoriamente el nivel previsto para su grado escolar.
+                </p>
+              </div>
+
+              <div className="p-3 rounded-xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/60">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="px-2 py-0.5 rounded-lg bg-amber-600 text-white font-black text-xs">B</span>
+                  <span className="text-[10px] font-bold text-amber-700 dark:text-amber-300">11 - 13</span>
+                </div>
+                <p className="text-xs font-black text-amber-900 dark:text-amber-200">En Proceso</p>
+                <p className="text-[11px] text-amber-800/90 dark:text-amber-300/90 mt-0.5 leading-snug">
+                  Cerca del nivel esperado; requiere acompañamiento o refuerzo pedagógico.
+                </p>
+              </div>
+
+              <div className="p-3 rounded-xl bg-rose-50/70 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/60">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="px-2 py-0.5 rounded-lg bg-rose-600 text-white font-black text-xs">C</span>
+                  <span className="text-[10px] font-bold text-rose-700 dark:text-rose-300">0 - 10</span>
+                </div>
+                <p className="text-xs font-black text-rose-900 dark:text-rose-200">En Inicio</p>
+                <p className="text-[11px] text-rose-800/90 dark:text-rose-300/90 mt-0.5 leading-snug">
+                  Muestra dificultades; necesita apoyo guiado continuo del docente y la familia.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* ── Alerta Empática de Apoyo si hay cursos en C ── */}
+          {coursesInC.length > 0 && (
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-rose-50 via-amber-50 to-orange-50 dark:from-rose-950/30 dark:via-amber-950/20 dark:to-orange-950/20 border border-rose-200 dark:border-rose-900/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-900/60 text-rose-600 dark:text-rose-300 flex items-center justify-center shrink-0 mt-0.5">
+                  <Heart className="w-5 h-5" />
+                </div>
+                <div className="space-y-0.5">
+                  <h4 className="text-sm font-black text-slate-900 dark:text-white">
+                    Acompañamiento pedagógico recomendado para {firstName}
+                  </h4>
+                  <p className="text-xs text-slate-600 dark:text-slate-300">
+                    Se identificaron calificaciones en inicio (C) en: <strong>{coursesInC.map(c => c.course.nombre).join(', ')}</strong>. La evaluación busca detectar oportunidades a tiempo. Coordinar con su tutor(a) {tutorName} te permitirá acordar un plan de tutoría o reforzamiento.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setTab('tutor')}
+                style={{ backgroundColor: primaryColor }}
+                className="shrink-0 px-3.5 py-2 rounded-xl text-white text-xs font-bold transition-all shadow-sm hover:opacity-95 cursor-pointer whitespace-nowrap self-start sm:self-center"
+              >
+                Ver tutor y coordinar
+              </button>
+            </div>
+          )}
+
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
             <div>
               <h2 className="text-base font-black text-slate-900 dark:text-white">Notas por curso</h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">AD = excelente · A = va bien · B = en proceso · C = necesita apoyo</p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={() => setIsReportCardModalOpen(true)} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold cursor-pointer"><BookOpen className="w-4 h-4" /> Ver libreta</button>
-              <button type="button" onClick={handleDownloadReportCardPdf} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-700 dark:text-slate-200 hover:border-slate-400 cursor-pointer"><Download className="w-4 h-4" /> PDF</button>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Detalle por área curricular y competencias del periodo</p>
             </div>
           </div>
 
@@ -486,7 +800,124 @@ export default function ApoderadoDashboardPage() {
               <h2 className="text-base font-black text-slate-900 dark:text-white">Asistencia</h2>
               <p className="text-xs text-slate-500 dark:text-slate-400">Se registra cuando {firstName} pasa su carnet en la entrada.</p>
             </div>
-            <button type="button" onClick={() => openJustify()} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-pink-600 hover:bg-pink-700 text-white text-sm font-bold cursor-pointer self-start"><Send className="w-4 h-4" /> Justificar una falta</button>
+            <button
+              type="button"
+              onClick={() => openJustify()}
+              style={{ backgroundColor: primaryColor }}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-white text-sm font-bold shadow-sm hover:opacity-95 transition-all cursor-pointer self-start"
+            >
+              <Send className="w-4 h-4" /> Justificar una falta
+            </button>
+          </div>
+
+          {/* ── 4. Tira Semanal de Asistencia (Lunes a Viernes) ── */}
+          <div className="p-4 rounded-2xl bg-gradient-to-br from-slate-50 to-indigo-50/30 dark:from-slate-800/60 dark:to-slate-800/30 border border-slate-200/80 dark:border-slate-700/80 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+              <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                <h3 className="text-sm font-black text-slate-900 dark:text-white">Esta semana escolar (Lunes a Viernes)</h3>
+              </div>
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400" suppressHydrationWarning>
+                {currentWeekDays[0] && currentWeekDays[4]
+                  ? currentWeekDays[0].date.getMonth() === currentWeekDays[4].date.getMonth()
+                    ? `${currentWeekDays[0].dayNumber} al ${currentWeekDays[4].dayNumber} de ${currentWeekDays[0].date.toLocaleDateString('es-PE', { month: 'long' })}`
+                    : `${currentWeekDays[0].dayNumber} de ${currentWeekDays[0].date.toLocaleDateString('es-PE', { month: 'short' }).replace('.', '')} al ${currentWeekDays[4].dayNumber} de ${currentWeekDays[4].date.toLocaleDateString('es-PE', { month: 'short' }).replace('.', '')}`
+                  : ''}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+              {currentWeekDays.map(day => {
+                const isPresent = day.status === 'presente';
+                const isLate = day.status === 'tardanza';
+                const isAbsent = day.status === 'falta';
+                const isExcused = day.status === 'justificado';
+                const isHoliday = day.status === 'feriado';
+                const isFuture = day.status === 'futuro';
+
+                return (
+                  <div
+                    key={day.iso}
+                    className={`p-3 rounded-xl border flex flex-col justify-between transition-all ${
+                      day.isToday
+                        ? 'ring-2 ring-indigo-500/30 border-indigo-400 dark:border-indigo-600 bg-white dark:bg-slate-900 shadow-sm'
+                        : 'bg-white/80 dark:bg-slate-900/80 border-slate-200 dark:border-slate-800'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-1 mb-1.5">
+                      <span className="text-xs font-black text-slate-700 dark:text-slate-300">
+                        {day.shortName} {day.dayNumber}
+                      </span>
+                      {day.isToday && (
+                        <span className="px-1.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
+                          Hoy
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="space-y-1 my-1">
+                      {isPresent && (
+                        <div className="flex items-center gap-1.5 text-emerald-700 dark:text-emerald-300">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <span className="text-xs font-black">Asistió</span>
+                        </div>
+                      )}
+                      {isLate && (
+                        <div className="flex items-center gap-1.5 text-amber-700 dark:text-amber-300">
+                          <Clock className="w-4 h-4 text-amber-600 shrink-0" />
+                          <span className="text-xs font-black">Tardanza</span>
+                        </div>
+                      )}
+                      {isAbsent && (
+                        <div className="flex items-center gap-1.5 text-rose-700 dark:text-rose-300">
+                          <UserX className="w-4 h-4 text-rose-600 shrink-0" />
+                          <span className="text-xs font-black">Falta</span>
+                        </div>
+                      )}
+                      {isExcused && (
+                        <div className="flex items-center gap-1.5 text-sky-700 dark:text-sky-300">
+                          <CheckCircle2 className="w-4 h-4 text-sky-600 shrink-0" />
+                          <span className="text-xs font-black">Justificada</span>
+                        </div>
+                      )}
+                      {isHoliday && (
+                        <div className="flex items-center gap-1.5 text-purple-700 dark:text-purple-300">
+                          <Calendar className="w-4 h-4 text-purple-600 shrink-0" />
+                          <span className="text-xs font-bold text-[11px] truncate">{day.holidayTitle || 'Feriado'}</span>
+                        </div>
+                      )}
+                      {isFuture && (
+                        <div className="flex items-center gap-1.5 text-slate-400">
+                          <span className="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-600"></span>
+                          <span className="text-xs font-medium">Por registrar</span>
+                        </div>
+                      )}
+                      {!isPresent && !isLate && !isAbsent && !isExcused && !isHoliday && !isFuture && (
+                        <span className="text-xs text-slate-400 font-medium">Sin registro</span>
+                      )}
+
+                      {day.entryTime && (
+                        <p className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
+                          Ingreso: {day.entryTime}
+                        </p>
+                      )}
+                    </div>
+
+                    {day.canJustify ? (
+                      <button
+                        type="button"
+                        onClick={() => openJustify(day.iso)}
+                        className="mt-2 w-full py-1 px-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-[11px] font-bold text-center transition-all cursor-pointer shadow-xs"
+                      >
+                        Justificar
+                      </button>
+                    ) : (
+                      <div className="h-1"></div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -555,27 +986,143 @@ export default function ApoderadoDashboardPage() {
       {/* ── TAREAS Y EXÁMENES ── */}
       {tab === 'tareas' && (
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-          <section className={`${card} p-4 sm:p-5 space-y-3 lg:col-span-3`}>
+          <section className={`${card} p-4 sm:p-5 space-y-3.5 lg:col-span-3`}>
             <div className="flex items-center justify-between gap-2">
-              <h2 className="text-base font-black text-slate-900 dark:text-white">Tareas</h2>
+              <div>
+                <h2 className="text-base font-black text-slate-900 dark:text-white">Tareas</h2>
+                <p className="text-xs text-slate-500">Actividades y deberes escolares asignados</p>
+              </div>
               <Link href="/apoderado/tareas" className="text-sm font-bold text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-0.5">Ver detalle <ChevronRight className="w-4 h-4" /></Link>
             </div>
-            {childTasks.length === 0 ? (
-              <p className="py-6 text-center text-sm text-slate-500">No hay tareas asignadas.</p>
+
+            {/* ── 3. Semáforo de Urgencia: Filter Chips ── */}
+            <div className="flex flex-wrap items-center gap-1.5 pb-1">
+              <button
+                type="button"
+                onClick={() => setTaskFilter('urgentes')}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  taskFilter === 'urgentes'
+                    ? 'bg-rose-600 text-white shadow-sm ring-2 ring-rose-500/20'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                }`}
+              >
+                <AlertTriangle className="w-3.5 h-3.5" />
+                <span>Urgentes / Por vencer</span>
+                {urgentTasks.length > 0 && (
+                  <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${taskFilter === 'urgentes' ? 'bg-white text-rose-600' : 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300'}`}>
+                    {urgentTasks.length}
+                  </span>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => setTaskFilter('semana')}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  taskFilter === 'semana'
+                    ? 'bg-blue-600 text-white shadow-sm ring-2 ring-blue-500/20'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                }`}
+              >
+                <Clock className="w-3.5 h-3.5" />
+                <span>Próximas</span>
+                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${taskFilter === 'semana' ? 'bg-white text-blue-600' : 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300'}`}>
+                  {upcomingTasks.length}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setTaskFilter('entregadas')}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  taskFilter === 'entregadas'
+                    ? 'bg-emerald-600 text-white shadow-sm ring-2 ring-emerald-500/20'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                }`}
+              >
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>Entregadas</span>
+                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${taskFilter === 'entregadas' ? 'bg-white text-emerald-600' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'}`}>
+                  {completedTasks.length}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setTaskFilter('todas')}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  taskFilter === 'todas'
+                    ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-sm'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                }`}
+              >
+                <span>Todas</span>
+                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${taskFilter === 'todas' ? 'bg-white/20 text-white dark:bg-slate-900/20 dark:text-slate-900' : 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200'}`}>
+                  {childTasks.length}
+                </span>
+              </button>
+            </div>
+
+            {displayedTasks.length === 0 ? (
+              <div className="py-8 text-center space-y-2">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto">
+                  <CheckCircle2 className="w-6 h-6" />
+                </div>
+                <p className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                  {taskFilter === 'urgentes'
+                    ? `¡Excelente! ${firstName} no tiene tareas urgentes ni vencidas.`
+                    : taskFilter === 'semana'
+                    ? 'No hay tareas programadas para esta semana.'
+                    : taskFilter === 'entregadas'
+                    ? 'Aún no registra tareas entregadas.'
+                    : 'No hay tareas asignadas para este periodo.'}
+                </p>
+                <p className="text-xs text-slate-500">
+                  {taskFilter === 'urgentes' ? 'Revisa "Próximas" o "Todas" para ver las siguientes actividades.' : 'Las nuevas tareas de los profesores aparecerán aquí automáticamente.'}
+                </p>
+              </div>
             ) : (
               <ul className="space-y-2">
-                {childTasks.slice(0, 8).map(t => (
-                  <li key={t.task.id} className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50">
-                    <span className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${t.sub ? TONE.emerald : t.overdue ? TONE.rose : TONE.amber}`}>
-                      {t.sub ? <CheckCircle2 className="w-4 h-4" /> : t.overdue ? <AlertTriangle className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{t.task.titulo}</p>
-                      <p className="text-xs text-slate-500">{t.courseName} · {t.sub ? 'Entregada' : dueInWords(t.task.fecha_limite)}</p>
-                    </div>
-                    {t.sub?.calificacion_letra ? <GradeBadge grade={t.sub.calificacion_letra} size="sm" /> : t.sub ? <span className="text-[11px] font-bold text-slate-400">Sin nota aún</span> : null}
-                  </li>
-                ))}
+                {displayedTasks.slice(0, 12).map(t => {
+                  const isUrgent = !t.sub && (t.overdue || dueInWords(t.task.fecha_limite).includes('hoy') || dueInWords(t.task.fecha_limite).includes('mañana'));
+                  return (
+                    <li
+                      key={t.task.id}
+                      className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
+                        t.overdue
+                          ? 'bg-rose-50/40 dark:bg-rose-950/20 border-rose-200 dark:border-rose-900/50'
+                          : isUrgent
+                          ? 'bg-amber-50/40 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/50'
+                          : t.sub
+                          ? 'bg-emerald-50/30 dark:bg-emerald-950/10 border-slate-100 dark:border-slate-800'
+                          : 'bg-slate-50 dark:bg-slate-800/50 border-transparent'
+                      }`}
+                    >
+                      <span className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${t.sub ? TONE.emerald : t.overdue ? TONE.rose : TONE.amber}`}>
+                        {t.sub ? <CheckCircle2 className="w-4 h-4" /> : t.overdue ? <AlertTriangle className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{t.task.titulo}</p>
+                          {t.overdue && (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300 shrink-0">
+                              Vencida
+                            </span>
+                          )}
+                          {!t.sub && !t.overdue && dueInWords(t.task.fecha_limite).includes('hoy') && (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300 shrink-0">
+                              Vence hoy
+                            </span>
+                          )}
+                          {!t.sub && !t.overdue && dueInWords(t.task.fecha_limite).includes('mañana') && (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300 shrink-0">
+                              Vence mañana
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-slate-500 mt-0.5">{t.courseName} · {t.sub ? 'Entregada' : dueInWords(t.task.fecha_limite)}</p>
+                      </div>
+                      {t.sub?.calificacion_letra ? <GradeBadge grade={t.sub.calificacion_letra} size="sm" /> : t.sub ? <span className="text-[11px] font-bold text-slate-400">Entregada</span> : null}
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </section>
@@ -690,7 +1237,12 @@ export default function ApoderadoDashboardPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <section className={`${card} p-4 sm:p-5 space-y-4`}>
             <div className="flex items-center gap-3">
-              <span className="w-12 h-12 rounded-xl bg-blue-600 text-white flex items-center justify-center font-black">{tutor ? `${tutor.nombres[0]}${tutor.apellidos[0] || ''}` : '?'}</span>
+              <span
+                className="w-12 h-12 rounded-xl text-white flex items-center justify-center font-black shadow-xs"
+                style={{ background: `linear-gradient(135deg, ${primaryColor}, ${secondaryColor})` }}
+              >
+                {tutor ? `${tutor.nombres[0]}${tutor.apellidos[0] || ''}` : '?'}
+              </span>
               <div>
                 <p className="text-xs font-bold text-slate-500">Tutor(a) de {section ? `${section.grado?.nombre} "${section.letra}"` : 'su aula'}</p>
                 <p className="text-base font-black text-slate-900 dark:text-white">{tutor ? `${tutor.nombres} ${tutor.apellidos}` : 'Aún no asignado'}</p>
@@ -701,7 +1253,15 @@ export default function ApoderadoDashboardPage() {
                 ? <a href={`tel:${tutor.telefono}`} className="inline-flex items-center justify-center gap-1.5 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-700 dark:text-slate-200 hover:border-slate-400"><Phone className="w-4 h-4 text-blue-600" /> Llamar</a>
                 : <span className="inline-flex items-center justify-center gap-1.5 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 text-sm text-slate-400"><Phone className="w-4 h-4" /> Sin teléfono</span>}
               {tutor?.email
-                ? <a href={`mailto:${tutor.email}`} className="inline-flex items-center justify-center gap-1.5 p-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold"><Mail className="w-4 h-4" /> Escribir</a>
+                ? (
+                  <a
+                    href={`mailto:${tutor.email}`}
+                    style={{ backgroundColor: primaryColor }}
+                    className="inline-flex items-center justify-center gap-1.5 p-2.5 rounded-xl text-white text-sm font-bold hover:opacity-95 shadow-xs transition-all"
+                  >
+                    <Mail className="w-4 h-4" /> Escribir
+                  </a>
+                )
                 : <span className="inline-flex items-center justify-center gap-1.5 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 text-sm text-slate-400"><Mail className="w-4 h-4" /> Sin correo</span>}
             </div>
             <div className="pt-3 border-t border-slate-100 dark:border-slate-800">
@@ -756,7 +1316,14 @@ export default function ApoderadoDashboardPage() {
                 <p className="text-xs text-slate-500">{child.aula} · Año {year}</p>
               </div>
               <div className="flex items-center gap-2">
-                <button type="button" onClick={handleDownloadReportCardPdf} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold cursor-pointer"><Download className="w-4 h-4" /> PDF</button>
+                <button
+                  type="button"
+                  onClick={handleDownloadReportCardPdf}
+                  style={{ backgroundColor: primaryColor }}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-white text-sm font-bold shadow-sm hover:opacity-95 transition-all cursor-pointer"
+                >
+                  <Download className="w-4 h-4" /> PDF
+                </button>
                 <button type="button" onClick={() => window.print()} className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-700 dark:text-slate-200 cursor-pointer"><Printer className="w-4 h-4" /> Imprimir</button>
                 <button type="button" onClick={() => setIsReportCardModalOpen(false)} className="p-2 text-slate-400 hover:text-slate-700 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer" aria-label="Cerrar"><X className="w-5 h-5" /></button>
               </div>
