@@ -700,7 +700,7 @@ export default function AdminComunicadosPage() {
       {/* ── 4. MODAL: EMITIR NUEVO COMUNICADO MASIVO ── */}
       {isCreateModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 max-w-2xl w-full my-8 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-200">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 max-w-4xl lg:max-w-5xl w-full my-6 max-h-[92vh] overflow-y-auto shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-200">
 
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-3">
@@ -722,7 +722,7 @@ export default function AdminComunicadosPage() {
             </div>
 
             {/* Quick Templates Selector */}
-            <div>
+            <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800">
               <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block mb-1.5 flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-amber-500" /> Cargar Plantilla Rápida
               </label>
@@ -732,7 +732,7 @@ export default function AdminComunicadosPage() {
                     key={idx}
                     type="button"
                     onClick={() => handleApplyTemplate(tpl)}
-                    className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 text-slate-700 dark:text-slate-300 hover:text-indigo-600 text-[11px] font-semibold border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
+                    className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 text-slate-700 dark:text-slate-300 hover:text-indigo-600 text-[11px] font-semibold border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer shadow-xs"
                   >
                     {tpl.title}
                   </button>
@@ -740,224 +740,238 @@ export default function AdminComunicadosPage() {
               </div>
             </div>
 
-            <form onSubmit={handleCreateSubmit} className="space-y-4">
+            <form onSubmit={handleCreateSubmit} className="space-y-5">
 
-              {/* Título */}
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Asunto / Título Oficial</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Ej: Citación a Reunión de Padres de Familia..."
-                  value={formData.titulo}
-                  onChange={(e) => setFormData({ ...formData, titulo: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-indigo-500 outline-none"
-                />
-              </div>
-
-              {/* Segmentación Granular (Nivel, Grado, Sección, Rol) */}
-              <div className="p-4 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/40 space-y-3">
-                <span className="text-xs font-black text-indigo-900 dark:text-indigo-300 flex items-center gap-1.5">
-                  <Layers className="w-3.5 h-3.5 text-indigo-600" /> Segmentación de Audiencia
-                </span>
-
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-500 block mb-1">Nivel</label>
-                    <select
-                      value={formData.nivel_destinatario}
-                      onChange={(e) => setFormData({ ...formData, nivel_destinatario: e.target.value as any, grado_id: '', seccion_id: '' })}
-                      className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-2 text-xs font-semibold"
-                    >
-                      <option value="todos">Todos los Niveles</option>
-                      <option value="inicial">Inicial</option>
-                      <option value="primaria">Primaria</option>
-                      <option value="secundaria">Secundaria</option>
-                    </select>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-start">
+                {/* ── COLUMNA 1: CONTENIDO Y DETALLES DEL COMUNICADO ── */}
+                <div className="space-y-4">
+                  {/* Título */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Asunto / Título Oficial</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Ej: Citación a Reunión de Padres de Familia..."
+                      value={formData.titulo}
+                      onChange={(e) => setFormData({ ...formData, titulo: e.target.value })}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-indigo-500 outline-none"
+                    />
                   </div>
 
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-500 block mb-1">Grado</label>
-                    <select
-                      value={formData.grado_id}
-                      onChange={(e) => setFormData({ ...formData, grado_id: e.target.value, seccion_id: '' })}
-                      className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-2 text-xs font-semibold"
-                    >
-                      <option value="">Todos los Grados</option>
-                      {formAvailableGrades.map(g => (
-                        <option key={g.id} value={g.id}>{g.nombre}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-500 block mb-1">Sección</label>
-                    <select
-                      value={formData.seccion_id}
-                      onChange={(e) => setFormData({ ...formData, seccion_id: e.target.value })}
-                      className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-2 text-xs font-semibold"
-                    >
-                      <option value="">Todas las Aulas</option>
-                      {formAvailableSections.map(s => (
-                        <option key={s.id} value={s.id}>{s.grado?.nombre} &quot;{s.letra}&quot;</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-500 block mb-1">Dirigido a</label>
-                    <select
-                      value={formData.destinatarios_rol}
-                      onChange={(e) => setFormData({ ...formData, destinatarios_rol: e.target.value as any })}
-                      className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-2 text-xs font-semibold"
-                    >
-                      <option value="todos">Toda la Comunidad</option>
-                      <option value="apoderado">Solo Apoderados</option>
-                      <option value="estudiante">Solo Estudiantes</option>
-                      <option value="docente">Solo Docentes</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* Audience reach banner */}
-                <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-indigo-200/50 dark:border-indigo-900/50 flex items-center justify-between text-xs font-bold text-indigo-950 dark:text-indigo-200">
-                  <span className="flex items-center gap-1.5">
-                    <Users className="w-3.5 h-3.5 text-indigo-600" /> Alcance Estimado:
-                  </span>
-                  <span className="text-indigo-600 dark:text-indigo-400">{targetAudienceEstimate.breakdown}</span>
-                </div>
-              </div>
-
-              {/* Categoría & Urgente */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Categoría</label>
-                  <select
-                    value={formData.categoria}
-                    onChange={(e) => setFormData({ ...formData, categoria: e.target.value as any })}
-                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-semibold"
-                  >
-                    <option value="general">Circular General</option>
-                    <option value="citacion">Citación a Reunión</option>
-                    <option value="academico">Académico / Evaluaciones</option>
-                    <option value="urgente">Alerta Urgente</option>
-                    <option value="evento">Evento Cultural / Deportivo</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Fecha de Expiración (Opcional)</label>
-                  <input
-                    type="date"
-                    value={formData.fecha_expiracion}
-                    onChange={(e) => setFormData({ ...formData, fecha_expiracion: e.target.value })}
-                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs"
-                  />
-                </div>
-              </div>
-
-              {/* Si es Citación: Campos de fecha y lugar */}
-              {formData.categoria === 'citacion' && (
-                <div className="p-4 rounded-2xl bg-rose-50/60 dark:bg-rose-950/20 border border-rose-200/70 dark:border-rose-900/40 space-y-3">
-                  <span className="text-xs font-black text-rose-900 dark:text-rose-300 flex items-center gap-1.5">
-                    <Calendar className="w-3.5 h-3.5 text-rose-600" /> Datos de la Citación
-                  </span>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {/* Categoría & Fecha de Expiración */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="text-[10px] font-bold text-slate-500 block mb-1">Fecha</label>
+                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Categoría</label>
+                      <select
+                        value={formData.categoria}
+                        onChange={(e) => setFormData({ ...formData, categoria: e.target.value as any })}
+                        className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-semibold"
+                      >
+                        <option value="general">Circular General</option>
+                        <option value="citacion">Citación a Reunión</option>
+                        <option value="academico">Académico / Evaluaciones</option>
+                        <option value="urgente">Alerta Urgente</option>
+                        <option value="evento">Evento Cultural / Deportivo</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Fecha de Expiración (Opcional)</label>
                       <input
                         type="date"
-                        required={formData.categoria === 'citacion'}
-                        value={formData.fecha_citacion}
-                        onChange={(e) => setFormData({ ...formData, fecha_citacion: e.target.value })}
-                        className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-1.5 text-xs"
+                        value={formData.fecha_expiracion}
+                        onChange={(e) => setFormData({ ...formData, fecha_expiracion: e.target.value })}
+                        className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs"
                       />
                     </div>
-                    <div>
-                      <label className="text-[10px] font-bold text-slate-500 block mb-1">Hora</label>
-                      <input
-                        type="time"
-                        value={formData.hora_citacion}
-                        onChange={(e) => setFormData({ ...formData, hora_citacion: e.target.value })}
-                        className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-1.5 text-xs"
-                      />
+                  </div>
+
+                  {/* Si es Citación: Campos de fecha y lugar */}
+                  {formData.categoria === 'citacion' && (
+                    <div className="p-3.5 rounded-2xl bg-rose-50/60 dark:bg-rose-950/20 border border-rose-200/70 dark:border-rose-900/40 space-y-2.5 animate-in fade-in duration-150">
+                      <span className="text-xs font-black text-rose-900 dark:text-rose-300 flex items-center gap-1.5">
+                        <Calendar className="w-3.5 h-3.5 text-rose-600" /> Datos de la Citación
+                      </span>
+                      <div className="grid grid-cols-3 gap-2">
+                        <div>
+                          <label className="text-[10px] font-bold text-slate-500 block mb-1">Fecha</label>
+                          <input
+                            type="date"
+                            required={formData.categoria === 'citacion'}
+                            value={formData.fecha_citacion}
+                            onChange={(e) => setFormData({ ...formData, fecha_citacion: e.target.value })}
+                            className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-1.5 text-xs"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold text-slate-500 block mb-1">Hora</label>
+                          <input
+                            type="time"
+                            value={formData.hora_citacion}
+                            onChange={(e) => setFormData({ ...formData, hora_citacion: e.target.value })}
+                            className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-1.5 text-xs"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold text-slate-500 block mb-1">Lugar</label>
+                          <input
+                            type="text"
+                            placeholder="Ej: Auditorio"
+                            value={formData.lugar_citacion}
+                            onChange={(e) => setFormData({ ...formData, lugar_citacion: e.target.value })}
+                            className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-1.5 text-xs"
+                          />
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <label className="text-[10px] font-bold text-slate-500 block mb-1">Lugar / Aula</label>
-                      <input
-                        type="text"
-                        placeholder="Ej: Aula 3° Primaria o Auditorio"
-                        value={formData.lugar_citacion}
-                        onChange={(e) => setFormData({ ...formData, lugar_citacion: e.target.value })}
-                        className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-1.5 text-xs"
-                      />
+                  )}
+
+                  {/* Contenido */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Cuerpo del Comunicado</label>
+                    <textarea
+                      rows={formData.categoria === 'citacion' ? 5 : 7}
+                      required
+                      placeholder="Escriba el contenido completo del comunicado oficial..."
+                      value={formData.contenido}
+                      onChange={(e) => setFormData({ ...formData, contenido: e.target.value })}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-indigo-500 outline-none resize-none leading-relaxed"
+                    />
+                  </div>
+                </div>
+
+                {/* ── COLUMNA 2: SEGMENTACIÓN DE AUDIENCIA Y CANALES ── */}
+                <div className="space-y-4">
+                  {/* Segmentación Granular (Nivel, Grado, Sección, Rol) */}
+                  <div className="p-4 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/40 space-y-3">
+                    <span className="text-xs font-black text-indigo-900 dark:text-indigo-300 flex items-center gap-1.5">
+                      <Layers className="w-3.5 h-3.5 text-indigo-600" /> Segmentación de Audiencia
+                    </span>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-500 block mb-1">Nivel</label>
+                        <select
+                          value={formData.nivel_destinatario}
+                          onChange={(e) => setFormData({ ...formData, nivel_destinatario: e.target.value as any, grado_id: '', seccion_id: '' })}
+                          className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-2 text-xs font-semibold"
+                        >
+                          <option value="todos">Todos los Niveles</option>
+                          <option value="inicial">Inicial</option>
+                          <option value="primaria">Primaria</option>
+                          <option value="secundaria">Secundaria</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-500 block mb-1">Grado</label>
+                        <select
+                          value={formData.grado_id}
+                          onChange={(e) => setFormData({ ...formData, grado_id: e.target.value, seccion_id: '' })}
+                          className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-2 text-xs font-semibold"
+                        >
+                          <option value="">Todos los Grados</option>
+                          {formAvailableGrades.map(g => (
+                            <option key={g.id} value={g.id}>{g.nombre}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-500 block mb-1">Sección</label>
+                        <select
+                          value={formData.seccion_id}
+                          onChange={(e) => setFormData({ ...formData, seccion_id: e.target.value })}
+                          className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-2 text-xs font-semibold"
+                        >
+                          <option value="">Todas las Aulas</option>
+                          {formAvailableSections.map(s => (
+                            <option key={s.id} value={s.id}>{s.grado?.nombre} &quot;{s.letra}&quot;</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-500 block mb-1">Dirigido a</label>
+                        <select
+                          value={formData.destinatarios_rol}
+                          onChange={(e) => setFormData({ ...formData, destinatarios_rol: e.target.value as any })}
+                          className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-2 text-xs font-semibold"
+                        >
+                          <option value="todos">Toda la Comunidad</option>
+                          <option value="apoderado">Solo Apoderados</option>
+                          <option value="estudiante">Solo Estudiantes</option>
+                          <option value="docente">Solo Docentes</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Audience reach banner */}
+                    <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-indigo-200/50 dark:border-indigo-900/50 flex items-center justify-between text-xs font-bold text-indigo-950 dark:text-indigo-200">
+                      <span className="flex items-center gap-1.5">
+                        <Users className="w-3.5 h-3.5 text-indigo-600" /> Alcance Estimado:
+                      </span>
+                      <span className="text-indigo-600 dark:text-indigo-400">{targetAudienceEstimate.breakdown}</span>
+                    </div>
+                  </div>
+
+                  {/* Toggles: Urgente, Confirmación & Email */}
+                  <div className="space-y-2.5">
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
+                      Opciones y Canales de Difusión
+                    </label>
+
+                    <div className="space-y-2">
+                      <label className="flex items-center gap-2.5 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 cursor-pointer hover:bg-slate-100/70 dark:hover:bg-slate-800 transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={formData.es_urgente}
+                          onChange={(e) => setFormData({ ...formData, es_urgente: e.target.checked })}
+                          className="w-4 h-4 rounded-md text-rose-600 focus:ring-rose-500 shrink-0"
+                        />
+                        <div>
+                          <span className="text-xs font-bold text-slate-900 dark:text-white block">Marcar como URGENTE</span>
+                          <span className="text-[10px] text-slate-400">Aparecerá en rojo destacado en todos los portales</span>
+                        </div>
+                      </label>
+
+                      <label className="flex items-center gap-2.5 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 cursor-pointer hover:bg-slate-100/70 dark:hover:bg-slate-800 transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={formData.requiere_confirmacion}
+                          onChange={(e) => setFormData({ ...formData, requiere_confirmacion: e.target.checked })}
+                          className="w-4 h-4 rounded-md text-indigo-600 focus:ring-indigo-500 shrink-0"
+                        />
+                        <div>
+                          <span className="text-xs font-bold text-slate-900 dark:text-white block">Requiere Confirmación</span>
+                          <span className="text-[10px] text-slate-400">El destinatario debe confirmar asistencia/recepción</span>
+                        </div>
+                      </label>
+
+                      <label className="flex items-center gap-2.5 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 cursor-pointer hover:bg-slate-100/70 dark:hover:bg-slate-800 transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={formData.canales.includes('email')}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            canales: e.target.checked
+                              ? Array.from(new Set([...formData.canales, 'email' as const]))
+                              : formData.canales.filter(c => c !== 'email'),
+                          })}
+                          className="w-4 h-4 rounded-md text-emerald-600 focus:ring-emerald-500 shrink-0"
+                        />
+                        <div>
+                          <span className="text-xs font-bold text-slate-900 dark:text-white block">Enviar también por correo</span>
+                          <span className="text-[10px] text-slate-400">
+                            {recipientEmails.length > 0
+                              ? `${recipientEmails.length} ${recipientEmails.length === 1 ? 'destinatario tiene' : 'destinatarios tienen'} correo registrado`
+                              : 'Ningún destinatario de esta segmentación tiene correo registrado'}
+                          </span>
+                        </div>
+                      </label>
                     </div>
                   </div>
                 </div>
-              )}
-
-              {/* Contenido */}
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Cuerpo del Comunicado</label>
-                <textarea
-                  rows={4}
-                  required
-                  placeholder="Escriba el contenido completo del comunicado oficial..."
-                  value={formData.contenido}
-                  onChange={(e) => setFormData({ ...formData, contenido: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-indigo-500 outline-none"
-                />
-              </div>
-
-              {/* Toggles: Urgente & Confirmación */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                <label className="flex items-center gap-2.5 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={formData.es_urgente}
-                    onChange={(e) => setFormData({ ...formData, es_urgente: e.target.checked })}
-                    className="w-4 h-4 rounded-md text-rose-600 focus:ring-rose-500"
-                  />
-                  <div>
-                    <span className="text-xs font-bold text-slate-900 dark:text-white block">Marcar como URGENTE</span>
-                    <span className="text-[10px] text-slate-400">Aparecerá en rojo destacado en todos los portales</span>
-                  </div>
-                </label>
-
-                <label className="flex items-center gap-2.5 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={formData.requiere_confirmacion}
-                    onChange={(e) => setFormData({ ...formData, requiere_confirmacion: e.target.checked })}
-                    className="w-4 h-4 rounded-md text-indigo-600 focus:ring-indigo-500"
-                  />
-                  <div>
-                    <span className="text-xs font-bold text-slate-900 dark:text-white block">Requiere Confirmación</span>
-                    <span className="text-[10px] text-slate-400">El apoderado debe confirmar asistencia/recepción</span>
-                  </div>
-                </label>
-
-                <label className="flex items-center gap-2.5 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 cursor-pointer sm:col-span-2">
-                  <input
-                    type="checkbox"
-                    checked={formData.canales.includes('email')}
-                    onChange={(e) => setFormData({
-                      ...formData,
-                      canales: e.target.checked
-                        ? Array.from(new Set([...formData.canales, 'email' as const]))
-                        : formData.canales.filter(c => c !== 'email'),
-                    })}
-                    className="w-4 h-4 rounded-md text-emerald-600 focus:ring-emerald-500"
-                  />
-                  <div>
-                    <span className="text-xs font-bold text-slate-900 dark:text-white block">Enviar también por correo</span>
-                    <span className="text-[10px] text-slate-400">
-                      {recipientEmails.length > 0
-                        ? `${recipientEmails.length} ${recipientEmails.length === 1 ? 'destinatario tiene' : 'destinatarios tienen'} correo registrado`
-                        : 'Ningún destinatario de esta segmentación tiene correo registrado'}
-                    </span>
-                  </div>
-                </label>
               </div>
 
               {/* Modal Actions */}
