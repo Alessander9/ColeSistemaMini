@@ -147,3 +147,6 @@ Desktop.ini
 *.mp4
 /cole-sistema-presentacion/
 /tutorial-matricula-alumno/
+
+.vercel
+.env*
