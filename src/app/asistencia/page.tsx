@@ -32,7 +32,12 @@ import {
   Info,
   ChevronRight,
   Settings,
-  ChevronDown
+  ChevronDown,
+  Maximize2,
+  Minimize2,
+  HelpCircle,
+  BarChart3,
+  CheckCheck
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -57,6 +62,7 @@ export default function AsistenciaKioscoPage() {
   // ── Date & Time State ───────────────────────────────────────────────────────
   const [currentTime, setCurrentTime] = useState<string>('');
   const [currentDateFormatted, setCurrentDateFormatted] = useState<string>('');
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
 
   useEffect(() => {
     const updateClock = () => {
@@ -64,13 +70,12 @@ export default function AsistenciaKioscoPage() {
       setCurrentTime(now.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
       
       const options: Intl.DateTimeFormatOptions = { 
-        weekday: 'long', 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
+        weekday: 'short', 
+        day: 'numeric', 
+        month: 'short',
+        year: 'numeric'
       };
       const formatted = now.toLocaleDateString('es-PE', options);
-      // Capitalize first letter
       setCurrentDateFormatted(formatted.charAt(0).toUpperCase() + formatted.slice(1));
     };
 
@@ -79,8 +84,25 @@ export default function AsistenciaKioscoPage() {
     return () => clearInterval(timer);
   }, []);
 
+  // Fullscreen listener
+  useEffect(() => {
+    const handleFsChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFsChange);
+    return () => document.removeEventListener('fullscreenchange', handleFsChange);
+  }, []);
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().then(() => setIsFullscreen(true)).catch(() => {});
+    } else {
+      document.exitFullscreen().then(() => setIsFullscreen(false)).catch(() => {});
+    }
+  };
+
   // ── Scanner & Camera State ──────────────────────────────────────────────────
-  const [activeTab, setActiveTab] = useState<'scan' | 'manual' | 'config'>('scan');
+  const [activeTab, setActiveTab] = useState<'scan' | 'manual' | 'stats' | 'config'>('scan');
   const [scanMode, setScanMode] = useState<'entrada' | 'salida'>('entrada');
   const [isCameraActive, setIsCameraActive] = useState<boolean>(true);
   const [currentFacing, setCurrentFacing] = useState<'environment' | 'user'>('environment');
@@ -88,6 +110,9 @@ export default function AsistenciaKioscoPage() {
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
   const [isProcessingScan, setIsProcessingScan] = useState<boolean>(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [availableDevices, setAvailableDevices] = useState<MediaDeviceInfo[]>([]);
+  const [selectedDeviceId, setSelectedDeviceId] = useState<string>('');
+  const [showHelpDrawer, setShowHelpDrawer] = useState<boolean>(false);
 
   // ── Manual Input & Upload State ─────────────────────────────────────────────
   const [manualInput, setManualInput] = useState<string>('');
@@ -125,14 +150,15 @@ export default function AsistenciaKioscoPage() {
   
   // Total active enrolled students
   const activeEnrollments = enrollments.filter(e => e.estado === 'activo');
-  const totalEnrolled = activeEnrollments.length > 0 ? activeEnrollments.length : 145;
+  const totalEnrolled = activeEnrollments.length > 0 ? activeEnrollments.length : (students.length > 0 ? students.length : 120);
   const registeredCount = todayAttendances.length;
   const faltoCount = Math.max(0, totalEnrolled - registeredCount);
+  const attendanceRate = totalEnrolled > 0 ? Math.round((registeredCount / totalEnrolled) * 100) : 0;
 
   // Latest registrations for today
   const recentAttendances = [...todayAttendances].sort((a, b) => {
     return (b.hora_registro || '').localeCompare(a.hora_registro || '');
-  }).slice(0, 5);
+  }).slice(0, 6);
 
   // ── Audio Feedback Synthesizer & Speech con Presets Institucionales ─────────
   const playTone = useCallback((type: 'success' | 'error' | 'duplicate') => {
@@ -266,7 +292,6 @@ export default function AsistenciaKioscoPage() {
 
   // ── Core Attendance Processor & Multi-Format QR Parser ────────────────────
   const handleProcessCode = useCallback((rawInput: string) => {
-    // Mismo lector que registerAttendance: JSON, URL o texto plano
     const rawClean = parseQrPayload(rawInput);
     if (!rawClean) return;
 
@@ -275,7 +300,7 @@ export default function AsistenciaKioscoPage() {
     decodeCooldownRef.current = true;
     setTimeout(() => {
       decodeCooldownRef.current = false;
-    }, 3500);
+    }, 3200);
 
     setIsProcessingScan(true);
 
@@ -286,19 +311,17 @@ export default function AsistenciaKioscoPage() {
       second: '2-digit',
     });
 
-    // Determine on-time vs tardiness automatically based on 8:00 AM cutoff
     const currentHour = now.getHours();
     const currentMinute = now.getMinutes();
     const isLate = currentHour > 8 || (currentHour === 8 && currentMinute > 0);
     const calculatedStatus: AttendanceStatus = isLate ? 'tardanza' : 'presente';
 
     const normalize = (str?: string) =>
-      str ? str.trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "") : "";
+      str ? str.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "";
     const normClean = normalize(rawClean);
     const dniMatch = rawClean.match(/(?<!\d)\d{8}(?!\d)/);
     const extractedDni = dniMatch ? dniMatch[0] : '';
 
-    // Búsqueda exacta del estudiante (la misma que usa registerAttendance)
     const foundStudent = findStudentByQr(students, rawClean);
 
     // ── Staff / Teacher Attendance Check ──
@@ -315,7 +338,9 @@ export default function AsistenciaKioscoPage() {
           metodo: 'qr',
         });
         playTone('success');
-        confetti({ particleCount: 35, spread: 50, origin: { y: 0.6 } });
+        try {
+          confetti({ particleCount: 35, spread: 50, origin: { y: 0.6 } });
+        } catch { /* ignore */ }
         setActiveAlert({
           type: 'success',
           title: scanMode === 'entrada' ? '¡Ingreso Docente Registrado!' : '¡Salida Docente Registrada!',
@@ -329,7 +354,7 @@ export default function AsistenciaKioscoPage() {
         });
         alertTimeoutRef.current = setTimeout(() => {
           setActiveAlert(null);
-        }, 4500);
+        }, 4000);
         setIsProcessingScan(false);
         return;
       }
@@ -381,14 +406,16 @@ export default function AsistenciaKioscoPage() {
 
       alertTimeoutRef.current = setTimeout(() => {
         setActiveAlert(null);
-      }, 4500);
+      }, 4000);
       return;
     }
 
     // ── Case 2: SUCCESS ──
     if (res.success) {
       playTone('success');
-      confetti({ particleCount: 45, spread: 60, origin: { y: 0.6 } });
+      try {
+        confetti({ particleCount: 45, spread: 60, origin: { y: 0.6 } });
+      } catch { /* ignore */ }
 
       const parentEmail = foundStudent?.email_apoderado || 'apoderado@gmail.com';
 
@@ -407,13 +434,11 @@ export default function AsistenciaKioscoPage() {
 
       alertTimeoutRef.current = setTimeout(() => {
         setActiveAlert(null);
-      }, 4500);
+      }, 4000);
       return;
     }
 
     // ── Case 3: FALLBACK AL SERVIDOR / NOT FOUND ──
-    // Si la búsqueda local en el Kiosco falló (ej. alumno recién matriculado en otra máquina),
-    // consultamos la API del servidor en tiempo real
     fetch('/api/asistencia/scan', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -423,7 +448,9 @@ export default function AsistenciaKioscoPage() {
         const data = await apiRes.json();
         if (data.success) {
           playTone('success');
-          confetti({ particleCount: 45, spread: 60, origin: { y: 0.6 } });
+          try {
+            confetti({ particleCount: 45, spread: 60, origin: { y: 0.6 } });
+          } catch { /* ignore */ }
           setActiveAlert({
             type: 'success',
             title: '¡Asistencia registrada!',
@@ -436,7 +463,7 @@ export default function AsistenciaKioscoPage() {
           refreshData();
           alertTimeoutRef.current = setTimeout(() => {
             setActiveAlert(null);
-          }, 4500);
+          }, 4000);
         } else if (data.duplicate) {
           playTone('duplicate');
           setActiveAlert({
@@ -450,7 +477,7 @@ export default function AsistenciaKioscoPage() {
           });
           alertTimeoutRef.current = setTimeout(() => {
             setActiveAlert(null);
-          }, 4500);
+          }, 4000);
         } else {
           playTone('error');
           setActiveAlert({
@@ -462,7 +489,7 @@ export default function AsistenciaKioscoPage() {
           });
           alertTimeoutRef.current = setTimeout(() => {
             setActiveAlert(null);
-          }, 4500);
+          }, 4000);
         }
       })
       .catch(() => {
@@ -476,40 +503,9 @@ export default function AsistenciaKioscoPage() {
         });
         alertTimeoutRef.current = setTimeout(() => {
           setActiveAlert(null);
-        }, 4500);
+        }, 4000);
       });
   }, [students, enrollments, users, scanMode, registerAttendance, recordStaffAttendance, playTone, refreshData]);
-
-  // ── USB Barcode & QR Gun Scanner Global Listener ───────────────────────────
-  useEffect(() => {
-    let keyBuffer = '';
-    let lastKeyTime = Date.now();
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Ignore if user is intentionally typing in an input or textarea
-      const target = e.target as HTMLElement;
-      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
-
-      const now = Date.now();
-      // Fast burst typing from barcode guns is typically < 100ms between chars
-      if (now - lastKeyTime > 120) {
-        keyBuffer = '';
-      }
-      lastKeyTime = now;
-
-      if (e.key === 'Enter') {
-        if (keyBuffer.trim().length >= 4) {
-          handleProcessCode(keyBuffer.trim());
-          keyBuffer = '';
-        }
-      } else if (e.key.length === 1) {
-        keyBuffer += e.key;
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleProcessCode]);
 
   // ── Native / Video Camera Scanning Loop ─────────────────────────────────────
   const startScanLoop = useCallback(async () => {
@@ -580,7 +576,7 @@ export default function AsistenciaKioscoPage() {
               0.7
             );
           });
-          await new Promise((r) => setTimeout(r, 400));
+          await new Promise((r) => setTimeout(r, 380));
         }
       } catch {
         /* decode tick err */
@@ -591,10 +587,6 @@ export default function AsistenciaKioscoPage() {
 
     rafRef.current = requestAnimationFrame(tick);
   }, [handleProcessCode]);
-
-  // ── Available Camera Devices ────────────────────────────────────────────────
-  const [availableDevices, setAvailableDevices] = useState<MediaDeviceInfo[]>([]);
-  const [selectedDeviceId, setSelectedDeviceId] = useState<string>('');
 
   // ── Camera Lifecycle Controls with Multi-Level Fallbacks ────────────────────
   const stopCamera = useCallback(() => {
@@ -642,7 +634,6 @@ export default function AsistenciaKioscoPage() {
 
       let stream: MediaStream | null = null;
 
-      // Tier 1: Try specific device ID or ideal facing mode
       try {
         if (isDeviceId) {
           stream = await navigator.mediaDevices.getUserMedia({
@@ -656,14 +647,12 @@ export default function AsistenciaKioscoPage() {
           });
         }
       } catch {
-        // Tier 2: Try basic facing mode without resolution constraints
         try {
           stream = await navigator.mediaDevices.getUserMedia({
             video: { facingMode: facing },
             audio: false,
           });
         } catch {
-          // Tier 3: Universal fallback: any video device available
           try {
             stream = await navigator.mediaDevices.getUserMedia({
               video: true,
@@ -692,7 +681,6 @@ export default function AsistenciaKioscoPage() {
           setCurrentFacing(facing);
         }
 
-        // Enumerate camera devices for user selection
         try {
           const devices = await navigator.mediaDevices.enumerateDevices();
           const videoDevs = devices.filter(d => d.kind === 'videoinput');
@@ -727,14 +715,12 @@ export default function AsistenciaKioscoPage() {
     let lastKeyTime = Date.now();
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      // If typing in an input field, let normal typing happen
       const activeEl = document.activeElement;
       if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) {
         return;
       }
 
       const now = Date.now();
-      // Fast keystrokes from USB scanner gun
       if (now - lastKeyTime > 300) {
         buffer = '';
       }
@@ -796,707 +782,927 @@ export default function AsistenciaKioscoPage() {
     return '/admin';
   };
 
+  const schoolTitle = brandingConfig?.nombreInstitucion || 'Colegio San Martín de Porres';
+
   return (
-    <div className="min-h-screen bg-[#070b14] text-slate-100 flex flex-col justify-between p-3 sm:p-5 lg:p-6 select-none font-sans">
-      
+    <div className="min-h-screen bg-[#070b14] text-slate-100 flex flex-col font-sans select-none antialiased">
       {/* Hidden processing canvas */}
       <canvas ref={canvasRef} className="hidden" />
 
-      {/* ── 1. ENCABEZADO COMPACTO ── */}
-      <header className="max-w-7xl mx-auto w-full flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4">
-        
-        {/* Left Branding */}
-        <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 flex items-center justify-center shadow-lg shadow-emerald-900/30 shrink-0">
-            <QrCode className="w-6 h-6" />
-          </div>
-          <div>
-            <h1 className="text-lg sm:text-xl font-black text-white leading-tight flex items-center gap-2">
-              <span>Terminal de Control de Asistencia</span>
-              <span className="text-emerald-400">QR</span>
-            </h1>
-            <p className="text-xs text-slate-400 font-medium mt-0.5">
-              Portería Principal | Ingreso General | Año Lectivo 2026
-            </p>
-          </div>
-        </div>
-
-        {/* Right Controls: Real-Time Date & Clock + Volver al Panel */}
-        <div className="flex items-center gap-3 shrink-0 flex-wrap">
+      {/* ── 1. ENCABEZADO RESPONSIVE Y MODERNO ── */}
+      <header className="sticky top-0 z-40 bg-[#070b14]/95 backdrop-blur-md border-b border-slate-800/80 px-3 sm:px-5 lg:px-8 py-2.5 sm:py-3.5 transition-all">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-2.5 sm:gap-4">
           
-          {/* Real-time Clock Card */}
-          <div className="flex items-center gap-3 px-4 py-2 rounded-2xl bg-[#0e172a] border border-slate-800/90 shadow-sm">
-            <Clock className="w-4 h-4 text-slate-400 shrink-0" />
-            <div className="text-left">
-              <span className="text-[10px] text-slate-400 font-medium block leading-none">
-                {currentDateFormatted || 'Cargando fecha...'}
-              </span>
-              <span className="text-base font-black text-white tracking-wider mt-0.5 block">
-                {currentTime || '08:00:00'}
-              </span>
+          {/* Logo & School Branding */}
+          <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
+            <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-400 p-0.5 shadow-md shadow-emerald-950 shrink-0 flex items-center justify-center">
+              <div className="w-full h-full bg-[#091120] rounded-[10px] sm:rounded-[14px] flex items-center justify-center text-emerald-400">
+                <QrCode className="w-5 h-5 sm:w-6 sm:h-6" />
+              </div>
+            </div>
+
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <h1 className="text-sm sm:text-base lg:text-lg font-black text-white leading-tight truncate">
+                  Kiosco Asistencia <span className="text-emerald-400 font-extrabold">QR</span>
+                </h1>
+                <span className="hidden xs:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-300 border border-emerald-500/25">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="hidden sm:inline">En Línea</span>
+                </span>
+              </div>
+              <p className="text-[10px] sm:text-xs text-slate-400 font-medium truncate mt-0.5">
+                {schoolTitle} • Portería General 2026
+              </p>
             </div>
           </div>
 
-          {/* Volver al Panel Button */}
-          <button
-            type="button"
-            onClick={() => router.push(getReturnUrl())}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-[#131d33] hover:bg-[#1c2a47] text-slate-200 hover:text-white text-xs font-bold transition-all border border-slate-700/80 shadow-sm active:scale-95 cursor-pointer"
-          >
-            <ArrowLeft className="w-4 h-4 text-slate-300" />
-            <span>Volver al Panel</span>
-          </button>
+          {/* Right Controls: Clock + Actions */}
+          <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+            
+            {/* Clock Widget */}
+            <div className="flex items-center gap-2 px-2.5 sm:px-3.5 py-1.5 rounded-xl bg-slate-900/90 border border-slate-800 text-slate-200">
+              <Clock className="w-3.5 h-3.5 text-emerald-400 shrink-0 hidden sm:block" />
+              <div className="text-right sm:text-left leading-none">
+                <span className="text-[9px] text-slate-400 font-medium block truncate">
+                  {currentDateFormatted || 'Hoy'}
+                </span>
+                <span className="text-xs sm:text-sm font-black font-mono tracking-wider text-white">
+                  {currentTime || '08:00:00'}
+                </span>
+              </div>
+            </div>
+
+            {/* Pantalla Completa (Totem Mode) */}
+            <button
+              type="button"
+              onClick={toggleFullscreen}
+              className="p-2 sm:px-3 sm:py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white text-xs font-bold transition-all border border-slate-800 shrink-0 cursor-pointer"
+              title={isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa (Totem)'}
+            >
+              {isFullscreen ? <Minimize2 className="w-4 h-4 text-emerald-400" /> : <Maximize2 className="w-4 h-4" />}
+            </button>
+
+            {/* Volver al Panel Button */}
+            <button
+              type="button"
+              onClick={() => router.push(getReturnUrl())}
+              className="inline-flex items-center gap-1.5 px-2.5 sm:px-3.5 py-2 rounded-xl bg-[#131d33] hover:bg-[#1c2a47] text-slate-200 hover:text-white text-xs font-bold transition-all border border-slate-700/80 active:scale-95 cursor-pointer shrink-0"
+              title="Volver al panel"
+            >
+              <ArrowLeft className="w-4 h-4 text-slate-300" />
+              <span className="hidden md:inline">Volver al Panel</span>
+            </button>
+
+          </div>
 
         </div>
       </header>
 
-      {/* ── TOP MODE TABS ── */}
-      <div className="max-w-7xl mx-auto w-full flex flex-wrap sm:flex-nowrap items-center justify-between gap-3 pb-3">
-        <div className="flex items-center gap-2 overflow-x-auto scrollbar-none max-w-full pb-1 sm:pb-0 shrink-0">
-          {/* Modo Entrada / Salida Toggle */}
-          <div className="flex items-center bg-slate-900/80 p-1 rounded-xl border border-slate-800 mr-1 shrink-0">
-            <button
-              onClick={() => setScanMode('entrada')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
-                scanMode === 'entrada'
-                  ? 'bg-emerald-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              📥 Entrada
-            </button>
-            <button
-              onClick={() => setScanMode('salida')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
-                scanMode === 'salida'
-                  ? 'bg-amber-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              📤 Salida / Retiro
-            </button>
-          </div>
-
-          <button
-            onClick={() => {
-              setActiveTab('scan');
-              if (!isCameraActive) startCamera(currentFacing);
-            }}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 whitespace-nowrap ${
-              activeTab === 'scan'
-                ? 'bg-emerald-950/50 text-emerald-300 border border-emerald-500/50 shadow-sm shadow-emerald-950'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
-            }`}
-          >
-            <Camera className="w-4 h-4 text-emerald-400" />
-            <span>Escanear QR</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('manual')}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 whitespace-nowrap ${
-              activeTab === 'manual'
-                ? 'bg-indigo-950/50 text-indigo-300 border border-indigo-500/50 shadow-sm'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
-            }`}
-          >
-            <Keyboard className="w-4 h-4" />
-            <span>Registro Manual</span>
-          </button>
-
-        </div>
-
-        {/* Sound toggle & Settings */}
-        <div className="flex items-center gap-2 shrink-0 ml-auto sm:ml-0">
-          <button
-            onClick={() => window.print()}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white text-xs font-bold transition-colors cursor-pointer whitespace-nowrap"
-            title="Imprimir resumen de puerta"
-          >
-            <span>📋 Resumen</span>
-          </button>
-
-          <button
-            onClick={() => setSoundEnabled(!soundEnabled)}
-            className={`p-2 rounded-xl border text-xs font-bold transition-colors cursor-pointer ${
-              soundEnabled
-                ? 'bg-[#0e172a] border-slate-700 text-slate-300'
-                : 'bg-rose-950/30 border-rose-900 text-rose-400'
-            }`}
-            title={soundEnabled ? 'Silenciar audio' : 'Activar audio'}
-          >
-            {soundEnabled ? <Volume2 className="w-4 h-4 text-emerald-400" /> : <VolumeX className="w-4 h-4" />}
-          </button>
-
-          <button
-            onClick={() => setActiveTab(activeTab === 'config' ? 'scan' : 'config')}
-            className="p-2 rounded-xl bg-[#0e172a] border border-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer"
-            title="Configuración"
-          >
-            <Settings className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-
-      {/* ── 2 & 3. ÁREA PRINCIPAL: ESCÁNER QR + PANEL DE AYUDA (2 COLUMNAS EN DESKTOP) ── */}
-      <main className="max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-5 my-auto">
+      {/* ── CONTENIDO PRINCIPAL FLUIDO ── */}
+      <main className="flex-1 max-w-7xl mx-auto w-full px-3 sm:px-5 lg:px-8 py-3 sm:py-5 flex flex-col gap-3.5 sm:gap-5">
         
-        {/* ── COLUMNA IZQUIERDA: LECTOR QR (8 Cols) ── */}
-        <div className="lg:col-span-8 flex flex-col justify-between bg-[#0b1324] rounded-3xl p-4 sm:p-6 border border-slate-800/80 shadow-2xl relative overflow-hidden">
+        {/* ── BARRA DE MODOS Y PESTAÑAS RESPONSIVE ── */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 pb-1">
           
-          {/* Live Viewport Area */}
-          <div className="relative w-full aspect-[16/10] min-h-[280px] sm:min-h-[420px] rounded-2xl overflow-hidden bg-slate-950 flex items-center justify-center border border-slate-800/90">
-            
-            {/* Real Video Element */}
-            <video
-              ref={videoRef}
-              className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
-                isCameraActive ? 'opacity-100' : 'opacity-0 pointer-events-none'
-              }`}
-            />
+          {/* Segmented Mode Selector: Entrada / Salida */}
+          <div className="flex items-center gap-2 overflow-x-auto scrollbar-none pb-1 sm:pb-0">
+            <div className="inline-flex p-1 rounded-xl bg-slate-900/90 border border-slate-800 shrink-0">
+              <button
+                type="button"
+                onClick={() => setScanMode('entrada')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                  scanMode === 'entrada'
+                    ? 'bg-emerald-600 text-white shadow-md shadow-emerald-950'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <span>📥</span>
+                <span>Entrada</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setScanMode('salida')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                  scanMode === 'salida'
+                    ? 'bg-amber-600 text-white shadow-md shadow-amber-950'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <span>📤</span>
+                <span>Salida</span>
+              </button>
+            </div>
 
-            {/* Simulated background viewport when camera is inactive/error */}
-            {!isCameraActive && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-[#091120] to-[#040810] p-6 text-center">
-                <CameraOff className="w-14 h-14 text-slate-600 mb-3" />
-                <h3 className="text-base font-black text-slate-300">Cámara en espera</h3>
-                <p className="text-xs text-slate-500 mt-1 max-w-sm">
-                  {cameraError || 'Haz clic en "Encender Cámara" para reanudar el escaneo automático.'}
-                </p>
-                <button
-                  onClick={() => startCamera(currentFacing)}
-                  className="mt-4 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs shadow-lg shadow-emerald-900/40 transition-all cursor-pointer"
-                >
-                  Encender Cámara
-                </button>
-              </div>
-            )}
+            {/* Navigation Tabs Pills */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab('scan');
+                  if (!isCameraActive) startCamera(currentFacing);
+                }}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 ${
+                  activeTab === 'scan'
+                    ? 'bg-emerald-950/60 text-emerald-300 border border-emerald-500/50 shadow-sm'
+                    : 'bg-slate-900/60 text-slate-400 hover:text-slate-200 border border-slate-800/80'
+                }`}
+              >
+                <Camera className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Escáner</span>
+              </button>
 
-            {/* Dark tint overlay */}
-            <div className="absolute inset-0 bg-slate-950/25 pointer-events-none" />
+              <button
+                type="button"
+                onClick={() => setActiveTab('manual')}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 ${
+                  activeTab === 'manual'
+                    ? 'bg-indigo-950/60 text-indigo-300 border border-indigo-500/50 shadow-sm'
+                    : 'bg-slate-900/60 text-slate-400 hover:text-slate-200 border border-slate-800/80'
+                }`}
+              >
+                <Keyboard className="w-3.5 h-3.5 text-indigo-400" />
+                <span>Manual</span>
+              </button>
 
-            {/* Central QR Target Frame with glowing green corners */}
-            {isCameraActive && (
-              <div className="relative z-10 flex flex-col items-center justify-center">
-                
-                {/* Glowing Target Frame */}
-                <div className="relative w-56 h-56 sm:w-72 sm:h-72 max-w-[70vw] max-h-[70vw] flex items-center justify-center">
-                  
-                  {/* Glowing Corner Brackets */}
-                  <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-emerald-400 rounded-tl-2xl shadow-[0_0_12px_rgba(52,211,153,0.8)]" />
-                  <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-emerald-400 rounded-tr-2xl shadow-[0_0_12px_rgba(52,211,153,0.8)]" />
-                  <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-emerald-400 rounded-bl-2xl shadow-[0_0_12px_rgba(52,211,153,0.8)]" />
-                  <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-emerald-400 rounded-br-2xl shadow-[0_0_12px_rgba(52,211,153,0.8)]" />
+              <button
+                type="button"
+                onClick={() => setActiveTab('stats')}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 ${
+                  activeTab === 'stats'
+                    ? 'bg-blue-950/60 text-blue-300 border border-blue-500/50 shadow-sm'
+                    : 'bg-slate-900/60 text-slate-400 hover:text-slate-200 border border-slate-800/80'
+                }`}
+              >
+                <BarChart3 className="w-3.5 h-3.5 text-blue-400" />
+                <span>Registros ({registeredCount})</span>
+              </button>
 
-                  {/* Laser Scan line effect */}
-                  <div className="absolute inset-x-4 h-0.5 bg-gradient-to-r from-transparent via-emerald-400 to-transparent shadow-[0_0_10px_#34d399] animate-pulse" />
-
-                  {/* Inner Icon & Instruction */}
-                  <div className="flex flex-col items-center justify-center p-4 text-center">
-                    <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 flex items-center justify-center mb-2 shadow-inner">
-                      <QrCode className="w-6 h-6" />
-                    </div>
-                    <p className="text-white font-black text-sm sm:text-base leading-tight drop-shadow-md">
-                      Apunta el código QR <br /> del carnet escolar
-                    </p>
-                    <p className="text-emerald-300 text-[11px] font-medium mt-1 drop-shadow">
-                      El escaneo se realizará automáticamente
-                    </p>
-                  </div>
-
-                </div>
-
-              </div>
-            )}
-
-            {/* Viewport Bottom Overlay Controls */}
-            {isCameraActive && (
-              <div className="absolute bottom-4 inset-x-4 z-20 flex items-center justify-center gap-6 sm:gap-8 bg-slate-950/60 backdrop-blur-md rounded-2xl py-2 px-4 border border-white/10 w-fit mx-auto">
-                
-                {/* Torch / Flash */}
-                <button
-                  type="button"
-                  onClick={() => setTorchEnabled(!torchEnabled)}
-                  className="flex flex-col items-center gap-1 text-slate-300 hover:text-white transition-colors cursor-pointer"
-                >
-                  <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
-                    {torchEnabled ? <Zap className="w-4 h-4 text-amber-400" /> : <ZapOff className="w-4 h-4 text-slate-400" />}
-                  </div>
-                  <span className="text-[9px] font-bold text-slate-400">Luz: {torchEnabled ? 'On' : 'Auto'}</span>
-                </button>
-
-                {/* Facing Camera Switch */}
-                <button
-                  type="button"
-                  onClick={() => startCamera(currentFacing === 'environment' ? 'user' : 'environment')}
-                  className="flex flex-col items-center gap-1 text-slate-300 hover:text-white transition-colors cursor-pointer"
-                >
-                  <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
-                    <Camera className="w-4 h-4 text-emerald-400" />
-                  </div>
-                  <span className="text-[9px] font-bold text-slate-400">
-                    {currentFacing === 'environment' ? 'Cámara trasera ▾' : 'Cámara frontal ▾'}
-                  </span>
-                </button>
-
-                {/* Audio Status */}
-                <button
-                  type="button"
-                  onClick={() => setSoundEnabled(!soundEnabled)}
-                  className="flex flex-col items-center gap-1 text-slate-300 hover:text-white transition-colors cursor-pointer"
-                >
-                  <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
-                    {soundEnabled ? <Volume2 className="w-4 h-4 text-emerald-400" /> : <VolumeX className="w-4 h-4 text-rose-400" />}
-                  </div>
-                  <span className="text-[9px] font-bold text-slate-400">
-                    Audio: {soundEnabled ? 'Activado' : 'Mudo'}
-                  </span>
-                </button>
-
-              </div>
-            )}
-
-            {/* ── POP-UP / BANNER DE CONFIRMACIÓN VISUAL (ESTADOS) ── */}
-            {activeAlert && (
-              <div className="absolute inset-0 z-30 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in zoom-in-95 duration-200">
-                <div className={`w-full max-w-md rounded-3xl p-6 border text-center shadow-2xl flex flex-col items-center ${
-                  activeAlert.type === 'success'
-                    ? 'bg-[#0d2820] border-emerald-500/60 text-emerald-100'
-                    : activeAlert.type === 'duplicate'
-                    ? 'bg-[#291e0a] border-amber-500/60 text-amber-100'
-                    : 'bg-[#290e12] border-rose-500/60 text-rose-100'
-                }`}>
-                  
-                  {/* Status Icon */}
-                  <div className={`w-16 h-16 rounded-3xl flex items-center justify-center mb-3 shadow-lg ${
-                    activeAlert.type === 'success'
-                      ? 'bg-emerald-500 text-slate-950'
-                      : activeAlert.type === 'duplicate'
-                      ? 'bg-amber-500 text-slate-950'
-                      : 'bg-rose-500 text-white'
-                  }`}>
-                    {activeAlert.type === 'success' ? (
-                      <Check className="w-9 h-9 stroke-[3]" />
-                    ) : activeAlert.type === 'duplicate' ? (
-                      <AlertTriangle className="w-9 h-9" />
-                    ) : (
-                      <X className="w-9 h-9 stroke-[3]" />
-                    )}
-                  </div>
-
-                  {/* Title & Message */}
-                  <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
-                    {activeAlert.title}
-                  </h2>
-                  <p className="text-xs text-slate-300 mt-1">
-                    {activeAlert.message}
-                  </p>
-
-                  {/* Student Details Card */}
-                  {activeAlert.studentName && (
-                    <div className="w-full mt-4 p-4 rounded-2xl bg-black/40 border border-white/10 space-y-2 text-left">
-                      <div className="flex items-center gap-3">
-                        <img
-                          src={activeAlert.avatarUrl || initialsAvatarUrl(activeAlert.studentName)}
-                          alt=""
-                          className="w-12 h-12 rounded-xl object-cover ring-2 ring-emerald-400 shrink-0"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <p className="font-extrabold text-white text-sm truncate">
-                            {activeAlert.studentName}
-                          </p>
-                          <p className="text-[11px] text-slate-400 font-mono">
-                            {activeAlert.studentCode} {activeAlert.gradeSection ? `• ${activeAlert.gradeSection}` : ''}
-                          </p>
-                          <p className="text-[10px] text-emerald-400 font-semibold mt-0.5">
-                            Hora: {activeAlert.time}
-                          </p>
-                        </div>
-
-                        {activeAlert.statusBadge && (
-                          <span className={`px-2.5 py-1 rounded-xl text-[10px] font-black uppercase shrink-0 ${
-                            activeAlert.statusBadge === 'A TIEMPO'
-                              ? 'bg-emerald-500 text-slate-950'
-                              : activeAlert.statusBadge === 'TARDANZA'
-                              ? 'bg-amber-500 text-slate-950'
-                              : 'bg-rose-500 text-white'
-                          }`}>
-                            {activeAlert.statusBadge}
-                          </span>
-                        )}
-                      </div>
-
-                      {activeAlert.type === 'success' && activeAlert.parentEmail && (
-                        <div className="pt-2 border-t border-white/10 flex items-center justify-between text-[10px] text-emerald-300">
-                          <span className="flex items-center gap-1.5 font-medium truncate">
-                            <span>📧 Notificación enviada al apoderado:</span>
-                            <strong className="font-mono text-white">{activeAlert.parentEmail}</strong>
-                          </span>
-                          <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold shrink-0">
-                            Brevo Live
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  <button
-                    onClick={() => setActiveAlert(null)}
-                    className="mt-4 px-6 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition-colors cursor-pointer"
-                  >
-                    Cerrar (Continúa escaneando...)
-                  </button>
-
-                </div>
-              </div>
-            )}
-
+              <button
+                type="button"
+                onClick={() => setActiveTab(activeTab === 'config' ? 'scan' : 'config')}
+                className={`p-2 rounded-xl border text-xs font-bold transition-all cursor-pointer shrink-0 ${
+                  activeTab === 'config'
+                    ? 'bg-purple-950/60 text-purple-300 border-purple-500/50'
+                    : 'bg-slate-900/60 text-slate-400 hover:text-slate-200 border-slate-800/80'
+                }`}
+                title="Ajustes de audio y cámara"
+              >
+                <Settings className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
 
-          {/* Action Buttons Below Viewport */}
-          <div className="grid grid-cols-2 gap-3 mt-4">
-            
+          {/* Right Action Items */}
+          <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+            {/* Sound Toggle Button */}
             <button
               type="button"
-              onClick={() => {
-                if (isCameraActive) {
-                  stopCamera();
-                } else {
-                  startCamera(currentFacing);
-                }
-              }}
-              className={`inline-flex items-center justify-center gap-2 py-3 px-4 rounded-2xl font-bold text-xs border transition-all cursor-pointer ${
-                isCameraActive
-                  ? 'bg-rose-950/30 hover:bg-rose-950/50 border-rose-700/60 text-rose-300'
-                  : 'bg-emerald-950/30 hover:bg-emerald-950/50 border-emerald-700/60 text-emerald-300'
+              onClick={() => setSoundEnabled(!soundEnabled)}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-bold transition-colors cursor-pointer ${
+                soundEnabled
+                  ? 'bg-slate-900 border-slate-700 text-slate-300'
+                  : 'bg-rose-950/40 border-rose-900 text-rose-400'
               }`}
+              title={soundEnabled ? 'Sonido activado (clic para silenciar)' : 'Silenciado (clic para activar sonido)'}
             >
-              {isCameraActive ? (
+              {soundEnabled ? (
                 <>
-                  <CameraOff className="w-4 h-4 text-rose-400" />
-                  <span>Apagar Cámara</span>
+                  <Volume2 className="w-3.5 h-3.5 text-emerald-400" />
+                  <span className="text-[11px] hidden xs:inline">Audio On</span>
                 </>
               ) : (
                 <>
-                  <Camera className="w-4 h-4 text-emerald-400" />
-                  <span>Encender Cámara</span>
+                  <VolumeX className="w-3.5 h-3.5 text-rose-400" />
+                  <span className="text-[11px] hidden xs:inline">Mudo</span>
                 </>
               )}
             </button>
 
+            {/* Ayuda Drawer Toggle */}
             <button
               type="button"
-              onClick={() => startCamera(currentFacing === 'environment' ? 'user' : 'environment')}
-              className="inline-flex items-center justify-center gap-2 py-3 px-4 rounded-2xl bg-[#13203c] hover:bg-[#1a2c52] border border-blue-600/50 text-blue-200 font-bold text-xs transition-all cursor-pointer"
+              onClick={() => setShowHelpDrawer(!showHelpDrawer)}
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-xs font-semibold cursor-pointer"
             >
-              <SwitchCamera className="w-4 h-4 text-blue-400" />
-              <span>{currentFacing === 'environment' ? 'Cambiar a Frontal' : 'Cambiar a Trasera'}</span>
+              <HelpCircle className="w-3.5 h-3.5 text-amber-400" />
+              <span className="hidden sm:inline">Guía</span>
             </button>
 
+            {/* Imprimir Resumen */}
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-xs font-semibold cursor-pointer"
+              title="Imprimir resumen de puerta"
+            >
+              <span>📋</span>
+              <span className="hidden sm:inline">Imprimir</span>
+            </button>
           </div>
 
         </div>
 
-        {/* ── COLUMNA DERECHA: PANEL DE AYUDA (4 Cols) ── */}
-        <div className="lg:col-span-4 flex flex-col justify-between bg-[#0b1324] rounded-3xl p-5 sm:p-6 border border-slate-800/80 shadow-2xl space-y-4">
+        {/* ── 3 RESUMEN ULTRA RESPONSIVE DE MÉTRICAS (SIEMPRE VISIBLE) ── */}
+        <div className="grid grid-cols-3 gap-2 sm:gap-4">
           
-          {/* Graphic: Student ID Card Preview */}
-          <div className="p-4 rounded-2xl bg-gradient-to-br from-[#122040] to-[#0c162e] border border-blue-500/30 text-center shadow-inner relative overflow-hidden">
-            <div className="w-32 h-20 mx-auto rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 p-2 text-white shadow-lg flex flex-col justify-between border border-blue-400/40">
-              <div className="flex items-center justify-between">
-                <div className="w-6 h-1 bg-white/60 rounded-full" />
-                <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
+          {/* Card A TIEMPO */}
+          <div className="bg-gradient-to-br from-[#0c241c] to-[#081712] border border-emerald-500/40 hover:border-emerald-500/70 rounded-xl sm:rounded-2xl p-2.5 sm:p-4 flex items-center gap-2.5 sm:gap-3.5 transition-all shadow-lg">
+            <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-emerald-500/20 border border-emerald-400/40 text-emerald-400 flex items-center justify-center shrink-0">
+              <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6" />
+            </div>
+            <div className="min-w-0">
+              <span className="text-[9px] sm:text-[11px] font-black uppercase tracking-wider text-emerald-400 block truncate">
+                A TIEMPO
+              </span>
+              <div className="flex items-baseline gap-1 mt-0.5">
+                <span className="text-xl sm:text-2xl lg:text-3xl font-black text-white">{aTiempoCount}</span>
+                <span className="text-[9px] sm:text-xs text-emerald-300/80 font-medium hidden xs:inline">est.</span>
               </div>
-              <div className="flex items-center justify-between gap-1">
-                <div className="space-y-1 text-left">
-                  <div className="w-12 h-1 bg-white/40 rounded-full" />
-                  <div className="w-8 h-1 bg-white/40 rounded-full" />
+            </div>
+          </div>
+
+          {/* Card TARDANZA */}
+          <div className="bg-gradient-to-br from-[#2b1f0c] to-[#1a1205] border border-amber-500/40 hover:border-amber-500/70 rounded-xl sm:rounded-2xl p-2.5 sm:p-4 flex items-center gap-2.5 sm:gap-3.5 transition-all shadow-lg">
+            <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-amber-500/20 border border-amber-400/40 text-amber-400 flex items-center justify-center shrink-0">
+              <Clock className="w-5 h-5 sm:w-6 sm:h-6" />
+            </div>
+            <div className="min-w-0">
+              <span className="text-[9px] sm:text-[11px] font-black uppercase tracking-wider text-amber-400 block truncate">
+                TARDANZA
+              </span>
+              <div className="flex items-baseline gap-1 mt-0.5">
+                <span className="text-xl sm:text-2xl lg:text-3xl font-black text-white">{tardanzaCount}</span>
+                <span className="text-[9px] sm:text-xs text-amber-300/80 font-medium hidden xs:inline">est.</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Card PENDIENTE / FALTÓ */}
+          <div className="bg-gradient-to-br from-[#240e15] to-[#16060a] border border-rose-500/40 hover:border-rose-500/70 rounded-xl sm:rounded-2xl p-2.5 sm:p-4 flex items-center gap-2.5 sm:gap-3.5 transition-all shadow-lg">
+            <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-rose-500/20 border border-rose-400/40 text-rose-400 flex items-center justify-center shrink-0">
+              <XCircle className="w-5 h-5 sm:w-6 sm:h-6" />
+            </div>
+            <div className="min-w-0">
+              <span className="text-[9px] sm:text-[11px] font-black uppercase tracking-wider text-rose-400 block truncate">
+                PENDIENTE
+              </span>
+              <div className="flex items-baseline gap-1 mt-0.5">
+                <span className="text-xl sm:text-2xl lg:text-3xl font-black text-white">{faltoCount}</span>
+                <span className="text-[9px] sm:text-xs text-rose-300/80 font-medium hidden xs:inline">por llegar</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        {/* ── CUERPO PRINCIPAL DINÁMICO (2 COLUMNAS EN DESKTOP) ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5 flex-1">
+          
+          {/* ── COLUMNA PRINCIPAL (ESCÁNER O VISTA ACTIVA) ── */}
+          <div className={`${activeTab === 'scan' ? 'lg:col-span-8' : 'lg:col-span-12'} flex flex-col gap-3.5`}>
+            
+            {/* VISTA 1: ESCÁNER QR */}
+            {activeTab === 'scan' && (
+              <div className="flex flex-col bg-[#0b1324] rounded-2xl sm:rounded-3xl p-3 sm:p-5 border border-slate-800/80 shadow-2xl relative overflow-hidden">
+                
+                {/* Viewport de Cámara Ultra Responsive */}
+                <div className="relative w-full aspect-square xs:aspect-[4/3] sm:aspect-[16/10] max-h-[58vh] sm:max-h-[500px] rounded-xl sm:rounded-2xl overflow-hidden bg-slate-950 flex items-center justify-center border border-slate-800/90 shadow-inner">
+                  
+                  {/* Video Live Feed */}
+                  <video
+                    ref={videoRef}
+                    className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
+                      isCameraActive ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                    }`}
+                  />
+
+                  {/* Pantalla cuando la cámara está apagada o con error */}
+                  {!isCameraActive && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-[#091120] to-[#040810] p-6 text-center">
+                      <div className="w-16 h-16 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-500 mb-3">
+                        <CameraOff className="w-8 h-8" />
+                      </div>
+                      <h3 className="text-sm sm:text-base font-black text-slate-200">Cámara Inactiva</h3>
+                      <p className="text-xs text-slate-400 mt-1 max-w-sm">
+                        {cameraError || 'Enciende la cámara para escanear los carnets escolares automáticamente.'}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => startCamera(currentFacing)}
+                        className="mt-4 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs shadow-lg shadow-emerald-950 transition-all cursor-pointer"
+                      >
+                        Encender Cámara
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Dark tint overlay */}
+                  <div className="absolute inset-0 bg-slate-950/20 pointer-events-none" />
+
+                  {/* Laser & Reticle Guide */}
+                  {isCameraActive && (
+                    <div className="relative z-10 flex flex-col items-center justify-center pointer-events-none">
+                      
+                      {/* Floating Top Banner (No bloquea el centro del QR) */}
+                      <div className="absolute -top-12 xs:-top-16 sm:-top-20 z-20">
+                        <div className="px-3.5 py-1.5 rounded-full bg-slate-950/80 backdrop-blur-md border border-emerald-400/40 text-emerald-300 text-[10px] sm:text-xs font-bold flex items-center gap-1.5 shadow-lg">
+                          <Crosshair className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
+                          <span>Centra el código QR del carnet</span>
+                        </div>
+                      </div>
+
+                      {/* Glowing Corner Frame */}
+                      <div className="relative w-44 h-44 xs:w-56 xs:h-56 sm:w-64 sm:h-64 md:w-72 md:h-72 flex items-center justify-center">
+                        <div className="absolute top-0 left-0 w-7 h-7 sm:w-9 sm:h-9 border-t-4 border-l-4 border-emerald-400 rounded-tl-xl sm:rounded-tl-2xl shadow-[0_0_12px_rgba(52,211,153,0.8)]" />
+                        <div className="absolute top-0 right-0 w-7 h-7 sm:w-9 sm:h-9 border-t-4 border-r-4 border-emerald-400 rounded-tr-xl sm:rounded-tr-2xl shadow-[0_0_12px_rgba(52,211,153,0.8)]" />
+                        <div className="absolute bottom-0 left-0 w-7 h-7 sm:w-9 sm:h-9 border-b-4 border-l-4 border-emerald-400 rounded-bl-xl sm:rounded-bl-2xl shadow-[0_0_12px_rgba(52,211,153,0.8)]" />
+                        <div className="absolute bottom-0 right-0 w-7 h-7 sm:w-9 sm:h-9 border-b-4 border-r-4 border-emerald-400 rounded-br-xl sm:rounded-br-2xl shadow-[0_0_12px_rgba(52,211,153,0.8)]" />
+
+                        {/* Animated Laser Scanning Line */}
+                        <div className="absolute inset-x-3 h-0.5 bg-gradient-to-r from-transparent via-emerald-400 to-transparent shadow-[0_0_10px_#34d399] animate-pulse" />
+                      </div>
+
+                    </div>
+                  )}
+
+                  {/* Viewport Bottom Overlay Controls */}
+                  {isCameraActive && (
+                    <div className="absolute bottom-3 inset-x-2 z-20 flex items-center justify-center gap-4 sm:gap-6 bg-slate-950/75 backdrop-blur-md rounded-xl sm:rounded-2xl py-1.5 px-3 border border-white/10 w-fit mx-auto shadow-lg">
+                      {/* Torch */}
+                      <button
+                        type="button"
+                        onClick={() => setTorchEnabled(!torchEnabled)}
+                        className="flex flex-col items-center gap-0.5 text-slate-300 hover:text-white transition-colors cursor-pointer"
+                        title="Linterna / Flash"
+                      >
+                        <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center">
+                          {torchEnabled ? <Zap className="w-3.5 h-3.5 text-amber-400" /> : <ZapOff className="w-3.5 h-3.5 text-slate-400" />}
+                        </div>
+                        <span className="text-[8px] font-bold text-slate-400">{torchEnabled ? 'Luz On' : 'Luz'}</span>
+                      </button>
+
+                      {/* Switch Camera */}
+                      <button
+                        type="button"
+                        onClick={() => startCamera(currentFacing === 'environment' ? 'user' : 'environment')}
+                        className="flex flex-col items-center gap-0.5 text-slate-300 hover:text-white transition-colors cursor-pointer"
+                        title="Girar cámara"
+                      >
+                        <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center">
+                          <SwitchCamera className="w-3.5 h-3.5 text-emerald-400" />
+                        </div>
+                        <span className="text-[8px] font-bold text-slate-400">
+                          {currentFacing === 'environment' ? 'Trasera' : 'Frontal'}
+                        </span>
+                      </button>
+
+                      {/* Sound Toggle In-Viewport */}
+                      <button
+                        type="button"
+                        onClick={() => setSoundEnabled(!soundEnabled)}
+                        className="flex flex-col items-center gap-0.5 text-slate-300 hover:text-white transition-colors cursor-pointer"
+                        title="Sonido"
+                      >
+                        <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center">
+                          {soundEnabled ? <Volume2 className="w-3.5 h-3.5 text-emerald-400" /> : <VolumeX className="w-3.5 h-3.5 text-rose-400" />}
+                        </div>
+                        <span className="text-[8px] font-bold text-slate-400">{soundEnabled ? 'Audio' : 'Mudo'}</span>
+                      </button>
+                    </div>
+                  )}
+
+                  {/* ── POP-UP MODAL DE ALERTA AL ESCANEAR ── */}
+                  {activeAlert && (
+                    <div className="absolute inset-0 z-30 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
+                      <div className={`w-full max-w-sm rounded-2xl sm:rounded-3xl p-4 sm:p-5 border text-center shadow-2xl flex flex-col items-center my-auto ${
+                        activeAlert.type === 'success'
+                          ? 'bg-[#0d2820] border-emerald-500/60 text-emerald-100'
+                          : activeAlert.type === 'duplicate'
+                          ? 'bg-[#291e0a] border-amber-500/60 text-amber-100'
+                          : 'bg-[#290e12] border-rose-500/60 text-rose-100'
+                      }`}>
+                        
+                        {/* Status Icon */}
+                        <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center mb-2.5 shadow-lg ${
+                          activeAlert.type === 'success'
+                            ? 'bg-emerald-500 text-slate-950'
+                            : activeAlert.type === 'duplicate'
+                            ? 'bg-amber-500 text-slate-950'
+                            : 'bg-rose-500 text-white'
+                        }`}>
+                          {activeAlert.type === 'success' ? (
+                            <Check className="w-7 h-7 stroke-[3]" />
+                          ) : activeAlert.type === 'duplicate' ? (
+                            <AlertTriangle className="w-7 h-7" />
+                          ) : (
+                            <X className="w-7 h-7 stroke-[3]" />
+                          )}
+                        </div>
+
+                        {/* Title & Message */}
+                        <h2 className="text-lg sm:text-xl font-black text-white tracking-tight">
+                          {activeAlert.title}
+                        </h2>
+                        <p className="text-[11px] sm:text-xs text-slate-300 mt-0.5">
+                          {activeAlert.message}
+                        </p>
+
+                        {/* Student Details Card */}
+                        {activeAlert.studentName && (
+                          <div className="w-full mt-3 p-3 rounded-xl sm:rounded-2xl bg-black/40 border border-white/10 space-y-1.5 text-left">
+                            <div className="flex items-center gap-2.5">
+                              <img
+                                src={activeAlert.avatarUrl || initialsAvatarUrl(activeAlert.studentName)}
+                                alt=""
+                                className="w-10 h-10 rounded-xl object-cover ring-2 ring-emerald-400 shrink-0"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <p className="font-extrabold text-white text-xs sm:text-sm truncate">
+                                  {activeAlert.studentName}
+                                </p>
+                                <p className="text-[10px] text-slate-400 font-mono truncate">
+                                  {activeAlert.studentCode} {activeAlert.gradeSection ? `• ${activeAlert.gradeSection}` : ''}
+                                </p>
+                                <p className="text-[10px] text-emerald-400 font-semibold">
+                                  Hora: {activeAlert.time}
+                                </p>
+                              </div>
+
+                              {activeAlert.statusBadge && (
+                                <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase shrink-0 ${
+                                  activeAlert.statusBadge === 'A TIEMPO'
+                                    ? 'bg-emerald-500 text-slate-950'
+                                    : activeAlert.statusBadge === 'TARDANZA'
+                                    ? 'bg-amber-500 text-slate-950'
+                                    : 'bg-rose-500 text-white'
+                                }`}>
+                                  {activeAlert.statusBadge}
+                                </span>
+                              )}
+                            </div>
+
+                            {activeAlert.type === 'success' && activeAlert.parentEmail && (
+                              <div className="pt-1.5 border-t border-white/10 flex items-center justify-between text-[9px] text-emerald-300">
+                                <span className="truncate">📧 Notificado: {activeAlert.parentEmail}</span>
+                                <span className="font-bold text-white shrink-0 ml-1">Brevo Live</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={() => setActiveAlert(null)}
+                          className="mt-3 w-full py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition-colors cursor-pointer"
+                        >
+                          Cerrar y continuar escaneando
+                        </button>
+
+                      </div>
+                    </div>
+                  )}
+
                 </div>
-                <div className="w-7 h-7 bg-white p-0.5 rounded flex items-center justify-center text-slate-900 shadow">
-                  <QrCode className="w-6 h-6" />
+
+                {/* Botones de Control de Cámara */}
+                <div className="grid grid-cols-2 gap-2.5 mt-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (isCameraActive) {
+                        stopCamera();
+                      } else {
+                        startCamera(currentFacing);
+                      }
+                    }}
+                    className={`inline-flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl sm:rounded-2xl font-bold text-xs border transition-all cursor-pointer ${
+                      isCameraActive
+                        ? 'bg-rose-950/30 hover:bg-rose-950/50 border-rose-700/60 text-rose-300'
+                        : 'bg-emerald-950/30 hover:bg-emerald-950/50 border-emerald-700/60 text-emerald-300'
+                    }`}
+                  >
+                    {isCameraActive ? (
+                      <>
+                        <CameraOff className="w-3.5 h-3.5 text-rose-400" />
+                        <span>Apagar Cámara</span>
+                      </>
+                    ) : (
+                      <>
+                        <Camera className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>Encender Cámara</span>
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => startCamera(currentFacing === 'environment' ? 'user' : 'environment')}
+                    className="inline-flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl sm:rounded-2xl bg-[#13203c] hover:bg-[#1a2c52] border border-blue-600/50 text-blue-200 font-bold text-xs transition-all cursor-pointer"
+                  >
+                    <SwitchCamera className="w-3.5 h-3.5 text-blue-400" />
+                    <span>{currentFacing === 'environment' ? 'Cámara Frontal' : 'Cámara Trasera'}</span>
+                  </button>
+                </div>
+
+              </div>
+            )}
+
+            {/* VISTA 2: REGISTRO MANUAL */}
+            {activeTab === 'manual' && (
+              <div className="bg-[#0b1324] rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-slate-800/80 shadow-2xl">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-2xl bg-indigo-600/20 border border-indigo-500/30 text-indigo-400 flex items-center justify-center shrink-0">
+                    <Keyboard className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-black text-sm sm:text-base text-white">Registro Manual y Código QR</h3>
+                    <p className="text-xs text-slate-400">Ingresa DNI de 8 dígitos, código escolar (EST-...) o sube una imagen de carnet</p>
+                  </div>
+                </div>
+
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (manualInput.trim()) {
+                      handleProcessCode(manualInput.trim());
+                      setManualInput('');
+                    }
+                  }}
+                  className="flex flex-col sm:flex-row gap-2.5"
+                >
+                  <div className="relative flex-1">
+                    <User className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="DNI, código EST-... o token QR"
+                      value={manualInput}
+                      onChange={(e) => setManualInput(e.target.value)}
+                      className="w-full pl-10 pr-4 py-3 text-xs sm:text-sm font-semibold rounded-xl sm:rounded-2xl bg-[#070d1a] border border-slate-800 text-white placeholder:text-slate-500 focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={!manualInput.trim()}
+                    className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl sm:rounded-2xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-black text-xs sm:text-sm shadow-lg shadow-emerald-950 transition-all cursor-pointer shrink-0"
+                  >
+                    <span>Registrar Asistencia</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl sm:rounded-2xl bg-[#131d33] hover:bg-[#1a2947] text-slate-300 font-bold text-xs sm:text-sm border border-slate-700/80 transition-colors cursor-pointer shrink-0"
+                  >
+                    <Upload className="w-4 h-4 text-slate-400" />
+                    <span>Subir Foto QR</span>
+                  </button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleFileUpload}
+                  />
+                </form>
+
+                {/* Quick Chips para probar de inmediato en demostraciones */}
+                <div className="mt-5 pt-4 border-t border-slate-800/80">
+                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2">
+                    Probar con un clic (Alumnos Registrados):
+                  </span>
+                  <div className="flex flex-wrap gap-2">
+                    {students.slice(0, 4).map((s) => {
+                      const name = s.profile ? `${s.profile.nombres} ${s.profile.apellidos}` : `${s.nombres} ${s.apellidos}`;
+                      const code = s.dni || s.codigo_estudiante || s.token_qr;
+                      return (
+                        <button
+                          key={s.id}
+                          type="button"
+                          onClick={() => handleProcessCode(code)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white text-xs font-semibold cursor-pointer transition-all active:scale-95"
+                        >
+                          <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                          <span>{name.split(' ')[0]} ({code})</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+              </div>
+            )}
+
+            {/* VISTA 3: ESTADÍSTICAS Y REGISTROS */}
+            {activeTab === 'stats' && (
+              <div className="bg-[#0b1324] rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-slate-800/80 shadow-2xl">
+                <div className="flex items-center justify-between gap-3 mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-blue-600/20 border border-blue-500/30 text-blue-400 flex items-center justify-center shrink-0">
+                      <BarChart3 className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="font-black text-sm sm:text-base text-white">Todos los Registros del Día</h3>
+                      <p className="text-xs text-slate-400">{todayAttendances.length} asistencias marcadas hoy ({attendanceRate}% del total)</p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => refreshData()}
+                    className="p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white cursor-pointer"
+                    title="Actualizar datos"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {todayAttendances.length === 0 ? (
+                  <div className="p-8 text-center text-slate-500 text-xs">
+                    No se han registrado asistencias el día de hoy todavía.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 max-h-[500px] overflow-y-auto pr-1">
+                    {todayAttendances.map(a => {
+                      const enr = enrollments.find(e => e.id === a.matricula_id);
+                      const student = enr?.estudiante || students.find(s => s.id === enr?.estudiante_id) || a.matricula?.estudiante;
+                      const isLate = a.estado === 'tardanza';
+
+                      return (
+                        <div
+                          key={a.id}
+                          className="p-3 rounded-xl bg-[#070e1c] border border-slate-800/90 flex items-center justify-between gap-2.5"
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <img
+                              src={student?.profile?.avatar_url || initialsAvatarUrl(student?.profile?.nombres || 'Alumno')}
+                              alt=""
+                              className="w-8 h-8 rounded-lg object-cover ring-1 ring-slate-700 shrink-0"
+                            />
+                            <div className="min-w-0">
+                              <p className="font-bold text-xs text-slate-200 truncate">
+                                {student?.profile ? `${student.profile.apellidos}, ${student.profile.nombres}` : student?.codigo_estudiante || 'Alumno'}
+                              </p>
+                              <p className="text-[10px] text-slate-400 font-mono">
+                                {a.hora_registro || '08:00'} • {a.metodo === 'qr' ? 'Escáner QR' : 'Manual'}
+                              </p>
+                            </div>
+                          </div>
+
+                          <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase shrink-0 ${
+                            isLate
+                              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                              : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                          }`}>
+                            {isLate ? 'Tardanza' : 'A tiempo'}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* VISTA 4: CONFIGURACIÓN DE DISPOSITIVOS Y AUDIO */}
+            {activeTab === 'config' && (
+              <div className="bg-[#0b1324] rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-slate-800/80 shadow-2xl">
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="w-10 h-10 rounded-2xl bg-purple-600/20 border border-purple-500/30 text-purple-400 flex items-center justify-center shrink-0">
+                    <Settings className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-black text-sm sm:text-base text-white">Configuración del Terminal Kiosco</h3>
+                    <p className="text-xs text-slate-400">Selecciona periféricos de video, sonido de feedback y tolerancia</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Selector de cámara conectada */}
+                  <div className="p-4 rounded-2xl bg-[#070e1c] border border-slate-800 space-y-2">
+                    <label className="text-xs font-bold text-slate-300 block">
+                      Dispositivo de Cámara Web:
+                    </label>
+                    <select
+                      value={selectedDeviceId}
+                      onChange={(e) => {
+                        setSelectedDeviceId(e.target.value);
+                        startCamera(e.target.value);
+                      }}
+                      className="w-full px-3 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white outline-none"
+                    >
+                      <option value="">Predeterminada (Automática)</option>
+                      {availableDevices.map((d, idx) => (
+                        <option key={d.deviceId || idx} value={d.deviceId}>
+                          {d.label || `Cámara ${idx + 1}`}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-[10px] text-slate-400">
+                      Detectadas {availableDevices.length} cámaras. Cambia de dispositivo si cuentas con lector externo USB.
+                    </p>
+                  </div>
+
+                  {/* Sonido institucional */}
+                  <div className="p-4 rounded-2xl bg-[#070e1c] border border-slate-800 space-y-2">
+                    <label className="text-xs font-bold text-slate-300 block">
+                      Prueba de Sonido de Confirmación:
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => playTone('success')}
+                        className="px-3 py-2 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-300 border border-emerald-500/40 text-xs font-bold cursor-pointer"
+                      >
+                        🔔 Probar Éxito
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => playTone('duplicate')}
+                        className="px-3 py-2 rounded-xl bg-amber-600/20 hover:bg-amber-600/40 text-amber-300 border border-amber-500/40 text-xs font-bold cursor-pointer"
+                      >
+                        ⚠️ Probar Duplicado
+                      </button>
+                    </div>
+                    <p className="text-[10px] text-slate-400">
+                      Preset actual: <strong className="text-white">{brandingConfig?.kioskSoundPreset || 'chime'}</strong>. Personalizable en Admin &gt; Branding.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-4 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('scan')}
+                    className="px-5 py-2.5 rounded-xl bg-emerald-600 text-white font-bold text-xs"
+                  >
+                    Guardar y Volver al Escáner
+                  </button>
                 </div>
               </div>
-            </div>
+            )}
 
-            <h3 className="font-extrabold text-sm text-white mt-3 leading-tight">
-              Escanea el QR de tu carnet
-            </h3>
-            <p className="text-[11px] text-slate-400 mt-0.5 leading-relaxed">
-              Acerca el código al centro de la cámara para registrar tu asistencia.
-            </p>
           </div>
 
-          {/* 4 Quick Visual Help Points */}
-          <div className="space-y-2.5">
-            <div className="flex items-center gap-3 p-2.5 rounded-xl bg-[#0e172a] border border-slate-800/70">
-              <div className="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
-                <CheckCircle2 className="w-4 h-4" />
-              </div>
-              <span className="text-xs font-semibold text-slate-200">
-                Mantén el código estable
-              </span>
-            </div>
+          {/* ── COLUMNA DERECHA: GUÍA VISUAL Y FEED DE ÚLTIMOS INGRESOS (4 Cols en Desktop) ── */}
+          {activeTab === 'scan' && (
+            <div className="lg:col-span-4 flex flex-col gap-3.5">
+              
+              {/* Graphic Student Card Preview */}
+              <div className="bg-[#0b1324] rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-slate-800/80 shadow-2xl flex flex-col justify-between">
+                <div>
+                  <div className="p-3.5 rounded-2xl bg-gradient-to-br from-[#122040] to-[#0c162e] border border-blue-500/30 text-center shadow-inner relative overflow-hidden">
+                    <div className="w-28 h-16 sm:w-32 sm:h-20 mx-auto rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 p-2 text-white shadow-lg flex flex-col justify-between border border-blue-400/40">
+                      <div className="flex items-center justify-between">
+                        <div className="w-6 h-1 bg-white/60 rounded-full" />
+                        <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
+                      </div>
+                      <div className="flex items-center justify-between gap-1">
+                        <div className="space-y-1 text-left">
+                          <div className="w-10 h-1 bg-white/40 rounded-full" />
+                          <div className="w-7 h-1 bg-white/40 rounded-full" />
+                        </div>
+                        <div className="w-6 h-6 sm:w-7 sm:h-7 bg-white p-0.5 rounded flex items-center justify-center text-slate-900 shadow">
+                          <QrCode className="w-5 h-5 sm:w-6 sm:h-6" />
+                        </div>
+                      </div>
+                    </div>
 
-            <div className="flex items-center gap-3 p-2.5 rounded-xl bg-[#0e172a] border border-slate-800/70">
-              <div className="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
-                <Sun className="w-4 h-4" />
-              </div>
-              <span className="text-xs font-semibold text-slate-200">
-                Procura buena iluminación
-              </span>
-            </div>
+                    <h3 className="font-black text-xs sm:text-sm text-white mt-2.5 leading-tight">
+                      Carnet Escolar con QR
+                    </h3>
+                    <p className="text-[10px] sm:text-[11px] text-slate-400 mt-0.5 leading-relaxed">
+                      Acerca el carnet a 15-20 cm frente a la cámara.
+                    </p>
+                  </div>
 
-            <div className="flex items-center gap-3 p-2.5 rounded-xl bg-[#0e172a] border border-slate-800/70">
-              <div className="w-7 h-7 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center shrink-0">
-                <Crosshair className="w-4 h-4" />
-              </div>
-              <span className="text-xs font-semibold text-slate-200">
-                El escaneo es automático
-              </span>
-            </div>
+                  {/* 3 Quick Visual Tips */}
+                  <div className="space-y-2 mt-3">
+                    <div className="flex items-center gap-2.5 p-2 rounded-xl bg-[#0e172a] border border-slate-800/70">
+                      <div className="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                      </div>
+                      <span className="text-[11px] font-semibold text-slate-200">
+                        Código centrado y estable
+                      </span>
+                    </div>
 
-            <div className="flex items-center gap-3 p-2.5 rounded-xl bg-[#0e172a] border border-slate-800/70">
-              <div className="w-7 h-7 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center shrink-0">
-                <Volume2 className="w-4 h-4" />
-              </div>
-              <span className="text-xs font-semibold text-slate-200">
-                Sonará un aviso al registrar
-              </span>
-            </div>
-          </div>
+                    <div className="flex items-center gap-2.5 p-2 rounded-xl bg-[#0e172a] border border-slate-800/70">
+                      <div className="w-6 h-6 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
+                        <Sun className="w-3.5 h-3.5" />
+                      </div>
+                      <span className="text-[11px] font-semibold text-slate-200">
+                        Evitar reflejos de luz directa
+                      </span>
+                    </div>
 
-          {/* Bottom Trouble Notice */}
-          <div className="p-3.5 rounded-2xl bg-blue-950/30 border border-blue-800/40 flex items-start gap-2.5">
-            <Info className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
-            <div className="text-[11px] leading-relaxed text-blue-300">
-              <span className="font-bold block text-blue-200 mb-0.5">¿Problemas para escanear?</span>
-              Puedes registrar manualmente con el DNI, código o token del estudiante.
+                    <div className="flex items-center gap-2.5 p-2 rounded-xl bg-[#0e172a] border border-slate-800/70">
+                      <div className="w-6 h-6 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center shrink-0">
+                        <Volume2 className="w-3.5 h-3.5" />
+                      </div>
+                      <span className="text-[11px] font-semibold text-slate-200">
+                        Aviso sonoro automático
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Trouble Notice Button */}
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('manual')}
+                  className="mt-3.5 p-2.5 rounded-xl bg-blue-950/30 hover:bg-blue-950/50 border border-blue-800/40 flex items-center justify-between text-left transition-colors cursor-pointer"
+                >
+                  <div className="flex items-center gap-2">
+                    <Keyboard className="w-4 h-4 text-blue-400 shrink-0" />
+                    <span className="text-[11px] font-bold text-blue-200">¿Problemas al escanear?</span>
+                  </div>
+                  <span className="text-[10px] text-blue-400 font-semibold underline">Usar DNI</span>
+                </button>
+              </div>
+
+              {/* Feed de Últimos Registros */}
+              <div className="bg-[#0b1324] rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-slate-800/80 shadow-2xl flex-1 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-[11px] font-black uppercase tracking-wider text-slate-400">
+                      Últimos en ingresar
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('stats')}
+                      className="text-[10px] text-emerald-400 hover:underline font-bold"
+                    >
+                      Ver todos ({todayAttendances.length})
+                    </button>
+                  </div>
+
+                  {recentAttendances.length === 0 ? (
+                    <div className="p-4 rounded-xl bg-[#070e1c] border border-slate-800 text-center text-[11px] text-slate-500">
+                      Esperando primeros registros...
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {recentAttendances.slice(0, 4).map((a) => {
+                        const enr = enrollments.find(e => e.id === a.matricula_id);
+                        const student = enr?.estudiante || students.find(s => s.id === enr?.estudiante_id) || a.matricula?.estudiante;
+                        const isLate = a.estado === 'tardanza';
+
+                        return (
+                          <div
+                            key={a.id}
+                            className="p-2 rounded-xl bg-[#070e1c] border border-slate-800/80 flex items-center justify-between gap-2"
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <img
+                                src={student?.profile?.avatar_url || initialsAvatarUrl(student?.profile?.nombres || 'Alumno')}
+                                alt=""
+                                className="w-7 h-7 rounded-lg object-cover ring-1 ring-slate-700 shrink-0"
+                              />
+                              <div className="min-w-0">
+                                <p className="font-bold text-xs text-slate-200 truncate">
+                                  {student?.profile ? `${student.profile.nombres?.split(' ')[0]} ${student.profile.apellidos?.split(' ')[0]}` : student?.codigo_estudiante || 'Alumno'}
+                                </p>
+                                <p className="text-[10px] text-slate-400 font-mono">
+                                  {a.hora_registro || '08:00'}
+                                </p>
+                              </div>
+                            </div>
+
+                            <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase shrink-0 ${
+                              isLate
+                                ? 'bg-amber-500/20 text-amber-300'
+                                : 'bg-emerald-500/20 text-emerald-300'
+                            }`}>
+                              {isLate ? 'Tardanza' : 'A tiempo'}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-3 pt-2.5 border-t border-slate-800/80 flex items-center justify-between text-[10px] text-slate-400">
+                  <span>Total alumnos: <strong className="text-white">{totalEnrolled}</strong></span>
+                  <span>Marcados hoy: <strong className="text-emerald-400">{registeredCount}</strong></span>
+                </div>
+              </div>
+
             </div>
-          </div>
+          )}
 
         </div>
 
       </main>
 
-      {/* ── 5. REGISTRO MANUAL (BARRA HORIZONTAL SECUNDARIA) ── */}
-      <section className="max-w-7xl mx-auto w-full my-4">
-        <div className="bg-[#0b1324] rounded-3xl p-4 sm:p-5 border border-slate-800/80 shadow-lg">
-          
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-9 h-9 rounded-xl bg-indigo-600/20 border border-indigo-500/30 text-indigo-400 flex items-center justify-center shrink-0">
-              <Keyboard className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="font-black text-sm text-white leading-tight">
-                Registro Manual
-              </h3>
-              <p className="text-[11px] text-slate-400">
-                Ingresa el DNI, código o token del estudiante
-              </p>
-            </div>
-          </div>
-
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (manualInput.trim()) {
-                handleProcessCode(manualInput.trim());
-                setManualInput('');
-              }
-            }}
-            className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3"
-          >
-            {/* Input with User Icon */}
-            <div className="relative flex-1">
-              <User className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                placeholder="DNI, código o token..."
-                value={manualInput}
-                onChange={(e) => setManualInput(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 text-xs font-semibold rounded-2xl bg-[#070d1a] border border-slate-800 text-white placeholder:text-slate-500 focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
-              />
-            </div>
-
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={!manualInput.trim()}
-              className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-black text-xs shadow-lg shadow-emerald-900/30 transition-all active:scale-95 cursor-pointer shrink-0"
-            >
-              <span>Registrar</span>
-              <ChevronRight className="w-4 h-4" />
-            </button>
-
-            {/* Foto QR / Upload Fallback */}
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="inline-flex items-center justify-center gap-1.5 px-4 py-3 rounded-2xl bg-[#131d33] hover:bg-[#1a2947] text-slate-300 font-bold text-xs border border-slate-700/80 transition-colors cursor-pointer shrink-0"
-              title="Cargar foto del carnet QR"
-            >
-              <Upload className="w-4 h-4 text-slate-400" />
-              <span>Foto QR</span>
-            </button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleFileUpload}
-            />
-
-          </form>
-
-        </div>
-      </section>
-
-      {/* ── 6 & 7. ASISTENCIAS DE HOY (RESUMEN EXCLUSIVO DEL DÍA ACTUAL) ── */}
-      <section className="max-w-7xl mx-auto w-full pt-1 pb-4">
-        <div className="bg-[#0b1324] rounded-3xl p-5 sm:p-6 border border-slate-800/80 shadow-2xl">
-          
-          {/* Card Header: Title + En línea badge + Actualizar */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-blue-600/20 border border-blue-500/30 text-blue-400 flex items-center justify-center shrink-0">
-                <Users className="w-5 h-5" />
-              </div>
-              <div>
-                <h2 className="text-base font-black text-white leading-tight">
-                  Asistencias de hoy
-                </h2>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Estudiantes registrados en tiempo real
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-              {/* Status "En línea" */}
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-950/40 border border-emerald-500/40 text-emerald-300 text-xs font-bold">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                <span>En línea</span>
-              </div>
-
-              {/* Botón Actualizar */}
-              <button
-                type="button"
-                onClick={() => {
-                  /* re-trigger state refresh */
-                  setCurrentTime(new Date().toLocaleTimeString('es-PE'));
-                }}
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-bold border border-slate-700 transition-colors cursor-pointer"
-              >
-                <RefreshCw className="w-3.5 h-3.5 text-slate-400" />
-                <span>Actualizar</span>
-              </button>
-            </div>
-          </div>
-
-          {/* 3 Main Exclusive Metric Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            
-            {/* Card 1: A TIEMPO */}
-            <div className="bg-[#0c1f1d] border border-emerald-500/40 hover:border-emerald-500/70 rounded-2xl p-4 sm:p-5 flex items-center gap-4 transition-all shadow-lg">
-              <div className="w-14 h-14 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center shrink-0 shadow-inner">
-                <CheckCircle2 className="w-7 h-7" />
-              </div>
-              <div>
-                <span className="text-[11px] font-black uppercase tracking-wider text-emerald-400 block">
-                  A TIEMPO
-                </span>
-                <div className="flex items-baseline gap-1.5 mt-0.5">
-                  <span className="text-3xl font-black text-white">{aTiempoCount}</span>
-                  <span className="text-xs text-emerald-300/80 font-medium">estudiantes</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Card 2: TARDANZA */}
-            <div className="bg-[#241a0d] border border-amber-500/40 hover:border-amber-500/70 rounded-2xl p-4 sm:p-5 flex items-center gap-4 transition-all shadow-lg">
-              <div className="w-14 h-14 rounded-2xl bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center shrink-0 shadow-inner">
-                <Clock className="w-7 h-7" />
-              </div>
-              <div>
-                <span className="text-[11px] font-black uppercase tracking-wider text-amber-400 block">
-                  TARDANZA
-                </span>
-                <div className="flex items-baseline gap-1.5 mt-0.5">
-                  <span className="text-3xl font-black text-white">{tardanzaCount}</span>
-                  <span className="text-xs text-amber-300/80 font-medium">estudiantes</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Card 3: FALTÓ */}
-            <div className="bg-[#240e13] border border-rose-500/40 hover:border-rose-500/70 rounded-2xl p-4 sm:p-5 flex items-center gap-4 transition-all shadow-lg">
-              <div className="w-14 h-14 rounded-2xl bg-rose-500/20 border border-rose-500/40 text-rose-400 flex items-center justify-center shrink-0 shadow-inner">
-                <XCircle className="w-7 h-7" />
-              </div>
-              <div>
-                <span className="text-[11px] font-black uppercase tracking-wider text-rose-400 block">
-                  FALTÓ
-                </span>
-                <div className="flex items-baseline gap-1.5 mt-0.5">
-                  <span className="text-3xl font-black text-white">{faltoCount}</span>
-                  <span className="text-xs text-rose-300/80 font-medium">estudiantes</span>
-                </div>
-              </div>
-            </div>
-
-          </div>
-
-          {/* ── 8. ÚLTIMOS REGISTROS DEL DÍA ── */}
-          {recentAttendances.length > 0 && (
-            <div className="mt-6 pt-4 border-t border-slate-800/80">
-              <span className="text-[11px] font-black uppercase tracking-wider text-slate-400 block mb-3">
-                Últimos estudiantes registrados hoy
-              </span>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-                {recentAttendances.map(a => {
-                  const enr = enrollments.find(e => e.id === a.matricula_id);
-                  const student = enr?.estudiante || students.find(s => s.id === enr?.estudiante_id) || a.matricula?.estudiante;
-                  const isLate = a.estado === 'tardanza';
-
-                  return (
-                    <div
-                      key={a.id}
-                      className="p-2.5 rounded-xl bg-[#070e1c] border border-slate-800/80 flex items-center justify-between gap-2"
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <img
-                          src={student?.profile?.avatar_url || initialsAvatarUrl(student?.profile?.nombres || 'Alumno')}
-                          alt=""
-                          className="w-7 h-7 rounded-lg object-cover ring-1 ring-slate-700 shrink-0"
-                        />
-                        <div className="min-w-0">
-                          <p className="font-bold text-xs text-slate-200 truncate">
-                            {student?.profile?.apellidos?.split(' ')[0]}, {student?.profile?.nombres?.split(' ')[0]}
-                          </p>
-                          <p className="text-[10px] text-slate-400 font-mono">
-                            {a.hora_registro || '08:00'}
-                          </p>
-                        </div>
-                      </div>
-
-                      <span className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase shrink-0 ${
-                        isLate
-                          ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                          : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-                      }`}>
-                        {isLate ? 'Tardanza' : 'A tiempo'}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-        </div>
-      </section>
+      {/* ── FOOTER DISCRETO ── */}
+      <footer className="px-3 sm:px-6 py-2.5 text-center text-[10px] text-slate-500 border-t border-slate-800/40 bg-[#070b14]">
+        <span>ColeSistema Mini • Terminal Kiosco Seguro & Anti-Duplicados • Soporta Pistola USB & Escáner de Cámara</span>
+      </footer>
 
     </div>
   );
 }
-
