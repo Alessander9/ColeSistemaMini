@@ -103,4 +103,66 @@ describe('Suite Avanzada de Branding Institucional & Resend Mailer', () => {
     expect(html).toContain('Realizar Pago Online');
   });
 
+  it('validates default report card branding settings in DEFAULT_BRANDING_CONFIG', () => {
+    expect(DEFAULT_BRANDING_CONFIG.libretaEstilo).toBe('oficial_minedu');
+    expect(DEFAULT_BRANDING_CONFIG.libretaColorCabecera).toBe('#1e3a8a');
+    expect(DEFAULT_BRANDING_CONFIG.libretaTitulo).toContain('INFORME DEL PROGRESO');
+    expect(DEFAULT_BRANDING_CONFIG.libretaSubtitulo).toContain('CNEB - MINEDU');
+    expect(DEFAULT_BRANDING_CONFIG.libretaMostrarEscudo).toBe(true);
+    expect(DEFAULT_BRANDING_CONFIG.libretaMostrarFotoEstudiante).toBe(true);
+    expect(DEFAULT_BRANDING_CONFIG.libretaMostrarAsistencia).toBe(true);
+    expect(DEFAULT_BRANDING_CONFIG.libretaMostrarEscalaCneb).toBe(true);
+    expect(DEFAULT_BRANDING_CONFIG.libretaMostrarObservaciones).toBe(true);
+    expect(DEFAULT_BRANDING_CONFIG.libretaMostrarQrVerificacion).toBe(true);
+    expect(DEFAULT_BRANDING_CONFIG.libretaFirmaDirector).toBe(true);
+    expect(DEFAULT_BRANDING_CONFIG.libretaFirmaTutor).toBe(true);
+    expect(DEFAULT_BRANDING_CONFIG.libretaFirmaApoderado).toBe(true);
+    expect(DEFAULT_BRANDING_CONFIG.libretaOrientacion).toBe('vertical');
+    expect(DEFAULT_BRANDING_CONFIG.libretaMensajePie).toBeTruthy();
+  });
+
+  it('generates report card PDF with custom style, orientation and branding configurations', async () => {
+    const { generateReportCardPdf } = await import('../lib/pdf/reportCardPdfGenerator');
+
+    const sampleStudent = {
+      id: 'student-test',
+      codigo: 'EST-TEST-01',
+      nombres: 'Andrea',
+      apellidos: 'García',
+      dni: '78912345',
+      grado_id: 'g1',
+      seccion_id: 's1',
+      genero: 'F' as const,
+      estado: 'activo' as const,
+    };
+
+    const docPortrait = await generateReportCardPdf({
+      student: sampleStudent as any,
+      courses: [{ id: 'c1', nombre: 'Matemática', area: 'Matemática', nivel: 'secundaria' as const, grado_id: 'g1' }] as any,
+      grades: [],
+      brandingConfig: {
+        ...DEFAULT_BRANDING_CONFIG,
+        libretaEstilo: 'moderno_ejecutivo',
+        libretaColorCabecera: '#059669',
+        libretaOrientacion: 'vertical',
+      },
+    });
+
+    expect(docPortrait).toBeDefined();
+    expect(docPortrait.getNumberOfPages()).toBe(1);
+
+    const docLandscape = await generateReportCardPdf({
+      student: sampleStudent as any,
+      courses: [{ id: 'c1', nombre: 'Matemática', area: 'Matemática', nivel: 'secundaria' as const, grado_id: 'g1' }] as any,
+      grades: [],
+      brandingConfig: {
+        ...DEFAULT_BRANDING_CONFIG,
+        libretaEstilo: 'academico_elegante',
+        libretaOrientacion: 'horizontal',
+      },
+    });
+
+    expect(docLandscape).toBeDefined();
+    expect(docLandscape.getNumberOfPages()).toBe(1);
+  });
 });

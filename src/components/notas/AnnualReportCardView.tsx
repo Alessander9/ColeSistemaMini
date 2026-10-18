@@ -3,7 +3,8 @@
 import React from 'react';
 import { GradeBadge } from '@/components/notas/GradeBadge';
 import { StudentAnnualReportCard } from '@/lib/grades/calculations';
-import { Award, Printer, ShieldCheck, CheckCircle2, AlertTriangle, XCircle, QrCode, FileText } from 'lucide-react';
+import { Award, Printer, ShieldCheck, CheckCircle2, AlertTriangle, XCircle, QrCode, FileText, UserCheck } from 'lucide-react';
+import { useApp } from '@/context/AppContext';
 
 interface AnnualReportCardViewProps {
   reportCard: StudentAnnualReportCard;
@@ -11,8 +12,30 @@ interface AnnualReportCardViewProps {
 }
 
 export function AnnualReportCardView({ reportCard, showPrintButton = true }: AnnualReportCardViewProps) {
+  const { brandingConfig } = useApp();
   const isPromoted = reportCard.finalAcademicStatus === 'PROMOVIDO';
   const isRecovery = reportCard.finalAcademicStatus === 'RECUPERACIÓN';
+
+  const schoolName = brandingConfig?.nombreInstitucion || 'COLEGIO SANTA MARÍA DE LA EXCELENCIA';
+  const ugel = brandingConfig?.ugel || 'UGEL N° 03';
+  const dre = brandingConfig?.dre || 'DRE Lima Metropolitana';
+  const modular = brandingConfig?.codigoModular || '0349281';
+  const directorName = brandingConfig?.directorNombre || 'Dirección General';
+  const docTitle = brandingConfig?.libretaTitulo || 'INFORME DEL PROGRESO DEL APRENDIZAJE DEL ESTUDIANTE';
+  const docSubtitle = brandingConfig?.libretaSubtitulo || 'Consolidado Anual de Calificaciones por Bimestres y Situación Académica Final';
+  const accentColor = brandingConfig?.libretaColorCabecera || brandingConfig?.primaryColor || '#4f46e5';
+  const estilo = brandingConfig?.libretaEstilo || 'oficial_minedu';
+  const logoUrl = brandingConfig?.logoUrl;
+  const mostrarEscudo = brandingConfig?.libretaMostrarEscudo !== false;
+  const mostrarFoto = brandingConfig?.libretaMostrarFotoEstudiante !== false;
+  const mostrarAsistencia = brandingConfig?.libretaMostrarAsistencia !== false;
+  const mostrarEscalaCneb = brandingConfig?.libretaMostrarEscalaCneb !== false;
+  const mostrarObservaciones = brandingConfig?.libretaMostrarObservaciones !== false;
+  const mostrarQr = brandingConfig?.libretaMostrarQrVerificacion !== false;
+  const firmaDirector = brandingConfig?.libretaFirmaDirector !== false;
+  const firmaTutor = brandingConfig?.libretaFirmaTutor !== false;
+  const firmaApoderado = brandingConfig?.libretaFirmaApoderado !== false;
+  const mensajePie = brandingConfig?.libretaMensajePie || 'Este documento es un extracto oficial del Sistema Integrado de Matrícula y Evaluación (ColeSistema / SIAGIE).';
 
   return (
     <div className="space-y-6">
@@ -20,7 +43,10 @@ export function AnnualReportCardView({ reportCard, showPrintButton = true }: Ann
       {showPrintButton && (
         <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm print:hidden">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 flex items-center justify-center font-bold">
+            <div
+              className="w-10 h-10 rounded-xl text-white flex items-center justify-center font-bold"
+              style={{ backgroundColor: accentColor }}
+            >
               <FileText className="w-5 h-5" />
             </div>
             <div>
@@ -46,30 +72,56 @@ export function AnnualReportCardView({ reportCard, showPrintButton = true }: Ann
       )}
 
       {/* Official Certificate / Report Card Container */}
-      <div className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 rounded-3xl border-2 border-slate-200 dark:border-slate-800 p-6 sm:p-10 shadow-lg print:border-none print:shadow-none print:p-0 print:m-0 print:text-black">
+      <div className={`bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 rounded-3xl border-2 border-slate-200 dark:border-slate-800 p-6 sm:p-10 shadow-lg print:border-none print:shadow-none print:p-0 print:m-0 print:text-black ${
+        estilo === 'minimalista_compacto' ? 'space-y-4 !p-4 sm:!p-6 text-[11px]' : 'space-y-6'
+      }`}>
         
         {/* Header Institucional */}
-        <div className="border-b-2 border-slate-900 dark:border-slate-700 pb-6 mb-6">
+        <div
+          className={`pb-6 border-b-2 ${
+            estilo === 'moderno_ejecutivo'
+              ? 'border-indigo-500 bg-gradient-to-r from-slate-50 via-white to-slate-50 dark:from-slate-800/40 dark:via-slate-900 dark:to-slate-800/40 p-4 rounded-2xl border'
+              : estilo === 'academico_elegante'
+              ? 'border-double border-b-4 border-slate-800 dark:border-slate-400'
+              : 'border-slate-900 dark:border-slate-700'
+          }`}
+        >
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
             <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-indigo-600 to-indigo-800 text-white flex items-center justify-center font-black text-2xl shadow-md border-2 border-white dark:border-slate-800">
-                IE
-              </div>
+              {mostrarEscudo && (
+                logoUrl ? (
+                  <img
+                    src={logoUrl}
+                    alt={schoolName}
+                    className="w-16 h-16 rounded-2xl object-contain bg-white p-1 border-2 border-slate-200 dark:border-slate-700 shadow-md"
+                  />
+                ) : (
+                  <div
+                    className="w-16 h-16 rounded-2xl text-white flex items-center justify-center font-black text-2xl shadow-md border-2 border-white dark:border-slate-800"
+                    style={{ backgroundColor: accentColor }}
+                  >
+                    {brandingConfig?.siglas || 'IE'}
+                  </div>
+                )
+              )}
               <div>
                 <p className="text-[10px] font-black tracking-widest text-slate-500 uppercase">
                   República del Perú • Ministerio de Educación
                 </p>
                 <h1 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight">
-                  COLEGIO SANTA MARÍA DE LA EXCELENCIA
+                  {schoolName}
                 </h1>
                 <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">
-                  DRE Lima Metropolitana • UGEL N° 03 • Cód. Modular: 0349281
+                  {dre} • {ugel} • Cód. Modular: {modular}
                 </p>
               </div>
             </div>
 
             <div className="text-center sm:text-right bg-slate-50 dark:bg-slate-800/80 p-3 rounded-2xl border border-slate-200 dark:border-slate-700">
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 block">
+              <span
+                className="text-[10px] font-extrabold uppercase tracking-wider block"
+                style={{ color: accentColor }}
+              >
                 Acta de Evaluación Final
               </span>
               <span className="text-sm font-black text-slate-900 dark:text-white">
@@ -82,23 +134,42 @@ export function AnnualReportCardView({ reportCard, showPrintButton = true }: Ann
           </div>
 
           <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 text-center">
-            <h2 className="text-base sm:text-lg font-black tracking-wide uppercase text-slate-900 dark:text-white">
-              INFORME DEL PROGRESO DEL APRENDIZAJE DEL ESTUDIANTE
+            <h2
+              className="text-base sm:text-lg font-black tracking-wide uppercase"
+              style={{ color: estilo === 'moderno_ejecutivo' ? accentColor : undefined }}
+            >
+              {docTitle}
             </h2>
             <p className="text-xs text-slate-500">
-              Consolidado Anual de Calificaciones por Bimestres y Situación Académica Final
+              {docSubtitle}
             </p>
           </div>
         </div>
 
         {/* Student Metadata Card */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/80 text-xs mb-6">
-          <div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Estudiante</p>
-            <p className="font-extrabold text-slate-900 dark:text-white text-sm">
-              {reportCard.studentName}
-            </p>
-          </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/80 text-xs">
+          {mostrarFoto && (
+            <div className="sm:col-span-2 lg:col-span-4 flex items-center gap-3 pb-3 mb-1 border-b border-slate-200/60 dark:border-slate-700/60">
+              <div
+                className="w-10 h-10 rounded-xl text-white font-extrabold flex items-center justify-center text-sm shadow-sm"
+                style={{ backgroundColor: accentColor }}
+              >
+                {reportCard.studentName.charAt(0)}
+              </div>
+              <div>
+                <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Estudiante Matriculado(a)</p>
+                <p className="text-sm font-black text-slate-900 dark:text-white">{reportCard.studentName}</p>
+              </div>
+            </div>
+          )}
+          {!mostrarFoto && (
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Estudiante</p>
+              <p className="font-extrabold text-slate-900 dark:text-white text-sm">
+                {reportCard.studentName}
+              </p>
+            </div>
+          )}
           <div>
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Documento de Identidad</p>
             <p className="font-semibold text-slate-800 dark:text-slate-200">
@@ -120,7 +191,7 @@ export function AnnualReportCardView({ reportCard, showPrintButton = true }: Ann
         </div>
 
         {/* Consolidated 4-Bimester Matrix Table */}
-        <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm mb-6">
+        <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
               <tr className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700 font-extrabold text-[11px] uppercase tracking-wider">
@@ -130,12 +201,21 @@ export function AnnualReportCardView({ reportCard, showPrintButton = true }: Ann
                 <th className="py-3 px-2 text-center w-16 bg-slate-200/50 dark:bg-slate-700/50">II Bim</th>
                 <th className="py-3 px-2 text-center w-16 bg-slate-200/50 dark:bg-slate-700/50">III Bim</th>
                 <th className="py-3 px-2 text-center w-16 bg-slate-200/50 dark:bg-slate-700/50">IV Bim</th>
-                <th className="py-3 px-3 text-center w-24 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-900 dark:text-indigo-200 border-l border-r border-indigo-200 dark:border-indigo-800">
+                <th
+                  className="py-3 px-3 text-center w-24 border-l border-r"
+                  style={{
+                    backgroundColor: `${accentColor}15`,
+                    borderColor: `${accentColor}40`,
+                    color: accentColor,
+                  }}
+                >
                   CALIF. FINAL
                 </th>
                 <th className="py-3 px-2 text-center w-16">Puntaje</th>
                 <th className="py-3 px-3 text-center w-20">Estado</th>
-                <th className="py-3 px-4 min-w-[200px]">Conclusión Descriptiva Anual</th>
+                {mostrarObservaciones && (
+                  <th className="py-3 px-4 min-w-[200px]">Conclusión Descriptiva Anual</th>
+                )}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
@@ -152,7 +232,7 @@ export function AnnualReportCardView({ reportCard, showPrintButton = true }: Ann
                       <div className="flex items-center gap-2">
                         <span
                           className="w-2.5 h-2.5 rounded-full shrink-0"
-                          style={{ backgroundColor: course.colorHex || '#6366f1' }}
+                          style={{ backgroundColor: course.colorHex || accentColor }}
                         />
                         <span className="font-extrabold text-slate-900 dark:text-white">
                           {course.courseName}
@@ -175,7 +255,13 @@ export function AnnualReportCardView({ reportCard, showPrintButton = true }: Ann
                     </td>
 
                     {/* Official Final Calculated Grade */}
-                    <td className="py-3 px-3 text-center bg-indigo-50/60 dark:bg-indigo-950/40 border-l border-r border-indigo-200 dark:border-indigo-800">
+                    <td
+                      className="py-3 px-3 text-center border-l border-r"
+                      style={{
+                        backgroundColor: `${accentColor}10`,
+                        borderColor: `${accentColor}30`,
+                      }}
+                    >
                       <GradeBadge grade={course.finalGrade} size="md" />
                     </td>
 
@@ -198,9 +284,11 @@ export function AnnualReportCardView({ reportCard, showPrintButton = true }: Ann
                     </td>
 
                     {/* Annual Descriptive Conclusion */}
-                    <td className="py-3 px-4 text-slate-600 dark:text-slate-300 italic text-[11px] leading-relaxed">
-                      &quot;{course.annualConclusion}&quot;
-                    </td>
+                    {mostrarObservaciones && (
+                      <td className="py-3 px-4 text-slate-600 dark:text-slate-300 italic text-[11px] leading-relaxed">
+                        &quot;{course.annualConclusion}&quot;
+                      </td>
+                    )}
                   </tr>
                 );
               })}
@@ -209,11 +297,11 @@ export function AnnualReportCardView({ reportCard, showPrintButton = true }: Ann
         </div>
 
         {/* Summary Statistics & Conduct/Attendance Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Summary Box */}
           <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
             <h4 className="font-extrabold text-xs text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-              <Award className="w-3.5 h-3.5 text-indigo-500" />
+              <Award className="w-3.5 h-3.5" style={{ color: accentColor }} />
               Resumen Académico Anual
             </h4>
             <div className="space-y-1.5 text-xs">
@@ -240,33 +328,37 @@ export function AnnualReportCardView({ reportCard, showPrintButton = true }: Ann
           </div>
 
           {/* Conduct and Attendance Box */}
-          <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
-            <h4 className="font-extrabold text-xs text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-              Asistencia & Comportamiento
-            </h4>
-            <div className="space-y-1.5 text-xs">
-              <div className="flex justify-between">
-                <span className="text-slate-500">Asistencia Anual Acumulada:</span>
-                <strong className="font-bold text-emerald-600">{reportCard.attendancePercentage}%</strong>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Días Laborados Totales:</span>
-                <strong className="font-bold text-slate-800 dark:text-slate-200">180 días</strong>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Evaluación del Comportamiento:</span>
-                <GradeBadge grade={reportCard.conductGrade} size="sm" />
-              </div>
-              <div className="flex justify-between pt-1 border-t border-slate-200 dark:border-slate-700">
-                <span className="text-slate-700 dark:text-slate-300 font-bold">Apreciación del Tutor:</span>
-                <span className="text-slate-600 dark:text-slate-400 font-semibold">Excelente conducta</span>
+          {mostrarAsistencia && (
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+              <h4 className="font-extrabold text-xs text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+                Asistencia & Comportamiento
+              </h4>
+              <div className="space-y-1.5 text-xs">
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Asistencia Anual Acumulada:</span>
+                  <strong className="font-bold text-emerald-600">{reportCard.attendancePercentage}%</strong>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Días Laborados Totales:</span>
+                  <strong className="font-bold text-slate-800 dark:text-slate-200">180 días</strong>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Evaluación del Comportamiento:</span>
+                  <GradeBadge grade={reportCard.conductGrade} size="sm" />
+                </div>
+                <div className="flex justify-between pt-1 border-t border-slate-200 dark:border-slate-700">
+                  <span className="text-slate-700 dark:text-slate-300 font-bold">Apreciación del Tutor:</span>
+                  <span className="text-slate-600 dark:text-slate-400 font-semibold">Excelente conducta</span>
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* Final Official Verdict Banner */}
           <div className={`p-4 rounded-2xl border-2 flex flex-col justify-between ${
+            !mostrarAsistencia ? 'md:col-span-2' : ''
+          } ${
             isPromoted
               ? 'bg-emerald-50 border-emerald-300 text-emerald-950 dark:bg-emerald-950/40 dark:border-emerald-800 dark:text-emerald-200'
               : isRecovery
@@ -298,51 +390,85 @@ export function AnnualReportCardView({ reportCard, showPrintButton = true }: Ann
           </div>
         </div>
 
-        {/* Official Signatures & Verification Seal */}
-        <div className="pt-8 border-t-2 border-slate-900 dark:border-slate-700 mt-8 grid grid-cols-1 sm:grid-cols-3 gap-8 items-end text-center">
-          {/* Signature 1 */}
-          <div>
-            <div className="w-44 h-16 border-b-2 border-dashed border-slate-400 mx-auto flex items-center justify-center">
-              <span className="text-[10px] font-mono text-slate-300 italic select-none">Firma y Sello Digital</span>
+        {/* CNEB Scale Guide (Optional) */}
+        {mostrarEscalaCneb && (
+          <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/60 text-[11px] text-slate-600 dark:text-slate-300 flex flex-wrap items-center justify-between gap-2">
+            <span className="font-bold text-slate-800 dark:text-slate-200">Escala de Calificación CNEB:</span>
+            <div className="flex flex-wrap items-center gap-3">
+              <span><strong className="text-emerald-600">AD:</strong> Logro Destacado (18-20)</span>
+              <span><strong className="text-blue-600">A:</strong> Logro Esperado (14-17)</span>
+              <span><strong className="text-amber-600">B:</strong> En Proceso (11-13)</span>
+              <span><strong className="text-rose-600">C:</strong> En Inicio (0-10)</span>
             </div>
-            <p className="text-xs font-extrabold text-slate-900 dark:text-white mt-2">
-              Mg. María Elena Vargas Q.
-            </p>
-            <p className="text-[10px] text-slate-500 font-semibold uppercase">
-              Dirección General
-            </p>
           </div>
+        )}
+
+        {/* Official Signatures & Verification Seal */}
+        <div className="pt-8 border-t-2 border-slate-900 dark:border-slate-700 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 items-end text-center">
+          {/* Signature Director */}
+          {firmaDirector && (
+            <div>
+              <div className="w-36 sm:w-44 h-14 border-b-2 border-dashed border-slate-400 mx-auto flex items-center justify-center">
+                <span className="text-[9px] font-mono text-slate-300 italic select-none">Firma y Sello</span>
+              </div>
+              <p className="text-xs font-extrabold text-slate-900 dark:text-white mt-2">
+                {directorName}
+              </p>
+              <p className="text-[10px] text-slate-500 font-semibold uppercase">
+                Dirección General
+              </p>
+            </div>
+          )}
 
           {/* Verification QR Seal */}
-          <div className="flex flex-col items-center">
-            <div className="w-20 h-20 bg-slate-50 dark:bg-slate-800 rounded-2xl border-2 border-slate-200 dark:border-slate-700 p-2 flex items-center justify-center shadow-inner">
-              <QrCode className="w-14 h-14 text-slate-800 dark:text-slate-200" />
+          {mostrarQr && (
+            <div className="flex flex-col items-center">
+              <div className="w-16 h-16 bg-slate-50 dark:bg-slate-800 rounded-2xl border-2 border-slate-200 dark:border-slate-700 p-1.5 flex items-center justify-center shadow-inner">
+                <QrCode className="w-12 h-12 text-slate-800 dark:text-slate-200" />
+              </div>
+              <p className="text-[8px] font-mono text-slate-400 mt-1">
+                TOKEN-{reportCard.academicYear}-{reportCard.studentCode}
+              </p>
+              <p className="text-[8px] text-emerald-600 font-bold uppercase tracking-wider flex items-center gap-1">
+                <CheckCircle2 className="w-2.5 h-2.5" /> Verificado SIAGIE
+              </p>
             </div>
-            <p className="text-[9px] font-mono text-slate-400 mt-1">
-              TOKEN-MINEDU-{reportCard.academicYear}-{reportCard.studentCode}
-            </p>
-            <p className="text-[8px] text-emerald-600 font-bold uppercase tracking-wider flex items-center gap-1">
-              <CheckCircle2 className="w-2.5 h-2.5" /> Documento Verificado SIAGIE
-            </p>
-          </div>
+          )}
 
-          {/* Signature 2 */}
-          <div>
-            <div className="w-44 h-16 border-b-2 border-dashed border-slate-400 mx-auto flex items-center justify-center">
-              <span className="text-[10px] font-mono text-slate-300 italic select-none">Firma y Sello Digital</span>
+          {/* Signature Tutor */}
+          {firmaTutor && (
+            <div>
+              <div className="w-36 sm:w-44 h-14 border-b-2 border-dashed border-slate-400 mx-auto flex items-center justify-center">
+                <span className="text-[9px] font-mono text-slate-300 italic select-none">Firma y Sello</span>
+              </div>
+              <p className="text-xs font-extrabold text-slate-900 dark:text-white mt-2">
+                {reportCard.tutorName}
+              </p>
+              <p className="text-[10px] text-slate-500 font-semibold uppercase">
+                Docente Tutor(a)
+              </p>
             </div>
-            <p className="text-xs font-extrabold text-slate-900 dark:text-white mt-2">
-              {reportCard.tutorName}
-            </p>
-            <p className="text-[10px] text-slate-500 font-semibold uppercase">
-              Docente Tutor(a) de Aula
-            </p>
-          </div>
+          )}
+
+          {/* Signature Apoderado */}
+          {firmaApoderado && (
+            <div>
+              <div className="w-36 sm:w-44 h-14 border-b-2 border-dashed border-slate-400 mx-auto flex items-center justify-center">
+                <span className="text-[9px] font-mono text-slate-300 italic select-none">Firma y Huella</span>
+              </div>
+              <p className="text-xs font-extrabold text-slate-900 dark:text-white mt-2">
+                Padre / Apoderado
+              </p>
+              <p className="text-[10px] text-slate-500 font-semibold uppercase">
+                Conformidad del Padre
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Footer Note */}
         <div className="mt-8 pt-4 border-t border-slate-100 dark:border-slate-800 text-center text-[10px] text-slate-400" suppressHydrationWarning>
-          Este documento es un extracto oficial del Sistema Integrado de Matrícula y Evaluación (ColeSistema / SIAGIE). Fecha de emisión: {new Date().toLocaleDateString('es-PE', { year: 'numeric', month: 'long', day: 'numeric' })}.
+          {mensajePie} Fecha de emisión: {new Date().toLocaleDateString('es-PE', { year: 'numeric', month: 'long', day: 'numeric' })}.
         </div>
       </div>
     </div>

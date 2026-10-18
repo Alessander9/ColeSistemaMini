@@ -489,6 +489,23 @@ export interface SystemBrandingConfig {
   diplomaFirmaTutor: boolean;
   diplomaTextoPredeterminado: string;
 
+  // ── Diseñador de Libreta de Notas Oficial ──
+  libretaEstilo?: 'oficial_minedu' | 'moderno_ejecutivo' | 'academico_elegante' | 'minimalista_compacto';
+  libretaColorCabecera?: string;
+  libretaTitulo?: string;
+  libretaSubtitulo?: string;
+  libretaMostrarEscudo?: boolean;
+  libretaMostrarFotoEstudiante?: boolean;
+  libretaMostrarAsistencia?: boolean;
+  libretaMostrarEscalaCneb?: boolean;
+  libretaMostrarObservaciones?: boolean;
+  libretaMostrarQrVerificacion?: boolean;
+  libretaFirmaDirector?: boolean;
+  libretaFirmaTutor?: boolean;
+  libretaFirmaApoderado?: boolean;
+  libretaOrientacion?: 'vertical' | 'horizontal';
+  libretaMensajePie?: string;
+
   // ── Sonido Institucional del Kiosco QR ──
   kioskSoundPreset: 'bell' | 'chime' | 'arpeggio' | 'voice';
 

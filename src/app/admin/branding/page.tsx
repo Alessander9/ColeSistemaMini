@@ -49,10 +49,12 @@ import {
   FileCheck,
   Sliders,
   DollarSign,
-  Users
+  Users,
+  BookOpen
 } from 'lucide-react';
 import { compressFile, formatFileSize } from '@/lib/services/compressionService';
 import { Modal } from '@/components/ui/Modal';
+import { generateReportCardPdf } from '@/lib/pdf/reportCardPdfGenerator';
 import { sendBrevoAttendanceEmail } from '@/lib/services/brevoService';
 import {
   sendResendEmail,
@@ -91,6 +93,7 @@ type ActiveTab =
   | 'colores'
   | 'documentos'
   | 'carnets'
+  | 'libretas'
   | 'diplomas'
   | 'sonidos'
   | 'correos'
@@ -125,6 +128,9 @@ export default function AdminBrandingPage() {
 
   // Carnet View Mode (Front / Back)
   const [carnetViewSide, setCarnetViewSide] = useState<'front' | 'back'>('front');
+
+  // Libreta Sample PDF generation state
+  const [isGeneratingLibretaSamplePdf, setIsGeneratingLibretaSamplePdf] = useState(false);
 
   // Sincronizar formData cuando brandingConfig cambie desde el exterior
   useEffect(() => {
@@ -190,6 +196,103 @@ export default function AdminBrandingPage() {
       moderno_geometrico: 'Moderno Geométrico',
     };
     showToast(`Estilo de marco "${labels[style]}" seleccionado`, 'info', 'Diploma de Honor');
+  };
+
+  const handleSelectLibretaStyle = (style: 'oficial_minedu' | 'moderno_ejecutivo' | 'academico_elegante' | 'minimalista_compacto') => {
+    handleChange('libretaEstilo', style);
+    const labels: Record<string, string> = {
+      oficial_minedu: 'Oficial MINEDU / SIAGIE',
+      moderno_ejecutivo: 'Moderno Ejecutivo',
+      academico_elegante: 'Académico Elegante',
+      minimalista_compacto: 'Minimalista Compacto',
+    };
+    showToast(`Diseño "${labels[style]}" seleccionado`, 'info', 'Libreta de Notas');
+  };
+
+  const handleSelectLibretaOrientation = (orientation: 'vertical' | 'horizontal') => {
+    handleChange('libretaOrientacion', orientation);
+    showToast(
+      `Orientación "${orientation === 'horizontal' ? 'Horizontal (Apaisado A4)' : 'Vertical (Estándar A4)'}" seleccionada`,
+      'info',
+      'Libreta de Notas'
+    );
+  };
+
+  const handleDownloadLibretaSamplePdf = async () => {
+    try {
+      setIsGeneratingLibretaSamplePdf(true);
+      showToast('Generando libreta de muestra oficial en PDF...', 'info', 'Libreta de Notas');
+
+      const sampleStudent = {
+        id: 'sample-student-1',
+        codigo: 'EST-2026-042',
+        nombres: 'Mateo Alejandro',
+        apellidos: 'Torres Mendoza',
+        dni: '74829103',
+        grado_id: 'sec-1',
+        seccion_id: 'sec-1-a',
+        genero: 'M' as const,
+        estado: 'activo' as const,
+        email: 'mateo.torres@colegio.edu.pe',
+      };
+
+      const sampleEnrollment = {
+        id: 'enr-sample-1',
+        estudiante_id: 'sample-student-1',
+        grado_id: 'sec-1',
+        seccion_id: 'sec-1-a',
+        ano_lectivo: '2026',
+        estado: 'matriculado' as const,
+        fecha_matricula: '2026-03-01',
+        grado: { id: 'sec-1', nombre: '1° de Secundaria', nivel: 'secundaria' as const, orden: 1 },
+        seccion: { id: 'sec-1-a', nombre: 'A', grado_id: 'sec-1', capacidad: 30 },
+      };
+
+      const sampleCourses = [
+        { id: 'c1', nombre: 'Matemática', area: 'Matemática', nivel: 'secundaria' as const, grado_id: 'sec-1' },
+        { id: 'c2', nombre: 'Comunicación', area: 'Comunicación', nivel: 'secundaria' as const, grado_id: 'sec-1' },
+        { id: 'c3', nombre: 'Ciencia y Tecnología', area: 'Ciencias', nivel: 'secundaria' as const, grado_id: 'sec-1' },
+        { id: 'c4', nombre: 'Ciencias Sociales', area: 'Sociales', nivel: 'secundaria' as const, grado_id: 'sec-1' },
+        { id: 'c5', nombre: 'Inglés como Lengua Extranjera', area: 'Idiomas', nivel: 'secundaria' as const, grado_id: 'sec-1' },
+        { id: 'c6', nombre: 'Educación Física', area: 'Desarrollo Personal', nivel: 'secundaria' as const, grado_id: 'sec-1' },
+      ];
+
+      const samplePeriods = [
+        { id: 'p1', numero: 1, nombre: 'I Bimestre', ano_lectivo: '2026', fecha_inicio: '2026-03-01', fecha_fin: '2026-05-15', estado: 'cerrado' as const },
+        { id: 'p2', numero: 2, nombre: 'II Bimestre', ano_lectivo: '2026', fecha_inicio: '2026-05-18', fecha_fin: '2026-07-24', estado: 'cerrado' as const },
+        { id: 'p3', numero: 3, nombre: 'III Bimestre', ano_lectivo: '2026', fecha_inicio: '2026-08-10', fecha_fin: '2026-10-16', estado: 'cerrado' as const },
+        { id: 'p4', numero: 4, nombre: 'IV Bimestre', ano_lectivo: '2026', fecha_inicio: '2026-10-19', fecha_fin: '2026-12-22', estado: 'activo' as const },
+      ];
+
+      const sampleGrades = [
+        { id: 'g1', matricula_id: 'enr-sample-1', competencia_id: 'c1-comp', periodo_evaluacion_id: 'p1', nota_letra: 'AD' as const, nota_numerica: 19, conclusion_descriptiva: 'Excelente resolución de problemas algebraicos y geométricos.' },
+        { id: 'g2', matricula_id: 'enr-sample-1', competencia_id: 'c1-comp', periodo_evaluacion_id: 'p2', nota_letra: 'AD' as const, nota_numerica: 18, conclusion_descriptiva: 'Destacada participación y razonamiento lógico.' },
+        { id: 'g3', matricula_id: 'enr-sample-1', competencia_id: 'c1-comp', periodo_evaluacion_id: 'p3', nota_letra: 'A' as const, nota_numerica: 17, conclusion_descriptiva: 'Aplica conceptos estadísticos con autonomía.' },
+        { id: 'g4', matricula_id: 'enr-sample-1', competencia_id: 'c1-comp', periodo_evaluacion_id: 'p4', nota_letra: 'AD' as const, nota_numerica: 19, conclusion_descriptiva: 'Demuestra excelencia en resolución matemática.' },
+        { id: 'g5', matricula_id: 'enr-sample-1', competencia_id: 'c2-comp', periodo_evaluacion_id: 'p1', nota_letra: 'A' as const, nota_numerica: 16, conclusion_descriptiva: 'Redacta ensayos con adecuada coherencia y propiedad.' },
+        { id: 'g6', matricula_id: 'enr-sample-1', competencia_id: 'c2-comp', periodo_evaluacion_id: 'p2', nota_letra: 'A' as const, nota_numerica: 16, conclusion_descriptiva: 'Comprende textos complejos y sintetiza ideas.' },
+        { id: 'g7', matricula_id: 'enr-sample-1', competencia_id: 'c2-comp', periodo_evaluacion_id: 'p3', nota_letra: 'AD' as const, nota_numerica: 18, conclusion_descriptiva: 'Excelente argumentación en exposiciones y debates.' },
+        { id: 'g8', matricula_id: 'enr-sample-1', competencia_id: 'c2-comp', periodo_evaluacion_id: 'p4', nota_letra: 'A' as const, nota_numerica: 17, conclusion_descriptiva: 'Enriquecimiento notable de léxico y análisis crítico.' },
+      ];
+
+      const doc = await generateReportCardPdf({
+        student: sampleStudent as any,
+        enrollment: sampleEnrollment as any,
+        courses: sampleCourses as any,
+        grades: sampleGrades as any,
+        evaluationPeriods: samplePeriods as any,
+        brandingConfig: formData,
+        tutorName: 'Prof. Roberto Carlos Benítez M.',
+      });
+
+      doc.save(`Libreta_Muestra_${(formData.siglas || 'COLEGIO').replace(/\s+/g, '_')}_2026.pdf`);
+      showToast('Muestra oficial de libreta descargada con éxito', 'success', 'PDF Generado');
+    } catch (err) {
+      console.error('Error al generar PDF de muestra:', err);
+      showToast('Error al generar la muestra PDF', 'error', 'Error');
+    } finally {
+      setIsGeneratingLibretaSamplePdf(false);
+    }
   };
 
   const handleApplyPreset = (preset: typeof THEME_PRESETS[0]) => {
@@ -526,6 +629,7 @@ export default function AdminBrandingPage() {
         { id: 'colores', label: 'Colores y letra', hint: 'Color principal, tipo de letra y menú', icon: Palette, tone: 'bg-pink-100 text-pink-600 dark:bg-pink-950/60 dark:text-pink-300' },
         { id: 'documentos', label: 'Documentos PDF', hint: 'Membrete, sello y marca de agua', icon: Stamp, tone: 'bg-amber-100 text-amber-600 dark:bg-amber-950/60 dark:text-amber-300' },
         { id: 'carnets', label: 'Carnets', hint: 'Diseño del carnet con QR', icon: CreditCard, tone: 'bg-sky-100 text-sky-600 dark:bg-sky-950/60 dark:text-sky-300' },
+        { id: 'libretas', label: 'Libreta de notas', hint: 'Diseño, formato y firmas oficiales', icon: BookOpen, tone: 'bg-teal-100 text-teal-700 dark:bg-teal-950/60 dark:text-teal-300' },
         { id: 'diplomas', label: 'Diplomas', hint: 'Diplomas de honor y mérito', icon: Award, tone: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950/60 dark:text-yellow-300' },
       ],
     },
@@ -610,7 +714,7 @@ export default function AdminBrandingPage() {
         {SECTION_GROUPS.map(group => (
           <div key={group.title} className="space-y-2">
             <p className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">{group.title}</p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
               {group.items.map(item => {
                 const active = activeTab === item.id;
                 return (
@@ -1667,6 +1771,597 @@ export default function AdminBrandingPage() {
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── TAB: PERSONALIZACIÓN DE LIBRETA DE NOTAS OFICIAL ── */}
+      {activeTab === 'libretas' && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in fade-in duration-200">
+          <div className="lg:col-span-7 space-y-6">
+            
+            {/* 1. Estilo Visual y Plantilla */}
+            <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm space-y-5">
+              <div className="flex items-center justify-between">
+                <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <BookOpen className="w-5 h-5 text-teal-600" />
+                  Estilo Visual de la Libreta de Notas
+                </h2>
+                <span className="text-xs px-2.5 py-1 rounded-full bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 font-bold border border-teal-200 dark:border-teal-800">
+                  CNEB - MINEDU 2026
+                </span>
+              </div>
+              <p className="text-xs text-slate-500">
+                Selecciona la apariencia y formato oficial para las libretas bimestrales e informes de progreso del aprendizaje.
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                {[
+                  {
+                    id: 'oficial_minedu',
+                    label: 'Oficial MINEDU / SIAGIE 🇵🇪',
+                    desc: 'Encabezado formal ministerial, formato tradicional con sellos y membrete reglamentario.',
+                    badge: 'Recomendado',
+                  },
+                  {
+                    id: 'moderno_ejecutivo',
+                    label: 'Moderno Ejecutivo 🚀',
+                    desc: 'Líneas limpias, cabecera con degradado suave, acentos dinámicos de color y bordes pulidos.',
+                    badge: 'Moderno',
+                  },
+                  {
+                    id: 'academico_elegante',
+                    label: 'Académico Tradicional 🏛️',
+                    desc: 'Doble marco solemne institucional, estilo solemne ideal para colegios históricos.',
+                    badge: 'Distinción',
+                  },
+                  {
+                    id: 'minimalista_compacto',
+                    label: 'Minimalista Compacto 📄',
+                    desc: 'Alta densidad de información y márgenes reducidos optimizados para impresión en 1 sola hoja.',
+                    badge: '1 Sola Hoja',
+                  },
+                ].map((s) => {
+                  const isSelected = (formData.libretaEstilo || 'oficial_minedu') === s.id;
+                  return (
+                    <button
+                      key={s.id}
+                      id={`btn-libreta-estilo-${s.id.replace(/_/g, '-')}`}
+                      type="button"
+                      onClick={() => handleSelectLibretaStyle(s.id as any)}
+                      className={`p-4 rounded-2xl border text-left cursor-pointer transition-all relative ${
+                        isSelected
+                          ? 'border-teal-500 bg-teal-50/50 dark:bg-teal-950/40 ring-2 ring-teal-500/20 shadow-sm'
+                          : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-bold text-slate-900 dark:text-white">{s.label}</span>
+                        {isSelected && <Check className="w-4 h-4 text-teal-600 shrink-0" />}
+                      </div>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed mb-2">{s.desc}</p>
+                      <span className={`inline-block text-[9px] font-black uppercase px-2 py-0.5 rounded-md ${
+                        isSelected ? 'bg-teal-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
+                      }`}>
+                        {s.badge}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Orientación de Página */}
+              <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-2">
+                  Orientación del Documento al Imprimir / Descargar PDF
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    id="btn-libreta-orientacion-vertical"
+                    type="button"
+                    onClick={() => handleSelectLibretaOrientation('vertical')}
+                    className={`p-3.5 rounded-2xl border text-left cursor-pointer transition-all ${
+                      (formData.libretaOrientacion || 'vertical') === 'vertical'
+                        ? 'border-teal-600 bg-teal-50/50 dark:bg-teal-950/40 ring-2 ring-teal-500/20'
+                        : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span className="text-xs font-bold block text-slate-900 dark:text-white">📄 Vertical (A4 Estándar)</span>
+                    <span className="text-[10px] text-slate-500">Lectura habitual de arriba a abajo</span>
+                  </button>
+                  <button
+                    id="btn-libreta-orientacion-horizontal"
+                    type="button"
+                    onClick={() => handleSelectLibretaOrientation('horizontal')}
+                    className={`p-3.5 rounded-2xl border text-left cursor-pointer transition-all ${
+                      formData.libretaOrientacion === 'horizontal'
+                        ? 'border-teal-600 bg-teal-50/50 dark:bg-teal-950/40 ring-2 ring-teal-500/20'
+                        : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span className="text-xs font-bold block text-slate-900 dark:text-white">📑 Horizontal (A4 Apaisado)</span>
+                    <span className="text-[10px] text-slate-500">Mayor amplitud para conclusiones y áreas</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* 2. Color de Cabecera y Acentos */}
+            <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <Palette className="w-4 h-4 text-teal-600" />
+                  Color de Cabecera y Acentos Oficiales
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => handleChange('libretaColorCabecera', formData.primaryColor || '#4f46e5')}
+                  className="text-[11px] font-bold text-teal-600 hover:text-teal-700 hover:underline cursor-pointer"
+                >
+                  Usar color principal del colegio
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Paleta de Tonos Sugeridos para Documentos
+                  </label>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {[
+                      { name: 'Azul MINEDU', color: '#1e3a8a' },
+                      { name: 'Índigo Escolar', color: '#4f46e5' },
+                      { name: 'Verde Esmeralda', color: '#059669' },
+                      { name: 'Granate Tradicional', color: '#991b1b' },
+                      { name: 'Azul Marino Real', color: '#0f172a' },
+                      { name: 'Morado Académico', color: '#6b21a8' },
+                    ].map((p) => {
+                      const isCurrent = (formData.libretaColorCabecera || '#1e3a8a').toLowerCase() === p.color.toLowerCase();
+                      return (
+                        <button
+                          key={p.color}
+                          type="button"
+                          title={p.name}
+                          onClick={() => handleChange('libretaColorCabecera', p.color)}
+                          className={`w-8 h-8 rounded-xl border-2 flex items-center justify-center transition-transform hover:scale-110 cursor-pointer ${
+                            isCurrent ? 'border-white ring-2 ring-teal-500 scale-105 shadow-md' : 'border-transparent'
+                          }`}
+                          style={{ backgroundColor: p.color }}
+                        >
+                          {isCurrent && <Check className="w-3.5 h-3.5 text-white stroke-[3]" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Selector de Color Personalizado (HEX)
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="color"
+                      value={formData.libretaColorCabecera || '#1e3a8a'}
+                      onChange={(e) => handleChange('libretaColorCabecera', e.target.value)}
+                      className="w-10 h-10 rounded-xl cursor-pointer border border-slate-200 dark:border-slate-700 bg-transparent p-0.5"
+                    />
+                    <input
+                      type="text"
+                      value={formData.libretaColorCabecera || '#1e3a8a'}
+                      onChange={(e) => handleChange('libretaColorCabecera', e.target.value)}
+                      className="w-full text-xs font-mono font-bold px-3 py-2 border rounded-xl bg-slate-50 dark:bg-slate-800 uppercase"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 3. Títulos Oficiales y Leyendas */}
+            <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <FileText className="w-4 h-4 text-teal-600" />
+                Textos Oficiales del Encabezado y Pie Legal
+              </h3>
+
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Título Principal del Documento
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.libretaTitulo || ''}
+                    onChange={(e) => handleChange('libretaTitulo', e.target.value)}
+                    placeholder="INFORME DEL PROGRESO DEL APRENDIZAJE DEL ESTUDIANTE"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border text-xs font-bold"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Subtítulo Normativo / Referencia Curricular
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.libretaSubtitulo || ''}
+                    onChange={(e) => handleChange('libretaSubtitulo', e.target.value)}
+                    placeholder="Currículo Nacional de la Educación Básica (CNEB - MINEDU)"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border text-xs"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Pie de Página Legal / Constancia de Emisión
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={formData.libretaMensajePie || ''}
+                    onChange={(e) => handleChange('libretaMensajePie', e.target.value)}
+                    placeholder="Documento Oficial con Valor Legal emitido por el Sistema de Gestión Escolar."
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border text-xs"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* 4. Módulos y Secciones Visibles */}
+            <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <Sliders className="w-4 h-4 text-teal-600" />
+                Módulos y Columnas Visibles en la Libreta
+              </h3>
+              <p className="text-xs text-slate-500">
+                Activa o desactiva qué secciones se imprimen en el informe de notas según los requerimientos de tu colegio.
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                {[
+                  {
+                    key: 'libretaMostrarEscudo' as const,
+                    label: 'Escudo / Logotipo Institucional',
+                    desc: 'Muestra el logo o insignia en la cabecera',
+                  },
+                  {
+                    key: 'libretaMostrarFotoEstudiante' as const,
+                    label: 'Fotografía / Avatar del Estudiante',
+                    desc: 'Identificador fotográfico del alumno',
+                  },
+                  {
+                    key: 'libretaMostrarAsistencia' as const,
+                    label: 'Resumen de Asistencia y Conducta',
+                    desc: 'Porcentaje anual, tardanzas y deméritos',
+                  },
+                  {
+                    key: 'libretaMostrarEscalaCneb' as const,
+                    label: 'Guía de Escala CNEB (AD, A, B, C)',
+                    desc: 'Explicación del logro esperado para padres',
+                  },
+                  {
+                    key: 'libretaMostrarObservaciones' as const,
+                    label: 'Conclusiones Descriptivas Anuales',
+                    desc: 'Columna con observaciones cualitativas',
+                  },
+                  {
+                    key: 'libretaMostrarQrVerificacion' as const,
+                    label: 'Sello QR de Validación Digital',
+                    desc: 'Código QR contra adulteración y fraude',
+                  },
+                ].map((mod) => (
+                  <div
+                    key={mod.key}
+                    className="flex items-center justify-between p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 hover:bg-slate-50 dark:hover:bg-slate-800/70 transition-colors"
+                  >
+                    <div className="space-y-0.5 pr-2">
+                      <span className="text-xs font-bold text-slate-900 dark:text-white block">{mod.label}</span>
+                      <span className="text-[10px] text-slate-500 block">{mod.desc}</span>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={formData[mod.key] !== false}
+                      onChange={(e) => handleChange(mod.key, e.target.checked)}
+                      className="w-4 h-4 rounded text-teal-600 cursor-pointer shrink-0"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* 5. Firmas y Sellos Autorizados */}
+            <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <Stamp className="w-4 h-4 text-teal-600" />
+                Firmas Oficiales al Pie del Documento
+              </h3>
+              <p className="text-xs text-slate-500">
+                Elige qué líneas de firma se distribuirán automáticamente al final de cada libreta.
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="flex items-center justify-between p-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
+                  <div>
+                    <span className="text-xs font-bold block text-slate-900 dark:text-white">Director(a)</span>
+                    <span className="text-[10px] text-slate-500">Dirección General</span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={formData.libretaFirmaDirector !== false}
+                    onChange={(e) => handleChange('libretaFirmaDirector', e.target.checked)}
+                    className="w-4 h-4 rounded text-teal-600 cursor-pointer"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between p-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
+                  <div>
+                    <span className="text-xs font-bold block text-slate-900 dark:text-white">Tutor(a) de Aula</span>
+                    <span className="text-[10px] text-slate-500">Docente tutor</span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={formData.libretaFirmaTutor !== false}
+                    onChange={(e) => handleChange('libretaFirmaTutor', e.target.checked)}
+                    className="w-4 h-4 rounded text-teal-600 cursor-pointer"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between p-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
+                  <div>
+                    <span className="text-xs font-bold block text-slate-900 dark:text-white">Padre / Apoderado</span>
+                    <span className="text-[10px] text-slate-500">Conformidad</span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={formData.libretaFirmaApoderado !== false}
+                    onChange={(e) => handleChange('libretaFirmaApoderado', e.target.checked)}
+                    className="w-4 h-4 rounded text-teal-600 cursor-pointer"
+                  />
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          {/* Columna Derecha: Vista Previa en Vivo */}
+          <div className="lg:col-span-5 space-y-6">
+            <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4 sticky top-20">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 className="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                  <Eye className="w-4 h-4 text-teal-600" />
+                  Vista Previa en Vivo
+                </h3>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                  {formData.libretaOrientacion === 'horizontal' ? 'Apaisado A4' : 'Vertical A4'}
+                </span>
+              </div>
+
+              {/* Botón de descarga de muestra PDF */}
+              <button
+                type="button"
+                onClick={handleDownloadLibretaSamplePdf}
+                disabled={isGeneratingLibretaSamplePdf}
+                className="w-full py-2.5 px-4 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-black shadow-md shadow-teal-600/20 flex items-center justify-center gap-2 cursor-pointer transition-all disabled:opacity-50"
+              >
+                <Download className="w-4 h-4" />
+                {isGeneratingLibretaSamplePdf ? 'Generando PDF Oficial...' : 'Descargar Muestra Oficial en PDF'}
+              </button>
+
+              {/* Maqueta Interactiva de la Libreta */}
+              <div
+                className={`rounded-2xl border-2 bg-white text-slate-900 shadow-lg p-4 text-[10px] space-y-3 transition-all ${
+                  formData.libretaEstilo === 'moderno_ejecutivo'
+                    ? 'border-teal-500/80 shadow-teal-500/5'
+                    : formData.libretaEstilo === 'academico_elegante'
+                    ? 'border-double border-4 border-slate-800'
+                    : formData.libretaEstilo === 'minimalista_compacto'
+                    ? 'border-slate-300 p-3 space-y-2 text-[9px]'
+                    : 'border-slate-800'
+                }`}
+              >
+                {/* Cabecera de la Libreta */}
+                <div
+                  className={`pb-2.5 border-b flex items-start justify-between gap-2 ${
+                    formData.libretaEstilo === 'moderno_ejecutivo'
+                      ? 'p-2 rounded-xl bg-gradient-to-r from-slate-50 via-white to-slate-50 border'
+                      : 'border-slate-300'
+                  }`}
+                  style={{
+                    borderColor: formData.libretaEstilo === 'moderno_ejecutivo' ? (formData.libretaColorCabecera || '#1e3a8a') : undefined,
+                  }}
+                >
+                  <div className="flex items-center gap-2">
+                    {formData.libretaMostrarEscudo !== false && (
+                      formData.logoUrl ? (
+                        <img src={formData.logoUrl} alt="" className="w-8 h-8 rounded-lg object-contain border p-0.5 bg-white" />
+                      ) : (
+                        <div
+                          className="w-8 h-8 rounded-lg text-white font-black flex items-center justify-center text-[10px] shadow-sm"
+                          style={{ backgroundColor: formData.libretaColorCabecera || '#1e3a8a' }}
+                        >
+                          {formData.siglas || 'IE'}
+                        </div>
+                      )
+                    )}
+                    <div>
+                      <p className="text-[7px] font-black uppercase tracking-wider text-slate-400">MINEDU • SIAGIE</p>
+                      <h4 className="font-black text-[10px] text-slate-900 leading-tight">
+                        {formData.nombreInstitucion || 'COLEGIO NACIONAL'}
+                      </h4>
+                      <p className="text-[8px] text-slate-500">
+                        {formData.dre || 'DRE Lima'} • {formData.ugel || 'UGEL 03'} • Cód: {formData.codigoModular || '0482910'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="text-right shrink-0">
+                    <span
+                      className="text-[7px] font-bold uppercase block px-1.5 py-0.5 rounded"
+                      style={{
+                        backgroundColor: `${formData.libretaColorCabecera || '#1e3a8a'}15`,
+                        color: formData.libretaColorCabecera || '#1e3a8a',
+                      }}
+                    >
+                      Año Lectivo 2026
+                    </span>
+                    <span className="text-[7px] font-mono text-slate-400 block mt-0.5">RD 0482-2026</span>
+                  </div>
+                </div>
+
+                {/* Título de la libreta */}
+                <div className="text-center pt-0.5">
+                  <h5
+                    className="font-black uppercase text-[10px] tracking-wide"
+                    style={{ color: formData.libretaColorCabecera || '#1e3a8a' }}
+                  >
+                    {formData.libretaTitulo || 'INFORME DEL PROGRESO DEL APRENDIZAJE DEL ESTUDIANTE'}
+                  </h5>
+                  <p className="text-[7.5px] text-slate-500 leading-tight">
+                    {formData.libretaSubtitulo || 'Currículo Nacional de la Educación Básica (CNEB - MINEDU)'}
+                  </p>
+                </div>
+
+                {/* Datos del Estudiante */}
+                <div className="p-2 rounded-xl bg-slate-50 border border-slate-200/80 grid grid-cols-2 gap-1.5 text-[8.5px]">
+                  {formData.libretaMostrarFotoEstudiante !== false && (
+                    <div className="col-span-2 flex items-center gap-2 pb-1 border-b border-slate-200/60">
+                      <div
+                        className="w-5 h-5 rounded-full text-white font-bold flex items-center justify-center text-[8px]"
+                        style={{ backgroundColor: formData.libretaColorCabecera || '#1e3a8a' }}
+                      >
+                        M
+                      </div>
+                      <div>
+                        <span className="text-[7px] text-slate-400 uppercase block font-bold">Estudiante:</span>
+                        <strong className="text-slate-800">Mateo Alejandro Torres Mendoza</strong>
+                      </div>
+                    </div>
+                  )}
+                  <div>
+                    <span className="text-[7px] text-slate-400 uppercase block font-bold">DNI:</span>
+                    <span className="font-mono font-bold text-slate-700">74829103</span>
+                  </div>
+                  <div>
+                    <span className="text-[7px] text-slate-400 uppercase block font-bold">Grado y Sección:</span>
+                    <span className="font-bold text-slate-700">1° Secundaria &quot;A&quot;</span>
+                  </div>
+                </div>
+
+                {/* Tabla Miniatura de Calificaciones */}
+                <div className="overflow-hidden rounded-xl border border-slate-200">
+                  <table className="w-full text-left border-collapse text-[8px]">
+                    <thead>
+                      <tr
+                        className="text-white text-[7.5px] font-bold"
+                        style={{ backgroundColor: formData.libretaColorCabecera || '#1e3a8a' }}
+                      >
+                        <th className="p-1 pl-2">Área Curricular</th>
+                        <th className="p-1 text-center w-6">I</th>
+                        <th className="p-1 text-center w-6">II</th>
+                        <th className="p-1 text-center w-6">III</th>
+                        <th className="p-1 text-center w-6">IV</th>
+                        <th className="p-1 text-center w-8 bg-white/20">Final</th>
+                        {formData.libretaMostrarObservaciones !== false && (
+                          <th className="p-1 pl-2 hidden sm:table-cell">Conclusión Descriptiva</th>
+                        )}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      <tr>
+                        <td className="p-1 pl-2 font-bold text-slate-800">Matemática</td>
+                        <td className="p-1 text-center font-bold text-emerald-700">AD</td>
+                        <td className="p-1 text-center font-bold text-emerald-700">AD</td>
+                        <td className="p-1 text-center font-bold text-blue-700">A</td>
+                        <td className="p-1 text-center font-bold text-emerald-700">AD</td>
+                        <td className="p-1 text-center font-black bg-slate-50 text-emerald-800">AD</td>
+                        {formData.libretaMostrarObservaciones !== false && (
+                          <td className="p-1 pl-2 text-slate-500 italic text-[7px] hidden sm:table-cell">Excelente resolución de problemas.</td>
+                        )}
+                      </tr>
+                      <tr className="bg-slate-50/50">
+                        <td className="p-1 pl-2 font-bold text-slate-800">Comunicación</td>
+                        <td className="p-1 text-center font-bold text-blue-700">A</td>
+                        <td className="p-1 text-center font-bold text-blue-700">A</td>
+                        <td className="p-1 text-center font-bold text-emerald-700">AD</td>
+                        <td className="p-1 text-center font-bold text-blue-700">A</td>
+                        <td className="p-1 text-center font-black bg-slate-50 text-blue-800">A</td>
+                        {formData.libretaMostrarObservaciones !== false && (
+                          <td className="p-1 pl-2 text-slate-500 italic text-[7px] hidden sm:table-cell">Redacta ensayos con gran propiedad.</td>
+                        )}
+                      </tr>
+                      <tr>
+                        <td className="p-1 pl-2 font-bold text-slate-800">Ciencia y Tec.</td>
+                        <td className="p-1 text-center font-bold text-blue-700">A</td>
+                        <td className="p-1 text-center font-bold text-emerald-700">AD</td>
+                        <td className="p-1 text-center font-bold text-emerald-700">AD</td>
+                        <td className="p-1 text-center font-bold text-blue-700">A</td>
+                        <td className="p-1 text-center font-black bg-slate-50 text-emerald-800">AD</td>
+                        {formData.libretaMostrarObservaciones !== false && (
+                          <td className="p-1 pl-2 text-slate-500 italic text-[7px] hidden sm:table-cell">Domina indagación científica.</td>
+                        )}
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Asistencia y Escala CNEB opcional */}
+                <div className="grid grid-cols-2 gap-2 text-[7.5px]">
+                  {formData.libretaMostrarAsistencia !== false && (
+                    <div className="p-1.5 rounded-lg bg-emerald-50/60 border border-emerald-200 text-emerald-950">
+                      <strong className="block font-black text-emerald-900">Asistencia & Conducta</strong>
+                      <span>98% asistido • 180 días • Conducta AD</span>
+                    </div>
+                  )}
+                  {formData.libretaMostrarEscalaCneb !== false && (
+                    <div className="p-1.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-600">
+                      <strong className="block font-black text-slate-800">Escala CNEB</strong>
+                      <span>AD: Destacado • A: Esperado • B • C</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Firmas y Sello QR en miniatura */}
+                <div className="pt-2 border-t border-slate-200 flex items-end justify-between gap-1 text-center text-[7px]">
+                  {formData.libretaFirmaDirector !== false && (
+                    <div className="flex-1">
+                      <div className="border-b border-slate-400 w-16 mx-auto mb-0.5" />
+                      <strong className="block text-slate-800 truncate">{formData.directorNombre || 'Director(a)'}</strong>
+                      <span className="text-slate-400 block text-[6.5px]">Dirección</span>
+                    </div>
+                  )}
+
+                  {formData.libretaMostrarQrVerificacion !== false && (
+                    <div className="flex flex-col items-center shrink-0 px-1">
+                      <div className="w-7 h-7 bg-slate-100 rounded border border-slate-300 p-0.5 flex items-center justify-center">
+                        <span className="font-mono text-[6px] text-slate-600">QR</span>
+                      </div>
+                      <span className="text-[5.5px] text-emerald-600 font-bold mt-0.5">SIAGIE</span>
+                    </div>
+                  )}
+
+                  {formData.libretaFirmaTutor !== false && (
+                    <div className="flex-1">
+                      <div className="border-b border-slate-400 w-16 mx-auto mb-0.5" />
+                      <strong className="block text-slate-800 truncate">Docente Tutor(a)</strong>
+                      <span className="text-slate-400 block text-[6.5px]">Tutoría</span>
+                    </div>
+                  )}
+
+                  {formData.libretaFirmaApoderado !== false && (
+                    <div className="flex-1">
+                      <div className="border-b border-slate-400 w-16 mx-auto mb-0.5" />
+                      <strong className="block text-slate-800 truncate">Padre / Apoderado</strong>
+                      <span className="text-slate-400 block text-[6.5px]">Conformidad</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Pie de Página */}
+                <p className="text-[6.5px] text-slate-400 text-center pt-1 border-t border-slate-100 truncate">
+                  {formData.libretaMensajePie || 'Documento Oficial con Valor Legal emitido por el Sistema de Gestión Escolar.'}
+                </p>
+              </div>
+
             </div>
           </div>
         </div>

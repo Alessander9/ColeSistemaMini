@@ -30,6 +30,22 @@ export interface BatchReportCardsPdfData {
   anioLectivo?: string;
 }
 
+function hexToRgb(hex?: string, fallback: [number, number, number] = [30, 58, 138]): [number, number, number] {
+  if (!hex || !hex.startsWith('#') || (hex.length !== 7 && hex.length !== 4)) return fallback;
+  try {
+    let clean = hex.slice(1);
+    if (clean.length === 3) {
+      clean = clean.split('').map(c => c + c).join('');
+    }
+    const r = parseInt(clean.substring(0, 2), 16);
+    const g = parseInt(clean.substring(2, 4), 16);
+    const b = parseInt(clean.substring(4, 6), 16);
+    return [isNaN(r) ? fallback[0] : r, isNaN(g) ? fallback[1] : g, isNaN(b) ? fallback[2] : b];
+  } catch {
+    return fallback;
+  }
+}
+
 export function renderReportCardPage(doc: jsPDF, data: ReportCardPdfData): void {
   const {
     student,
@@ -59,91 +75,136 @@ export function renderReportCardPage(doc: jsPDF, data: ReportCardPdfData): void 
   const sectionLetter = enrollment?.seccion?.letra || 'A';
   const nivelName = (enrollment?.seccion?.grado?.nivel || 'primaria').toUpperCase();
 
+  const isLandscape = doc.internal.pageSize.getWidth() > doc.internal.pageSize.getHeight();
+  const pageWidth = isLandscape ? 297 : 210;
+  const pageHeight = isLandscape ? 210 : 297;
   const marginX = 14;
-  let y = 12;
+  const contentW = pageWidth - marginX * 2;
+  let y = 11;
 
-  // Colors
+  // Custom styling tokens
+  const estilo = brandingConfig?.libretaEstilo || 'oficial_minedu';
+  const cAccent = hexToRgb(brandingConfig?.libretaColorCabecera || brandingConfig?.primaryColor, [30, 58, 138]);
   const cPrimary = [30, 27, 75]; // Slate dark
-  const cAccent = [67, 56, 202]; // Indigo
   const cDark = [15, 23, 42];
   const cMuted = [71, 85, 105];
   const cBorder = [203, 213, 225];
   const cBgLight = [248, 250, 252];
-  const cTableHead = [238, 242, 255];
+  const cTableHead = estilo === 'moderno_ejecutivo' ? [238, 242, 255] : estilo === 'academico_elegante' ? [245, 243, 238] : [241, 245, 249];
 
-  // 1. INSTITUTIONAL HEADER
+  // Marco ornamental para estilo 'academico_elegante'
+  if (estilo === 'academico_elegante') {
+    doc.setDrawColor(cAccent[0], cAccent[1], cAccent[2]);
+    doc.setLineWidth(0.8);
+    doc.rect(7, 7, pageWidth - 14, pageHeight - 14, 'S');
+    doc.setLineWidth(0.25);
+    doc.rect(8.5, 8.5, pageWidth - 17, pageHeight - 17, 'S');
+  }
+
+  // 1. CABECERA INSTITUCIONAL
+  const docTitle = (brandingConfig?.libretaTitulo || 'INFORME DEL PROGRESO DEL APRENDIZAJE DEL ESTUDIANTE').toUpperCase();
+  const docSubtitle = brandingConfig?.libretaSubtitulo || 'Currículo Nacional de la Educación Básica (CNEB - MINEDU)';
+
   doc.setFillColor(cAccent[0], cAccent[1], cAccent[2]);
-  doc.rect(marginX, y, 182, 2.5, 'F');
+  doc.rect(marginX, y, contentW, 2.5, 'F');
   y += 5;
 
   doc.setFillColor(cBgLight[0], cBgLight[1], cBgLight[2]);
   doc.setDrawColor(cBorder[0], cBorder[1], cBorder[2]);
-  doc.roundedRect(marginX, y, 182, 22, 1.5, 1.5, 'FD');
+  doc.roundedRect(marginX, y, contentW, 22, estilo === 'moderno_ejecutivo' ? 3 : 1.5, estilo === 'moderno_ejecutivo' ? 3 : 1.5, 'FD');
 
   doc.setTextColor(cPrimary[0], cPrimary[1], cPrimary[2]);
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(11);
+  doc.setFontSize(10.5);
   doc.text(schoolName.toUpperCase(), marginX + 4, y + 6);
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7.5);
+  doc.setFontSize(7);
   doc.setTextColor(cMuted[0], cMuted[1], cMuted[2]);
   doc.text(`Cód. Modular: ${codigoModular}  |  ${dre}  |  ${ugel}`, marginX + 4, y + 11);
-  doc.text(`MINISTERIO DE EDUCACIÓN — INFORME DE PROGRESO DEL APRENDIZAJE (CNEB)`, marginX + 4, y + 16);
+  doc.text(`${docTitle} — ${docSubtitle}`, marginX + 4, y + 16);
 
-  // Badge right
+  // Badge derecho año lectivo
+  const badgeW = 38;
   doc.setFillColor(cAccent[0], cAccent[1], cAccent[2]);
-  doc.roundedRect(196 - 40, y + 3, 36, 15, 1, 1, 'F');
+  doc.roundedRect(marginX + contentW - badgeW - 2, y + 3, badgeW, 16, 1.5, 1.5, 'F');
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.5);
-  doc.text('AÑO LECTIVO', 196 - 22, y + 8, { align: 'center' });
-  doc.setFontSize(12);
-  doc.text(anioLectivo, 196 - 22, y + 15, { align: 'center' });
+  doc.setFontSize(7);
+  doc.text('AÑO LECTIVO', marginX + contentW - badgeW / 2 - 2, y + 8, { align: 'center' });
+  doc.setFontSize(11);
+  doc.text(anioLectivo, marginX + contentW - badgeW / 2 - 2, y + 15, { align: 'center' });
 
   y += 25;
 
-  // 2. STUDENT DATA STRIP
+  // 2. FICHA DEL ESTUDIANTE
+  const showPhoto = brandingConfig?.libretaMostrarFotoEstudiante !== false;
+  const stripH = 16;
   doc.setFillColor(cBgLight[0], cBgLight[1], cBgLight[2]);
   doc.setDrawColor(cBorder[0], cBorder[1], cBorder[2]);
-  doc.roundedRect(marginX, y, 182, 16, 1.5, 1.5, 'FD');
+  doc.roundedRect(marginX, y, contentW, stripH, 1.5, 1.5, 'FD');
+
+  let textStartX = marginX + 4;
+  if (showPhoto) {
+    // Foto o placeholder del estudiante
+    doc.setFillColor(226, 232, 240);
+    doc.roundedRect(marginX + 3, y + 2.5, 11, 11, 1, 1, 'FD');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(cMuted[0], cMuted[1], cMuted[2]);
+    const initials = `${student.profile?.nombres?.[0] || student.nombres?.[0] || 'E'}${student.profile?.apellidos?.[0] || student.apellidos?.[0] || ''}`;
+    doc.text(initials, marginX + 8.5, y + 9.5, { align: 'center' });
+    textStartX = marginX + 18;
+  }
 
   doc.setFontSize(7);
   doc.setTextColor(cMuted[0], cMuted[1], cMuted[2]);
   doc.setFont('helvetica', 'normal');
-  doc.text('ESTUDIANTE:', marginX + 4, y + 5);
-  doc.text('DNI:', marginX + 4, y + 12);
-  doc.text('CÓDIGO:', marginX + 50, y + 12);
-  doc.text('NIVEL:', marginX + 90, y + 5);
-  doc.text('GRADO Y SECCIÓN:', marginX + 90, y + 12);
+  doc.text('ESTUDIANTE:', textStartX, y + 5);
+  doc.text('DNI:', textStartX, y + 12);
+  doc.text('CÓDIGO:', textStartX + 45, y + 12);
+  doc.text('NIVEL:', textStartX + 95, y + 5);
+  doc.text('GRADO Y SECCIÓN:', textStartX + 95, y + 12);
 
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(cDark[0], cDark[1], cDark[2]);
-  doc.setFontSize(8.5);
-  doc.text(studentName.toUpperCase(), marginX + 22, y + 5);
-  doc.text(studentDni, marginX + 12, y + 12);
-  doc.text(studentCode, marginX + 63, y + 12);
-  doc.text(nivelName, marginX + 102, y + 5);
-  doc.text(`${gradeName} - "${sectionLetter}"`, marginX + 120, y + 12);
+  doc.setFontSize(8);
+  doc.text(studentName.toUpperCase(), textStartX + 20, y + 5);
+  doc.text(studentDni, textStartX + 8, y + 12);
+  doc.text(studentCode, textStartX + 58, y + 12);
+  doc.text(nivelName, textStartX + 107, y + 5);
+  doc.text(`${gradeName} - "${sectionLetter}"`, textStartX + 126, y + 12);
 
-  y += 19;
+  y += stripH + 3;
 
-  // 3. MAIN GRADES TABLE (CNEB by Competency)
-  const colW = {
-    area: 34,
-    competencia: 66,
-    b1: 10,
-    b2: 10,
-    b3: 10,
-    b4: 10,
-    prom: 11,
-    conclusion: 31,
-  };
+  // 3. TABLA DE CALIFICACIONES CNEB
+  const showObs = brandingConfig?.libretaMostrarObservaciones !== false;
+  const colW = isLandscape
+    ? {
+        area: 50,
+        competencia: 100,
+        b1: 15,
+        b2: 15,
+        b3: 15,
+        b4: 15,
+        prom: 18,
+        conclusion: showObs ? 41 : 0,
+      }
+    : {
+        area: 34,
+        competencia: showObs ? 66 : 97,
+        b1: 10,
+        b2: 10,
+        b3: 10,
+        b4: 10,
+        prom: 11,
+        conclusion: showObs ? 31 : 0,
+      };
 
-  // Table Header
+  // Cabecera de la tabla
   doc.setFillColor(cTableHead[0], cTableHead[1], cTableHead[2]);
   doc.setDrawColor(cBorder[0], cBorder[1], cBorder[2]);
-  doc.rect(marginX, y, 182, 8, 'FD');
+  doc.rect(marginX, y, contentW, 8, 'FD');
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(6.5);
@@ -164,25 +225,26 @@ export function renderReportCardPage(doc: jsPDF, data: ReportCardPdfData): void 
   hx += colW.b4;
   doc.text('FINAL', hx + 2, y + 5.5);
   hx += colW.prom;
-  doc.text('CONCLUSIÓN DESCRIP.', hx + 2, y + 5.5);
+  if (showObs) {
+    doc.text('CONCLUSIÓN DESCRIP.', hx + 2, y + 5.5);
+  }
 
   y += 8;
 
-  // Render Courses and Competencies
+  // Render Cursos y Competencias
   let rowCount = 0;
   courses.forEach(course => {
     const comps = course.competencias || [];
     const courseGrades = grades.filter(g => comps.some(c => c.id === g.competencia_id) && g.matricula_id === enrollment?.id);
 
     if (comps.length === 0) {
-      // Single course row without competencies
       const isAlt = rowCount % 2 === 1;
       if (isAlt) {
         doc.setFillColor(252, 252, 254);
-        doc.rect(marginX, y, 182, 6, 'F');
+        doc.rect(marginX, y, contentW, 6, 'F');
       }
       doc.setDrawColor(cBorder[0], cBorder[1], cBorder[2]);
-      doc.rect(marginX, y, 182, 6, 'S');
+      doc.rect(marginX, y, contentW, 6, 'S');
 
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(6.5);
@@ -200,12 +262,11 @@ export function renderReportCardPage(doc: jsPDF, data: ReportCardPdfData): void 
 
       if (isAlt) {
         doc.setFillColor(252, 252, 254);
-        doc.rect(marginX, y, 182, rowHeight, 'F');
+        doc.rect(marginX, y, contentW, rowHeight, 'F');
       }
       doc.setDrawColor(cBorder[0], cBorder[1], cBorder[2]);
-      doc.rect(marginX, y, 182, rowHeight, 'S');
+      doc.rect(marginX, y, contentW, rowHeight, 'S');
 
-      // Course name (only on first competency row)
       if (compIdx === 0) {
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(6.5);
@@ -214,14 +275,12 @@ export function renderReportCardPage(doc: jsPDF, data: ReportCardPdfData): void 
         doc.text(courseLines[0] || course.nombre, marginX + 2, y + 4.5);
       }
 
-      // Competency name
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(6);
       doc.setTextColor(cDark[0], cDark[1], cDark[2]);
       const compLines = doc.splitTextToSize(comp.descripcion || comp.codigo, colW.competencia - 3);
       doc.text(compLines[0] || comp.descripcion || '', marginX + colW.area + 2, y + 4.5);
 
-      // Bimestre grades
       let bx = marginX + colW.area + colW.competencia;
       const bKeys = ['eval-b1', 'eval-b2', 'eval-b3', 'eval-b4'];
       const compGradesList: GradeLetter[] = [];
@@ -239,11 +298,10 @@ export function renderReportCardPage(doc: jsPDF, data: ReportCardPdfData): void 
         else if (letter === 'C') doc.setTextColor(220, 38, 38);
         else doc.setTextColor(cMuted[0], cMuted[1], cMuted[2]);
 
-        doc.text(letter, bx + 4, y + 5);
-        bx += 10;
+        doc.text(letter, bx + (isLandscape ? 6 : 4), y + 5);
+        bx += colW.b1;
       });
 
-      // Final Grade for this competency
       const finalLetter = compGradesList.length > 0 ? compGradesList[compGradesList.length - 1] : '-';
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(7);
@@ -252,17 +310,18 @@ export function renderReportCardPage(doc: jsPDF, data: ReportCardPdfData): void 
       else if (finalLetter === 'B') doc.setTextColor(180, 83, 9);
       else if (finalLetter === 'C') doc.setTextColor(220, 38, 38);
       else doc.setTextColor(cMuted[0], cMuted[1], cMuted[2]);
-      doc.text(finalLetter, bx + 4, y + 5);
+      doc.text(finalLetter, bx + (isLandscape ? 7 : 4), y + 5);
       bx += colW.prom;
 
-      // Descriptive conclusion snippet
-      const latestGradeRec = courseGrades.filter(g => g.competencia_id === comp.id && g.conclusion_descriptiva).pop();
-      const concText = latestGradeRec?.conclusion_descriptiva || '';
-      doc.setFont('helvetica', 'italic');
-      doc.setFontSize(5.5);
-      doc.setTextColor(cMuted[0], cMuted[1], cMuted[2]);
-      const concLines = doc.splitTextToSize(concText, colW.conclusion - 3);
-      doc.text(concLines[0] || '-', bx + 1.5, y + 4.5);
+      if (showObs) {
+        const latestGradeRec = courseGrades.filter(g => g.competencia_id === comp.id && g.conclusion_descriptiva).pop();
+        const concText = latestGradeRec?.conclusion_descriptiva || '';
+        doc.setFont('helvetica', 'italic');
+        doc.setFontSize(5.5);
+        doc.setTextColor(cMuted[0], cMuted[1], cMuted[2]);
+        const concLines = doc.splitTextToSize(concText, colW.conclusion - 3);
+        doc.text(concLines[0] || '-', bx + 1.5, y + 4.5);
+      }
 
       y += rowHeight;
       rowCount++;
@@ -271,76 +330,97 @@ export function renderReportCardPage(doc: jsPDF, data: ReportCardPdfData): void 
 
   y += 4;
 
-  // 4. ATTENDANCE STRIP
-  const attPresent = attendances.filter(a => a.estado === 'presente').length;
-  const attLate = attendances.filter(a => a.estado === 'tardanza').length;
-  const attAbsent = attendances.filter(a => a.estado === 'falta').length;
-  const attJustified = attendances.filter(a => a.estado === 'justificado').length;
+  // 4. RESUMEN DE ASISTENCIA (Opcional según branding)
+  if (brandingConfig?.libretaMostrarAsistencia !== false) {
+    const attPresent = attendances.filter(a => a.estado === 'presente').length;
+    const attLate = attendances.filter(a => a.estado === 'tardanza').length;
+    const attAbsent = attendances.filter(a => a.estado === 'falta').length;
+    const attJustified = attendances.filter(a => a.estado === 'justificado').length;
 
-  doc.setFillColor(cBgLight[0], cBgLight[1], cBgLight[2]);
-  doc.setDrawColor(cBorder[0], cBorder[1], cBorder[2]);
-  doc.roundedRect(marginX, y, 182, 10, 1, 1, 'FD');
+    doc.setFillColor(cBgLight[0], cBgLight[1], cBgLight[2]);
+    doc.setDrawColor(cBorder[0], cBorder[1], cBorder[2]);
+    doc.roundedRect(marginX, y, contentW, 9, 1, 1, 'FD');
 
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(6.5);
-  doc.setTextColor(cAccent[0], cAccent[1], cAccent[2]);
-  doc.text('RESUMEN DE ASISTENCIA:', marginX + 3, y + 6.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(6.5);
+    doc.setTextColor(cAccent[0], cAccent[1], cAccent[2]);
+    doc.text('RESUMEN DE ASISTENCIA:', marginX + 3, y + 6);
 
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(cDark[0], cDark[1], cDark[2]);
+    doc.text(`Asistencias: ${attPresent}   |   Tardanzas: ${attLate}   |   Inasistencias: ${attAbsent}   |   Justificadas: ${attJustified}`, marginX + 42, y + 6);
+
+    y += 12;
+  }
+
+  // 5. ESCALA DE CALIFICACIÓN CNEB (Opcional según branding)
+  if (brandingConfig?.libretaMostrarEscalaCneb !== false) {
+    doc.setFillColor(248, 250, 252);
+    doc.rect(marginX, y, contentW, 10, 'F');
+    doc.setDrawColor(cBorder[0], cBorder[1], cBorder[2]);
+    doc.rect(marginX, y, contentW, 10, 'S');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(6.5);
+    doc.setTextColor(cAccent[0], cAccent[1], cAccent[2]);
+    doc.text('ESCALA DE CALIFICACIÓN DEL CURRÍCULO NACIONAL (CNEB - MINEDU):', marginX + 3, y + 4);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6);
+    doc.setTextColor(cMuted[0], cMuted[1], cMuted[2]);
+    doc.text('AD: Logro Destacado  |  A: Logro Esperado  |  B: En Proceso  |  C: En Inicio', marginX + 3, y + 8);
+
+    y += 13;
+  }
+
+  // 6. FIRMAS CONFIGURABLES (Director, Tutor, Apoderado)
+  const signatures: { title: string; subtitle: string }[] = [];
+  if (brandingConfig?.libretaFirmaDirector !== false) {
+    signatures.push({ title: directorName, subtitle: 'Director(a) General' });
+  }
+  if (brandingConfig?.libretaFirmaTutor !== false) {
+    signatures.push({ title: customTutorName || 'Docente Tutor de Aula', subtitle: 'Tutor(a) de Aula' });
+  }
+  if (brandingConfig?.libretaFirmaApoderado === true) {
+    signatures.push({ title: 'Firma del Padre o Apoderado', subtitle: 'Recepción y Conformidad' });
+  }
+
+  if (signatures.length > 0) {
+    const sigY = Math.max(y + 4, pageHeight - 25);
+    const numSigs = signatures.length;
+    const sigW = numSigs === 3 ? 46 : 54;
+    const totalSpacing = contentW - numSigs * sigW;
+    const gap = totalSpacing / (numSigs + 1);
+
+    signatures.forEach((sig, sIdx) => {
+      const sx = marginX + gap * (sIdx + 1) + sigW * sIdx;
+      doc.setDrawColor(cMuted[0], cMuted[1], cMuted[2]);
+      doc.line(sx, sigY, sx + sigW, sigY);
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(6.5);
+      doc.setTextColor(cDark[0], cDark[1], cDark[2]);
+      doc.text(sig.title, sx + sigW / 2, sigY + 3.8, { align: 'center' });
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(5.5);
+      doc.setTextColor(cMuted[0], cMuted[1], cMuted[2]);
+      doc.text(sig.subtitle, sx + sigW / 2, sigY + 7, { align: 'center' });
+    });
+  }
+
+  // 7. PIE DE PÁGINA INSTITUCIONAL / QR DE SEGURIDAD
+  const footerText = brandingConfig?.libretaMensajePie || 'Documento Oficial con Valor Legal emitido por el Sistema de Gestión Escolar.';
   doc.setFont('helvetica', 'normal');
-  doc.setTextColor(cDark[0], cDark[1], cDark[2]);
-  doc.text(`Asistencias: ${attPresent}   |   Tardanzas: ${attLate}   |   Inasistencias: ${attAbsent}   |   Justificadas: ${attJustified}`, marginX + 42, y + 6.5);
-
-  y += 14;
-
-  // 5. ESCALA DE CALIFICACIÓN CNEB
-  doc.setFillColor(248, 250, 252);
-  doc.rect(marginX, y, 182, 11, 'F');
-  doc.setDrawColor(cBorder[0], cBorder[1], cBorder[2]);
-  doc.rect(marginX, y, 182, 11, 'S');
-
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(6.5);
-  doc.setTextColor(cAccent[0], cAccent[1], cAccent[2]);
-  doc.text('ESCALA DE CALIFICACIÓN DEL CURRÍCULO NACIONAL (CNEB - MINEDU):', marginX + 3, y + 4);
-
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6);
+  doc.setFontSize(5.5);
   doc.setTextColor(cMuted[0], cMuted[1], cMuted[2]);
-  doc.text('AD: Logro Destacado  |  A: Logro Esperado  |  B: En Proceso  |  C: En Inicio', marginX + 3, y + 8.5);
-
-  y += 16;
-
-  // 6. SIGNATURES
-  const sigY = Math.max(y, 255);
-  const sigW = 55;
-
-  // Director
-  doc.setDrawColor(cMuted[0], cMuted[1], cMuted[2]);
-  doc.line(marginX + 20, sigY, marginX + 20 + sigW, sigY);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7);
-  doc.setTextColor(cDark[0], cDark[1], cDark[2]);
-  doc.text(directorName, marginX + 20 + sigW / 2, sigY + 4, { align: 'center' });
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6);
-  doc.setTextColor(cMuted[0], cMuted[1], cMuted[2]);
-  doc.text('Director General', marginX + 20 + sigW / 2, sigY + 7.5, { align: 'center' });
-
-  // Tutor
-  doc.line(196 - marginX - sigW - 20, sigY, 196 - marginX - 20, sigY);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7);
-  doc.setTextColor(cDark[0], cDark[1], cDark[2]);
-  doc.text(customTutorName || 'Docente Tutor de Aula', 196 - marginX - 20 - sigW / 2, sigY + 4, { align: 'center' });
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6);
-  doc.setTextColor(cMuted[0], cMuted[1], cMuted[2]);
-  doc.text(customTutorName ? 'Docente Tutor de Aula' : 'Firma del Tutor', 196 - marginX - 20 - sigW / 2, sigY + 7.5, { align: 'center' });
+  doc.text(footerText, pageWidth / 2, pageHeight - 4, { align: 'center' });
 }
 
 export async function generateReportCardPdf(data: ReportCardPdfData): Promise<jsPDF> {
+  const isLandscape = data.brandingConfig?.libretaOrientacion === 'horizontal';
   const doc = new jsPDF({
-    orientation: 'portrait',
+    orientation: isLandscape ? 'landscape' : 'portrait',
     unit: 'mm',
     format: 'a4',
   });
@@ -349,15 +429,17 @@ export async function generateReportCardPdf(data: ReportCardPdfData): Promise<js
 }
 
 export async function generateBatchReportCardsPdf(data: BatchReportCardsPdfData): Promise<jsPDF> {
+  const firstBranding = data.items[0]?.brandingConfig;
+  const isLandscape = firstBranding?.libretaOrientacion === 'horizontal';
   const doc = new jsPDF({
-    orientation: 'portrait',
+    orientation: isLandscape ? 'landscape' : 'portrait',
     unit: 'mm',
     format: 'a4',
   });
 
   data.items.forEach((item, index) => {
     if (index > 0) {
-      doc.addPage('a4', 'portrait');
+      doc.addPage('a4', isLandscape ? 'landscape' : 'portrait');
     }
     renderReportCardPage(doc, item);
   });

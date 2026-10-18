@@ -157,6 +157,23 @@ export const DEFAULT_BRANDING_CONFIG: SystemBrandingConfig = {
   diplomaFirmaTutor: true,
   diplomaTextoPredeterminado: 'Por su destacado rendimiento académico y ejemplar compromiso con los valores institucionales durante el Año Lectivo 2026.',
 
+  // Diseñador de Libreta de Notas Oficial
+  libretaEstilo: 'oficial_minedu',
+  libretaColorCabecera: '#1e3a8a',
+  libretaTitulo: 'INFORME DEL PROGRESO DEL APRENDIZAJE DEL ESTUDIANTE',
+  libretaSubtitulo: 'Currículo Nacional de la Educación Básica (CNEB - MINEDU)',
+  libretaMostrarEscudo: true,
+  libretaMostrarFotoEstudiante: true,
+  libretaMostrarAsistencia: true,
+  libretaMostrarEscalaCneb: true,
+  libretaMostrarObservaciones: true,
+  libretaMostrarQrVerificacion: true,
+  libretaFirmaDirector: true,
+  libretaFirmaTutor: true,
+  libretaFirmaApoderado: true,
+  libretaOrientacion: 'vertical',
+  libretaMensajePie: 'Documento Oficial con Valor Legal emitido por el Sistema de Gestión Escolar.',
+
   // Sonido Institucional del Kiosco QR
   kioskSoundPreset: 'chime',
 
