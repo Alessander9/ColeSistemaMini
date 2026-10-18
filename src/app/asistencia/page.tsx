@@ -44,6 +44,7 @@ import { useRouter } from 'next/navigation';
 import confetti from 'canvas-confetti';
 import { findStudentByQr, parseQrPayload, getTodayLocalIso } from '@/lib/attendance/qrMatcher';
 import { initialsAvatarUrl } from '@/lib/avatar';
+import { logoutUser } from '@/lib/services/authService';
 
 // ── Componente de Reloj Aislado y Memoizado (Evita re-renderizar toda la página del Kiosco cada segundo) ──
 const KioscoClock = React.memo(function KioscoClock() {
@@ -793,10 +794,13 @@ export default function AsistenciaKioscoPage() {
     }
   };
 
-  const getReturnUrl = () => {
-    if (currentUser?.rol === 'admin') return '/admin';
-    if (currentUser?.rol === 'docente') return '/docente/asistencia';
-    return '/admin';
+  const handleBackToLogin = async () => {
+    try {
+      await logoutUser();
+    } catch {
+      /* ignore */
+    }
+    router.replace('/login');
   };
 
   const schoolTitle = brandingConfig?.nombreInstitucion || 'Colegio San Martín de Porres';
@@ -850,15 +854,16 @@ export default function AsistenciaKioscoPage() {
               {isFullscreen ? <Minimize2 className="w-4 h-4 text-emerald-400" /> : <Maximize2 className="w-4 h-4" />}
             </button>
 
-            {/* Volver al Panel Button */}
+            {/* Botón De Vuelta al Login */}
             <button
               type="button"
-              onClick={() => router.push(getReturnUrl())}
+              onClick={handleBackToLogin}
               className="inline-flex items-center gap-1.5 px-2.5 sm:px-3.5 py-2 rounded-xl bg-[#131d33] hover:bg-[#1c2a47] text-slate-200 hover:text-white text-xs font-bold transition-all border border-slate-700/80 active:scale-95 cursor-pointer shrink-0"
-              title="Volver al panel"
+              title="De vuelta al login"
             >
               <ArrowLeft className="w-4 h-4 text-slate-300" />
-              <span className="hidden md:inline">Volver al Panel</span>
+              <span className="hidden sm:inline">De vuelta al login</span>
+              <span className="sm:hidden">Login</span>
             </button>
 
           </div>
