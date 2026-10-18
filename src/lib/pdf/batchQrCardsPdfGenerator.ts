@@ -55,7 +55,7 @@ export async function generateBatchQrCardsPdf(data: BatchQrCardsPdfData): Promis
     const studentCode = student.codigo_estudiante || `EST-${student.id.slice(-6)}`;
     const dni = student.profile?.dni || student.dni || 'Sin DNI';
     const aulaStr = item.section ? `${item.section.grado?.nombre || 'Grado'} "${item.section.letra}"` : sectionName;
-    const qrToken = student.codigo_estudiante || dni;
+    const qrToken = student.token_qr || student.codigo_estudiante || dni;
 
     // Generate QR Code data URL
     let qrDataUrl = '';

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { findStudentByQr, parseQrPayload } from '../lib/attendance/qrMatcher';
+import { findStudentByQr, parseQrPayload, getTodayLocalIso } from '../lib/attendance/qrMatcher';
 
 const lucas = {
   id: 'student-1',
@@ -60,5 +60,22 @@ describe('Lectura del QR del carnet (kiosco de asistencia)', () => {
     expect(findStudentByQr(students, 'Lucas')).toBeUndefined();
     expect(findStudentByQr(students, '7080901')).toBeUndefined();
     expect(findStudentByQr(students, '')).toBeUndefined();
+    expect(findStudentByQr(students, null as unknown as string)).toBeUndefined();
+    expect(findStudentByQr(students, undefined as unknown as string)).toBeUndefined();
+  });
+
+  it('parseQrPayload es defensivo ante tipos no-string', () => {
+    expect(parseQrPayload(null)).toBe('');
+    expect(parseQrPayload(undefined)).toBe('');
+    expect(parseQrPayload('')).toBe('');
+    expect(parseQrPayload(12345)).toBe('12345');
+    expect(parseQrPayload('   ')).toBe('');
+  });
+
+  it('getTodayLocalIso produce fecha local en formato YYYY-MM-DD sin desvío UTC', () => {
+    const fixedDate = new Date(2026, 9, 17, 23, 45, 0); // 17 de Octubre 23:45 (en UTC sería ya 18 de Octubre)
+    const localIso = getTodayLocalIso(fixedDate);
+    expect(localIso).toBe('2026-10-17');
+    expect(/^\d{4}-\d{2}-\d{2}$/.test(getTodayLocalIso())).toBe(true);
   });
 });

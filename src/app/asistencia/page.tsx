@@ -37,7 +37,7 @@ import {
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import confetti from 'canvas-confetti';
-import { findStudentByQr, parseQrPayload } from '@/lib/attendance/qrMatcher';
+import { findStudentByQr, parseQrPayload, getTodayLocalIso } from '@/lib/attendance/qrMatcher';
 import { initialsAvatarUrl } from '@/lib/avatar';
 
 export default function AsistenciaKioscoPage() {
@@ -50,6 +50,7 @@ export default function AsistenciaKioscoPage() {
     enrollments,
     registerAttendance,
     recordStaffAttendance,
+    refreshData,
     brandingConfig,
   } = useApp();
 
@@ -110,12 +111,13 @@ export default function AsistenciaKioscoPage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const rafRef = useRef<number | null>(null);
+  const fallbackScannerRef = useRef<any>(null);
   const alertTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastDecodeRef = useRef<string>('');
   const decodeCooldownRef = useRef(false);
 
   // ── Today's Attendance Calculations ────────────────────────────────────────
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = getTodayLocalIso();
   const todayAttendances = attendances.filter(a => a.fecha === todayStr);
 
   const aTiempoCount = todayAttendances.filter(a => a.estado === 'presente').length;
@@ -409,20 +411,74 @@ export default function AsistenciaKioscoPage() {
       return;
     }
 
-    // ── Case 3: ERROR / NOT FOUND ──
-    playTone('error');
-    setActiveAlert({
-      type: 'error',
-      title: 'No pudimos leer el código QR',
-      message: 'El código no pertenece a ningún estudiante matriculado. Intenta nuevamente o utiliza el registro manual.',
-      studentName: 'Código: ' + rawClean,
-      time: timeStr,
-    });
-
-    alertTimeoutRef.current = setTimeout(() => {
-      setActiveAlert(null);
-    }, 4500);
-  }, [students, enrollments, users, scanMode, registerAttendance, recordStaffAttendance, playTone]);
+    // ── Case 3: FALLBACK AL SERVIDOR / NOT FOUND ──
+    // Si la búsqueda local en el Kiosco falló (ej. alumno recién matriculado en otra máquina),
+    // consultamos la API del servidor en tiempo real
+    fetch('/api/asistencia/scan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tokenQr: rawClean, metodo: 'qr', status: calculatedStatus }),
+    })
+      .then(async (apiRes) => {
+        const data = await apiRes.json();
+        if (data.success) {
+          playTone('success');
+          confetti({ particleCount: 45, spread: 60, origin: { y: 0.6 } });
+          setActiveAlert({
+            type: 'success',
+            title: '¡Asistencia registrada!',
+            message: data.message || `Ingreso marcado a las ${timeStr} correctamente.`,
+            studentName: data.data?.estudiante || studentFullName,
+            studentCode: data.data?.codigo || rawClean,
+            time: timeStr,
+            statusBadge: calculatedStatus === 'tardanza' ? 'TARDANZA' : 'A TIEMPO',
+          });
+          refreshData();
+          alertTimeoutRef.current = setTimeout(() => {
+            setActiveAlert(null);
+          }, 4500);
+        } else if (data.duplicate) {
+          playTone('duplicate');
+          setActiveAlert({
+            type: 'duplicate',
+            title: 'Asistencia ya registrada',
+            message: data.message || 'El alumno ya cuenta con asistencia registrada hoy.',
+            studentName: data.data?.estudiante || studentFullName,
+            studentCode: data.data?.codigo || rawClean,
+            time: timeStr,
+            statusBadge: 'DUPLICADO',
+          });
+          alertTimeoutRef.current = setTimeout(() => {
+            setActiveAlert(null);
+          }, 4500);
+        } else {
+          playTone('error');
+          setActiveAlert({
+            type: 'error',
+            title: 'No pudimos leer el código QR',
+            message: data.message || 'El código no pertenece a ningún estudiante matriculado. Intenta nuevamente o utiliza el registro manual.',
+            studentName: 'Código: ' + rawClean,
+            time: timeStr,
+          });
+          alertTimeoutRef.current = setTimeout(() => {
+            setActiveAlert(null);
+          }, 4500);
+        }
+      })
+      .catch(() => {
+        playTone('error');
+        setActiveAlert({
+          type: 'error',
+          title: 'No pudimos leer el código QR',
+          message: 'El código no pertenece a ningún estudiante matriculado. Intenta nuevamente o utiliza el registro manual.',
+          studentName: 'Código: ' + rawClean,
+          time: timeStr,
+        });
+        alertTimeoutRef.current = setTimeout(() => {
+          setActiveAlert(null);
+        }, 4500);
+      });
+  }, [students, enrollments, users, scanMode, registerAttendance, recordStaffAttendance, playTone, refreshData]);
 
   // ── USB Barcode & QR Gun Scanner Global Listener ───────────────────────────
   useEffect(() => {
@@ -500,20 +556,21 @@ export default function AsistenciaKioscoPage() {
                   return;
                 }
                 try {
-                  const { Html5Qrcode } = await import('html5-qrcode');
-                  const tempId = 'kiosk-qr-temp-decode';
-                  let tempEl = document.getElementById(tempId);
-                  if (!tempEl) {
-                    tempEl = document.createElement('div');
-                    tempEl.id = tempId;
-                    tempEl.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;';
-                    document.body.appendChild(tempEl);
+                  if (!fallbackScannerRef.current) {
+                    const { Html5Qrcode } = await import('html5-qrcode');
+                    const tempId = 'kiosk-qr-temp-decode';
+                    let tempEl = document.getElementById(tempId);
+                    if (!tempEl) {
+                      tempEl = document.createElement('div');
+                      tempEl.id = tempId;
+                      tempEl.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;';
+                      document.body.appendChild(tempEl);
+                    }
+                    fallbackScannerRef.current = new Html5Qrcode(tempId, { verbose: false });
                   }
-                  const h = new Html5Qrcode(tempId, { verbose: false });
                   const file = new File([blob], 'frame.jpg', { type: 'image/jpeg' });
-                  const result = await h.scanFile(file, false);
+                  const result = await fallbackScannerRef.current.scanFile(file, false);
                   handleProcessCode(result);
-                  await h.clear();
                 } catch {
                   /* Frame scan continue */
                 }
@@ -557,6 +614,14 @@ export default function AsistenciaKioscoPage() {
     }
     if (videoRef.current) {
       videoRef.current.srcObject = null;
+    }
+    if (fallbackScannerRef.current) {
+      try {
+        fallbackScannerRef.current.clear();
+      } catch {
+        /* ignore */
+      }
+      fallbackScannerRef.current = null;
     }
     setIsCameraActive(false);
   }, []);

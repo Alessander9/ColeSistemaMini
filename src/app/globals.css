@@ -205,6 +205,22 @@
   animation: slide-right 0.4s ease forwards;
 }
 
+/* ===== TELÓN / CURTAIN DROP SMOOTH ANIMATION ===== */
+@keyframes curtain-drop {
+  0% {
+    opacity: 0;
+    transform: translateY(-40px) scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-curtain-drop {
+  animation: curtain-drop 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
 /* Stagger delays */
 .delay-100 { animation-delay: 100ms; }
 .delay-200 { animation-delay: 200ms; }

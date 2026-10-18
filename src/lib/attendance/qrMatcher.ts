@@ -7,9 +7,14 @@ import type { Student } from '@/types';
  */
 
 /** Extrae el identificador útil de un QR: texto plano, JSON o URL con parámetros. */
-export function parseQrPayload(rawInput: string): string {
-  const raw = rawInput.trim();
+export function parseQrPayload(rawInput?: unknown): string {
+  let raw = String(rawInput ?? '').replace(/[\r\n\x00]/g, '').trim();
   if (!raw) return '';
+
+  // Hardware scanners or copy-paste may wrap the payload in single or double quotes
+  if ((raw.startsWith('"') && raw.endsWith('"')) || (raw.startsWith("'") && raw.endsWith("'"))) {
+    raw = raw.slice(1, -1).trim();
+  }
 
   if (raw.startsWith('{') && raw.endsWith('}')) {
     try {
@@ -41,7 +46,12 @@ export function parseQrPayload(rawInput: string): string {
 }
 
 export function normalizeQrText(value?: string | null): string {
-  return value ? value.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '') : '';
+  return value ? value.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') : '';
+}
+
+/** Devuelve la fecha local (Perú) en formato YYYY-MM-DD sin desfases por UTC. */
+export function getTodayLocalIso(d = new Date()): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 // Código de estudiante completo (EST-2026-001, EST-2026-123456): el número no puede continuar con otro dígito
@@ -57,7 +67,7 @@ type StudentLike = Pick<Student, 'id' | 'profile_id' | 'token_qr' | 'codigo_estu
  * Busca el estudiante del QR usando solo coincidencias exactas (nunca parciales):
  * un código incompleto o parecido no debe registrar la asistencia de otro alumno.
  */
-export function findStudentByQr<T extends StudentLike>(students: T[], rawInput: string): T | undefined {
+export function findStudentByQr<T extends StudentLike>(students: T[], rawInput?: unknown): T | undefined {
   const value = parseQrPayload(rawInput);
   if (!value) return undefined;
   const norm = normalizeQrText(value);

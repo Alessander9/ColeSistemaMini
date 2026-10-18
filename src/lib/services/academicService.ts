@@ -11,10 +11,31 @@ import {
   MOCK_GRADE_RECORDS 
 } from '@/lib/mock-data';
 
-let localStudents = [...MOCK_STUDENTS];
-let localEnrollments = [...MOCK_ENROLLMENTS];
-let localGrades: GradeRecord[] = [...MOCK_GRADE_RECORDS];
-let localCourses: Course[] = [...MOCK_COURSES];
+const g = (typeof globalThis !== 'undefined' ? globalThis : global) as any;
+if (!g.__coleLocalStudents) g.__coleLocalStudents = [...MOCK_STUDENTS];
+if (!g.__coleLocalEnrollments) g.__coleLocalEnrollments = [...MOCK_ENROLLMENTS];
+if (!g.__coleLocalGrades) g.__coleLocalGrades = [...MOCK_GRADE_RECORDS];
+if (!g.__coleLocalCourses) g.__coleLocalCourses = [...MOCK_COURSES];
+
+function getLocalStudents(): Student[] {
+  if (!g.__coleLocalStudents) g.__coleLocalStudents = [...MOCK_STUDENTS];
+  return g.__coleLocalStudents;
+}
+
+function getLocalEnrollments(): Enrollment[] {
+  if (!g.__coleLocalEnrollments) g.__coleLocalEnrollments = [...MOCK_ENROLLMENTS];
+  return g.__coleLocalEnrollments;
+}
+
+function getLocalGrades(): GradeRecord[] {
+  if (!g.__coleLocalGrades) g.__coleLocalGrades = [...MOCK_GRADE_RECORDS];
+  return g.__coleLocalGrades;
+}
+
+function getLocalCourses(): Course[] {
+  if (!g.__coleLocalCourses) g.__coleLocalCourses = [...MOCK_COURSES];
+  return g.__coleLocalCourses;
+}
 
 export async function fetchGradeLevels(): Promise<GradeLevel[]> {
   if (!isSupabaseConfigured()) return MOCK_GRADE_LEVELS;
@@ -49,6 +70,7 @@ export async function fetchSections(): Promise<Section[]> {
 }
 
 export async function fetchCourses(): Promise<Course[]> {
+  const localCourses = getLocalCourses();
   if (!isSupabaseConfigured()) return localCourses;
   const supabase = createClient();
   try {
@@ -80,6 +102,7 @@ export async function fetchEvaluationPeriods(): Promise<EvaluationPeriod[]> {
 }
 
 export async function fetchStudents(): Promise<Student[]> {
+  const localStudents = getLocalStudents();
   if (!isSupabaseConfigured()) return localStudents;
   const supabase = createClient();
   try {
@@ -89,7 +112,15 @@ export async function fetchStudents(): Promise<Student[]> {
 
     if (error || !data) return localStudents;
     const map = new Map<string, Student>();
-    (data as Student[]).forEach(s => map.set(s.id, s));
+    (data as Student[]).forEach(s => {
+      const enriched: Student = {
+        ...s,
+        nombres: s.nombres || s.profile?.nombres || '',
+        apellidos: s.apellidos || s.profile?.apellidos || '',
+        dni: s.dni || s.profile?.dni || '',
+      };
+      map.set(s.id, enriched);
+    });
     localStudents.forEach(s => {
       if (!map.has(s.id)) map.set(s.id, s);
     });
@@ -100,6 +131,7 @@ export async function fetchStudents(): Promise<Student[]> {
 }
 
 export async function fetchEnrollments(): Promise<Enrollment[]> {
+  const localEnrollments = getLocalEnrollments();
   if (!isSupabaseConfigured()) return localEnrollments;
   const supabase = createClient();
   try {
@@ -125,6 +157,7 @@ export async function fetchEnrollments(): Promise<Enrollment[]> {
 }
 
 export async function fetchGradeRecords(): Promise<GradeRecord[]> {
+  const localGrades = getLocalGrades();
   if (!isSupabaseConfigured()) return localGrades;
   const supabase = createClient();
   try {
@@ -136,6 +169,35 @@ export async function fetchGradeRecords(): Promise<GradeRecord[]> {
     return data as GradeRecord[];
   } catch {
     return localGrades;
+  }
+}
+
+export function registerStudentServer(student: Student, enrollment?: Enrollment) {
+  const students = getLocalStudents();
+  const enrollments = getLocalEnrollments();
+
+  const existingIdx = students.findIndex(
+    s => s.id === student.id || 
+         (student.codigo_estudiante && s.codigo_estudiante === student.codigo_estudiante) || 
+         (student.token_qr && s.token_qr === student.token_qr) ||
+         (student.dni && (s.dni === student.dni || s.profile?.dni === student.dni))
+  );
+  if (existingIdx >= 0) {
+    students[existingIdx] = { ...students[existingIdx], ...student };
+  } else {
+    students.unshift(student);
+  }
+
+  if (enrollment) {
+    const existingEnrIdx = enrollments.findIndex(
+      e => e.id === enrollment.id || 
+           (enrollment.estudiante_id && e.estudiante_id === enrollment.estudiante_id)
+    );
+    if (existingEnrIdx >= 0) {
+      enrollments[existingEnrIdx] = { ...enrollments[existingEnrIdx], ...enrollment };
+    } else {
+      enrollments.unshift(enrollment);
+    }
   }
 }
 
@@ -159,35 +221,49 @@ export async function createStudentInDb(data: {
   const generatedEmail = generateStudentEmail(data.nombres, data.apellidos);
   const generatedUsername = generateStudentUsername(data.apellidos, data.dni);
   
-  const cleanFirst = data.nombres.trim().split(' ')[0].normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
-  const cleanLast = data.apellidos.trim().split(' ')[0].normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+  const cleanFirst = (data.nombres.trim().split(' ')[0] || 'ALUMNO').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/[^A-Z0-9]/g, "") || 'ALUMNO';
+  const cleanLast = (data.apellidos.trim().split(' ')[0] || 'GENERAL').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/[^A-Z0-9]/g, "") || 'GENERAL';
   const studentCode = data.studentCode || `EST-2026-${Math.floor(100 + Math.random() * 900)}`;
   const tokenQr = data.tokenQr || `QR-${studentCode}-${cleanFirst}-${cleanLast}`;
 
-  // 1. Crear Perfil de usuario en Supabase
-  let profileId = `user-estudiante-${Date.now()}`;
+  const isUuid = (val?: string) => !!val && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+
+  // 1. Crear Perfil de usuario en Supabase si está disponible
+  let profileId: string | null = null;
   let newProfile: UserProfile | null = null;
 
   if (isSupabaseConfigured()) {
     try {
-      const { data: dbProfile, error: profileErr } = await supabase
+      // Verificar si ya existe perfil con este DNI
+      const { data: existingProfile } = await supabase
         .from('profiles')
-        .insert({
-          rol: 'estudiante',
-          nombres: data.nombres.trim(),
-          apellidos: data.apellidos.trim(),
-          dni: data.dni.trim(),
-          email: generatedEmail,
-          telefono: data.telefonoApoderado,
-          avatar_url: data.avatar_url || `https://images.unsplash.com/photo-1544717305-2782549b5136?w=150&auto=format&fit=crop&q=80`,
-          activo: true,
-        })
-        .select()
-        .single();
+        .select('*')
+        .eq('dni', data.dni.trim())
+        .maybeSingle();
 
-      if (!profileErr && dbProfile) {
-        newProfile = dbProfile as UserProfile;
-        profileId = dbProfile.id;
+      if (existingProfile) {
+        newProfile = existingProfile as UserProfile;
+        profileId = existingProfile.id;
+      } else {
+        const { data: dbProfile, error: profileErr } = await supabase
+          .from('profiles')
+          .insert({
+            rol: 'estudiante',
+            nombres: data.nombres.trim(),
+            apellidos: data.apellidos.trim(),
+            dni: data.dni.trim(),
+            email: generatedEmail,
+            telefono: data.telefonoApoderado,
+            avatar_url: data.avatar_url || `https://images.unsplash.com/photo-1544717305-2782549b5136?w=150&auto=format&fit=crop&q=80`,
+            activo: true,
+          })
+          .select()
+          .single();
+
+        if (!profileErr && dbProfile) {
+          newProfile = dbProfile as UserProfile;
+          profileId = dbProfile.id;
+        }
       }
     } catch {
       /* fallback a local */
@@ -198,22 +274,42 @@ export async function createStudentInDb(data: {
   let newStudent: Student | null = null;
   if (isSupabaseConfigured()) {
     try {
-      const { data: dbStudent, error: studentErr } = await supabase
-        .from('estudiantes')
-        .insert({
-          profile_id: profileId,
+      // Verificar si ya existe estudiante por profile_id o codigo_estudiante
+      let existingDbStudent: any = null;
+      if (profileId && isUuid(profileId)) {
+        const { data: sByProf } = await supabase.from('estudiantes').select('*, profile:profiles(*)').eq('profile_id', profileId).maybeSingle();
+        existingDbStudent = sByProf;
+      }
+      if (!existingDbStudent) {
+        const { data: sByCode } = await supabase.from('estudiantes').select('*, profile:profiles(*)').eq('codigo_estudiante', studentCode).maybeSingle();
+        existingDbStudent = sByCode;
+      }
+
+      if (existingDbStudent) {
+        newStudent = existingDbStudent as Student;
+      } else {
+        const insertPayload: Record<string, any> = {
           codigo_estudiante: studentCode,
           fecha_nacimiento: data.fechaNacimiento,
           genero: data.genero || 'No especificado',
           nombre_apoderado: data.nombreApoderado,
           telefono_apoderado: data.telefonoApoderado,
           token_qr: tokenQr,
-        })
-        .select('*, profile:profiles(*)')
-        .single();
+        };
+        // Solo asignar profile_id si es un UUID válido de la tabla profiles
+        if (profileId && isUuid(profileId)) {
+          insertPayload.profile_id = profileId;
+        }
 
-      if (!studentErr && dbStudent) {
-        newStudent = dbStudent as Student;
+        const { data: dbStudent, error: studentErr } = await supabase
+          .from('estudiantes')
+          .insert(insertPayload)
+          .select('*, profile:profiles(*)')
+          .single();
+
+        if (!studentErr && dbStudent) {
+          newStudent = dbStudent as Student;
+        }
       }
     } catch {
       /* fallback */
@@ -222,7 +318,7 @@ export async function createStudentInDb(data: {
 
   const studentResult: Student = (newStudent as Student) || {
     id: `est-${Date.now()}`,
-    profile_id: profileId,
+    profile_id: profileId || `user-estudiante-${Date.now()}`,
     codigo_estudiante: studentCode,
     nombres: data.nombres,
     apellidos: data.apellidos,
@@ -233,7 +329,7 @@ export async function createStudentInDb(data: {
     telefono_apoderado: data.telefonoApoderado,
     token_qr: tokenQr,
     profile: newProfile || {
-      id: profileId,
+      id: profileId || `user-estudiante-${Date.now()}`,
       rol: 'estudiante',
       nombres: data.nombres,
       apellidos: data.apellidos,
@@ -245,22 +341,47 @@ export async function createStudentInDb(data: {
   };
 
   // 3. Matricular en la sección indicada
-  if (isSupabaseConfigured()) {
+  if (isSupabaseConfigured() && newStudent?.id && isUuid(newStudent.id)) {
     try {
-      await supabase.from('matriculas').insert({
-        estudiante_id: studentResult.id,
-        periodo_id: data.periodoId || 'periodo-2026',
-        seccion_id: data.seccionId,
-        estado: 'activo',
-      });
+      let activePeriodoId = data.periodoId;
+      if (!isUuid(activePeriodoId)) {
+        const { data: periodos } = await supabase.from('periodos_academicos').select('id').order('anio', { ascending: false }).limit(1);
+        if (periodos && periodos.length > 0) {
+          activePeriodoId = periodos[0].id;
+        }
+      }
+
+      let validSecId = data.seccionId;
+      if (!isUuid(validSecId)) {
+        const { data: dbSec } = await supabase.from('secciones').select('id').limit(1).maybeSingle();
+        if (dbSec?.id) {
+          validSecId = dbSec.id;
+        }
+      }
+
+      if (isUuid(activePeriodoId) && isUuid(validSecId)) {
+        const { data: existingMat } = await supabase
+          .from('matriculas')
+          .select('id')
+          .eq('estudiante_id', newStudent.id)
+          .eq('periodo_id', activePeriodoId)
+          .maybeSingle();
+
+        if (!existingMat) {
+          await supabase.from('matriculas').insert({
+            estudiante_id: newStudent.id,
+            periodo_id: activePeriodoId,
+            seccion_id: validSecId,
+            estado: 'activo',
+          });
+        }
+      }
     } catch {
       /* ignore */
     }
   }
 
-  // Guardar en el store local
-  localStudents.push(studentResult);
-  localEnrollments.push({
+  const enrollmentResult: Enrollment = {
     id: `enr-${Date.now()}`,
     estudiante_id: studentResult.id,
     periodo_id: data.periodoId || 'periodo-2026',
@@ -268,7 +389,10 @@ export async function createStudentInDb(data: {
     fecha_matricula: new Date().toISOString().split('T')[0],
     estado: 'activo',
     estudiante: studentResult,
-  });
+  };
+
+  // Guardar en el store local del servidor
+  registerStudentServer(studentResult, enrollmentResult);
 
   return {
     student: studentResult,
@@ -310,7 +434,8 @@ export async function saveGradeInDb(params: {
   }
 
   // Actualizar store local
-  const existingIdx = localGrades.findIndex(g => 
+  const localGrades = getLocalGrades();
+  const existingIdx = localGrades.findIndex((g: GradeRecord) => 
     g.matricula_id === params.matriculaId && 
     g.competencia_id === params.competenciaId && 
     g.periodo_evaluacion_id === params.periodoEvaluacionId
@@ -396,6 +521,7 @@ export async function createCourseInDb(data: {
     }
   }
 
+  const localCourses = getLocalCourses();
   localCourses.push(newCourse);
   return newCourse;
 }
@@ -404,7 +530,8 @@ export async function updateCourseInDb(
   courseId: string,
   data: Omit<Partial<Course>, 'competencias'> & { competencias?: { codigo: string; descripcion: string; id?: string }[] }
 ): Promise<Course | null> {
-  const existingIdx = localCourses.findIndex(c => c.id === courseId);
+  const localCourses = getLocalCourses();
+  const existingIdx = localCourses.findIndex((c: Course) => c.id === courseId);
   if (existingIdx === -1) return null;
 
   const current = localCourses[existingIdx];
@@ -446,7 +573,8 @@ export async function updateCourseInDb(
 }
 
 export async function deleteCourseFromDb(courseId: string): Promise<boolean> {
-  localCourses = localCourses.filter(c => c.id !== courseId);
+  const remaining = getLocalCourses().filter((c: Course) => c.id !== courseId);
+  g.__coleLocalCourses = remaining;
 
   if (isSupabaseConfigured()) {
     const supabase = createClient();

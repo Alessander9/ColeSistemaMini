@@ -185,7 +185,7 @@ export function QrCard({
 
           <div className={`${isHorizontal ? '' : 'mt-4'} bg-white rounded-[24px] p-4 flex flex-col items-center justify-center shadow-2xl border-2 border-white`}>
             <QRCodeCanvas
-              value={student.token_qr || student.codigo_estudiante}
+              value={student.token_qr || student.codigo_estudiante || student.profile?.dni || student.dni || 'COLESISTEMA'}
               size={isHorizontal ? 142 : 170}
               level="M"
               includeMargin={true}

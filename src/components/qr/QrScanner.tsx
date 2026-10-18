@@ -22,6 +22,7 @@ import {
 import confetti from 'canvas-confetti';
 import { useApp } from '@/context/AppContext';
 import { AttendanceStatus } from '@/types';
+import { findStudentByQr, parseQrPayload } from '@/lib/attendance/qrMatcher';
 
 interface QrScannerProps {
   onScanSuccess?: (result: string) => void;
@@ -29,6 +30,7 @@ interface QrScannerProps {
   autoStart?: boolean;
   variant?: 'card' | 'embedded' | 'kiosk';
   showHeader?: boolean;
+  expectedSectionId?: string;
 }
 
 export function QrScanner({
@@ -37,8 +39,9 @@ export function QrScanner({
   autoStart = false,
   variant = 'card',
   showHeader = true,
+  expectedSectionId,
 }: QrScannerProps) {
-  const { registerAttendance, students, enrollments } = useApp();
+  const { registerAttendance, students, enrollments, refreshData } = useApp();
 
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
@@ -67,6 +70,7 @@ export function QrScanner({
   const streamRef = useRef<MediaStream | null>(null);
   const rafRef = useRef<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const fallbackScannerRef = useRef<any>(null);
   const statusModeRef = useRef(statusMode);
   const lastDecodeRef = useRef<string>('');
   const decodeCooldownRef = useRef(false);
@@ -181,32 +185,10 @@ export function QrScanner({
 
   // ── Process decoded QR text ───────────────────────────────────────────────
   const handleDecoded = useCallback((decodedText: string) => {
-    let rawClean = decodedText.trim();
+    const rawClean = parseQrPayload(decodedText);
     if (!rawClean) return;
 
-    // Multi-format Parser (JSON payload, URL with params, or Raw Code)
-    if (rawClean.startsWith('{') && rawClean.endsWith('}')) {
-      try {
-        const parsed = JSON.parse(rawClean);
-        rawClean = parsed.token_qr || parsed.codigo || parsed.codigo_estudiante || parsed.dni || parsed.id || rawClean;
-      } catch {
-        /* fallback */
-      }
-    } else if (rawClean.includes('http://') || rawClean.includes('https://')) {
-      try {
-        const urlObj = new URL(rawClean);
-        rawClean = urlObj.searchParams.get('token') || 
-                   urlObj.searchParams.get('code') || 
-                   urlObj.searchParams.get('codigo') || 
-                   urlObj.searchParams.get('dni') || 
-                   urlObj.searchParams.get('id') || 
-                   rawClean;
-      } catch {
-        /* fallback */
-      }
-    }
-
-    // Fast-throttle consecutive camera reads of identical QR in 3s
+    // Fast-throttle consecutive camera reads of identical QR in 3.5s
     if (decodeCooldownRef.current && lastDecodeRef.current === rawClean) return;
     lastDecodeRef.current = rawClean;
     decodeCooldownRef.current = true;
@@ -221,28 +203,7 @@ export function QrScanner({
       second: '2-digit',
     });
 
-    const normalize = (str?: string) =>
-      str ? str.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "";
-    const normClean = normalize(rawClean);
-
-    const codeMatch = rawClean.match(/EST-\d{4}-[\w-]+/i);
-    const extractedCode = codeMatch ? normalize(codeMatch[0]) : '';
-    const dniMatch = rawClean.match(/\b\d{8}\b/);
-    const extractedDni = dniMatch ? dniMatch[0] : '';
-
-    const foundStudent = students.find((s) => {
-      const sToken = normalize(s.token_qr);
-      const sCode = normalize(s.codigo_estudiante);
-      const sDni = normalize(s.profile?.dni || s.dni);
-      return (
-        (sToken && (sToken === normClean || normClean.includes(sToken) || sToken.includes(normClean))) ||
-        (sCode && (sCode === normClean || normClean.includes(sCode) || sCode.includes(normClean) || (extractedCode && sCode === extractedCode))) ||
-        (sDni && (sDni === normClean || normClean.includes(sDni) || (extractedDni && sDni === extractedDni))) ||
-        s.id === rawClean ||
-        s.profile_id === rawClean ||
-        (normClean.includes(sCode) && sCode.length >= 4)
-      );
-    });
+    const foundStudent = findStudentByQr(students, rawClean);
 
     const foundEnrollment = foundStudent
       ? enrollments.find((e) => 
@@ -262,6 +223,30 @@ export function QrScanner({
     const gradeSectionStr = foundEnrollment?.seccion
       ? `${foundEnrollment.seccion.grado?.nombre || 'Grado'} "${foundEnrollment.seccion.letra}"`
       : undefined;
+
+    // ── VALIDACIÓN DE SALÓN / SECCIÓN (Si el docente está en un aula específica)
+    if (expectedSectionId && foundEnrollment && foundEnrollment.seccion_id && foundEnrollment.seccion_id !== expectedSectionId) {
+      playTone('error');
+      triggerHaptic([400]);
+      setFlashColor('amber');
+      setTimeout(() => setFlashColor(null), 800);
+
+      setActiveAlert({
+        type: 'error',
+        title: '⚠️ ALUMNO DE OTRA SECCIÓN',
+        message: `${studentFullName} pertenece a ${gradeSectionStr || 'otra sección'}, no a este salón.`,
+        studentName: studentFullName,
+        avatarUrl: foundStudent?.profile?.avatar_url,
+        gradeSection: gradeSectionStr,
+        time: timeStr,
+      });
+
+      if (alertTimeoutRef.current) clearTimeout(alertTimeoutRef.current);
+      alertTimeoutRef.current = setTimeout(() => {
+        setActiveAlert(null);
+      }, 6000);
+      return;
+    }
 
     // Call Context's registerAttendance
     const res = registerAttendance({
@@ -323,24 +308,95 @@ export function QrScanner({
       return;
     }
 
-    // ── CASE 3: ERROR (Not found or invalid) ─────────────────────────────────
-    playTone('error');
-    triggerHaptic([400]);
-    setFlashColor('red');
-    setTimeout(() => setFlashColor(null), 800);
+    // ── CASE 3: FALLBACK AL SERVIDOR (Para alumnos recién matriculados en otra terminal) ──
+    fetch('/api/asistencia/scan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tokenQr: rawClean, metodo: 'qr', status: statusModeRef.current }),
+    })
+      .then(async (apiRes) => {
+        const data = await apiRes.json();
+        if (data.success) {
+          playTone('success');
+          triggerHaptic([100, 50, 100]);
+          setFlashColor('green');
+          setTimeout(() => setFlashColor(null), 800);
+          confetti({ particleCount: 50, spread: 70, origin: { y: 0.6 } });
 
-    setActiveAlert({
-      type: 'error',
-      title: '❌ QR NO RECONOCIDO',
-      message: res.message || 'El carnet escaneado no pertenece a ningún alumno matriculado.',
-      studentName: 'Código: ' + rawClean,
-      time: timeStr,
-    });
+          setActiveAlert({
+            type: 'success',
+            title: '✅ ¡ASISTENCIA REGISTRADA!',
+            message: data.message || `Ingreso marcado a las ${timeStr} vía Lector QR.`,
+            studentName: data.data?.estudiante || studentFullName,
+            avatarUrl: foundStudent?.profile?.avatar_url,
+            gradeSection: gradeSectionStr,
+            time: timeStr,
+            statusBadge: statusModeRef.current.toUpperCase(),
+          });
 
-    alertTimeoutRef.current = setTimeout(() => {
-      setActiveAlert(null);
-    }, 6000);
-  }, [registerAttendance, students, enrollments, playTone, onScanSuccess]);
+          refreshData();
+          alertTimeoutRef.current = setTimeout(() => {
+            setActiveAlert(null);
+          }, 6000);
+          if (onScanSuccess) onScanSuccess(rawClean);
+        } else if (data.duplicate) {
+          playTone('duplicate');
+          triggerHaptic([200, 100, 200]);
+          setFlashColor('amber');
+          setTimeout(() => setFlashColor(null), 800);
+
+          setActiveAlert({
+            type: 'duplicate',
+            title: '⚠️ YA REGISTRADO HOY',
+            message: data.message || `${studentFullName} ya tiene registro de asistencia el día de hoy.`,
+            studentName: data.data?.estudiante || studentFullName,
+            avatarUrl: foundStudent?.profile?.avatar_url,
+            gradeSection: gradeSectionStr,
+            time: timeStr,
+            statusBadge: 'PRESENTE',
+          });
+
+          alertTimeoutRef.current = setTimeout(() => {
+            setActiveAlert(null);
+          }, 7000);
+        } else {
+          playTone('error');
+          triggerHaptic([400]);
+          setFlashColor('red');
+          setTimeout(() => setFlashColor(null), 800);
+
+          setActiveAlert({
+            type: 'error',
+            title: '❌ QR NO RECONOCIDO',
+            message: data.message || res.message || 'El carnet escaneado no pertenece a ningún alumno matriculado.',
+            studentName: 'Código: ' + rawClean,
+            time: timeStr,
+          });
+
+          alertTimeoutRef.current = setTimeout(() => {
+            setActiveAlert(null);
+          }, 6000);
+        }
+      })
+      .catch(() => {
+        playTone('error');
+        triggerHaptic([400]);
+        setFlashColor('red');
+        setTimeout(() => setFlashColor(null), 800);
+
+        setActiveAlert({
+          type: 'error',
+          title: '❌ QR NO RECONOCIDO',
+          message: res.message || 'El carnet escaneado no pertenece a ningún alumno matriculado.',
+          studentName: 'Código: ' + rawClean,
+          time: timeStr,
+        });
+
+        alertTimeoutRef.current = setTimeout(() => {
+          setActiveAlert(null);
+        }, 6000);
+      });
+  }, [registerAttendance, students, enrollments, expectedSectionId, playTone, onScanSuccess, refreshData]);
 
   // ── Scan loop using BarcodeDetector (native) or Html5Qrcode canvas fallback
   const startScanLoop = useCallback(async () => {
@@ -387,21 +443,22 @@ export function QrScanner({
                   return;
                 }
                 try {
-                  const { Html5Qrcode } = await import('html5-qrcode');
-                  const tempId = 'qr-decode-offscreen';
-                  let tempEl = document.getElementById(tempId);
-                  if (!tempEl) {
-                    tempEl = document.createElement('div');
-                    tempEl.id = tempId;
-                    tempEl.style.cssText =
-                      'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;';
-                    document.body.appendChild(tempEl);
+                  if (!fallbackScannerRef.current) {
+                    const { Html5Qrcode } = await import('html5-qrcode');
+                    const tempId = 'qr-decode-offscreen';
+                    let tempEl = document.getElementById(tempId);
+                    if (!tempEl) {
+                      tempEl = document.createElement('div');
+                      tempEl.id = tempId;
+                      tempEl.style.cssText =
+                        'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;';
+                      document.body.appendChild(tempEl);
+                    }
+                    fallbackScannerRef.current = new Html5Qrcode(tempId, { verbose: false });
                   }
-                  const h = new Html5Qrcode(tempId, { verbose: false });
                   const file = new File([blob], 'frame.jpg', { type: 'image/jpeg' });
-                  const result = await h.scanFile(file, false);
+                  const result = await fallbackScannerRef.current.scanFile(file, false);
                   handleDecoded(result);
-                  await h.clear();
                 } catch {
                   /* no QR in frame */
                 }
@@ -435,6 +492,14 @@ export function QrScanner({
     }
     if (videoRef.current) {
       videoRef.current.srcObject = null;
+    }
+    if (fallbackScannerRef.current) {
+      try {
+        fallbackScannerRef.current.clear();
+      } catch {
+        /* ignore */
+      }
+      fallbackScannerRef.current = null;
     }
     setIsCameraActive(false);
   }, []);

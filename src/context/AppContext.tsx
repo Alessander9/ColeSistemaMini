@@ -652,9 +652,48 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
 
   const refreshData = async () => {
-    // Sin un Supabase real, los servicios devuelven los datos de ejemplo de fábrica:
-    // sincronizar con ellos reemplazaría lo guardado en el navegador (cursos, asignaciones, etc.)
-    if (!isSupabaseConfigured()) return;
+    // Si Supabase no está configurado, sincronizamos estudiantes con la API local del servidor
+    if (!isSupabaseConfigured()) {
+      try {
+        const res = await fetch('/api/estudiantes');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && Array.isArray(data.students)) {
+            setStudents(prev => {
+              const map = new Map<string, Student>();
+              data.students.forEach((s: Student) => map.set(s.id, s));
+              prev.forEach(s => {
+                if (!map.has(s.id)) map.set(s.id, s);
+              });
+              return Array.from(map.values());
+            });
+            if (Array.isArray(data.enrollments)) {
+              setEnrollments(prev => {
+                const map = new Map<string, Enrollment>();
+                data.enrollments.forEach((e: Enrollment) => map.set(e.id, e));
+                prev.forEach(e => {
+                  if (!map.has(e.id)) map.set(e.id, e);
+                });
+                return Array.from(map.values());
+              });
+            }
+            if (Array.isArray(data.attendances)) {
+              setAttendances(prev => {
+                const map = new Map<string, AttendanceRecord>();
+                data.attendances.forEach((a: AttendanceRecord) => map.set(a.id, a));
+                prev.forEach(a => {
+                  if (!map.has(a.id)) map.set(a.id, a);
+                });
+                return Array.from(map.values());
+              });
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('[Sync API] Error al sincronizar estudiantes:', err);
+      }
+      return;
+    }
     setIsLoading(true);
     try {
       const [
@@ -1179,6 +1218,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         registradoPorId: currentUser.id,
       }).catch(() => {});
 
+      // Sincronizar inmediatamente con el servidor en segundo plano
+      if (typeof window !== 'undefined') {
+        fetch('/api/asistencia/scan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            tokenQr: studentQrToken || targetEnrollment.estudiante?.token_qr || targetEnrollment.estudiante?.codigo_estudiante,
+            metodo,
+            status,
+            observacion,
+          }),
+        }).catch(() => {});
+      }
+
       // Dispatch Brevo Email to Parent/Guardian if enabled
       if (brandingConfig?.brevoActivarEnvioAsistencia !== false) {
         const student = targetEnrollment.estudiante;
@@ -1318,8 +1371,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     // Generar un código único basado en timestamp para evitar colisiones
     const uniqueSuffix = String(Date.now()).slice(-6);
     const studentCode = `EST-2026-${uniqueSuffix}`;
-    const cleanFirst = data.nombres.trim().split(' ')[0].normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
-    const cleanLast = data.apellidos.trim().split(' ')[0].normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+    const cleanFirst = (data.nombres.trim().split(' ')[0] || 'ALUMNO').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/[^A-Z0-9]/g, "") || 'ALUMNO';
+    const cleanLast = (data.apellidos.trim().split(' ')[0] || 'GENERAL').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/[^A-Z0-9]/g, "") || 'GENERAL';
     const tokenQr = `QR-${studentCode}-${cleanFirst}-${cleanLast}`;
 
     // ── Credentials generation or custom ──────────────────────────────
@@ -1416,6 +1469,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       } catch (err) {
         console.warn('[Storage] Error al persistir inmediatamente:', err);
       }
+    }
+
+    // Sincronizar inmediatamente con el servidor Next.js
+    if (typeof window !== 'undefined') {
+      fetch('/api/estudiantes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ student: newStudent, enrollment: newEnrollment }),
+      }).catch(err => {
+        console.warn('[Sync API] Error al sincronizar estudiante con el servidor:', err);
+      });
     }
 
     // Persistir en Supabase de manera asíncrona si está activo

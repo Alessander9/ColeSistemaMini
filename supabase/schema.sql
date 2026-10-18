@@ -53,7 +53,8 @@ END $$;
 
 -- 3. TABLA DE PERFILES (Extensión de auth.users)
 CREATE TABLE IF NOT EXISTS public.profiles (
-    id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
     rol user_role NOT NULL DEFAULT 'estudiante',
     nombres TEXT NOT NULL,
     apellidos TEXT NOT NULL,
@@ -111,7 +112,7 @@ CREATE TABLE IF NOT EXISTS public.estudiantes (
     nombre_apoderado TEXT,
     telefono_apoderado VARCHAR(20),
     email_apoderado TEXT,
-    token_qr UUID DEFAULT uuid_generate_v4() UNIQUE NOT NULL,
+    token_qr TEXT DEFAULT uuid_generate_v4()::text UNIQUE NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 

@@ -142,3 +142,8 @@ Desktop.ini
 .agents/
 .system_generated/
 .claude/
+
+# Videos y renders pesados
+*.mp4
+/cole-sistema-presentacion/
+/tutorial-matricula-alumno/

@@ -245,7 +245,7 @@ export default function DocenteAsistenciaPage() {
               <div className="max-w-lg mx-auto text-center space-y-3">
                 <p className="text-lg font-black text-slate-900 dark:text-white">Acerca el carnet de cada alumno a la cámara</p>
                 <p className="text-base text-slate-600 dark:text-slate-300">Cada lectura registra su asistencia de hoy en {sectionLabel}.</p>
-                <QrScanner autoStart={true} variant="embedded" showHeader={false} />
+                <QrScanner autoStart={true} variant="embedded" showHeader={false} expectedSectionId={selectedSectionId} />
               </div>
             </div>
           ) : (
