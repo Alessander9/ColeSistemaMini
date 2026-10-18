@@ -2125,16 +2125,26 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const getTeacherSections = useCallback((docenteId: string) => {
     const assignments = sectionCourses.filter(sc => sc.docente_id === docenteId);
+    if (assignments.length === 0) return [];
+
+    const sectionsMap = new Map<string, Section>();
+    sections.forEach(s => sectionsMap.set(s.id, s));
+    MOCK_SECTIONS.forEach(s => { if (!sectionsMap.has(s.id)) sectionsMap.set(s.id, s); });
+
+    const coursesMap = new Map<string, Course>();
+    courses.forEach(c => coursesMap.set(c.id, c));
+    MOCK_COURSES.forEach(c => { if (!coursesMap.has(c.id)) coursesMap.set(c.id, c); });
+
     const uniqueSecIds = Array.from(new Set(assignments.map(a => a.seccion_id)));
     return uniqueSecIds
       .map(secId => {
-        // Primero las secciones y cursos guardados; los de ejemplo solo como respaldo
-        const seccion = sections.find(s => s.id === secId) || MOCK_SECTIONS.find(s => s.id === secId);
+        const seccion = sectionsMap.get(secId);
+        if (!seccion) return null;
         const cursos = assignments
           .filter(a => a.seccion_id === secId)
-          .map(a => courses.find(c => c.id === a.curso_id) || a.curso || MOCK_COURSES.find(c => c.id === a.curso_id))
+          .map(a => coursesMap.get(a.curso_id) || a.curso)
           .filter((c): c is Course => !!c);
-        return seccion ? { seccion, cursos } : null;
+        return { seccion, cursos };
       })
       .filter((item): item is { seccion: Section; cursos: Course[] } => item !== null);
   }, [sectionCourses, sections, courses]);

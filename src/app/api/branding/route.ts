@@ -7,10 +7,17 @@ import { verifySessionToken } from '@/lib/security/sessionToken';
 let serverBrandingConfig: SystemBrandingConfig = { ...DEFAULT_BRANDING_CONFIG };
 
 export async function GET() {
-  return NextResponse.json({
-    success: true,
-    data: serverBrandingConfig,
-  });
+  return NextResponse.json(
+    {
+      success: true,
+      data: serverBrandingConfig,
+    },
+    {
+      headers: {
+        'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600',
+      },
+    }
+  );
 }
 
 export async function POST(request: NextRequest) {

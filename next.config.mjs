@@ -5,9 +5,11 @@ const nextConfig = {
   compress: true,
   poweredByHeader: false,
   experimental: {
-    optimizePackageImports: ['lucide-react', 'jspdf', 'html2canvas', 'clsx', 'tailwind-merge'],
+    optimizePackageImports: ['lucide-react', 'jspdf', 'html2canvas', 'clsx', 'tailwind-merge', 'canvas-confetti', 'qrcode'],
   },
   images: {
+    formats: ['image/avif', 'image/webp'],
+    minimumCacheTTL: 604800,
     remotePatterns: [
       {
         protocol: 'https',
@@ -17,6 +19,15 @@ const nextConfig = {
   },
   async headers() {
     return [
+      {
+        source: '/(.*).(png|jpg|jpeg|svg|webp|avif|ico)',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
       {
         // Apply to ALL routes
         source: '/(.*)',

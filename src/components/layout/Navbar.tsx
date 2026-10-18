@@ -12,10 +12,14 @@ import {
   PanelLeftClose,
   PanelLeftOpen
 } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import { NotificationBell } from '@/components/notificaciones/NotificationBell';
 import { ProfileDropdown } from '@/components/layout/ProfileDropdown';
-import { QuickQrModal } from '@/components/qr/QuickQrModal';
 import { AcademicContextSelector } from '@/components/layout/AcademicContextSelector';
+
+const QuickQrModal = dynamic(() => import('@/components/qr/QuickQrModal').then(m => m.QuickQrModal), {
+  ssr: false,
+});
 
 interface NavbarProps {
   onOpenMobileMenu?: () => void;

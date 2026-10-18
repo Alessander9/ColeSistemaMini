@@ -1,15 +1,23 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
-import confetti from 'canvas-confetti';
+import dynamic from 'next/dynamic';
+import { triggerConfetti } from '@/lib/ui/confetti';
 import { useApp } from '@/context/AppContext';
 import { AttendanceStatus, DayOfWeek, ScheduleSlot } from '@/types';
 import { DAYS } from '@/lib/constants/schedule';
 import { getSectionClassStatus } from '@/lib/schedule/attendanceWindow';
 import { useAulaColors } from '@/hooks/useAulaColors';
-import { generateRegistroAuxiliarPdf } from '@/lib/pdf/registroAuxiliarPdfGenerator';
-import { QrScanner } from '@/components/qr/QrScanner';
 import { Check, CheckCheck, Clock, FileDown, ListChecks, Lock, QrCode, Search, XCircle } from 'lucide-react';
+
+const QrScanner = dynamic(() => import('@/components/qr/QrScanner').then(m => m.QrScanner), {
+  ssr: false,
+  loading: () => (
+    <div className="flex flex-col items-center justify-center p-8 bg-slate-900 rounded-2xl border border-slate-800 text-slate-300">
+      <div className="w-8 h-8 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin mb-3" />
+      <p className="text-xs font-semibold">Cargando escáner QR de aula...</p>
+    </div>
+  ),
+});
 
 const WEEKDAY_KEYS: (DayOfWeek | null)[] = [null, 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', null];
 
@@ -131,11 +139,12 @@ export default function DocenteAsistenciaPage() {
     if (!canEdit || sectionEnrollments.length === 0) return;
     saveClassAttendanceQuickly(selectedSectionId, todayStr, sectionEnrollments.map(e => ({ matriculaId: e.id, estado: statusOf(e.id) })));
     setDraft({});
-    confetti({ particleCount: 40, spread: 60, origin: { y: 0.7 } });
+    triggerConfetti({ particleCount: 40, spread: 60, origin: { y: 0.7 } });
   };
 
-  const downloadTemplate = () => {
+  const downloadTemplate = async () => {
     if (!activeSection) return;
+    const { generateRegistroAuxiliarPdf } = await import('@/lib/pdf/registroAuxiliarPdfGenerator');
     const doc = generateRegistroAuxiliarPdf({
       section: activeSection,
       teacherName: currentUser ? `${currentUser.nombres} ${currentUser.apellidos}` : 'Docente',

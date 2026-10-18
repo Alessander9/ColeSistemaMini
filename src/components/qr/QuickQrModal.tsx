@@ -2,8 +2,18 @@
 
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
+import dynamic from 'next/dynamic';
 import { X, QrCode } from 'lucide-react';
-import { QrScanner } from '@/components/qr/QrScanner';
+
+const QrScanner = dynamic(() => import('@/components/qr/QrScanner').then(m => m.QrScanner), {
+  ssr: false,
+  loading: () => (
+    <div className="flex flex-col items-center justify-center p-12 bg-slate-900 rounded-2xl border border-slate-800 text-slate-300">
+      <div className="w-8 h-8 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin mb-3" />
+      <p className="text-xs font-semibold">Inicializando escáner QR...</p>
+    </div>
+  ),
+});
 
 interface QuickQrModalProps {
   isOpen: boolean;

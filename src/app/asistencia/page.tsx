@@ -45,30 +45,15 @@ import confetti from 'canvas-confetti';
 import { findStudentByQr, parseQrPayload, getTodayLocalIso } from '@/lib/attendance/qrMatcher';
 import { initialsAvatarUrl } from '@/lib/avatar';
 
-export default function AsistenciaKioscoPage() {
-  const router = useRouter();
-  const { 
-    currentUser, 
-    users,
-    attendances, 
-    students, 
-    enrollments,
-    registerAttendance,
-    recordStaffAttendance,
-    refreshData,
-    brandingConfig,
-  } = useApp();
-
-  // ── Date & Time State ───────────────────────────────────────────────────────
+// ── Componente de Reloj Aislado y Memoizado (Evita re-renderizar toda la página del Kiosco cada segundo) ──
+const KioscoClock = React.memo(function KioscoClock() {
   const [currentTime, setCurrentTime] = useState<string>('');
   const [currentDateFormatted, setCurrentDateFormatted] = useState<string>('');
-  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
 
   useEffect(() => {
     const updateClock = () => {
       const now = new Date();
       setCurrentTime(now.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
-      
       const options: Intl.DateTimeFormatOptions = { 
         weekday: 'short', 
         day: 'numeric', 
@@ -83,6 +68,37 @@ export default function AsistenciaKioscoPage() {
     const timer = setInterval(updateClock, 1000);
     return () => clearInterval(timer);
   }, []);
+
+  return (
+    <div className="flex items-center gap-2 px-2.5 sm:px-3.5 py-1.5 rounded-xl bg-slate-900/90 border border-slate-800 text-slate-200">
+      <Clock className="w-3.5 h-3.5 text-emerald-400 shrink-0 hidden sm:block" />
+      <div className="text-right sm:text-left leading-none">
+        <span className="text-[9px] text-slate-400 font-medium block truncate">
+          {currentDateFormatted || 'Hoy'}
+        </span>
+        <span className="text-xs sm:text-sm font-black font-mono tracking-wider text-white">
+          {currentTime || '08:00:00'}
+        </span>
+      </div>
+    </div>
+  );
+});
+
+export default function AsistenciaKioscoPage() {
+  const router = useRouter();
+  const { 
+    currentUser, 
+    users,
+    attendances, 
+    students, 
+    enrollments,
+    registerAttendance,
+    recordStaffAttendance,
+    refreshData,
+    brandingConfig,
+  } = useApp();
+
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
 
   // Fullscreen listener
   useEffect(() => {
@@ -820,18 +836,8 @@ export default function AsistenciaKioscoPage() {
           {/* Right Controls: Clock + Actions */}
           <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
             
-            {/* Clock Widget */}
-            <div className="flex items-center gap-2 px-2.5 sm:px-3.5 py-1.5 rounded-xl bg-slate-900/90 border border-slate-800 text-slate-200">
-              <Clock className="w-3.5 h-3.5 text-emerald-400 shrink-0 hidden sm:block" />
-              <div className="text-right sm:text-left leading-none">
-                <span className="text-[9px] text-slate-400 font-medium block truncate">
-                  {currentDateFormatted || 'Hoy'}
-                </span>
-                <span className="text-xs sm:text-sm font-black font-mono tracking-wider text-white">
-                  {currentTime || '08:00:00'}
-                </span>
-              </div>
-            </div>
+            {/* Clock Widget Aislado (0 re-renders en el árbol principal) */}
+            <KioscoClock />
 
             {/* Pantalla Completa (Totem Mode) */}
             <button

@@ -27,7 +27,7 @@ import {
   Shield,
   Smartphone
 } from 'lucide-react';
-import confetti from 'canvas-confetti';
+import { triggerConfetti } from '@/lib/ui/confetti';
 
 import { loginWithCredentials } from '@/lib/services/authService';
 
@@ -102,7 +102,7 @@ export default function LoginPage() {
       document.cookie = `cole_user_role=${user.rol}; path=/; max-age=604800; SameSite=Lax`;
     }
 
-    confetti({
+    triggerConfetti({
       particleCount: 70,
       spread: 90,
       origin: { y: 0.6 },
@@ -217,6 +217,8 @@ export default function LoginPage() {
             <img
               src={brandingConfig?.loginBannerUrl || "/login-illustration.jpg"}
               alt="Educación digital y escolar"
+              loading="eager"
+              decoding="async"
               className="max-h-56 w-auto object-contain drop-shadow-2xl rounded-2xl border border-white/15"
             />
           </div>

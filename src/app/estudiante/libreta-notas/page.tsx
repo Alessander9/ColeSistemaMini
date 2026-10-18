@@ -6,7 +6,6 @@ import { getChildrenOfParent } from '@/lib/auth/parentChildren';
 import { GradeBadge } from '@/components/notas/GradeBadge';
 import { AnnualReportCardView } from '@/components/notas/AnnualReportCardView';
 import { calculateAverage, calculateStudentAnnualReportCard, getGradeMeta } from '@/lib/grades/calculations';
-import { generateReportCardPdf } from '@/lib/pdf/reportCardPdfGenerator';
 import {
   Printer,
   FileText,
@@ -305,6 +304,7 @@ export default function EstudianteLibretaNotasPage() {
     if (!activeEnrollment || !activeStudent) return;
     try {
       const studentGradesFiltered = grades.filter(g => g.matricula_id === activeEnrollment.id);
+      const { generateReportCardPdf } = await import('@/lib/pdf/reportCardPdfGenerator');
       const doc = await generateReportCardPdf({
         student: activeStudent,
         enrollment: activeEnrollment,

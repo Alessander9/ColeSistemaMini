@@ -18,11 +18,21 @@ export function useParentChildren() {
         if (!base.some(c => c.studentId === id)) base.push({ id, studentId: id });
       });
     }
+    const studentsMap = new Map((students || []).map(s => [s.id, s]));
+    const activeEnrollmentsMap = new Map<string, (typeof enrollments)[number]>();
+    const anyEnrollmentsMap = new Map<string, (typeof enrollments)[number]>();
+    (enrollments || []).forEach(e => {
+      if (!anyEnrollmentsMap.has(e.estudiante_id)) anyEnrollmentsMap.set(e.estudiante_id, e);
+      if (e.estado === 'activo') activeEnrollmentsMap.set(e.estudiante_id, e);
+    });
+    const sectionsMap = new Map((sections || []).map(s => [s.id, s]));
+    const teachersMap = new Map((teachers || []).map(t => [t.id, t]));
+
     return base.map(c => {
-      const student = students.find(s => s.id === c.studentId);
-      const enrollment = enrollments.find(e => e.estudiante_id === c.studentId && e.estado === 'activo') || enrollments.find(e => e.estudiante_id === c.studentId);
-      const section = sections.find(s => s.id === enrollment?.seccion_id) || enrollment?.seccion;
-      const tutor = teachers.find(t => t.id === section?.tutor_id) || null;
+      const student = studentsMap.get(c.studentId);
+      const enrollment = activeEnrollmentsMap.get(c.studentId) || anyEnrollmentsMap.get(c.studentId);
+      const section = (enrollment?.seccion_id ? sectionsMap.get(enrollment.seccion_id) : undefined) || enrollment?.seccion;
+      const tutor = section?.tutor_id ? teachersMap.get(section.tutor_id) || null : null;
       return {
         id: c.id,
         student,
