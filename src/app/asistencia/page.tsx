@@ -762,6 +762,7 @@ export default function AsistenciaKioscoPage() {
     return () => {
       stopCamera();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ── QR File Upload Handler ──────────────────────────────────────────────────

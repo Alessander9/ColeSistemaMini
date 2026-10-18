@@ -1060,7 +1060,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, [users, handleSetCurrentUser, showToast]);
 
-  const addNotification = (notif: Omit<AppNotification, 'id' | 'created_at' | 'leido'>) => {
+  const addNotification = useCallback((notif: Omit<AppNotification, 'id' | 'created_at' | 'leido'>) => {
     const newNotif: AppNotification = {
       id: `notif-${Date.now()}`,
       ...notif,
@@ -1068,7 +1068,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       created_at: new Date().toISOString(),
     };
     setNotifications(prev => [newNotif, ...prev]);
-  };
+  }, []);
 
   const markNotificationRead = (id: string) => {
     setNotifications(prev =>
@@ -1826,7 +1826,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   // ── Asignación de Materias y Docentes por Salón ──
-  const assignCourseToSection = (params: {
+  const assignCourseToSection = useCallback((params: {
     seccionId: string;
     cursoId: string;
     docenteId: string;
@@ -1904,7 +1904,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
 
     return createdOrUpdated;
-  };
+  }, [users, teachers, sectionCourses, showToast, addNotification]);
 
   const removeSectionCourse = (assignmentId: string) => {
     const target = sectionCourses.find(sc => sc.id === assignmentId);
@@ -2461,7 +2461,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     showToast(`Anotación conductual (${logData.tipo}) registrada`, 'success', 'Cuaderno de Control');
     return newEntry;
-  }, [enrollments, showToast]);
+  }, [enrollments, showToast, addNotification]);
 
   const deleteBehaviorLog = useCallback((id: string) => {
     setBehaviorLogs(prev => prev.filter(b => b.id !== id));

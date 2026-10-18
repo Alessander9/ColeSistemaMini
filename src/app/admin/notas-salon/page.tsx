@@ -202,6 +202,7 @@ export default function NotasSalonPage() {
       byGrade[key].push(sec);
     });
     return byGrade;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sections, filterNivel, filterStatus, search, gradeRecords, filterCurso]);
 
   // Sorted grade levels

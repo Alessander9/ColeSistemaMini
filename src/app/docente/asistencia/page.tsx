@@ -1,9 +1,10 @@
 'use client';
 
+import { useState, useEffect, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { triggerConfetti } from '@/lib/ui/confetti';
 import { useApp } from '@/context/AppContext';
-import { AttendanceStatus, DayOfWeek, ScheduleSlot } from '@/types';
+import { AttendanceStatus, DayOfWeek, ScheduleSlot, Section, Course } from '@/types';
 import { DAYS } from '@/lib/constants/schedule';
 import { getSectionClassStatus } from '@/lib/schedule/attendanceWindow';
 import { useAulaColors } from '@/hooks/useAulaColors';
