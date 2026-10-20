@@ -236,6 +236,7 @@ interface AppContextType {
     nombres: string;
     apellidos: string;
     dni: string;
+    fecha_nacimiento?: string;
     email?: string;
     telefono?: string;
     especialidad?: string;
@@ -913,6 +914,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     nombres: string;
     apellidos: string;
     dni: string;
+    fecha_nacimiento?: string;
     email?: string;
     telefono?: string;
     especialidad?: string;
@@ -930,6 +932,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       nombres: data.nombres,
       apellidos: data.apellidos,
       dni: data.dni,
+      fecha_nacimiento: data.fecha_nacimiento,
       email: autoEmail,
       // Sin estos dos campos el docente no podía entrar con las credenciales que se le mostraban
       username: autoUsername,

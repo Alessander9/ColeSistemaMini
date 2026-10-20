@@ -59,6 +59,7 @@ export interface UserProfile {
   username?: string;
   password?: string;
   telefono?: string;
+  fecha_nacimiento?: string;
   avatar_url?: string;
   especialidad?: string;
   cargo?: string;

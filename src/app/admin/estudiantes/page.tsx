@@ -38,6 +38,10 @@ import {
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { MassPromotionModal } from '@/components/academico/MassPromotionModal';
 import { generateSecurePassword } from '@/lib/auth/generateCredentials';
+import { FormField } from '@/components/ui/FormField';
+import { AgeBadge } from '@/components/ui/AgeBadge';
+import { validateDni, validatePeruPhone, validateStudentBirthDate } from '@/lib/validation/businessRules';
+import { EducationalLevel } from '@/types';
 
 export default function AdminEstudiantesPage() {
   const {
@@ -257,17 +261,29 @@ export default function AdminEstudiantesPage() {
     setSelectedIds((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]));
   };
 
+  // ── Validaciones en Tiempo Real: Crear Estudiante ──
+  const [createTouched, setCreateTouched] = useState<Record<string, boolean>>({});
+  const createSelectedLevel = (levelOfSec(formData.seccionId) || null) as EducationalLevel | null;
+  const createDniVal = validateDni(formData.dni, {
+    required: true,
+    existingDnis: students.map(s => s.profile?.dni || s.dni),
+    entityName: 'estudiante'
+  });
+  const createBirthVal = validateStudentBirthDate(formData.fechaNacimiento, createSelectedLevel);
+  const createPhoneVal = validatePeruPhone(formData.telefonoApoderado, { required: false, fieldName: 'El teléfono' });
+  const createNamesValid = formData.nombres.trim().length >= 2;
+  const createLastNamesValid = formData.apellidos.trim().length >= 2;
+  const canCreateStudent = createNamesValid && createLastNamesValid && createDniVal.isValid && createBirthVal.isValid && createPhoneVal.isValid && !!formData.seccionId;
+
   // Create Student Handler
   const handleCreateStudent = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.nombres || !formData.apellidos || !formData.dni) return;
-    if (!/^\d{8}$/.test(formData.dni.trim())) { showToast('El DNI debe tener 8 números', 'error'); return; }
-    if (students.some(x => (x.profile?.dni || x.dni) === formData.dni.trim())) { showToast('Ya existe un alumno con ese DNI', 'error', 'DNI repetido'); return; }
-    if (!formData.seccionId) { showToast('Elige el aula del alumno', 'error'); return; }
+    if (!canCreateStudent) return;
 
     const result = addStudent(formData);
     setIsAddModalOpen(false);
     setSelectedStudentForQr(result.student);
+    setCreateTouched({});
     setFormData({
       nombres: '',
       apellidos: '',
@@ -292,10 +308,28 @@ export default function AdminEstudiantesPage() {
     showToast('Contraseña de estudiante sugerida generada.', 'info', 'Contraseña');
   };
 
+  // ── Validaciones en Tiempo Real: Editar Estudiante ──
+  const [editTouched, setEditTouched] = useState<Record<string, boolean>>({});
+  const editSelectedLevel = (levelOfSec(editFormData.seccionId) || null) as EducationalLevel | null;
+  const otherStudentDnis = useMemo(() => {
+    return students.filter(s => s.id !== editingStudent?.id).map(s => s.profile?.dni || s.dni);
+  }, [students, editingStudent]);
+  const editDniVal = validateDni(editFormData.dni, {
+    required: true,
+    existingDnis: otherStudentDnis,
+    entityName: 'estudiante'
+  });
+  const editBirthVal = validateStudentBirthDate(editFormData.fechaNacimiento, editSelectedLevel);
+  const editPhoneVal = validatePeruPhone(editFormData.telefonoApoderado, { required: false, fieldName: 'El teléfono' });
+  const editNamesValid = editFormData.nombres.trim().length >= 2;
+  const editLastNamesValid = editFormData.apellidos.trim().length >= 2;
+  const canSaveStudentEdit = editNamesValid && editLastNamesValid && editDniVal.isValid && editBirthVal.isValid && editPhoneVal.isValid && !!editFormData.seccionId;
+
   // Open Edit Modal
   const handleOpenEdit = (student: Student) => {
     const enr = enrollments.find((e) => e.estudiante_id === student.id);
     setEditingStudent(student);
+    setEditTouched({});
     setEditFormData({
       nombres: student.profile?.nombres || '',
       apellidos: student.profile?.apellidos || '',
@@ -312,7 +346,7 @@ export default function AdminEstudiantesPage() {
   // Submit Edit Handler
   const handleSaveEdit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingStudent) return;
+    if (!editingStudent || !canSaveStudentEdit) return;
     updateStudent(editingStudent.id, editFormData);
     setEditingStudent(null);
   };
@@ -549,93 +583,126 @@ export default function AdminEstudiantesPage() {
             />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
-                <User className="w-3.5 h-3.5 text-blue-500" />
-                Nombres *
-              </label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <FormField
+              label="Nombres"
+              required
+              icon={<User className="w-3.5 h-3.5 text-blue-500" />}
+              error={createTouched.nombres && formData.nombres.trim().length < 2 ? 'Ingresa los nombres del alumno (mínimo 2 letras).' : undefined}
+            >
               <input
                 required
                 type="text"
                 placeholder="Ej. Héctor Raúl"
                 value={formData.nombres}
+                onBlur={() => setCreateTouched(prev => ({ ...prev, nombres: true }))}
                 onChange={(e) => setFormData({ ...formData, nombres: e.target.value })}
-                className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
               />
-            </div>
+            </FormField>
 
-            <div>
-              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
-                <User className="w-3.5 h-3.5 text-blue-500" />
-                Apellidos *
-              </label>
+            <FormField
+              label="Apellidos"
+              required
+              icon={<User className="w-3.5 h-3.5 text-blue-500" />}
+              error={createTouched.apellidos && formData.apellidos.trim().length < 2 ? 'Ingresa los apellidos del alumno (mínimo 2 letras).' : undefined}
+            >
               <input
                 required
                 type="text"
                 placeholder="Ej. Salazar Portero"
                 value={formData.apellidos}
+                onBlur={() => setCreateTouched(prev => ({ ...prev, apellidos: true }))}
                 onChange={(e) => setFormData({ ...formData, apellidos: e.target.value })}
-                className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
               />
-            </div>
+            </FormField>
 
-            <div>
-              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
-                <Hash className="w-3.5 h-3.5 text-blue-500" />
-                DNI del Alumno *
-              </label>
+            <FormField
+              label="DNI del Alumno"
+              required
+              icon={<Hash className="w-3.5 h-3.5 text-blue-500" />}
+              error={(createTouched.dni || formData.dni.length === 8) && !createDniVal.isValid ? createDniVal.message : undefined}
+            >
               <input
                 required
                 type="text"
                 maxLength={8}
-                placeholder="8 dígitos"
+                inputMode="numeric"
+                placeholder="8 dígitos numéricos"
                 value={formData.dni}
-                onChange={(e) => setFormData({ ...formData, dni: e.target.value })}
-                className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 font-mono"
+                onBlur={() => setCreateTouched(prev => ({ ...prev, dni: true }))}
+                onChange={(e) => setFormData({ ...formData, dni: e.target.value.replace(/\D/g, '') })}
+                className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 font-mono outline-none"
               />
-            </div>
+            </FormField>
 
-            <div>
-              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
-                <School className="w-3.5 h-3.5 text-blue-500" />
-                Sección de Matrícula *
-              </label>
+            <FormField
+              label="Fecha de Nacimiento"
+              required
+              icon={<Calendar className="w-3.5 h-3.5 text-blue-500" />}
+              badge={<AgeBadge birthDate={formData.fechaNacimiento} level={createSelectedLevel} />}
+              error={(createTouched.fechaNacimiento || !!formData.fechaNacimiento) && !createBirthVal.isValid ? createBirthVal.message : undefined}
+            >
+              <input
+                required
+                type="date"
+                value={formData.fechaNacimiento}
+                onBlur={() => setCreateTouched(prev => ({ ...prev, fechaNacimiento: true }))}
+                onChange={(e) => setFormData({ ...formData, fechaNacimiento: e.target.value })}
+                className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 font-mono outline-none"
+              />
+            </FormField>
+
+            <FormField
+              label="Sección de Matrícula"
+              required
+              icon={<School className="w-3.5 h-3.5 text-blue-500" />}
+              error={createTouched.seccionId && !formData.seccionId ? 'Elige el aula donde estudiará el alumno.' : undefined}
+            >
               <SearchableSelect
                 value={formData.seccionId}
-                onChange={(val) => setFormData({ ...formData, seccionId: val })}
+                onChange={(val) => {
+                  setFormData({ ...formData, seccionId: val });
+                  setCreateTouched(prev => ({ ...prev, seccionId: true }));
+                }}
                 icon={<School className="w-4 h-4" />}
                 options={sectionOptions}
                 placeholder="Seleccionar aula..."
               />
-            </div>
+            </FormField>
 
-            <div>
-              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
-                <UserCheck className="w-3.5 h-3.5 text-blue-500" />
-                Nombre del Apoderado
-              </label>
+            <FormField
+              label="Nombre del Apoderado"
+              icon={<UserCheck className="w-3.5 h-3.5 text-blue-500" />}
+            >
               <input
                 type="text"
                 placeholder="Ej. Jorge Silva Rodríguez"
                 value={formData.nombreApoderado}
                 onChange={(e) => setFormData({ ...formData, nombreApoderado: e.target.value })}
-                className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
               />
-            </div>
+            </FormField>
 
-            <div>
-              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
-                <Phone className="w-3.5 h-3.5 text-blue-500" />
-                Teléfono de Contacto
-              </label>
-              <input
-                type="text"
-                placeholder="Ej. 955443322"
-                value={formData.telefonoApoderado}
-                onChange={(e) => setFormData({ ...formData, telefonoApoderado: e.target.value })}
-                className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 font-mono"
-              />
+            <div className="sm:col-span-2">
+              <FormField
+                label="Teléfono / WhatsApp de Contacto"
+                icon={<Phone className="w-3.5 h-3.5 text-blue-500" />}
+                hint="9 dígitos (formato celular peruano, ej. 987654321)"
+                error={(createTouched.telefonoApoderado || formData.telefonoApoderado.length > 0) && !createPhoneVal.isValid ? createPhoneVal.message : undefined}
+              >
+                <input
+                  type="tel"
+                  maxLength={9}
+                  inputMode="numeric"
+                  placeholder="Ej. 955443322"
+                  value={formData.telefonoApoderado}
+                  onBlur={() => setCreateTouched(prev => ({ ...prev, telefonoApoderado: true }))}
+                  onChange={(e) => setFormData({ ...formData, telefonoApoderado: e.target.value.replace(/\D/g, '') })}
+                  className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 font-mono outline-none"
+                />
+              </FormField>
             </div>
           </div>
 
@@ -704,7 +771,8 @@ export default function AdminEstudiantesPage() {
             </button>
             <button
               type="submit"
-              className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md transition-all active:scale-95 cursor-pointer"
+              disabled={!canCreateStudent}
+              className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
             >
               Guardar y ver su carnet
             </button>
@@ -730,88 +798,121 @@ export default function AdminEstudiantesPage() {
               />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
-                  <User className="w-3.5 h-3.5 text-blue-500" />
-                  Nombres *
-                </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <FormField
+                label="Nombres"
+                required
+                icon={<User className="w-3.5 h-3.5 text-blue-500" />}
+                error={editTouched.nombres && editFormData.nombres.trim().length < 2 ? 'Ingresa los nombres del alumno (mínimo 2 letras).' : undefined}
+              >
                 <input
                   required
                   type="text"
                   value={editFormData.nombres}
+                  onBlur={() => setEditTouched(prev => ({ ...prev, nombres: true }))}
                   onChange={(e) => setEditFormData({ ...editFormData, nombres: e.target.value })}
-                  className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
                 />
-              </div>
+              </FormField>
 
-              <div>
-                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
-                  <User className="w-3.5 h-3.5 text-blue-500" />
-                  Apellidos *
-                </label>
+              <FormField
+                label="Apellidos"
+                required
+                icon={<User className="w-3.5 h-3.5 text-blue-500" />}
+                error={editTouched.apellidos && editFormData.apellidos.trim().length < 2 ? 'Ingresa los apellidos del alumno (mínimo 2 letras).' : undefined}
+              >
                 <input
                   required
                   type="text"
                   value={editFormData.apellidos}
+                  onBlur={() => setEditTouched(prev => ({ ...prev, apellidos: true }))}
                   onChange={(e) => setEditFormData({ ...editFormData, apellidos: e.target.value })}
-                  className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
                 />
-              </div>
+              </FormField>
 
-              <div>
-                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
-                  <Hash className="w-3.5 h-3.5 text-blue-500" />
-                  DNI *
-                </label>
+              <FormField
+                label="DNI del Alumno"
+                required
+                icon={<Hash className="w-3.5 h-3.5 text-blue-500" />}
+                error={(editTouched.dni || editFormData.dni.length === 8) && !editDniVal.isValid ? editDniVal.message : undefined}
+              >
                 <input
                   required
                   type="text"
                   maxLength={8}
+                  inputMode="numeric"
                   value={editFormData.dni}
-                  onChange={(e) => setEditFormData({ ...editFormData, dni: e.target.value })}
-                  className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 font-mono"
+                  onBlur={() => setEditTouched(prev => ({ ...prev, dni: true }))}
+                  onChange={(e) => setEditFormData({ ...editFormData, dni: e.target.value.replace(/\D/g, '') })}
+                  className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 font-mono outline-none"
                 />
-              </div>
+              </FormField>
 
-              <div>
-                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
-                  <School className="w-3.5 h-3.5 text-blue-500" />
-                  Sección *
-                </label>
+              <FormField
+                label="Fecha de Nacimiento"
+                required
+                icon={<Calendar className="w-3.5 h-3.5 text-blue-500" />}
+                badge={<AgeBadge birthDate={editFormData.fechaNacimiento} level={editSelectedLevel} />}
+                error={(editTouched.fechaNacimiento || !!editFormData.fechaNacimiento) && !editBirthVal.isValid ? editBirthVal.message : undefined}
+              >
+                <input
+                  required
+                  type="date"
+                  value={editFormData.fechaNacimiento}
+                  onBlur={() => setEditTouched(prev => ({ ...prev, fechaNacimiento: true }))}
+                  onChange={(e) => setEditFormData({ ...editFormData, fechaNacimiento: e.target.value })}
+                  className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 font-mono outline-none"
+                />
+              </FormField>
+
+              <FormField
+                label="Sección de Matrícula"
+                required
+                icon={<School className="w-3.5 h-3.5 text-blue-500" />}
+                error={editTouched.seccionId && !editFormData.seccionId ? 'Elige el aula donde estudiará el alumno.' : undefined}
+              >
                 <SearchableSelect
                   value={editFormData.seccionId}
-                  onChange={(val) => setEditFormData({ ...editFormData, seccionId: val })}
+                  onChange={(val) => {
+                    setEditFormData({ ...editFormData, seccionId: val });
+                    setEditTouched(prev => ({ ...prev, seccionId: true }));
+                  }}
                   icon={<School className="w-4 h-4" />}
                   options={sectionOptions}
                   placeholder="Seleccionar aula..."
                 />
-              </div>
+              </FormField>
 
-              <div>
-                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
-                  <UserCheck className="w-3.5 h-3.5 text-blue-500" />
-                  Apoderado
-                </label>
+              <FormField
+                label="Nombre del Apoderado"
+                icon={<UserCheck className="w-3.5 h-3.5 text-blue-500" />}
+              >
                 <input
                   type="text"
                   value={editFormData.nombreApoderado}
                   onChange={(e) => setEditFormData({ ...editFormData, nombreApoderado: e.target.value })}
-                  className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
                 />
-              </div>
+              </FormField>
 
-              <div>
-                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
-                  <Phone className="w-3.5 h-3.5 text-blue-500" />
-                  Teléfono
-                </label>
-                <input
-                  type="text"
-                  value={editFormData.telefonoApoderado}
-                  onChange={(e) => setEditFormData({ ...editFormData, telefonoApoderado: e.target.value })}
-                  className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 font-mono"
-                />
+              <div className="sm:col-span-2">
+                <FormField
+                  label="Teléfono de Contacto"
+                  icon={<Phone className="w-3.5 h-3.5 text-blue-500" />}
+                  hint="9 dígitos (formato celular peruano, ej. 987654321)"
+                  error={(editTouched.telefonoApoderado || editFormData.telefonoApoderado.length > 0) && !editPhoneVal.isValid ? editPhoneVal.message : undefined}
+                >
+                  <input
+                    type="tel"
+                    maxLength={9}
+                    inputMode="numeric"
+                    value={editFormData.telefonoApoderado}
+                    onBlur={() => setEditTouched(prev => ({ ...prev, telefonoApoderado: true }))}
+                    onChange={(e) => setEditFormData({ ...editFormData, telefonoApoderado: e.target.value.replace(/\D/g, '') })}
+                    className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 font-mono outline-none"
+                  />
+                </FormField>
               </div>
             </div>
 
@@ -825,7 +926,8 @@ export default function AdminEstudiantesPage() {
               </button>
               <button
                 type="submit"
-                className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md transition-all active:scale-95 cursor-pointer"
+                disabled={!canSaveStudentEdit}
+                className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
               >
                 Guardar Cambios
               </button>

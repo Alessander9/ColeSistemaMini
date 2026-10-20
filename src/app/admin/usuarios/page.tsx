@@ -35,6 +35,8 @@ import {
 import { Modal } from '@/components/ui/Modal';
 import { AvatarUploader } from '@/components/ui/AvatarUploader';
 import { generateSecurePassword } from '@/lib/auth/generateCredentials';
+import { FormField } from '@/components/ui/FormField';
+import { validateDni, validatePeruPhone } from '@/lib/validation/businessRules';
 
 const PAGE_SIZE = 20;
 
@@ -86,6 +88,24 @@ export default function GestionUsuariosPage() {
     activo: true,
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+
+  // Validaciones en tiempo real para creación de usuario
+  const createDniVal = useMemo(
+    () => validateDni(formData.dni, { existingDnis: users.map(u => u.dni).filter(Boolean) }),
+    [formData.dni, users]
+  );
+
+  const createPhoneVal = useMemo(
+    () => validatePeruPhone(formData.telefono, { isOptional: true }),
+    [formData.telefono]
+  );
+
+  const isCreateValid = Boolean(
+    formData.nombres.trim() &&
+    formData.apellidos.trim() &&
+    createDniVal.valid &&
+    createPhoneVal.valid
+  );
 
   // Filtrado reactivo de usuarios
   const filteredUsers = useMemo(() => {
@@ -161,16 +181,11 @@ export default function GestionUsuariosPage() {
 
     if (!formData.nombres.trim()) errors.nombres = 'Ingresa los nombres del usuario.';
     if (!formData.apellidos.trim()) errors.apellidos = 'Ingresa los apellidos del usuario.';
-    if (!formData.dni.trim()) {
-      errors.dni = 'Ingresa el número de DNI o documento.';
-    } else if (!/^\d{8}$/.test(formData.dni.trim())) {
-      errors.dni = 'El DNI debe contener exactamente 8 dígitos numéricos.';
+    if (!createDniVal.valid) {
+      errors.dni = createDniVal.error || 'DNI inválido.';
     }
-
-    // Verificar DNI duplicado
-    const dniExists = users.some(u => u.dni === formData.dni.trim());
-    if (dniExists) {
-      errors.dni = 'Ya existe un usuario registrado con este número de DNI.';
+    if (!createPhoneVal.valid) {
+      errors.telefono = createPhoneVal.error || 'Teléfono celular inválido.';
     }
 
     if (Object.keys(errors).length > 0) {
@@ -509,89 +524,82 @@ export default function GestionUsuariosPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
 
               {/* Nombres */}
-              <div>
-                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Nombres <span className="text-rose-500">*</span>
-                </label>
+              <FormField
+                label="Nombres"
+                required
+                error={formErrors.nombres || (!formData.nombres.trim() && formData.dni ? 'Ingresa los nombres.' : undefined)}
+              >
                 <input
                   type="text"
                   value={formData.nombres}
                   onChange={(e) => setFormData(prev => ({ ...prev, nombres: e.target.value }))}
                   placeholder="Ej. Carlos Alberto"
-                  className={`w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border text-xs text-slate-900 dark:text-white focus:outline-hidden ${
-                    formErrors.nombres ? 'border-rose-500 ring-1 ring-rose-500' : 'border-slate-200 dark:border-slate-700'
-                  }`}
+                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white focus:outline-hidden"
                 />
-                {formErrors.nombres && (
-                  <p className="text-[10px] text-rose-500 font-semibold mt-0.5">{formErrors.nombres}</p>
-                )}
-              </div>
+              </FormField>
 
               {/* Apellidos */}
-              <div>
-                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Apellidos <span className="text-rose-500">*</span>
-                </label>
+              <FormField
+                label="Apellidos"
+                required
+                error={formErrors.apellidos || (!formData.apellidos.trim() && formData.dni ? 'Ingresa los apellidos.' : undefined)}
+              >
                 <input
                   type="text"
                   value={formData.apellidos}
                   onChange={(e) => setFormData(prev => ({ ...prev, apellidos: e.target.value }))}
                   placeholder="Ej. Mendoza Rojas"
-                  className={`w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border text-xs text-slate-900 dark:text-white focus:outline-hidden ${
-                    formErrors.apellidos ? 'border-rose-500 ring-1 ring-rose-500' : 'border-slate-200 dark:border-slate-700'
-                  }`}
+                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white focus:outline-hidden"
                 />
-                {formErrors.apellidos && (
-                  <p className="text-[10px] text-rose-500 font-semibold mt-0.5">{formErrors.apellidos}</p>
-                )}
-              </div>
+              </FormField>
 
               {/* DNI */}
-              <div>
-                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  DNI / Documento de Identidad <span className="text-rose-500">*</span>
-                </label>
+              <FormField
+                label="DNI / Documento de Identidad"
+                required
+                hint="8 dígitos numéricos"
+                error={formErrors.dni || createDniVal.error}
+              >
                 <input
                   type="text"
                   maxLength={8}
                   value={formData.dni}
                   onChange={(e) => setFormData(prev => ({ ...prev, dni: e.target.value.replace(/\D/g, '') }))}
                   placeholder="8 dígitos (Ej. 44556677)"
-                  className={`w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border font-mono text-xs text-slate-900 dark:text-white focus:outline-hidden ${
-                    formErrors.dni ? 'border-rose-500 ring-1 ring-rose-500' : 'border-slate-200 dark:border-slate-700'
-                  }`}
+                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono text-xs text-slate-900 dark:text-white focus:outline-hidden"
                 />
-                {formErrors.dni && (
-                  <p className="text-[10px] text-rose-500 font-semibold mt-0.5">{formErrors.dni}</p>
-                )}
-              </div>
+              </FormField>
 
               {/* Teléfono */}
-              <div>
-                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Teléfono / Celular (Opcional)
-                </label>
+              <FormField
+                label="Teléfono Celular"
+                hint="9 dígitos comenzando con 9 (opcional)"
+                error={formErrors.telefono || createPhoneVal.error}
+              >
                 <input
                   type="text"
+                  maxLength={9}
                   value={formData.telefono}
-                  onChange={(e) => setFormData(prev => ({ ...prev, telefono: e.target.value }))}
+                  onChange={(e) => setFormData(prev => ({ ...prev, telefono: e.target.value.replace(/\D/g, '') }))}
                   placeholder="Ej. 987654321"
-                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white focus:outline-hidden"
+                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono text-xs text-slate-900 dark:text-white focus:outline-hidden"
                 />
-              </div>
+              </FormField>
 
               {/* Correo */}
               <div className="sm:col-span-2">
-                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Correo Electrónico (Opcional - Se autogenera si se deja vacío)
-                </label>
-                <input
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                  placeholder="Ej. cmendoza@colegio.edu.pe"
-                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white focus:outline-hidden"
-                />
+                <FormField
+                  label="Correo Electrónico"
+                  hint="Opcional - Se autogenera si se deja vacío"
+                >
+                  <input
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                    placeholder="Ej. cmendoza@colegio.edu.pe"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white focus:outline-hidden"
+                  />
+                </FormField>
               </div>
 
               {/* Especialidad o Cargo si aplica */}
@@ -698,7 +706,8 @@ export default function GestionUsuariosPage() {
             </button>
             <button
               type="submit"
-              className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs shadow-md shadow-indigo-600/20 transition-all cursor-pointer flex items-center gap-1.5"
+              disabled={!isCreateValid}
+              className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-indigo-600 text-white font-black text-xs shadow-md shadow-indigo-600/20 transition-all cursor-pointer flex items-center gap-1.5"
             >
               <Check className="w-4 h-4" />
               <span>Crear Usuario</span>

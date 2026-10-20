@@ -7,6 +7,9 @@ import { AvatarUploader } from '@/components/ui/AvatarUploader';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { Modal } from '@/components/ui/Modal';
 import { CourseFormModal } from '@/components/academico/CourseFormModal';
+import { FormField } from '@/components/ui/FormField';
+import { AgeBadge } from '@/components/ui/AgeBadge';
+import { validateDni, validatePeruPhone, validateTeacherBirthDate } from '@/lib/validation/businessRules';
 import { Course, Section, UserProfile } from '@/types';
 import {
   AlertTriangle,
@@ -160,14 +163,20 @@ export default function AdminDocentesPage() {
     (!q || sectionLabel(c.section).toLowerCase().includes(q) || c.rows.some(r => r.course.nombre.toLowerCase().includes(q) || `${r.teacher?.nombres || ''} ${r.teacher?.apellidos || ''}`.toLowerCase().includes(q))));
 
   // ── Registrar docente ──
-  const emptyTeacher = { nombres: '', apellidos: '', dni: '', telefono: '', email: '', especialidad: 'Matemática', avatar_url: '' };
+  const emptyTeacher = { nombres: '', apellidos: '', dni: '', fecha_nacimiento: '1990-05-15', telefono: '', email: '', especialidad: 'Matemática', avatar_url: '' };
   const [isNewOpen, setIsNewOpen] = useState(false);
   const [newTeacher, setNewTeacher] = useState(emptyTeacher);
+  const [newTouched, setNewTouched] = useState<Record<string, boolean>>({});
   const [credentials, setCredentials] = useState<{ name: string; username: string; password: string; email: string } | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
-  const dniValid = /^\d{8}$/.test(newTeacher.dni);
-  const dniTaken = teachers.some(t => t.dni === newTeacher.dni);
-  const canRegister = newTeacher.nombres.trim() !== '' && newTeacher.apellidos.trim() !== '' && dniValid && !dniTaken;
+
+  // Validaciones en tiempo real: Nuevo Docente
+  const newDniCheck = validateDni(newTeacher.dni, { required: true, existingDnis: teachers.map(t => t.dni), entityName: 'docente' });
+  const newBirthCheck = validateTeacherBirthDate(newTeacher.fecha_nacimiento);
+  const newPhoneCheck = validatePeruPhone(newTeacher.telefono, { required: false, fieldName: 'El celular' });
+  const newNamesValid = newTeacher.nombres.trim().length >= 2;
+  const newLastNamesValid = newTeacher.apellidos.trim().length >= 2;
+  const canRegister = newNamesValid && newLastNamesValid && newDniCheck.isValid && newBirthCheck.isValid && newPhoneCheck.isValid;
 
   const registerTeacher = (e: React.FormEvent) => {
     e.preventDefault();
@@ -175,6 +184,7 @@ export default function AdminDocentesPage() {
     const res = addTeacher({ ...newTeacher, nombres: newTeacher.nombres.trim(), apellidos: newTeacher.apellidos.trim() });
     setCredentials({ name: `${res.teacher.nombres} ${res.teacher.apellidos}`, username: res.credentials.username, password: res.credentials.password, email: res.credentials.email });
     setNewTeacher(emptyTeacher);
+    setNewTouched({});
     setIsNewOpen(false);
   };
   const copy = (key: string, text: string) => {
@@ -185,15 +195,33 @@ export default function AdminDocentesPage() {
 
   // ── Editar / eliminar ──
   const [editing, setEditing] = useState<UserProfile | null>(null);
-  const [editForm, setEditForm] = useState({ nombres: '', apellidos: '', dni: '', telefono: '', email: '', especialidad: '', avatar_url: '' });
+  const [editForm, setEditForm] = useState({ nombres: '', apellidos: '', dni: '', fecha_nacimiento: '1990-05-15', telefono: '', email: '', especialidad: '', avatar_url: '' });
+  const [editTouched, setEditTouched] = useState<Record<string, boolean>>({});
+
+  const editBirthCheck = validateTeacherBirthDate(editForm.fecha_nacimiento);
+  const editPhoneCheck = validatePeruPhone(editForm.telefono, { required: false, fieldName: 'El celular' });
+  const editNamesValid = editForm.nombres.trim().length >= 2;
+  const editLastNamesValid = editForm.apellidos.trim().length >= 2;
+  const canSaveEdit = editNamesValid && editLastNamesValid && editBirthCheck.isValid && editPhoneCheck.isValid;
+
   const openEdit = (t: UserProfile) => {
     setEditing(t);
-    setEditForm({ nombres: t.nombres, apellidos: t.apellidos, dni: t.dni, telefono: t.telefono || '', email: t.email || '', especialidad: t.especialidad || 'Matemática', avatar_url: t.avatar_url || '' });
+    setEditForm({
+      nombres: t.nombres,
+      apellidos: t.apellidos,
+      dni: t.dni,
+      fecha_nacimiento: t.fecha_nacimiento || '1990-05-15',
+      telefono: t.telefono || '',
+      email: t.email || '',
+      especialidad: t.especialidad || 'Matemática',
+      avatar_url: t.avatar_url || ''
+    });
+    setEditTouched({});
     setOpenMenuId(null);
   };
   const saveEdit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editing || !editForm.nombres.trim() || !editForm.apellidos.trim()) return;
+    if (!editing || !canSaveEdit) return;
     updateTeacher(editing.id, editForm);
     setEditing(null);
   };
@@ -248,33 +276,136 @@ export default function AdminDocentesPage() {
   const card = 'rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm';
   const inputCls = 'w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500';
 
-  const teacherForm = (form: typeof newTeacher, set: (f: typeof newTeacher) => void, dniLocked = false) => (
-    <div className="space-y-4">
-      <div className="flex justify-center p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40">
-        <AvatarUploader currentAvatarUrl={form.avatar_url} userName={`${form.nombres || 'Docente'} ${form.apellidos}`.trim()} onAvatarUpdated={url => set({ ...form, avatar_url: url })} />
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <label className="block"><span className="block text-sm font-bold text-slate-700 dark:text-slate-200 mb-1">Nombres *</span>
-          <input required value={form.nombres} onChange={e => set({ ...form, nombres: e.target.value })} placeholder="Ej. Juan Carlos" className={inputCls} />
-        </label>
-        <label className="block"><span className="block text-sm font-bold text-slate-700 dark:text-slate-200 mb-1">Apellidos *</span>
-          <input required value={form.apellidos} onChange={e => set({ ...form, apellidos: e.target.value })} placeholder="Ej. Quispe Flores" className={inputCls} />
-        </label>
-        <label className="block"><span className="block text-sm font-bold text-slate-700 dark:text-slate-200 mb-1">DNI (8 dígitos) *</span>
-          <input required inputMode="numeric" maxLength={8} disabled={dniLocked} value={form.dni} onChange={e => set({ ...form, dni: e.target.value.replace(/\D/g, '') })} placeholder="Ej. 45678912" className={`${inputCls} font-mono disabled:opacity-60`} />
-        </label>
-        <label className="block"><span className="block text-sm font-bold text-slate-700 dark:text-slate-200 mb-1">Celular</span>
-          <input type="tel" value={form.telefono} onChange={e => set({ ...form, telefono: e.target.value })} placeholder="Ej. 987654321" className={`${inputCls} font-mono`} />
-        </label>
-        <div><span className="block text-sm font-bold text-slate-700 dark:text-slate-200 mb-1">Especialidad *</span>
-          <SearchableSelect value={form.especialidad} onChange={val => set({ ...form, especialidad: val })} icon={<GraduationCap className="w-4 h-4" />} allowCustomOption customOptionLabel="Usar otra especialidad" options={SPECIALTIES} placeholder="Buscar o escribir…" />
+  const teacherForm = (
+    form: typeof newTeacher,
+    set: (f: typeof newTeacher) => void,
+    dniLocked = false,
+    touched: Record<string, boolean> = {},
+    setTouched?: React.Dispatch<React.SetStateAction<Record<string, boolean>>>
+  ) => {
+    const dniVal = validateDni(form.dni, {
+      required: true,
+      existingDnis: dniLocked ? [] : teachers.map(t => t.dni),
+      entityName: 'docente'
+    });
+    const birthVal = validateTeacherBirthDate(form.fecha_nacimiento);
+    const phoneVal = validatePeruPhone(form.telefono, { required: false, fieldName: 'El celular' });
+    const markTouched = (f: string) => { if (setTouched) setTouched(prev => ({ ...prev, [f]: true })); };
+
+    return (
+      <div className="space-y-4">
+        <div className="flex justify-center p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40">
+          <AvatarUploader currentAvatarUrl={form.avatar_url} userName={`${form.nombres || 'Docente'} ${form.apellidos}`.trim()} onAvatarUpdated={url => set({ ...form, avatar_url: url })} />
         </div>
-        <label className="block"><span className="block text-sm font-bold text-slate-700 dark:text-slate-200 mb-1">Correo <span className="font-normal text-slate-400">(opcional)</span></span>
-          <input type="email" value={form.email} onChange={e => set({ ...form, email: e.target.value })} placeholder="nombre@colegio.edu.pe" className={inputCls} />
-        </label>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+          <FormField
+            label="Nombres"
+            required
+            error={touched.nombres && form.nombres.trim().length < 2 ? 'Ingresa los nombres del docente (mínimo 2 letras).' : undefined}
+          >
+            <input
+              required
+              value={form.nombres}
+              onBlur={() => markTouched('nombres')}
+              onChange={e => set({ ...form, nombres: e.target.value })}
+              placeholder="Ej. Juan Carlos"
+              className={inputCls}
+            />
+          </FormField>
+
+          <FormField
+            label="Apellidos"
+            required
+            error={touched.apellidos && form.apellidos.trim().length < 2 ? 'Ingresa los apellidos del docente (mínimo 2 letras).' : undefined}
+          >
+            <input
+              required
+              value={form.apellidos}
+              onBlur={() => markTouched('apellidos')}
+              onChange={e => set({ ...form, apellidos: e.target.value })}
+              placeholder="Ej. Quispe Flores"
+              className={inputCls}
+            />
+          </FormField>
+
+          <FormField
+            label="DNI (8 dígitos)"
+            required
+            error={!dniLocked && (touched.dni || form.dni.length === 8) && !dniVal.isValid ? dniVal.message : undefined}
+          >
+            <input
+              required
+              inputMode="numeric"
+              maxLength={8}
+              disabled={dniLocked}
+              value={form.dni}
+              onBlur={() => markTouched('dni')}
+              onChange={e => set({ ...form, dni: e.target.value.replace(/\D/g, '') })}
+              placeholder="Ej. 45678912"
+              className={`${inputCls} font-mono disabled:opacity-60`}
+            />
+          </FormField>
+
+          <FormField
+            label="Fecha de Nacimiento"
+            required
+            badge={<AgeBadge birthDate={form.fecha_nacimiento} mode="teacher" />}
+            error={(touched.fecha_nacimiento || !!form.fecha_nacimiento) && !birthVal.isValid ? birthVal.message : undefined}
+          >
+            <input
+              type="date"
+              required
+              value={form.fecha_nacimiento}
+              onBlur={() => markTouched('fecha_nacimiento')}
+              onChange={e => set({ ...form, fecha_nacimiento: e.target.value })}
+              className={inputCls}
+            />
+          </FormField>
+
+          <FormField
+            label="Celular (9 dígitos)"
+            hint="Formato peruano de 9 dígitos (ej. 987654321)"
+            error={(touched.telefono || form.telefono.length > 0) && !phoneVal.isValid ? phoneVal.message : undefined}
+          >
+            <input
+              type="tel"
+              maxLength={9}
+              inputMode="numeric"
+              value={form.telefono}
+              onBlur={() => markTouched('telefono')}
+              onChange={e => set({ ...form, telefono: e.target.value.replace(/\D/g, '') })}
+              placeholder="Ej. 987654321"
+              className={`${inputCls} font-mono`}
+            />
+          </FormField>
+
+          <FormField label="Especialidad" required>
+            <SearchableSelect
+              value={form.especialidad}
+              onChange={val => set({ ...form, especialidad: val })}
+              icon={<GraduationCap className="w-4 h-4" />}
+              allowCustomOption
+              customOptionLabel="Usar otra especialidad"
+              options={SPECIALTIES}
+              placeholder="Buscar o escribir…"
+            />
+          </FormField>
+
+          <div className="sm:col-span-2">
+            <FormField label="Correo electrónico" hint="Opcional. Se usará para notificaciones y recuperación de acceso">
+              <input
+                type="email"
+                value={form.email}
+                onChange={e => set({ ...form, email: e.target.value })}
+                placeholder="nombre@colegio.edu.pe"
+                className={inputCls}
+              />
+            </FormField>
+          </div>
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="space-y-5 max-w-7xl mx-auto pb-12 animate-in fade-in-50">
@@ -547,9 +678,7 @@ export default function AdminDocentesPage() {
       <Modal isOpen={isNewOpen} onClose={() => setIsNewOpen(false)} title="Registrar nuevo docente" maxWidth="xl">
         <form onSubmit={registerTeacher} className="space-y-4">
           <p className="text-sm text-slate-600 dark:text-slate-300 p-3 rounded-2xl bg-indigo-50 dark:bg-indigo-950/30">Al guardar, el sistema crea <strong>su usuario y contraseña</strong> para que entre a la plataforma. Te los mostraremos para que se los entregues.</p>
-          {teacherForm(newTeacher, setNewTeacher)}
-          {newTeacher.dni && !dniValid && <p className="text-sm font-bold text-rose-600">El DNI debe tener 8 números.</p>}
-          {dniValid && dniTaken && <p className="text-sm font-bold text-rose-600">Ya existe un docente con ese DNI.</p>}
+          {teacherForm(newTeacher, setNewTeacher, false, newTouched, setNewTouched)}
           <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
             <button type="button" onClick={() => setIsNewOpen(false)} className="px-4 py-2.5 rounded-xl border-2 border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-700 dark:text-slate-200 cursor-pointer">Cancelar</button>
             <button type="submit" disabled={!canRegister} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-black disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"><Key className="w-4 h-4" /> Guardar y crear acceso</button>
@@ -596,11 +725,11 @@ export default function AdminDocentesPage() {
       {editing && (
         <Modal isOpen onClose={() => setEditing(null)} title={`Editar a ${editing.nombres}`} maxWidth="xl">
           <form onSubmit={saveEdit} className="space-y-4">
-            {teacherForm(editForm, setEditForm, true)}
+            {teacherForm(editForm, setEditForm, true, editTouched, setEditTouched)}
             <p className="text-xs text-slate-500">El DNI no se puede cambiar porque identifica al docente en el sistema.</p>
             <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
               <button type="button" onClick={() => setEditing(null)} className="px-4 py-2.5 rounded-xl border-2 border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-700 dark:text-slate-200 cursor-pointer">Cancelar</button>
-              <button type="submit" className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-black cursor-pointer">Guardar cambios</button>
+              <button type="submit" disabled={!canSaveEdit} className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-black disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer">Guardar cambios</button>
             </div>
           </form>
         </Modal>

@@ -34,11 +34,15 @@ import {
   Building2,
   Lock,
   Download,
-  CreditCard
+  CreditCard,
+  AlertCircle
 } from 'lucide-react';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { generateSecurePassword } from '@/lib/auth/generateCredentials';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
+import { FormField } from '@/components/ui/FormField';
+import { AgeBadge } from '@/components/ui/AgeBadge';
+import { validateDni, validatePeruPhone, validateStudentBirthDate } from '@/lib/validation/businessRules';
 
 // Se carga solo al generar el PDF (así jsPDF no pesa en la carga inicial de la página)
 const downloadEnrollmentFichaPdf = async (...args: Parameters<typeof import('@/lib/pdf/generateEnrollmentFichaPdf').downloadEnrollmentFichaPdf>) =>
@@ -222,19 +226,69 @@ function MatriculasContent() {
     }
   };
 
+  // Validaciones en tiempo real para el asistente de matrícula
+  const step1DniVal = useMemo(
+    () => validateDni(wizardData.dni, { existingDnis: students.map(s => s.dni).filter(Boolean) }),
+    [wizardData.dni, students]
+  );
+
+  const step1BirthVal = useMemo(
+    () => validateStudentBirthDate(wizardData.fechaNacimiento, wizardData.nivel),
+    [wizardData.fechaNacimiento, wizardData.nivel]
+  );
+
+  const step3PhoneVal = useMemo(
+    () => validatePeruPhone(wizardData.telefonoApoderado),
+    [wizardData.telefonoApoderado]
+  );
+
+  const step3DniVal = useMemo(
+    () => validateDni(wizardData.dniApoderado, { isOptional: true }),
+    [wizardData.dniApoderado]
+  );
+
+  const isStep1Valid = Boolean(
+    wizardData.nombres.trim() &&
+    wizardData.apellidos.trim() &&
+    step1DniVal.valid &&
+    step1BirthVal.valid
+  );
+
+  const isStep2Valid = Boolean(
+    wizardData.seccionId &&
+    freeSeats(wizardData.seccionId) > 0 &&
+    step1BirthVal.valid
+  );
+
+  const isStep3Valid = Boolean(
+    wizardData.nombreApoderado.trim() &&
+    step3PhoneVal.valid &&
+    step3DniVal.valid
+  );
+
+  const isStepValid = (step: number) => {
+    switch (step) {
+      case 1: return isStep1Valid;
+      case 2: return isStep2Valid;
+      case 3: return isStep3Valid;
+      case 4: return true;
+      case 5: return isStep1Valid && isStep2Valid && isStep3Valid;
+      default: return true;
+    }
+  };
+
   const handleNextStep = async () => {
     if (currentStep === 1) {
-      if (!wizardData.nombres || !wizardData.apellidos || !wizardData.dni) {
-        showToast('Por favor completa los nombres, apellidos y DNI', 'error');
+      if (!wizardData.nombres.trim() || !wizardData.apellidos.trim()) {
+        showToast('Completa los nombres y apellidos del alumno', 'error');
         return;
       }
-      if (!/^\d{8}$/.test(wizardData.dni.trim())) {
-        showToast('El DNI del alumno debe tener 8 números', 'error');
+      if (!step1DniVal.valid) {
+        showToast(step1DniVal.error || 'DNI inválido', 'error', 'Validación de DNI');
         return;
       }
-      const existingStudent = students.find(s => s.dni === wizardData.dni.trim());
-      if (existingStudent) {
-        showToast(`Ya existe un alumno registrado con el DNI ${wizardData.dni}: ${existingStudent.nombres} ${existingStudent.apellidos}`, 'error', 'DNI Duplicado');
+      if (!step1BirthVal.valid) {
+        showToast(step1BirthVal.error || 'Fecha de nacimiento incompatible', 'error', 'Validación de Edad');
         return;
       }
     }
@@ -247,14 +301,30 @@ function MatriculasContent() {
         showToast('Esa sección ya no tiene vacantes. Elige otra.', 'error', 'Aula llena');
         return;
       }
+      if (!step1BirthVal.valid) {
+        showToast(step1BirthVal.error || 'Edad no compatible con el nivel educativo elegido', 'error', 'Regla de Edad');
+        return;
+      }
     }
     if (currentStep === 3) {
-      if (!wizardData.nombreApoderado || !wizardData.telefonoApoderado) {
-        showToast('Por favor completa el nombre y teléfono del apoderado', 'error');
+      if (!wizardData.nombreApoderado.trim()) {
+        showToast('Ingresa el nombre del apoderado', 'error');
+        return;
+      }
+      if (!step3PhoneVal.valid) {
+        showToast(step3PhoneVal.error || 'Teléfono celular inválido (9 dígitos comenzando con 9)', 'error', 'Teléfono');
+        return;
+      }
+      if (!step3DniVal.valid) {
+        showToast(step3DniVal.error || 'DNI de apoderado inválido', 'error', 'DNI Apoderado');
         return;
       }
     }
     if (currentStep === 5) {
+      if (!isStep1Valid || !isStep2Valid || !isStep3Valid) {
+        showToast('Hay campos con errores en los pasos anteriores. Por favor corrígelos.', 'error', 'Validación');
+        return;
+      }
       // Confirm and submit enrollment!
       const res = addStudent({
         nombres: wizardData.nombres,
@@ -642,8 +712,11 @@ function MatriculasContent() {
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-1 block">Nombres *</label>
+                    <FormField
+                      label="Nombres"
+                      required
+                      error={!wizardData.nombres.trim() && wizardData.dni ? 'Los nombres son obligatorios' : undefined}
+                    >
                       <input
                         type="text"
                         value={wizardData.nombres}
@@ -651,9 +724,13 @@ function MatriculasContent() {
                         placeholder="Ej. Lucas Daniel"
                         className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
                       />
-                    </div>
-                    <div>
-                      <label className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-1 block">Apellidos *</label>
+                    </FormField>
+
+                    <FormField
+                      label="Apellidos"
+                      required
+                      error={!wizardData.apellidos.trim() && wizardData.dni ? 'Los apellidos son obligatorios' : undefined}
+                    >
                       <input
                         type="text"
                         value={wizardData.apellidos}
@@ -661,9 +738,14 @@ function MatriculasContent() {
                         placeholder="Ej. Castro Morales"
                         className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
                       />
-                    </div>
-                    <div>
-                      <label className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-1 block">DNI del Alumno *</label>
+                    </FormField>
+
+                    <FormField
+                      label="DNI del Alumno"
+                      required
+                      hint="8 dígitos numéricos"
+                      error={step1DniVal.error}
+                    >
                       <input
                         type="text"
                         maxLength={8}
@@ -672,16 +754,21 @@ function MatriculasContent() {
                         placeholder="Ej. 78945612"
                         className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-semibold font-mono text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
                       />
-                    </div>
-                    <div>
-                      <label className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-1 block">Fecha de Nacimiento</label>
+                    </FormField>
+
+                    <FormField
+                      label="Fecha de Nacimiento"
+                      required
+                      rightBadge={<AgeBadge birthDate={wizardData.fechaNacimiento} level={wizardData.nivel} />}
+                      error={step1BirthVal.error}
+                    >
                       <input
                         type="date"
                         value={wizardData.fechaNacimiento}
                         onChange={e => setWizardData({ ...wizardData, fechaNacimiento: e.target.value })}
                         className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
                       />
-                    </div>
+                    </FormField>
                   </div>
                 </div>
               )}
@@ -726,6 +813,13 @@ function MatriculasContent() {
                       ))}
                     </div>
                   </div>
+
+                  {!step1BirthVal.valid && (
+                    <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 text-xs flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 shrink-0 text-amber-600" />
+                      <span>{step1BirthVal.error}</span>
+                    </div>
+                  )}
 
                   {/* Grado */}
                   <div>
@@ -786,11 +880,11 @@ function MatriculasContent() {
                   </h3>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-1 flex items-center gap-1.5">
-                        <User className="w-3.5 h-3.5 text-slate-400" />
-                        <span>Nombre del Apoderado *</span>
-                      </label>
+                    <FormField
+                      label="Nombre del Apoderado"
+                      required
+                      error={!wizardData.nombreApoderado.trim() ? 'El nombre del apoderado es obligatorio' : undefined}
+                    >
                       <input
                         type="text"
                         value={wizardData.nombreApoderado}
@@ -798,25 +892,43 @@ function MatriculasContent() {
                         placeholder="Ej. Roberto Carlos Pérez"
                         className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white outline-none"
                       />
-                    </div>
-                    <div>
-                      <label className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-1 flex items-center gap-1.5">
-                        <Phone className="w-3.5 h-3.5 text-slate-400" />
-                        <span>Teléfono / WhatsApp *</span>
-                      </label>
+                    </FormField>
+
+                    <FormField
+                      label="DNI del Apoderado"
+                      hint="8 dígitos (opcional)"
+                      error={step3DniVal.error}
+                    >
                       <input
                         type="text"
-                        value={wizardData.telefonoApoderado}
-                        onChange={e => setWizardData({ ...wizardData, telefonoApoderado: e.target.value })}
-                        placeholder="Ej. 988112233"
-                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white outline-none"
+                        maxLength={8}
+                        value={wizardData.dniApoderado}
+                        onChange={e => setWizardData({ ...wizardData, dniApoderado: e.target.value.replace(/\D/g, '') })}
+                        placeholder="Ej. 09876543"
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-semibold font-mono text-slate-900 dark:text-white outline-none"
                       />
-                    </div>
-                    <div>
-                      <label className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-1 flex items-center gap-1.5">
-                        <Mail className="w-3.5 h-3.5 text-slate-400" />
-                        <span>Correo Electrónico</span>
-                      </label>
+                    </FormField>
+
+                    <FormField
+                      label="Teléfono Celular / WhatsApp"
+                      required
+                      hint="9 dígitos comenzando con 9"
+                      error={step3PhoneVal.error}
+                    >
+                      <input
+                        type="text"
+                        maxLength={9}
+                        value={wizardData.telefonoApoderado}
+                        onChange={e => setWizardData({ ...wizardData, telefonoApoderado: e.target.value.replace(/\D/g, '') })}
+                        placeholder="Ej. 988112233"
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-semibold font-mono text-slate-900 dark:text-white outline-none"
+                      />
+                    </FormField>
+
+                    <FormField
+                      label="Correo Electrónico"
+                      hint="Opcional"
+                    >
                       <input
                         type="email"
                         value={wizardData.emailApoderado}
@@ -824,8 +936,9 @@ function MatriculasContent() {
                         placeholder="Ej. apoderado@gmail.com"
                         className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white outline-none"
                       />
-                    </div>
-                    <div>
+                    </FormField>
+
+                    <div className="sm:col-span-2">
                       <SearchableSelect
                         label="Parentesco Legal"
                         icon={<User className="w-3.5 h-3.5" />}
@@ -1129,7 +1242,8 @@ function MatriculasContent() {
                   <button
                     type="button"
                     onClick={handleNextStep}
-                    className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-600/20 transition-all active:scale-95"
+                    disabled={!isStepValid(currentStep)}
+                    className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-indigo-600 text-white font-bold text-xs shadow-md shadow-indigo-600/20 transition-all active:scale-95"
                   >
                     {currentStep === 5 ? 'Confirmar matrícula' : 'Siguiente'}
                     <ArrowRight className="w-3.5 h-3.5" />

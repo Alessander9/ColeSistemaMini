@@ -214,6 +214,9 @@ export async function createStudentInDb(data: {
   avatar_url?: string;
   studentCode?: string;
   tokenQr?: string;
+  dniApoderado?: string;
+  emailApoderado?: string;
+  parentesco?: string;
 }): Promise<{ student: Student; credentials: { username: string; password: string; email: string } }> {
   const supabase = createClient();
 
