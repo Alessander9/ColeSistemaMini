@@ -2848,7 +2848,7 @@ export default function AdminBrandingPage() {
 
               <div className="space-y-3">
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700">Número de WhatsApp (ej: +57918643775)</label>
+                  <label className="text-xs font-bold text-slate-700">Número de WhatsApp (ej: +51 918 643 775)</label>
                   <input type="text" value={formData.whatsappSoporteNumero} onChange={(e) => handleChange('whatsappSoporteNumero', e.target.value)} className="w-full px-3 py-2 rounded-xl bg-slate-50 border text-xs font-mono" />
                 </div>
                 <div className="space-y-1">

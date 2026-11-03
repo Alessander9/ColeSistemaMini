@@ -187,7 +187,7 @@ export const DEFAULT_BRANDING_CONFIG: SystemBrandingConfig = {
   // PWA & Canales de Soporte
   pwaShortName: 'Gestión Académica',
   pwaThemeColor: '#4f46e5',
-  whatsappSoporteNumero: '+57918643775',
+  whatsappSoporteNumero: '+51 918 643 775',
   whatsappSoporteMensaje: 'Hola, deseo información sobre las matrículas y servicios escolares.',
   mostrarWhatsappFlotante: true,
   googleAnalyticsId: '',
@@ -284,8 +284,8 @@ export function getStoredBranding(): SystemBrandingConfig {
     if (parsed.twitterHandle === '@colesistema') {
       parsed.twitterHandle = '@sistemagestionacademica';
     }
-    if (parsed.whatsappSoporteNumero === '51987654321' || !parsed.whatsappSoporteNumero) {
-      parsed.whatsappSoporteNumero = '+57918643775';
+    if (parsed.whatsappSoporteNumero === '51987654321' || parsed.whatsappSoporteNumero === '+57918643775' || parsed.whatsappSoporteNumero === '57918643775' || !parsed.whatsappSoporteNumero) {
+      parsed.whatsappSoporteNumero = '+51 918 643 775';
     }
     return {
       ...DEFAULT_BRANDING_CONFIG,
