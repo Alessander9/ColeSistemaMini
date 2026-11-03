@@ -37,8 +37,8 @@ export default function InstitutionalSplashScreen() {
 
   const primaryColor = brandingConfig?.primaryColor || '#4f46e5';
   const logoUrl = brandingConfig?.logoUrl;
-  const siglas = brandingConfig?.siglas || 'CS';
-  const schoolName = brandingConfig?.nombreInstitucion || 'ColeSistema';
+  const siglas = brandingConfig?.siglas || 'SGA';
+  const schoolName = brandingConfig?.nombreInstitucion || 'Sistema de Gestión Académica';
   const splashText = brandingConfig?.splashScreenTexto || 'Iniciando Plataforma de Gestión Escolar...';
 
   return (

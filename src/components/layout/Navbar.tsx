@@ -92,14 +92,14 @@ export function Navbar({ onOpenMobileMenu }: NavbarProps) {
                   }}
                   className="relative w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/25 group-hover:shadow-blue-500/40 transition-shadow text-white font-black text-xs sm:text-sm"
                 >
-                  {brandingConfig?.siglas || 'CS'}
+                  {brandingConfig?.siglas || 'SGA'}
                   <div className="absolute inset-0 rounded-xl ring-2 ring-white/20" />
                 </div>
               )}
               {/* En teléfonos angostos solo cabe el logo: el nombre empujaba avisos y perfil fuera de la pantalla */}
               <div className="hidden sm:block sm:max-w-xs">
                 <div className="text-xs sm:text-sm font-black tracking-tight text-slate-900 dark:text-white truncate">
-                  {brandingConfig?.nombreInstitucion || 'ColeSistema Mini'}
+                  {brandingConfig?.nombreInstitucion || 'Sistema de Gestión Académica'}
                 </div>
                 <div className="text-[10px] text-slate-400 font-medium -mt-0.5 hidden sm:block truncate">
                   {brandingConfig?.slogan || 'SaaS Educativo & Asistencia QR'}

@@ -78,8 +78,8 @@ export const THEME_PRESETS = [
 ];
 
 export const DEFAULT_BRANDING_CONFIG: SystemBrandingConfig = {
-  nombreInstitucion: 'ColeSistema Mini',
-  siglas: 'CS',
+  nombreInstitucion: 'Sistema de Gestión Académica',
+  siglas: 'SGA',
   slogan: 'Gestión Escolar Inteligente & Asistencia QR',
   descripcion: 'Sistema escolar modular con asistencia QR, calificaciones por competencias (AD, A, B, C) y dashboards para Admin, Docente y Estudiante.',
   logoUrl: '',
@@ -90,12 +90,12 @@ export const DEFAULT_BRANDING_CONFIG: SystemBrandingConfig = {
   themePreset: 'indigo',
   borderRadius: '1rem',
   fontFamily: 'Plus Jakarta Sans',
-  metaTitle: 'ColeSistema Mini – Gestión Escolar & Asistencia QR',
+  metaTitle: 'Sistema de Gestión Académica – Gestión Escolar & Asistencia QR',
   metaDescription: 'Sistema escolar modular con asistencia QR, calificaciones por competencias (AD, A, B, C) y dashboards para Admin, Docente y Estudiante.',
   metaKeywords: 'colegio, notas cneb, asistencia qr, educacion, libreta digital, matricula, portal escolar, siagie, minedu',
   ogImageUrl: '/estudiantesTodosBanner.jpg',
-  canonicalUrl: 'https://colesistema.edu.pe',
-  twitterHandle: '@colesistema',
+  canonicalUrl: 'https://SistemaGestionAcademica.vercel.app',
+  twitterHandle: '@sistemagestionacademica',
   contactoEmail: 'contacto@colegio.edu.pe',
   telefono: '+51 987 654 321',
   direccion: 'Av. Los Educadores 123, Lima, Perú',
@@ -185,9 +185,9 @@ export const DEFAULT_BRANDING_CONFIG: SystemBrandingConfig = {
   whiteLabelFooterTexto: '© 2026 Todos los derechos reservados.',
 
   // PWA & Canales de Soporte
-  pwaShortName: 'ColeSistema',
+  pwaShortName: 'Gestión Académica',
   pwaThemeColor: '#4f46e5',
-  whatsappSoporteNumero: '51987654321',
+  whatsappSoporteNumero: '+57918643775',
   whatsappSoporteMensaje: 'Hola, deseo información sobre las matrículas y servicios escolares.',
   mostrarWhatsappFlotante: true,
   googleAnalyticsId: '',
@@ -196,14 +196,14 @@ export const DEFAULT_BRANDING_CONFIG: SystemBrandingConfig = {
   // BREVO (Exclusivo: Asistencias Diarias en Tiempo Real)
   brevoApiKey: '',
   brevoSenderEmail: 'asistencias@colegio.edu.pe',
-  brevoSenderName: 'ColeSistema - Control de Asistencia',
+  brevoSenderName: 'Sistema de Gestión Académica - Control de Asistencia',
   brevoActivarEnvioAsistencia: true,
   brevoPlantillaAsunto: '[ESTADO] Control de Asistencia: [ALUMNO] - [HORA] | [COLEGIO]',
 
   // RESEND (Exclusivo: Libretas Bimestrales, Matrícula & Tesorería)
   resendApiKey: '',
   resendSenderEmail: 'comunicados@colegio.edu.pe',
-  resendSenderName: 'ColeSistema - Notificaciones Institucionales',
+  resendSenderName: 'Sistema de Gestión Académica - Notificaciones Institucionales',
   resendPlantillaLibretaAsunto: '📊 Libreta Oficial de Calificaciones [BIMESTRE]: [ALUMNO] | [COLEGIO]',
   resendPlantillaBienvenidaAsunto: '🎉 ¡Bienvenido(a) al Año Escolar 2026!: [ALUMNO] | [COLEGIO]',
   resendPlantillaPensionAsunto: '💳 Aviso de Pensión Escolar - Mes de [MES]: [ALUMNO] | [COLEGIO]',
@@ -266,6 +266,27 @@ export function getStoredBranding(): SystemBrandingConfig {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return DEFAULT_BRANDING_CONFIG;
     const parsed = JSON.parse(raw);
+    if (parsed.nombreInstitucion === 'ColeSistema Mini' || parsed.nombreInstitucion === 'ColeSistema' || parsed.nombreInstitucion === 'ColeSistemaMini') {
+      parsed.nombreInstitucion = 'Sistema de Gestión Académica';
+    }
+    if (parsed.siglas === 'CS') {
+      parsed.siglas = 'SGA';
+    }
+    if (typeof parsed.metaTitle === 'string' && parsed.metaTitle.includes('ColeSistema')) {
+      parsed.metaTitle = parsed.metaTitle.replace(/ColeSistema(\s*Mini)?/g, 'Sistema de Gestión Académica');
+    }
+    if (parsed.pwaShortName === 'ColeSistema') {
+      parsed.pwaShortName = 'Gestión Académica';
+    }
+    if (parsed.canonicalUrl === 'https://colesistema.edu.pe' || parsed.canonicalUrl === 'https://sistemagestionacademica.edu.pe' || parsed.canonicalUrl?.includes('cole-sistema-mini') || !parsed.canonicalUrl) {
+      parsed.canonicalUrl = 'https://SistemaGestionAcademica.vercel.app';
+    }
+    if (parsed.twitterHandle === '@colesistema') {
+      parsed.twitterHandle = '@sistemagestionacademica';
+    }
+    if (parsed.whatsappSoporteNumero === '51987654321' || !parsed.whatsappSoporteNumero) {
+      parsed.whatsappSoporteNumero = '+57918643775';
+    }
     return {
       ...DEFAULT_BRANDING_CONFIG,
       ...parsed,
@@ -396,7 +417,7 @@ export function applyBrandingToDOM(config: SystemBrandingConfig): void {
   if (config.metaDescription) setMetaTag('property', 'og:description', config.metaDescription);
   if (config.ogImageUrl) setMetaTag('property', 'og:image', config.ogImageUrl);
   if (config.canonicalUrl) setMetaTag('property', 'og:url', config.canonicalUrl);
-  setMetaTag('property', 'og:site_name', config.nombreInstitucion || 'ColeSistema');
+  setMetaTag('property', 'og:site_name', config.nombreInstitucion || 'Sistema de Gestión Académica');
   setMetaTag('property', 'og:type', 'website');
 
   // Twitter Card
@@ -428,7 +449,7 @@ export function generateRobotsTxt(config: SystemBrandingConfig): string {
 
   const lines: string[] = [
     '# =========================================',
-    `# Robots.txt - ${config.nombreInstitucion || 'ColeSistema Mini'}`,
+    `# Robots.txt - ${config.nombreInstitucion || 'Sistema de Gestión Académica'}`,
     `# Generado automáticamente: ${new Date().toLocaleDateString('es-PE')}`,
     '# =========================================',
     '',
@@ -457,7 +478,7 @@ export function generateRobotsTxt(config: SystemBrandingConfig): string {
 
   const sitemapUrl = config.canonicalUrl 
     ? `${config.canonicalUrl.replace(/\/$/, '')}/sitemap.xml`
-    : 'https://colesistema.edu.pe/sitemap.xml';
+    : 'https://SistemaGestionAcademica.vercel.app/sitemap.xml';
 
   lines.push(`# Mapa del sitio XML`);
   lines.push(`Sitemap: ${sitemapUrl}`);
@@ -469,7 +490,7 @@ export function generateRobotsTxt(config: SystemBrandingConfig): string {
  * Genera el documento XML para sitemap.xml
  */
 export function generateSitemapXml(config: SystemBrandingConfig): string {
-  const baseUrl = (config.canonicalUrl || 'https://colesistema.edu.pe').replace(/\/$/, '');
+  const baseUrl = (config.canonicalUrl || 'https://SistemaGestionAcademica.vercel.app').replace(/\/$/, '');
   const today = new Date().toISOString().split('T')[0];
 
   const entries = (config.sitemapIncludedPaths || []).map((entry) => {

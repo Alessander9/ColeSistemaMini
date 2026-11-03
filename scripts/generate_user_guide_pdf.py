@@ -525,7 +525,7 @@ def generate_pdf():
   <div class="cover-footer">
     <div><strong>Colegio:</strong> Sistema Escolar Inteligente</div>
     <div><strong>Año Lectivo:</strong> 2026</div>
-    <div><strong>Plataforma:</strong> cole-sistema-mini.vercel.app</div>
+    <div><strong>Plataforma:</strong> SistemaGestionAcademica.vercel.app</div>
   </div>
 </div>
 

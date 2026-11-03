@@ -75,8 +75,8 @@ function escapeHtml(text: string): string {
 export function buildAnnouncementEmailHtml(params: SendAnnouncementEmailParams): string {
   const branding = { ...DEFAULT_BRANDING_CONFIG, ...params.branding };
   const primaryColor = branding.primaryColor || '#4f46e5';
-  const schoolName = escapeHtml(branding.nombreInstitucion || 'ColeSistema Mini');
-  const schoolSiglas = escapeHtml(branding.siglas || 'CS');
+  const schoolName = escapeHtml(branding.nombreInstitucion || 'Sistema de Gestión Académica');
+  const schoolSiglas = escapeHtml(branding.siglas || 'SGA');
   const titulo = escapeHtml(params.titulo);
   const contenido = escapeHtml(params.contenido).replace(/\r?\n/g, '<br>');
 
@@ -116,9 +116,9 @@ export function buildAnnouncementEmailHtml(params: SendAnnouncementEmailParams):
 export function buildReportCardEmailHtml(params: SendReportCardEmailParams): string {
   const branding = { ...DEFAULT_BRANDING_CONFIG, ...params.branding };
   const primaryColor = branding.primaryColor || '#4f46e5';
-  const schoolName = branding.nombreInstitucion || 'ColeSistema Mini';
+  const schoolName = branding.nombreInstitucion || 'Sistema de Gestión Académica';
   const schoolLogo = branding.logoUrl || '';
-  const schoolSiglas = branding.siglas || 'CS';
+  const schoolSiglas = branding.siglas || 'SGA';
 
   const badgeColorMap = {
     AD: { bg: '#ecfdf5', color: '#059669', label: 'AD - Logro Destacado' },
@@ -206,9 +206,9 @@ export function buildReportCardEmailHtml(params: SendReportCardEmailParams): str
 export function buildWelcomeEnrollmentEmailHtml(params: SendWelcomeEnrollmentEmailParams): string {
   const branding = { ...DEFAULT_BRANDING_CONFIG, ...params.branding };
   const primaryColor = branding.primaryColor || '#4f46e5';
-  const schoolName = branding.nombreInstitucion || 'ColeSistema Mini';
+  const schoolName = branding.nombreInstitucion || 'Sistema de Gestión Académica';
   const schoolLogo = branding.logoUrl || '';
-  const schoolSiglas = branding.siglas || 'CS';
+  const schoolSiglas = branding.siglas || 'SGA';
 
   return `
 <!DOCTYPE html>
@@ -286,9 +286,9 @@ export function buildWelcomeEnrollmentEmailHtml(params: SendWelcomeEnrollmentEma
 export function buildTuitionReminderEmailHtml(params: SendTuitionReminderEmailParams): string {
   const branding = { ...DEFAULT_BRANDING_CONFIG, ...params.branding };
   const primaryColor = branding.primaryColor || '#4f46e5';
-  const schoolName = branding.nombreInstitucion || 'ColeSistema Mini';
+  const schoolName = branding.nombreInstitucion || 'Sistema de Gestión Académica';
   const schoolLogo = branding.logoUrl || '';
-  const schoolSiglas = branding.siglas || 'CS';
+  const schoolSiglas = branding.siglas || 'SGA';
 
   return `
 <!DOCTYPE html>

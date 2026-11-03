@@ -485,7 +485,7 @@ export default function AdminHorariosPage() {
   const exportScheduleAsCsv = () => {
     const sectionName = `${currentSection?.grado?.nombre || 'Grado'} "${currentSection?.letra || 'A'}"`;
     const nivelName = currentSection?.grado?.nivel?.toUpperCase() || 'EDUCACIÓN';
-    const schoolName = brandingConfig?.nombreInstitucion || 'ColeSistema Mini';
+    const schoolName = brandingConfig?.nombreInstitucion || 'Sistema de Gestión Académica';
     const currentTutor = teachers.find(t => t.id === currentSection?.tutor_id);
     const tutorName = currentTutor ? `${currentTutor.nombres} ${currentTutor.apellidos}` : 'No asignado';
     

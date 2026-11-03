@@ -5,7 +5,7 @@
 
 ## 🌐 1. Enlaces del Proyecto
 
-- **Producción (Vercel):** [https://cole-sistema-mini.vercel.app](https://cole-sistema-mini.vercel.app)
+- **Producción (Vercel):** [https://SistemaGestionAcademica.vercel.app](https://SistemaGestionAcademica.vercel.app)
 - **Desarrollo Local:** [http://localhost:3000](http://localhost:3000) *(o `http://localhost:3001` si el puerto 3000 está ocupado)*
 - **Repositorio:** [GitHub - ColeSistemaMini](https://github.com/Alessander9/ColeSistemaMini.git)
 

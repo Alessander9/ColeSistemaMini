@@ -171,7 +171,7 @@ export async function generateConsolidadoSalonPdf(data: ConsolidadoSalonPdfData)
   doc.setFontSize(6.5);
   doc.setFont('helvetica', 'italic');
   doc.setTextColor(cMuted[0], cMuted[1], cMuted[2]);
-  doc.text(`Acta oficial emitida el ${new Date().toLocaleDateString('es-PE')} ${new Date().toLocaleTimeString('es-PE')} — Sistema ColeSistemaMini CNEB`, marginX, y);
+  doc.text(`Acta oficial emitida el ${new Date().toLocaleDateString('es-PE')} ${new Date().toLocaleTimeString('es-PE')} — Sistema de Gestión Académica CNEB`, marginX, y);
 
   return doc;
 }

@@ -520,7 +520,7 @@ export async function generateReportCardPdf(data: ReportCardPdfData): Promise<js
   if (data.brandingConfig?.libretaMostrarQrVerificacion !== false && !data.qrDataUrl) {
     try {
       const studentCode = data.student.codigo_estudiante || `EST-${data.student.id.slice(-6)}`;
-      const canonical = data.brandingConfig?.canonicalUrl || 'https://colesistema.edu.pe';
+      const canonical = data.brandingConfig?.canonicalUrl || 'https://SistemaGestionAcademica.vercel.app';
       const anioLectivo = data.enrollment?.periodo?.nombre || new Date().getFullYear().toString();
       const verificationUrl = `${canonical}/verificar?tipo=libreta&codigo=${studentCode}&anio=${encodeURIComponent(anioLectivo)}`;
       data.qrDataUrl = await QRCode.toDataURL(verificationUrl, { margin: 1, width: 120 });
@@ -551,7 +551,7 @@ export async function generateBatchReportCardsPdf(data: BatchReportCardsPdfData)
     if (item.brandingConfig?.libretaMostrarQrVerificacion !== false && !item.qrDataUrl) {
       try {
         const studentCode = item.student.codigo_estudiante || `EST-${item.student.id.slice(-6)}`;
-        const canonical = item.brandingConfig?.canonicalUrl || 'https://colesistema.edu.pe';
+        const canonical = item.brandingConfig?.canonicalUrl || 'https://SistemaGestionAcademica.vercel.app';
         const anioLectivo = data.anioLectivo || item.enrollment?.periodo?.nombre || new Date().getFullYear().toString();
         const verificationUrl = `${canonical}/verificar?tipo=libreta&codigo=${studentCode}&anio=${encodeURIComponent(anioLectivo)}`;
         item.qrDataUrl = await QRCode.toDataURL(verificationUrl, { margin: 1, width: 120 });

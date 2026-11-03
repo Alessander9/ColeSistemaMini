@@ -35,7 +35,7 @@ export function AnnualReportCardView({ reportCard, showPrintButton = true }: Ann
   const firmaDirector = brandingConfig?.libretaFirmaDirector !== false;
   const firmaTutor = brandingConfig?.libretaFirmaTutor !== false;
   const firmaApoderado = brandingConfig?.libretaFirmaApoderado !== false;
-  const mensajePie = brandingConfig?.libretaMensajePie || 'Este documento es un extracto oficial del Sistema Integrado de Matrícula y Evaluación (ColeSistema / SIAGIE).';
+  const mensajePie = brandingConfig?.libretaMensajePie || 'Este documento es un extracto oficial del Sistema Integrado de Matrícula y Evaluación (Sistema de Gestión Académica / SIAGIE).';
 
   return (
     <div className="space-y-6">

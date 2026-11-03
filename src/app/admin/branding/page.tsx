@@ -1139,7 +1139,7 @@ export default function AdminBrandingPage() {
                   style={{ fontFamily: formData.fontFamily || 'Plus Jakarta Sans' }}
                 >
                   <h4 className="text-base font-extrabold text-slate-900 dark:text-white">
-                    ColeSistema 2026: Educación de Excelencia
+                    Sistema de Gestión Académica: Educación de Excelencia
                   </h4>
                   <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
                     Plataforma moderna adaptada con tipografía oficial para reportes, actas y libretas de calificaciones CNEB.
@@ -2769,7 +2769,7 @@ export default function AdminBrandingPage() {
 
               <div className="space-y-3 pt-3 border-t">
                 <div className="flex items-center justify-between p-3 rounded-xl bg-purple-50 border border-purple-200">
-                  <span className="text-xs font-bold text-purple-900">Mostrar &quot;Powered by ColeSistema&quot;</span>
+                  <span className="text-xs font-bold text-purple-900">Mostrar &quot;Powered by Sistema de Gestión Académica&quot;</span>
                   <input type="checkbox" checked={formData.mostrarPoweredBy} onChange={(e) => handleChange('mostrarPoweredBy', e.target.checked)} className="w-4 h-4 rounded text-purple-600" />
                 </div>
                 <div className="space-y-1">
@@ -2848,7 +2848,7 @@ export default function AdminBrandingPage() {
 
               <div className="space-y-3">
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700">Número de WhatsApp (ej: 51987654321)</label>
+                  <label className="text-xs font-bold text-slate-700">Número de WhatsApp (ej: +57918643775)</label>
                   <input type="text" value={formData.whatsappSoporteNumero} onChange={(e) => handleChange('whatsappSoporteNumero', e.target.value)} className="w-full px-3 py-2 rounded-xl bg-slate-50 border text-xs font-mono" />
                 </div>
                 <div className="space-y-1">

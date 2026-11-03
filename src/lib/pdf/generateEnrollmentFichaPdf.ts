@@ -437,7 +437,7 @@ export async function generateEnrollmentFichaPdf(data: EnrollmentFichaPdfData): 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(6);
   doc.setTextColor(148, 163, 184);
-  doc.text('Documento oficial generado automáticamente por ColeSistema Mini • Validez legal e institucional según normativa MINEDU.', marginX + 91, 286, { align: 'center' });
+  doc.text('Documento oficial generado automáticamente por Sistema de Gestión Académica • Validez legal e institucional según normativa MINEDU.', marginX + 91, 286, { align: 'center' });
 
   return doc;
 }

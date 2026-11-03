@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import { UserRole } from '@/types';
@@ -53,6 +53,12 @@ export default function LoginPage() {
   const [selectedUser, setSelectedUser] = useState(MOCK_USERS[0]);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.title = `${brandingConfig?.nombreInstitucion || 'Sistema de Gestión Académica'} – Iniciar Sesión`;
+    }
+  }, [brandingConfig?.nombreInstitucion]);
 
   const handleSelectRole = (rol: UserRole) => {
     const user = MOCK_USERS.find(u => u.rol === rol) || MOCK_USERS[0];
@@ -141,8 +147,8 @@ export default function LoginPage() {
                 <GraduationCap className="w-5 h-5 text-white drop-shadow" />
               </div>
               <div>
-                <span className="text-white font-black text-lg tracking-tight block leading-tight">
-                  ColeSistema<span className="text-emerald-300">Mini</span>
+                <span className="text-white font-black text-base sm:text-lg tracking-tight block leading-tight">
+                  Sistema de <span className="text-emerald-300">Gestión Académica</span>
                 </span>
                 <span className="text-[11px] text-violet-200 font-medium">
                   Portal de Gestión Escolar
@@ -158,7 +164,7 @@ export default function LoginPage() {
 
           <div className="relative z-10">
             <h2 className="text-xl font-extrabold text-white leading-tight">
-              Bienvenido al Sistema 👋
+              Bienvenido a Sistema de Gestión Académica 👋
             </h2>
             <p className="text-xs text-violet-100/90 mt-0.5">
               Ingresa con tu correo institucional o DNI asignado.
@@ -186,12 +192,12 @@ export default function LoginPage() {
                 />
               ) : (
                 <div className="w-11 h-11 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-lg border border-white/20 font-black text-white text-lg">
-                  {brandingConfig?.siglas || 'CS'}
+                  {brandingConfig?.siglas || 'SGA'}
                 </div>
               )}
               <div>
                 <span className="text-white font-black text-xl tracking-tight block">
-                  {brandingConfig?.nombreInstitucion || 'ColeSistema Mini'}
+                  {brandingConfig?.nombreInstitucion || 'Sistema de Gestión Académica'}
                 </span>
                 <span className="text-xs text-violet-200">{brandingConfig?.slogan || 'Educación & Tecnología'}</span>
               </div>
@@ -202,10 +208,10 @@ export default function LoginPage() {
           <div className="relative z-10 space-y-3 my-4">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md border border-white/20 text-xs font-semibold text-emerald-300">
               <Sparkles className="w-3.5 h-3.5" />
-              {brandingConfig?.siglas || 'Colegio'} 2026
+              {brandingConfig?.siglas || 'SGA'} 2026
             </div>
             <h2 className="text-white font-black text-2xl lg:text-3xl leading-tight">
-              {brandingConfig?.loginBienvenidaTitulo || 'GESTIÓN ESCOLAR INTELIGENTE.'}
+              {brandingConfig?.loginBienvenidaTitulo || 'SISTEMA DE GESTIÓN ACADÉMICA'}
             </h2>
             <p className="text-violet-200 text-xs sm:text-sm leading-relaxed">
               {brandingConfig?.loginBienvenidaMensaje || 'Control de asistencia QR, calificaciones CNEB (AD–A–B–C), horarios interactivos y portales adaptados para cada rol.'}
@@ -246,11 +252,15 @@ export default function LoginPage() {
             
             {/* Desktop header title */}
             <div className="hidden md:block">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-100 dark:border-indigo-800/80 text-indigo-700 dark:text-indigo-300 text-xs font-bold mb-2.5">
+                <GraduationCap className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                <span>{brandingConfig?.nombreInstitucion || 'Sistema de Gestión Académica'}</span>
+              </div>
               <h1 className="text-2xl lg:text-3xl font-black text-slate-900 dark:text-white tracking-tight mb-1">
                 Iniciar Sesión
               </h1>
               <p className="text-sm text-slate-500 dark:text-slate-400">
-                Ingresa con tu cuenta institucional asignada.
+                Ingresa al Sistema de Gestión Académica con tu cuenta institucional.
               </p>
             </div>
 
@@ -353,7 +363,7 @@ export default function LoginPage() {
                   />
                   <span className="font-medium">Recordar mi correo</span>
                 </label>
-                <span className="text-[11px] text-slate-400">ColeSistema Mini</span>
+                <span className="text-[11px] text-slate-400">Sistema de Gestión Académica</span>
               </div>
 
               {/* Error box */}
@@ -399,7 +409,7 @@ export default function LoginPage() {
                   </>
                 ) : (
                   <>
-                    <span>Ingresar al Sistema</span>
+                    <span>Ingresar al Sistema de Gestión Académica</span>
                     <ArrowRight className="w-4 h-4" />
                   </>
                 )}
@@ -419,7 +429,7 @@ export default function LoginPage() {
                 </div>
               </div>
               <p className="text-[10px] text-center text-slate-400 dark:text-slate-500 pt-1">
-                {brandingConfig?.whiteLabelFooterTexto || `© 2026 ${brandingConfig?.nombreInstitucion || 'ColeSistema'}.`}
+                {brandingConfig?.whiteLabelFooterTexto || `© 2026 ${brandingConfig?.nombreInstitucion || 'Sistema de Gestión Académica'}.`}
                 {brandingConfig?.mostrarPoweredBy !== false && (
                   <span className="opacity-70 ml-1">• EdTech Suite</span>
                 )}

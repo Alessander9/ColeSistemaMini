@@ -1,7 +1,7 @@
-// ColeSistema Mini — Service Worker
+// Sistema de Gestión Académica — Service Worker
 // Handles: push notifications, offline cache, background sync
 
-const CACHE_NAME = 'colesistema-v3';
+const CACHE_NAME = 'sistemagestionacademica-v1';
 const OFFLINE_URL = '/';
 
 const PRECACHE = [
@@ -60,7 +60,7 @@ self.addEventListener('fetch', (event) => {
 
 // ── Push Notifications ────────────────────────────────────────────────────────
 self.addEventListener('push', (event) => {
-  let data = { title: 'ColeSistema', body: 'Nueva notificación', icon: '/icon-192.png', badge: '/icon-192.png' };
+  let data = { title: 'Sistema de Gestión Académica', body: 'Nueva notificación', icon: '/icon-192.png', badge: '/icon-192.png' };
   if (event.data) {
     try { data = { ...data, ...event.data.json() }; } catch { /* ignore */ }
   }
@@ -70,7 +70,7 @@ self.addEventListener('push', (event) => {
       body: data.body,
       icon: data.icon || '/icon-192.png',
       badge: data.badge || '/icon-192.png',
-      tag: data.tag || 'colesistema-notification',
+      tag: data.tag || 'sistemagestionacademica-notification',
       renotify: true,
       requireInteraction: false,
       vibrate: [100, 50, 100],
@@ -84,11 +84,11 @@ self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SHOW_NOTIFICATION') {
     const { title, body, icon, tag, url } = event.data;
     event.waitUntil(
-      self.registration.showNotification(title || 'ColeSistema', {
+      self.registration.showNotification(title || 'Sistema de Gestión Académica', {
         body: body || '',
         icon: icon || '/icon-192.png',
         badge: '/icon-192.png',
-        tag: tag || 'colesistema',
+        tag: tag || 'sistemagestionacademica',
         renotify: true,
         vibrate: [100, 50, 100],
         data: { url: url || '/' },

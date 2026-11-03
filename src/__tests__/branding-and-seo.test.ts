@@ -12,7 +12,7 @@ describe('Branding, Themes, SEO, Robots.txt & Sitemap.xml Services', () => {
     expect(DEFAULT_BRANDING_CONFIG.nombreInstitucion).toBeDefined();
     expect(DEFAULT_BRANDING_CONFIG.siglas).toBeDefined();
     expect(DEFAULT_BRANDING_CONFIG.primaryColor).toMatch(/^#[0-9a-fA-F]{6}$/);
-    expect(DEFAULT_BRANDING_CONFIG.metaTitle).toContain('ColeSistema');
+    expect(DEFAULT_BRANDING_CONFIG.metaTitle).toContain('Sistema de Gestión Académica');
     expect(DEFAULT_BRANDING_CONFIG.allowRobotsIndex).toBe(true);
     expect(DEFAULT_BRANDING_CONFIG.sitemapIncludedPaths.length).toBeGreaterThan(0);
   });
@@ -45,7 +45,7 @@ describe('Branding, Themes, SEO, Robots.txt & Sitemap.xml Services', () => {
     expect(robots).toContain('Disallow: /admin');
     expect(robots).toContain('Disallow: /docente');
     expect(robots).toContain('Disallow: /estudiante');
-    expect(robots).toContain('Sitemap: https://colesistema.edu.pe/sitemap.xml');
+    expect(robots).toContain('Sitemap: https://SistemaGestionAcademica.vercel.app/sitemap.xml');
   });
 
   it('generates a blocked robots.txt when allowRobotsIndex is set to false', () => {
@@ -62,7 +62,7 @@ describe('Branding, Themes, SEO, Robots.txt & Sitemap.xml Services', () => {
     const sitemap = generateSitemapXml(DEFAULT_BRANDING_CONFIG);
     expect(sitemap.startsWith('<?xml version="1.0" encoding="UTF-8"?>')).toBe(true);
     expect(sitemap).toContain('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">');
-    expect(sitemap).toContain('<loc>https://colesistema.edu.pe</loc>');
+    expect(sitemap).toContain('<loc>https://SistemaGestionAcademica.vercel.app</loc>');
     expect(sitemap).toContain('<changefreq>daily</changefreq>');
     expect(sitemap).toContain('<priority>1.0</priority>');
     expect(sitemap).toContain('</urlset>');

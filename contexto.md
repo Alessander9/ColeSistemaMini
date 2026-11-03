@@ -3,7 +3,7 @@
 **Última actualización:** 21 de Septiembre, 2026  
 **Framework de Agente & Herramientas:** Gentle.ai (CodeGraph Indexing & Tooling)  
 **Arquitectura de Frontend:** Component-Driven Architecture (Componentes Atómicos Reutilizables)  
-**Estado:** Producción Oficial Activa ([https://cole-sistema-mini.vercel.app](https://cole-sistema-mini.vercel.app))  
+**Estado:** Producción Oficial Activa ([https://SistemaGestionAcademica.vercel.app](https://SistemaGestionAcademica.vercel.app))  
 
 ---
 

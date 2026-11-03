@@ -11,13 +11,13 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: 'ColeSistema Mini – Gestión Escolar & Asistencia QR',
+  title: 'Sistema de Gestión Académica – Gestión Escolar & Asistencia QR',
   description: 'Sistema escolar modular con asistencia QR, calificaciones por competencias (AD, A, B, C) y dashboards para Admin, Docente y Estudiante.',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'ColeSistema',
+    title: 'Sistema de Gestión Académica',
   },
   other: {
     'mobile-web-app-capable': 'yes',

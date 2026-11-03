@@ -1,6 +1,6 @@
 {
-  "name": "ColeSistema Mini",
-  "short_name": "ColeSistema",
+  "name": "Sistema de Gestión Académica",
+  "short_name": "Gestión Académica",
   "description": "Sistema de gestión escolar con asistencia QR y calificaciones AD-A-B-C",
   "start_url": "/",
   "scope": "/",

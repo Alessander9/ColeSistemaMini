@@ -20,7 +20,7 @@ export default function RootLoading() {
         <div className="text-center space-y-1">
           <div className="flex items-center justify-center gap-2">
             <h3 className="text-base font-black text-slate-800 dark:text-white tracking-tight">
-              Cargando ColeSistema
+              Cargando Sistema de Gestión Académica
             </h3>
             <Loader2 className="w-4 h-4 text-emerald-500 animate-spin" />
           </div>

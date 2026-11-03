@@ -290,4 +290,4 @@ Sí. El diseño es 100% adaptable para celulares Android, iPhone, tablets y comp
 
 ---
 *ColeSistema Mini — Educación, Tecnología y Seguridad para toda la Comunidad Escolar.*
-*Desplegado en producción:* [https://cole-sistema-mini.vercel.app](https://cole-sistema-mini.vercel.app)
+*Desplegado en producción:* [https://SistemaGestionAcademica.vercel.app](https://SistemaGestionAcademica.vercel.app)

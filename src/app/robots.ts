@@ -3,7 +3,7 @@ import { DEFAULT_BRANDING_CONFIG } from '@/lib/services/brandingService';
 
 export default function robots(): MetadataRoute.Robots {
   const config = DEFAULT_BRANDING_CONFIG;
-  const baseUrl = (config.canonicalUrl || 'https://colesistema.edu.pe').replace(/\/$/, '');
+  const baseUrl = (config.canonicalUrl || 'https://SistemaGestionAcademica.vercel.app').replace(/\/$/, '');
 
   if (!config.allowRobotsIndex) {
     return {

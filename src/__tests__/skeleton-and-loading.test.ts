@@ -32,7 +32,7 @@ describe('Skeleton UI & Loading Pages System', () => {
 
   it('renders RootLoading page with pulse and spinner', () => {
     const html = ReactDOMServer.renderToStaticMarkup(React.createElement(RootLoading));
-    expect(html).toContain('Cargando ColeSistema');
+    expect(html).toContain('Cargando Sistema de Gestión Académica');
     expect(html).toContain('animate-spin');
   });
 

@@ -15,7 +15,7 @@ export function WhatsAppFloatingButton() {
   const cleanNumber = brandingConfig.whatsappSoporteNumero.replace(/[^0-9]/g, '');
   const encodedText = encodeURIComponent(
     brandingConfig.whatsappSoporteMensaje ||
-    `Hola, me comunico desde la plataforma de ${brandingConfig.nombreInstitucion || 'ColeSistema'}.`
+    `Hola, me comunico desde la plataforma de ${brandingConfig.nombreInstitucion || 'Sistema de Gestión Académica'}.`
   );
   const waUrl = `https://wa.me/${cleanNumber}?text=${encodedText}`;
 

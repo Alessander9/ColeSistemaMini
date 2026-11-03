@@ -264,7 +264,7 @@ export function CommandPalette() {
             <span>Seleccionar: <kbd className="font-mono bg-slate-200/60 dark:bg-slate-800 px-1 rounded">Enter</kbd></span>
           </div>
           <div className="font-medium text-slate-500 dark:text-slate-400">
-            ColeSistemaMini SaaS
+            Sistema de Gestión Académica
           </div>
         </div>
       </div>

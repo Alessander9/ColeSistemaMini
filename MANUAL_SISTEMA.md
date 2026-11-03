@@ -160,6 +160,6 @@ En la pantalla de inicio de sesión (`/login`), se encuentran disponibles tarjet
 
 ## 6. Despliegue y Acceso en la Nube
 
-* **URL de Producción:** [https://cole-sistema-mini.vercel.app](https://cole-sistema-mini.vercel.app)
+* **URL de Producción:** [https://SistemaGestionAcademica.vercel.app](https://SistemaGestionAcademica.vercel.app)
 * **Repositorio Git:** [https://github.com/Alessander9/ColeSistemaMini.git](https://github.com/Alessander9/ColeSistemaMini.git)
 * **Normativa Curricular:** Currículo Nacional de la Educación Básica (CNEB) — RVM 094-2020-MINEDU.

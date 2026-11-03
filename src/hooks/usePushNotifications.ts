@@ -67,7 +67,7 @@ export function usePushNotifications() {
         title: payload.title,
         body: payload.body,
         icon: payload.icon || '/icon-192.png',
-        tag: payload.tag || 'colesistema',
+        tag: payload.tag || 'sistemagestionacademica',
         url: payload.url || '/',
       });
     } else if (sw) {
@@ -77,7 +77,7 @@ export function usePushNotifications() {
           body: payload.body,
           icon: payload.icon || '/icon-192.png',
           badge: '/icon-192.png',
-          tag: payload.tag || 'colesistema',
+          tag: payload.tag || 'sistemagestionacademica',
           renotify: true,
           vibrate: [100, 50, 100],
           data: { url: payload.url || '/' },
@@ -87,7 +87,7 @@ export function usePushNotifications() {
         new Notification(payload.title, {
           body: payload.body,
           icon: payload.icon || '/icon-192.png',
-          tag: payload.tag || 'colesistema',
+          tag: payload.tag || 'sistemagestionacademica',
         });
       }
     } else {
@@ -95,7 +95,7 @@ export function usePushNotifications() {
       new Notification(payload.title, {
         body: payload.body,
         icon: payload.icon || '/icon-192.png',
-        tag: payload.tag || 'colesistema',
+        tag: payload.tag || 'sistemagestionacademica',
       });
     }
   }, []);

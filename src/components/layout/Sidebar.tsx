@@ -281,7 +281,7 @@ export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
         <Link 
           href={currentUser?.rol ? `/${currentUser.rol}` : '/login'}
           className="flex items-center gap-3 min-w-0 overflow-hidden group"
-          title={brandingConfig?.nombreInstitucion || "ColeSistemaMini"}
+          title={brandingConfig?.nombreInstitucion || "Sistema de Gestión Académica"}
         >
           {brandingConfig?.logoUrl ? (
             <img 
@@ -296,13 +296,13 @@ export function Sidebar({ isMobileDrawer = false, onClose }: SidebarProps) {
               }}
               className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-md font-black text-base shrink-0 group-hover:scale-105 transition-transform"
             >
-              {brandingConfig?.siglas || 'CS'}
+              {brandingConfig?.siglas || 'SGA'}
             </div>
           )}
           {!isDesktopCollapsed && (
             <div className="min-w-0 overflow-hidden whitespace-nowrap animate-in fade-in duration-200">
               <h2 className="text-sm font-bold text-slate-900 dark:text-white leading-tight truncate">
-                {brandingConfig?.nombreInstitucion || 'ColeSistemaMini'}
+                {brandingConfig?.nombreInstitucion || 'Sistema de Gestión Académica'}
               </h2>
               <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 truncate">
                 {brandingConfig?.slogan || 'SaaS EdTech Multi-Nivel'}

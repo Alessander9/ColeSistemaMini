@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
     const senderEmail = (branding.resendSenderEmail && branding.resendSenderEmail !== 'comunicados@colegio.edu.pe') 
       ? branding.resendSenderEmail 
       : defaultSender;
-    const senderName = branding.resendSenderName || branding.nombreInstitucion || 'ColeSistema';
+    const senderName = branding.resendSenderName || branding.nombreInstitucion || 'Sistema de Gestión Académica';
 
     let htmlContent = '';
     let subject = '';

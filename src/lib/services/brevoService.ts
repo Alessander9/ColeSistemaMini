@@ -22,9 +22,9 @@ export interface SendAttendanceEmailParams {
 export function buildAttendanceEmailHtml(params: SendAttendanceEmailParams): string {
   const branding = { ...DEFAULT_BRANDING_CONFIG, ...params.branding };
   const primaryColor = branding.primaryColor || '#4f46e5';
-  const schoolName = branding.nombreInstitucion || 'ColeSistema Mini';
+  const schoolName = branding.nombreInstitucion || 'Sistema de Gestión Académica';
   const schoolLogo = branding.logoUrl || '';
-  const schoolSiglas = branding.siglas || 'CS';
+  const schoolSiglas = branding.siglas || 'SGA';
 
   const statusConfig: Record<AttendanceStatus, { label: string; bg: string; color: string; icon: string; desc: string }> = {
     presente: {

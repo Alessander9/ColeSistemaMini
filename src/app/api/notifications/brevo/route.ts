@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     const branding = params.branding || {};
     const apiKey = branding.brevoApiKey || process.env.BREVO_API_KEY;
     const senderEmail = branding.brevoSenderEmail || process.env.BREVO_SENDER_EMAIL || 'asistencia@colegio.edu.pe';
-    const senderName = branding.brevoSenderName || branding.nombreInstitucion || 'ColeSistema - Control de Asistencia';
+    const senderName = branding.brevoSenderName || branding.nombreInstitucion || 'Sistema de Gestión Académica - Control de Asistencia';
     
     // Status text for subject
     const statusText = params.estado === 'presente' 
@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
           .replace('[COLEGIO]', branding.nombreInstitucion || 'Colegio')
           .replace('[ESTADO]', statusText)
           .replace('[HORA]', params.horaRegistro)
-      : `${statusText}: ${params.studentName} (${params.horaRegistro}) - ${branding.nombreInstitucion || 'ColeSistema'}`;
+      : `${statusText}: ${params.studentName} (${params.horaRegistro}) - ${branding.nombreInstitucion || 'Sistema de Gestión Académica'}`;
 
     const htmlContent = buildAttendanceEmailHtml(params);
 

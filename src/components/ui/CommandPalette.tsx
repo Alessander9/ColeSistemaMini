@@ -244,7 +244,7 @@ export function CommandPalette() {
 
         {/* Footer info */}
         <div className="px-5 py-3 border-t border-slate-800 bg-slate-950/60 flex items-center justify-between text-[11px] text-slate-500">
-          <span>Navegación inteligente ColeSistema Mini</span>
+          <span>Navegación inteligente Sistema de Gestión Académica</span>
           <div className="flex items-center gap-3">
             <span><kbd className="px-1.5 py-0.5 bg-slate-800 rounded border border-slate-700 font-mono text-[9px]">↵</kbd> para ir</span>
             <span><kbd className="px-1.5 py-0.5 bg-slate-800 rounded border border-slate-700 font-mono text-[9px]">ESC</kbd> para cerrar</span>

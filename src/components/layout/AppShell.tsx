@@ -71,7 +71,7 @@ function PwaInstallBanner() {
         <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/5 to-white/0 pointer-events-none" />
         <div className="relative p-4 pr-10">
           <p className="font-extrabold text-white text-sm mb-0.5 flex items-center gap-1.5">
-            📱 ColeSistema
+            📱 Sistema de Gestión Académica
           </p>
           <p className="text-blue-100 text-xs leading-relaxed mb-3">
             Instala la aplicación en tu dispositivo para acceso rápido y control en tiempo real.

@@ -1712,7 +1712,7 @@ export default function AsistenciaKioscoPage() {
 
       {/* ── FOOTER DISCRETO ── */}
       <footer className="px-3 sm:px-6 py-2.5 text-center text-[10px] text-slate-500 border-t border-slate-800/40 bg-[#070b14]">
-        <span>ColeSistema Mini • Terminal Kiosco Seguro & Anti-Duplicados • Soporta Pistola USB & Escáner de Cámara</span>
+        <span>Sistema de Gestión Académica • Terminal Kiosco Seguro & Anti-Duplicados • Soporta Pistola USB & Escáner de Cámara</span>
       </footer>
 
     </div>
