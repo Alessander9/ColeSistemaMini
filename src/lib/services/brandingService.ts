@@ -188,7 +188,7 @@ export const DEFAULT_BRANDING_CONFIG: SystemBrandingConfig = {
   pwaShortName: 'Gestión Académica',
   pwaThemeColor: '#4f46e5',
   whatsappSoporteNumero: '+51 918 643 775',
-  whatsappSoporteMensaje: 'Hola, deseo información sobre las matrículas y servicios escolares.',
+  whatsappSoporteMensaje: 'Hola, quiero coordinar una demostración del Sistema de Gestión Académica para mi institución. ¿Qué horarios tienen disponibles?',
   mostrarWhatsappFlotante: true,
   googleAnalyticsId: '',
   metaPixelId: '',
@@ -286,6 +286,13 @@ export function getStoredBranding(): SystemBrandingConfig {
     }
     if (parsed.whatsappSoporteNumero === '51987654321' || parsed.whatsappSoporteNumero === '+57918643775' || parsed.whatsappSoporteNumero === '57918643775' || !parsed.whatsappSoporteNumero) {
       parsed.whatsappSoporteNumero = '+51 918 643 775';
+    }
+    if (
+      !parsed.whatsappSoporteMensaje ||
+      parsed.whatsappSoporteMensaje === 'Hola, deseo información sobre las matrículas y servicios escolares.' ||
+      parsed.whatsappSoporteMensaje.includes('deseo información sobre las matrículas')
+    ) {
+      parsed.whatsappSoporteMensaje = 'Hola, quiero coordinar una demostración del Sistema de Gestión Académica para mi institución. ¿Qué horarios tienen disponibles?';
     }
     return {
       ...DEFAULT_BRANDING_CONFIG,

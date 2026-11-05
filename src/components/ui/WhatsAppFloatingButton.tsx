@@ -15,7 +15,7 @@ export function WhatsAppFloatingButton() {
   const cleanNumber = brandingConfig.whatsappSoporteNumero.replace(/[^0-9]/g, '');
   const encodedText = encodeURIComponent(
     brandingConfig.whatsappSoporteMensaje ||
-    `Hola, me comunico desde la plataforma de ${brandingConfig.nombreInstitucion || 'Sistema de Gestión Académica'}.`
+    'Hola, quiero coordinar una demostración del Sistema de Gestión Académica para mi institución. ¿Qué horarios tienen disponibles?'
   );
   const waUrl = `https://wa.me/${cleanNumber}?text=${encodedText}`;
 
@@ -47,10 +47,10 @@ export function WhatsAppFloatingButton() {
 
           <div className="py-3 text-xs text-slate-600 dark:text-slate-300 space-y-2">
             <p>
-              ¿Tienes dudas sobre matrículas, notas o asistencia en <strong>{brandingConfig.nombreInstitucion || 'nuestro colegio'}</strong>?
+              ¿Deseas una demostración o información sobre <strong>{brandingConfig.nombreInstitucion || 'el Sistema de Gestión Académica'}</strong>?
             </p>
             <p className="text-[11px] text-slate-400">
-              Escríbenos directamente por WhatsApp y nuestro equipo de secretaría te atenderá.
+              Escríbenos directamente por WhatsApp y nuestro equipo te atenderá con gusto.
             </p>
           </div>
 
