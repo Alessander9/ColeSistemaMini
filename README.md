@@ -83,6 +83,204 @@ Consulta el detalle completo en el documento de arquitectura:
 
 ---
 
+## Metodología RUP (Rational Unified Process) y Modelado UML
+
+El desarrollo y evolución de **ColeSistemaMini** adopta la metodología **RUP (Rational Unified Process)**, caracterizada por ser iterativa, incremental, dirigida por casos de uso y centrada en la arquitectura del sistema, modelada mediante el estándar **UML (Unified Modeling Language)**.
+
+### 1. Fases del Proceso Unificado (RUP)
+
+```mermaid
+flowchart LR
+    subgraph RUP["Ciclo de Vida RUP (Rational Unified Process)"]
+        F1["1. Inicio (Inception)<br/>• Definición de alcance EBR (Inicial, Primaria, Secundaria)<br/>• Identificación de actores del colegio<br/>• Casos de uso de alto impacto: Asistencia QR y CNEB"]
+        F2["2. Elaboración (Elaboration)<br/>• Definición de arquitectura base (Next.js + Supabase)<br/>• Mitigación de riesgos (seguridad en cookies y sesiones firmadas)<br/>• Diseño del modelo relacional de datos"]
+        F3["3. Construcción (Construction)<br/>• Iteración 1: Asistencia bi-modal y Kiosco QR<br/>• Iteración 2: Evaluación CNEB, conclusiones y SIAGIE<br/>• Iteración 3: Portales multi-rol y mensajería WhatsApp/Email"]
+        F4["4. Transición (Transition)<br/>• Despliegue en Vercel con CDN en el Edge<br/>• Ejecución de suite de pruebas (177 tests pasando)<br/>• Capacitación, manuales y entrega operativa"]
+    end
+    F1 --> F2 --> F3 --> F4
+```
+
+---
+
+### 2. Diagramas UML del Sistema
+
+#### A. Diagrama de Casos de Uso (UML Use Case Diagram)
+Modela los actores principales del ecosistema escolar y las interacciones funcionales con la plataforma:
+
+```mermaid
+flowchart LR
+    Admin(["«Actor»<br/>Administrador"])
+    Docente(["«Actor»<br/>Docente"])
+    Estudiante(["«Actor»<br/>Estudiante"])
+    Apoderado(["«Actor»<br/>Apoderado"])
+    Porteria(["«Actor»<br/>Operador Portería"])
+
+    subgraph CasosDeUso["Casos de Uso del Sistema Escolar (UML)"]
+        UC1(["Gestionar Matrículas y Carnets QR"])
+        UC2(["Configurar Identidad y Branding"])
+        UC3(["Tomar Asistencia en Aula"])
+        UC4(["Registrar Notas CNEB y Conclusiones"])
+        UC5(["Exportar Planilla SIAGIE (MINEDU)"])
+        UC6(["Escanear QR en Kiosco"])
+        UC7(["Consultar Tareas y Horarios"])
+        UC8(["Seguimiento Académico Multi-Hijo"])
+        UC9(["Emitir y Leer Comunicados"])
+    end
+
+    Admin --> UC1
+    Admin --> UC2
+    Admin --> UC5
+    Admin --> UC9
+    Docente --> UC3
+    Docente --> UC4
+    Docente --> UC7
+    Docente --> UC9
+    Porteria --> UC6
+    Estudiante --> UC7
+    Apoderado --> UC8
+    Apoderado --> UC9
+```
+
+---
+
+#### B. Diagrama de Clases del Dominio (UML Class Diagram)
+Modela la estructura estática del modelo de dominio escolar y sus relaciones:
+
+```mermaid
+classDiagram
+    direction TB
+    class Usuario {
+        +String id
+        +String email
+        +String rol
+        +Boolean activo
+        +autenticar()
+        +cerrarSesion()
+    }
+    class Estudiante {
+        +String dni
+        +String nombres
+        +String apellidos
+        +String nivel
+        +String grado
+        +String seccion
+        +String qrCode
+        +String estado
+        +consultarLibreta()
+        +entregarTarea()
+    }
+    class Docente {
+        +String dni
+        +String especialidad
+        +String telefono
+        +registrarAsistencia()
+        +registrarNotas()
+    }
+    class Apoderado {
+        +String dni
+        +String parentesco
+        +String celularWhatsApp
+        +consultarHijos()
+        +confirmarComunicado()
+    }
+    class Asistencia {
+        +String id
+        +Date fecha
+        +Time horaMarcacion
+        +String metodo
+        +String estado
+        +validarTardanza()
+    }
+    class EvaluacionCNEB {
+        +String id
+        +String periodo
+        +String competenciaId
+        +String calificacionCualitativa
+        +Float notaVigesimal
+        +String conclusionDescriptiva
+        +calcularPromedio()
+    }
+    class Comunicado {
+        +String id
+        +String titulo
+        +String contenido
+        +String categoria
+        +Date fechaPublicacion
+        +enviarPorWhatsApp()
+    }
+
+    Usuario <|-- Docente : hereda
+    Usuario <|-- Estudiante : hereda
+    Usuario <|-- Apoderado : hereda
+
+    Apoderado "1..*" --> "1..*" Estudiante : representa
+    Estudiante "1" --> "*" Asistencia : registra
+    Estudiante "1" --> "*" EvaluacionCNEB : obtiene
+    Docente "1" --> "*" EvaluacionCNEB : evalua
+    Docente "1" --> "*" Asistencia : toma
+    Usuario "*" --> "*" Comunicado : recibe
+```
+
+---
+
+#### C. Diagrama de Secuencia (UML Sequence Diagram): Control de Asistencia QR
+Modela la interacción dinámica y temporal durante el escaneo de un carnet en el modo Kiosco:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Alumno as Estudiante
+    participant Kiosco as Kiosco QR (/asistencia)
+    participant MW as Middleware (Auth/Session)
+    participant Svc as AttendanceService
+    participant DB as Supabase PostgreSQL
+    participant Notif as NotificationService (Resend/Brevo)
+    actor Padre as Apoderado
+
+    Alumno->>Kiosco: Presenta Carnet con Código QR
+    Kiosco->>Kiosco: Decodifica Hash Criptográfico del QR
+    Kiosco->>MW: POST /api/attendance/scan (Payload QR)
+    MW->>MW: Valida firma de sesión y Rate Limiting
+    MW->>Svc: Invoca registrarMarcacion(estudianteId, timestamp)
+    Svc->>DB: INSERT / UPDATE asistencia (estado: Presente/Tardanza)
+    DB-->>Svc: Confirmación de registro exitoso
+    Svc-->>Kiosco: Respuesta HTTP 200 OK + Datos Alumno
+    Kiosco->>Kiosco: Emite sonido sintetizado (Web Audio) + Confeti
+    Kiosco-->>Alumno: Mensaje visual en pantalla ("¡Bienvenido!")
+    opt Notificación Automática al Padre
+        Svc->>Notif: dispararAlertaAsistencia(apoderadoEmail, estado)
+        Notif-->>Padre: Correo / Notificación en App en tiempo real
+    end
+```
+
+---
+
+#### D. Diagrama de Estados (UML State Machine Diagram): Ciclo de Vida del Estudiante
+Modela las transiciones de estado de un alumno desde la postulación hasta la promoción escolar:
+
+```mermaid
+stateDiagram-v2
+    [*] --> Postulante : Registro Inicial / Admisión
+    Postulante --> EnRevision : Carga de Documentos (DNI, Ficha)
+    EnRevision --> Matriculado : Asignación de Nivel, Grado y Sección
+    Matriculado --> EnCurso : Generación de Carnet QR y Credenciales
+    
+    state EnCurso {
+        [*] --> PeriodoActivo
+        PeriodoActivo --> EvaluacionCNEB : Registro de notas (AD, A, B, C)
+        EvaluacionCNEB --> AsistenciaRegular : Monitoreo diario por QR
+        AsistenciaRegular --> CierreBimestre : Consolidado de notas
+        CierreBimestre --> PeriodoActivo : Siguiente Bimestre
+    }
+
+    EnCurso --> Promovido : Cumple competencias anuales CNEB
+    EnCurso --> RecuperacionPedagogica : Requiere refuerzo (Calificación C)
+    RecuperacionPedagogica --> Promovido : Supera evaluación de recuperación
+    Promovido --> [*] : Promoción al siguiente grado escolar
+```
+
+---
+
 ## Inicio rápido
 
 ### Requisitos previos
